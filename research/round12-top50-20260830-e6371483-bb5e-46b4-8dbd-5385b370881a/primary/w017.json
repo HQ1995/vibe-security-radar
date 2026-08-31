@@ -1,0 +1,98 @@
+{
+  "schema_version": "independent-case-audit/v1",
+  "worker": "w017",
+  "review_agent_id": "round12-clean-w017",
+  "class_id": "alias-ac5710cdb88c4b5d1db55ccf",
+  "case_id": "CVE-2026-76208",
+  "repo": "thorsten/phpmyfaq",
+  "advisory_ids": [
+    "CVE-2026-76208",
+    "GHSA-x7f8-q53c-52pw"
+  ],
+  "input_binding": {
+    "bundle_sha256": "c3f639ab84f32da82c7cfa280eabbdb044e9a3dbd5e6bb9db0eb3b2607668325",
+    "clone_head_sha": "2da26942172d87b3f0624bccfbfd0e356b1b1187"
+  },
+  "verdict": "NOT_AI",
+  "protocol_checks": {
+    "vulnerability_mechanism": {
+      "status": "PASS",
+      "evidence": [
+        "The published CVE record at https://cveawg.mitre.org/api/cve/CVE-2026-76208 is state PUBLISHED and identifies the LDAP authentication bypass: after a successful bind, AuthLdap::create() unconditionally changes an existing local account from blocked to active; it names 3.1.0 through 4.1.6 and 4.1.7 as fixed.",
+        "The vendor advisory https://github.com/thorsten/phpMyFAQ/security/advisories/GHSA-8pr3-q3cw-q234 traces the live flow: checkCredentials() succeeds at the LDAP bind and calls create(); createUser() loads the pre-existing row before rejecting the duplicate login; the unconditional setStatus('active') then updates that loaded user_id and checkCredentials() returns true without a security-status log entry."
+      ]
+    },
+    "atomic_bic": {
+      "status": "PASS",
+      "evidence": [
+        "git show --find-renames --find-copies e3b2e72aa0c7a1a7dea3c0b680fb0f5af76d24cc -- phpmyfaq/inc/PMF_Auth/AuthLdap.php shows the single causal addition immediately after createUser(): $user->setStatus('active').",
+        "git log -S\"setStatus('active')\" plus --follow blame traces the surviving call through later moves and method-renaming refactors to e3b2e72aa0c7a1a7dea3c0b680fb0f5af76d24cc; the vendor-cited baa3a39ced454bbeafcc929488c04dc90cf76619 only moves the pre-existing add() body into renamed create()."
+      ]
+    },
+    "immediate_parent_absence": {
+      "status": "PASS",
+      "evidence": [
+        "git rev-parse e3b2e72aa0c7a1a7dea3c0b680fb0f5af76d24cc^ resolves to f0d7a24dcdf89b5657e6222362795376e3369ecb, and both are present commit objects.",
+        "git grep at f0d7a24dcdf89b5657e6222362795376e3369ecb shows AuthLdap::add() calling createUser() with no setStatus('active'); the child diff adds exactly that unconditional state change."
+      ]
+    },
+    "squash_member_decomposition": {
+      "status": "PASS",
+      "evidence": [
+        "git cat-file commit e3b2e72aa0c7a1a7dea3c0b680fb0f5af76d24cc shows exactly one parent, and its scoped diff is a one-line functional addition rather than a merge, move, revert, carrier, or squash aggregate; no finer public member exists or is needed."
+      ]
+    },
+    "affected_release_membership": {
+      "status": "PASS",
+      "evidence": [
+        "The CVE record and vendor advisory identify affected releases >=3.1.0 and <=4.1.6.",
+        "git merge-base --is-ancestor e3b2e72aa0c7a1a7dea3c0b680fb0f5af76d24cc 3.1.0 and the same command against 4.1.6 both exit 0; tag commits are 7fae72e2abb54b2d39c2f07051f9c07cf897af80 and 58c1d7f2fa36f7074664fc6d862afee0ca8bcc89, and git grep shows the unconditional setStatus('active') in both tags."
+      ]
+    },
+    "fixed_release_membership": {
+      "status": "PASS",
+      "evidence": [
+        "The vendor advisory names 4.1.7 as patched, and git merge-base --is-ancestor 4c5eec9adf6133b4765453d0af37da6959187cba 4.1.7 exits 0; 4.1.7 resolves to commit 28d6f641c16e3015d51d0a01d14841b845251f35.",
+        "The same ancestry test against 4.1.6 exits 1, while git grep at 4.1.7 shows the blocked/protected guard before setStatus('active')."
+      ]
+    },
+    "direct_fix_or_unpatched": {
+      "status": "PASS",
+      "evidence": [
+        "git show 4c5eec9adf6133b4765453d0af37da6959187cba shows the direct fix in AuthLdap::create(): when duplicate creation failed and the loaded local status is blocked or protected, log a warning and throw AuthException before the unconditional activation; added tests assert both statuses remain protected from LDAP activation.",
+        "The fix is a present commit object with immediate parent 5013376cdc7986575f91f5804880ef9e80ca6498."
+      ]
+    },
+    "bic_only_ai_attribution": {
+      "status": "PASS",
+      "evidence": [
+        "git cat-file commit e3b2e72aa0c7a1a7dea3c0b680fb0f5af76d24cc records named human Thorsten Rinne <thorsten@rinne.info> as both author and committer and message 'Fixed issue with LDAP users without any status'; the BIC object has no AI/Copilot attribution, prompt reference, Co-authored-by trailer, or aggregate-history ambiguity."
+      ]
+    }
+  },
+  "bug_semantics": "After a valid LDAP bind, AuthLdap invokes its local-user creation path. For an already-existing blocked account, the duplicate lookup loads that account's database ID/status and creation fails, but control continues to an unconditional setStatus('active'). That UPDATE targets the loaded existing row, persists blocked-to-active, and allows the LDAP login to complete without a security-status log entry.",
+  "flaw_origin": "e3b2e72aa0c7a1a7dea3c0b680fb0f5af76d24cc is the smallest public first-writer: it adds only the unconditional $user->setStatus('active') immediately after createUser() in LDAP add(). The direct parent has the same flow without that call. Later file moves and baa3a39ced454bbeafcc929488c04dc90cf76619's add()-to-create() rename preserve rather than introduce the flaw.",
+  "introducer_sha": "e3b2e72aa0c7a1a7dea3c0b680fb0f5af76d24cc",
+  "introducer_parent": "f0d7a24dcdf89b5657e6222362795376e3369ecb",
+  "introducer_parent_absent": true,
+  "squash_decomposed": false,
+  "decomposed_shas": [],
+  "fix_sha": "4c5eec9adf6133b4765453d0af37da6959187cba",
+  "direct_fix_sha": "4c5eec9adf6133b4765453d0af37da6959187cba",
+  "unpatched": null,
+  "ai_marker": {
+    "state": "ABSENT",
+    "evidence": [
+      "The BIC commit object names Thorsten Rinne <thorsten@rinne.info> as author and committer and contains only the human-authored message 'Fixed issue with LDAP users without any status', with no AI marker or co-author trailer."
+    ]
+  },
+  "evidence": [
+    "CVE Project record: https://cveawg.mitre.org/api/cve/CVE-2026-76208 (PUBLISHED; authentication bypass in AuthLdap::create(); 3.1.0 through 4.1.6; fixed in 4.1.7).",
+    "Vendor advisory: https://github.com/thorsten/phpMyFAQ/security/advisories/GHSA-8pr3-q3cw-q234 (source-to-sink, affected/patched ranges, and PoC).",
+    "Atomic BIC: https://github.com/thorsten/phpMyFAQ/commit/e3b2e72aa0c7a1a7dea3c0b680fb0f5af76d24cc; local Git verifies its one-line functional diff and immediate parent f0d7a24dcdf89b5657e6222362795376e3369ecb.",
+    "Direct fix: https://github.com/thorsten/phpMyFAQ/commit/4c5eec9adf6133b4765453d0af37da6959187cba; local Git verifies the pre-activation guard, regression tests, and inclusion in tag 4.1.7 but not 4.1.6.",
+    "At BIC-era source, User::getUserByLogin() stores the matching user_id and account_status; createUser() returns false for the duplicate; User::setStatus() executes UPDATE faquser SET account_status = status WHERE user_id = the loaded ID, closing the original source-to-sink mechanism."
+  ],
+  "reasoning": "The vulnerability and full lifecycle are closed by the published CVE record, vendor advisory, exact local source, release ancestry, and direct fix. History reconstruction rejects a later refactor falsely presented as the introducer and identifies the atomic 2012 first-write whose parent lacks the state change. Because that BIC is a non-aggregate commit explicitly authored and committed by a named human and contains no BIC-local AI marker, the protocol requires NOT_AI.",
+  "remaining_gap": null
+}

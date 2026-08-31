@@ -1,0 +1,78 @@
+{
+  "worker": "w010",
+  "review_agent_id": "r12_w010",
+  "class_id": "alias-b9176a7227ad946b34143643",
+  "case_id": "CVE-2026-78678",
+  "repo": "gitpython-developers/gitpython",
+  "primary_verdict": "AI_CODE_FLAWED",
+  "review_verdict": "CONFIRMED",
+  "protocol_checks": {
+    "vulnerability_mechanism": {
+      "status": "PASS",
+      "evidence": [
+        "CVE.org record https://cveawg.mitre.org/api/cve/CVE-2026-78678 is state=PUBLISHED (dateUpdated 2026-08-25T15:18:02.854Z). It describes an incomplete unsafe_git_revision_options denylist that omits --contents and -S, enabling Repo.blame() arbitrary-file read via values such as --contents=/etc/passwd. Affected range is semver 0 <= version < 3.1.59.",
+        "Vendor advisory https://github.com/gitpython-developers/GitPython/security/advisories/GHSA-5xxx-qhh7-9287 is state=published, withdrawn_at=null, published_at=2026-08-10T12:09:36Z. Attack chain: caller-controlled rev/kwargs -> Git._option_candidates -> Git.check_unsafe_options against unsafe_git_revision_options=[--output,-o] only -> self.git.blame(rev, '--', file, ...) -> victim file lines in the blame result. GitHub GHSA-89ff-m8wv-p99r mirrors the CVE and is not withdrawn.",
+        "At 701ce32fe5ba8cb622c0e0342a376a6beb47d738 git/repo/base.py lines 172-176 define unsafe_git_revision_options as only --output and -o. blame_incremental (lines 1135-1140) and blame (lines 1242-1247) check that list then still pass rev before the '--' path separator. Git._canonicalize_option_name maps --contents=/etc/passwd to contents, which is not in that denylist, so check_unsafe_options does not raise."
+      ]
+    },
+    "atomic_bic": {
+      "status": "PASS",
+      "evidence": [
+        "GIT_NO_LAZY_FETCH=1 git log --all --reverse -S'unsafe_git_revision_options' -- git/repo/base.py yields a single first writer: 701ce32fe5ba8cb622c0e0342a376a6beb47d738 (parent 65a72839c92768754bd51a37381235842a5ae0d8).",
+        "git blame -L 196,200 3.1.58 -- git/repo/base.py attributes the two-entry denylist to 701ce32fe5ba8cb622c0e0342a376a6beb47d738. git diff 65a72839c92768754bd51a37381235842a5ae0d8 701ce32fe5ba8cb622c0e0342a376a6beb47d738 -- git/repo/base.py shows this one-parent commit atomically added that denylist and wired both blame methods to it while retaining the pre-separator rev sink. That is the first write of the incomplete guard named by this CVE, not a move/refactor/revert."
+      ]
+    },
+    "immediate_parent_absence": {
+      "status": "PASS",
+      "evidence": [
+        "git rev-list --parents -n 1 701ce32fe5ba8cb622c0e0342a376a6beb47d738 returns a single parent 65a72839c92768754bd51a37381235842a5ae0d8.",
+        "git grep 'unsafe_git_revision_options' 65a72839c92768754bd51a37381235842a5ae0d8 returns no matches. Parent git/repo/base.py blame_incremental line 1102 and blame line 1200 already forward rev to self.git.blame(..., '--', file, ...) with no revision-option denylist. The incomplete guard is absent; the older unguarded sink is present."
+      ]
+    },
+    "squash_member_decomposition": {
+      "status": "PASS",
+      "evidence": [
+        "GitHub pull-request API for https://github.com/gitpython-developers/GitPython/pull/2163 reports commits=1 and the sole member sha 701ce32fe5ba8cb622c0e0342a376a6beb47d738 (head of branch fix-unguarded-blame; base 65a72839c92768754bd51a37381235842a5ae0d8).",
+        "Local object 701ce32fe5ba8cb622c0e0342a376a6beb47d738 has one parent and tree 28214564f9ed17941ec94b64307510e7cfcf5d6f. Merge carrier af027be78693962c233cc989915f40e9b135f3a5 (Merge pull request #2163) has parents 65a72839c92768754bd51a37381235842a5ae0d8 701ce32fe5ba8cb622c0e0342a376a6beb47d738 and the same tree. No finer public member exists; this is not a squash aggregate."
+      ]
+    },
+    "affected_release_membership": {
+      "status": "PASS",
+      "evidence": [
+        "Vendor advisory marks GitPython <= 3.1.58 affected. Local tag 3.1.58 peels to 30be45d786e95023e23c616fec5cbabca861b44c. git merge-base --is-ancestor 701ce32fe5ba8cb622c0e0342a376a6beb47d738 3.1.58 exits 0; git merge-base --is-ancestor 1b0d2d9b91575f7db44ef4ff58ac37fc9335e5f6 3.1.58 exits 1.",
+        "git show 3.1.58:git/repo/base.py still has unsafe_git_revision_options = [--output, -o] at lines 196-200 and no --contents token. The incomplete denylist is first contained in tag 3.1.51 (merge-base --is-ancestor exits 0) and remains through 3.1.58."
+      ]
+    },
+    "fixed_release_membership": {
+      "status": "PASS",
+      "evidence": [
+        "GitHub release https://github.com/gitpython-developers/GitPython/releases/tag/3.1.59 is named '3.1.59 - Security', published_at=2026-08-10T12:05:40Z, and lists PR 2208 'Block file-reading Git options'.",
+        "Local tag 3.1.59 peels to 66340d77aab9a7468f4aed3681d4ef1e3c0ec931. git merge-base --is-ancestor 1b0d2d9b91575f7db44ef4ff58ac37fc9335e5f6 3.1.59 exits 0. git show 3.1.59:git/repo/base.py defines unsafe_git_blame_options = unsafe_git_revision_options + [--contents, -S, --ignore-revs-file] at lines 204-209 and switches both blame checks to that list."
+      ]
+    },
+    "direct_fix_or_unpatched": {
+      "status": "PASS",
+      "evidence": [
+        "git diff 4ba9ce61b709f52ac92fa0c711efe2dcbe2bd89e 1b0d2d9b91575f7db44ef4ff58ac37fc9335e5f6 -- git/repo/base.py adds unsafe_git_blame_options including --contents/-S/--ignore-revs-file and points both blame methods at that list. The commit message of 1b0d2d9b91575f7db44ef4ff58ac37fc9335e5f6 states it closes GHSA-5xxx-qhh7-9287.",
+        "GitHub PR 2208 lists two members: fix 1b0d2d9b91575f7db44ef4ff58ac37fc9335e5f6 then changelog ce9d8e8d150e06ae2e2cc2efa229071cd3048a93. Merge 9729ed3b948f2bde09f1f188c5311e172212b67e is a carrier. Direct closing commit is 1b0d2d9b91575f7db44ef4ff58ac37fc9335e5f6, not unpatched."
+      ]
+    },
+    "bic_only_ai_attribution": {
+      "status": "PASS",
+      "evidence": [
+        "git cat-file -p 701ce32fe5ba8cb622c0e0342a376a6beb47d738 records author GPT 5.6 <codex@openai.com>, committer Sebastian Thiel <sebastian.thiel@icloud.com>, and Reviewed-by: Sebastian Thiel <sebastian.thiel@icloud.com>. GitHub commit API author.login=codex. No later-fix or repository-level marker is used.",
+        "Parent 65a72839c92768754bd51a37381235842a5ae0d8 already contained the unguarded blame source-to-sink, so the AI-authored object is a flawed incomplete remediation (GHSA-956x-8gvw-wg5v write-option guard that omitted blame file-read options), supporting AI_CODE_FLAWED rather than AI_ROOT_CAUSE."
+      ]
+    }
+  },
+  "findings": [
+    "Assignment binding verified: bundle sha256 acea662fbf0a384cd9a29e26e1963c9c49868a0024f19fb3e6ec0e7e5f4d2931, primary sha256 9f81946e0a64a6ced4670211a03086ae2991d3a1aff047eb926a9ef09e4c1b30, clone HEAD d160fb4124a56bd463a542a7bbff623354fb3397.",
+    "Real vulnerability: Repo.blame()/blame_incremental() accept a caller-controlled rev before '--' and guard it with an incomplete denylist that blocks only --output/-o, so --contents and -S leak local file contents into the returned blame rows under default allow_unsafe_options=False.",
+    "Atomic BIC of the incomplete guard is 701ce32fe5ba8cb622c0e0342a376a6beb47d738 (author GPT 5.6 <codex@openai.com>), first public writer of unsafe_git_revision_options and of the blame-local check that uses it.",
+    "Immediate parent 65a72839c92768754bd51a37381235842a5ae0d8 lacks that denylist but already has the unguarded blame sink, so this is incomplete AI remediation, not original creation of the API path.",
+    "Direct fix 1b0d2d9b91575f7db44ef4ff58ac37fc9335e5f6 is in tag 3.1.59 and not in tag 3.1.58; it adds unsafe_git_blame_options including --contents, -S, and --ignore-revs-file.",
+    "Primary verdict AI_CODE_FLAWED is independently supported; no field corrections are required."
+  ],
+  "corrected_fields": {},
+  "remaining_gap": null
+}

@@ -1,0 +1,101 @@
+{
+  "schema_version": "independent-case-audit/v1",
+  "worker": "w037",
+  "review_agent_id": "round12-clean-w037",
+  "class_id": "alias-f3457fab58f9a4866fb96999",
+  "case_id": "CVE-2026-77640",
+  "repo": "gitlab.torproject.org/tpo/core/tor",
+  "advisory_ids": [
+    "CVE-2026-77640",
+    "GHSA-5g6h-2vr8-m7f4"
+  ],
+  "input_binding": {
+    "bundle_sha256": "734551871ff42e4bee5cc84ccc1274b7955ed9a3f9d8ae3458d295fb5e607e9a",
+    "clone_head_sha": "3bfb49864a715119bf09e84785e9978884c2fd4b"
+  },
+  "verdict": "NOT_AI",
+  "protocol_checks": {
+    "vulnerability_mechanism": {
+      "status": "PASS",
+      "evidence": [
+        "The published CVE.org record at https://cveawg.mitre.org/api/cve/CVE-2026-77640 states that a truncated zlib/gzip stream finalized with done=1 never reaches Z_STREAM_END; zlib instead returns Z_BUF_ERROR with no input remaining, and Tor retried forever after mistaking that state for a full output buffer.",
+        "In pre-fix src/lib/compress/compress_zlib.c, Z_BUF_ERROR with avail_in==0 and finish==1 falls through to TOR_COMPRESS_BUFFER_FULL; src/lib/compress/compress_buf.c handles that result by adding a chunk when output space remains and repeats do...while until over, while neither DONE, ERROR, nor OK is reached."
+      ]
+    },
+    "atomic_bic": {
+      "status": "PASS",
+      "evidence": [
+        "git show 7573e66b9961cdb571c3c7af688fd01912e66455 -- src/common/torgzip.c shows the causal one-line change from `avail_in == 0` to `avail_in == 0 && !finish`, making finalization-time Z_BUF_ERROR return TOR_ZLIB_BUF_FULL.",
+        "git show --stat 7573e66b9961cdb571c3c7af688fd01912e66455 shows only that one functional line plus changes/bug11824; the commit has exactly one parent and is neither a move, refactor, revert, nor merge carrier."
+      ]
+    },
+    "immediate_parent_absence": {
+      "status": "PASS",
+      "evidence": [
+        "git show ad8977e39461807dd04e34dc7fa3c12ccef0b62d:src/common/torgzip.c shows `if (state->stream.avail_in == 0) return TOR_ZLIB_OK;`, so the immediate parent does not classify no-input finalization as buffer-full.",
+        "git cat-file -t confirms both 7573e66b9961cdb571c3c7af688fd01912e66455 and its immediate parent ad8977e39461807dd04e34dc7fa3c12ccef0b62d are commit objects."
+      ]
+    },
+    "squash_member_decomposition": {
+      "status": "PASS",
+      "evidence": [
+        "The raw BIC object has one parent, and its two-file diff consists of a changes entry and one causal source-line edit; there is no aggregate, merge, or finer public member to decompose."
+      ]
+    },
+    "affected_release_membership": {
+      "status": "PASS",
+      "evidence": [
+        "The CVE.org record declares Tor versions from 0.2.6.1-alpha up to but excluding 0.4.9.9 affected; Tor's official tor-0.4.9.9 ChangeLog independently says bugfix on 0.2.6.1-alpha.",
+        "git merge-base --is-ancestor 7573e66b9961cdb571c3c7af688fd01912e66455 tor-0.2.6.1-alpha and the same check against tor-0.4.9.8 both exit 0; those tags resolve to commits 5a601dd2901644a537621f407f072d634ece2cfe and e170cdcfebd45f6d098e3d811e2b1e1d120df184."
+      ]
+    },
+    "fixed_release_membership": {
+      "status": "PASS",
+      "evidence": [
+        "git merge-base --is-ancestor a10ff1e283efa1e64dfa604e0d7f8b2ef4290ad7 tor-0.4.9.8 exits 1 and the check against tor-0.4.9.9 exits 0; tor-0.4.9.9 resolves to 74b53bd1992da4eca7a89668d9a1a040faff7a73.",
+        "Tor's official https://gitlab.torproject.org/tpo/core/tor/-/raw/tor-0.4.9.9/ChangeLog identifies version 0.4.9.9 as the security release fixing TROVE-2026-021."
+      ]
+    },
+    "direct_fix_or_unpatched": {
+      "status": "PASS",
+      "evidence": [
+        "git show a10ff1e283efa1e64dfa604e0d7f8b2ef4290ad7 shows the direct fix in src/lib/compress/compress_zlib.c: after preserving the non-finalizing no-input OK case, a second avail_in==0 check returns TOR_COMPRESS_ERROR before TOR_COMPRESS_BUFFER_FULL.",
+        "The same fix commit message identifies the no-progress truncated-stream condition, buf_add_compress() retry loop, TROVE-2026-021, and bug 41274."
+      ]
+    },
+    "bic_only_ai_attribution": {
+      "status": "PASS",
+      "evidence": [
+        "The complete raw BIC object names Nick Mathewson <nickm@torproject.org> as both author and committer, dates the authored change to 2014-06-03, describes the intentional Z_BUF_ERROR semantic change, and contains no Co-Authored-By, Generated-By, model, Claude, ChatGPT, Copilot, Gemini, Anthropic, or OpenAI marker.",
+        "AI attribution is based only on 7573e66b9961cdb571c3c7af688fd01912e66455; the later fix commit's Claude trailer is not causal evidence for the 2014 first-writer."
+      ]
+    }
+  },
+  "bug_semantics": "When Tor decompresses a truncated zlib/gzip stream and finalizes it with done/finish=1, zlib consumes the available input but cannot reach Z_STREAM_END and repeatedly returns Z_BUF_ERROR with avail_in==0. The vulnerable backend maps that no-progress error to TOR_COMPRESS_BUFFER_FULL. buf_add_compress() interprets BUFFER_FULL as a request for more output space, allocates another chunk, and loops without any input or state progress, producing an infinite allocation/retry denial of service instead of rejecting the corrupt stream.",
+  "flaw_origin": "Commit 7573e66b9961cdb571c3c7af688fd01912e66455 is the smallest first-writer: its single causal source-line edit added `&& !finish`, so the already-existing Z_BUF_ERROR branch changed finalization with no input from TOR_ZLIB_OK to TOR_ZLIB_BUF_FULL. The immediate parent ad8977e39461807dd04e34dc7fa3c12ccef0b62d lacks that behavior, while the contemporaneous write_to_buf_zlib() caller already loops on BUF_FULL and allocates another chunk when space remains.",
+  "introducer_sha": "7573e66b9961cdb571c3c7af688fd01912e66455",
+  "introducer_parent": "ad8977e39461807dd04e34dc7fa3c12ccef0b62d",
+  "introducer_parent_absent": true,
+  "squash_decomposed": false,
+  "decomposed_shas": [],
+  "fix_sha": "a10ff1e283efa1e64dfa604e0d7f8b2ef4290ad7",
+  "direct_fix_sha": "a10ff1e283efa1e64dfa604e0d7f8b2ef4290ad7",
+  "unpatched": null,
+  "ai_marker": {
+    "state": "ABSENT",
+    "evidence": [
+      "The complete 7573e66b9961cdb571c3c7af688fd01912e66455 commit object has named human author and committer Nick Mathewson <nickm@torproject.org> and no AI-related trailer or model marker.",
+      "The BIC message itself explains the intended 2014 Z_BUF_ERROR behavior and references bug 11824; no anonymous or aggregate history prevents BIC-local attribution."
+    ]
+  },
+  "evidence": [
+    "CVE.org primary record https://cveawg.mitre.org/api/cve/CVE-2026-77640 is PUBLISHED and specifies the affected range 0.2.6.1-alpha to before 0.4.9.9 and the exact truncated-stream infinite-loop mechanism.",
+    "Tor primary ChangeLog https://gitlab.torproject.org/tpo/core/tor/-/raw/tor-0.4.9.9/ChangeLog identifies TROVE-2026-021, bug 41274, bugfix on 0.2.6.1-alpha, and the direct error-return remediation in 0.4.9.9.",
+    "Local Git diff 7573e66b9961cdb571c3c7af688fd01912e66455^..7573e66b9961cdb571c3c7af688fd01912e66455 proves the first vulnerable one-line classification change; direct parent source proves absence.",
+    "Local Git source at the BIC shows write_to_buf_zlib() repeatedly calls tor_zlib_process(), treats TOR_ZLIB_BUF_FULL as a reason to add a chunk when avail remains, and terminates only when over becomes true.",
+    "Local Git diff a10ff1e283efa1e64dfa604e0d7f8b2ef4290ad7^..a10ff1e283efa1e64dfa604e0d7f8b2ef4290ad7 proves the direct fix returns TOR_COMPRESS_ERROR for the no-input finalization error.",
+    "Git ancestry checks prove BIC membership in tor-0.2.6.1-alpha and tor-0.4.9.8, fix absence from tor-0.4.9.8, and fix membership in tor-0.4.9.9."
+  ],
+  "reasoning": "The advisory is an authoritative published vulnerability, and source inspection closes the complete no-progress retry mechanism. The atomic one-line 2014 commit 7573e66b9961cdb571c3c7af688fd01912e66455 first introduced the erroneous BUFFER_FULL classification; its immediate parent lacks it, release ancestry matches the authoritative affected/fixed boundary, and a10ff1e283efa1e64dfa604e0d7f8b2ef4290ad7 directly fixes it. Because the BIC is a non-aggregate commit with a named human author/committer and no BIC-local AI marker, the required BIC-only attribution is NOT_AI; AI evidence on the later fix does not alter that result.",
+  "remaining_gap": null
+}

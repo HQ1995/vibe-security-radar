@@ -1,0 +1,105 @@
+{
+  "schema_version": "independent-case-audit/v1",
+  "worker": "w005",
+  "review_agent_id": "round12-clean-w005",
+  "class_id": "alias-a01054677de611cc0331f469",
+  "case_id": "CVE-2026-77069",
+  "repo": "n8n-io/n8n",
+  "advisory_ids": [
+    "CVE-2026-77069",
+    "GHSA-4x7w-pwq5-598q"
+  ],
+  "input_binding": {
+    "bundle_sha256": "6af3e011082c304f33a1c2a093579cc040c13b623bc7b20fd967d9d1df0413ac",
+    "clone_head_sha": "5a0b3f02c7c4a4bbe1b14c7261fa8dca8b59962d"
+  },
+  "verdict": "NOT_AI",
+  "protocol_checks": {
+    "vulnerability_mechanism": {
+      "status": "PASS",
+      "evidence": [
+        "CVE.org JSON record https://cveawg.mitre.org/api/cve/CVE-2026-77069 is PUBLISHED and identifies CWE-918: the OAuth2 authorization-code token exchange sends a fixed-shape POST to a credential-selected access-token URL without the SSRF guard and can reflect the target response.",
+        "Vendor advisory https://github.com/n8n-io/n8n/security/advisories/GHSA-c4f6-59xq-95ww is published and not withdrawn; it describes the same unguarded token exchange and bounded response reflection.",
+        "At n8n@2.34.0, packages/cli/src/controllers/oauth/oauth2-credential.controller.ts maps credential.accessTokenUrl to accessTokenUri, constructs ClientOAuth2 without an SSRF bridge, and invokes code.getToken; packages/@n8n/client-oauth2/src/code-flow.ts:123-133 makes the POST, and client-oauth2.ts:97-135 dispatches it through axios without URL, DNS, or redirect SSRF validation."
+      ]
+    },
+    "atomic_bic": {
+      "status": "PASS",
+      "evidence": [
+        "git diff 3b450b4372acfa4b56f025a1d55b6fa05f1409f8 d2ea3ce877b4233e9c1cb20f8e2882e42ad964e0 -- packages/cli/src/Server.ts shows the first credential accessTokenUrl -> clientOAuth2 -> code.getToken request chain; the commit adds only packages/cli/package.json and 135 lines in Server.ts for the OAuth2 authorization/callback feature.",
+        "d2ea3ce877b4233e9c1cb20f8e2882e42ad964e0 is a direct single-parent feature commit, not a move, revert, merge, release carrier, or security-bundle aggregate. Later f71737928f6d51d849ca5006f47032934b6eafa0 and acec9bad7106b2ad51800a650be68b3ec5003357 are refactors/moves and were rejected as BICs."
+      ]
+    },
+    "immediate_parent_absence": {
+      "status": "PASS",
+      "evidence": [
+        "git cat-file -t 3b450b4372acfa4b56f025a1d55b6fa05f1409f8 returns commit.",
+        "git grep -n -E 'oauth2-credential|accessTokenUri|code.getToken' 3b450b4372acfa4b56f025a1d55b6fa05f1409f8 -- packages/cli/src/Server.ts packages/cli/package.json returns no matches, while the child diff adds both the attacker-selected URL source and unguarded token-exchange sink."
+      ]
+    },
+    "squash_member_decomposition": {
+      "status": "PASS",
+      "evidence": [
+        "git cat-file commit d2ea3ce877b4233e9c1cb20f8e2882e42ad964e0 shows exactly one parent, 3b450b4372acfa4b56f025a1d55b6fa05f1409f8, and no PR/squash aggregate metadata; there is no finer public member to decompose.",
+        "The later error-body enhancement squash 79d0a0f2470905f98b71fb5c8ca007244004f99a was decomposed via public PR #5794 into af66f9fe74dbcea8a761821e809d76ef7cf6ddd3, a65d1493bc8bc0477b2cddb29b39a2f241568e31, and 0d9c554bc74dbde45ae6a7362dfebf5264bea4ac; those 2023 members amplify response disclosure but postdate the 2020 unguarded SSRF sink and are not the BIC."
+      ]
+    },
+    "affected_release_membership": {
+      "status": "PASS",
+      "evidence": [
+        "CVE.org and the vendor advisory identify affected ranges below 1.123.69, below 2.33.4 on the 2.33 line, and 2.34.0 below 2.34.1.",
+        "git source inspection confirms n8n@1.123.68 controller blob 7e1f6c8bc86c33a62557b511d798f0ccd45f8957 and client blob 5bbbde43552b1de707e2343edb613393164cd00a retain ClientOAuth2 without an SSRF bridge and render error.body.",
+        "n8n@2.33.3 and n8n@2.34.0 share vulnerable controller blob 7dceeff43304715616d6a52a00c8f45ebdb28509 and client blob b9653aa75c463bdf551d83a1244ebd07331d03c8; both lack ssrfBridge at token exchange and serialize error.body into the callback page."
+      ]
+    },
+    "fixed_release_membership": {
+      "status": "PASS",
+      "evidence": [
+        "n8n@2.33.4 and n8n@2.34.1 both contain patched controller blob c51eb166905b0d78a25c49cf5d16ecc2d7d6fb5e and patched client blob 7deb2673a58f1bee33e5aa6c5a46e6da83d483a1, identical to direct-fix commit ca3d42d8386515cd9f044377a15a632cd09b62f0; their backport commits are 0405fc550f55051f6c459252f5860fa78d27ab80 and 170cfc787015d352488f6b6403af07a74e95ca1d.",
+        "The advertised 1.x boundary is contradicted by first-party Git source: n8n@1.123.69 has the exact same controller blob 7e1f6c8bc86c33a62557b511d798f0ccd45f8957 and client blob 5bbbde43552b1de707e2343edb613393164cd00a as n8n@1.123.68, and 3e4fb19caf73276a68b38d45d96b3da5baf7cab7 does not modify OAuth or backend-network files. Thus 1.123.69 is not source-fixed despite the advisory claim."
+      ]
+    },
+    "direct_fix_or_unpatched": {
+      "status": "PASS",
+      "evidence": [
+        "git diff a7dec6df87d2eaedffd22e7c8939804e350185a9 ca3d42d8386515cd9f044377a15a632cd09b62f0 shows the direct fix: ClientOAuth2 accepts an SsrfBridge, validates the initial URL and every redirect, installs secure DNS lookup, OAuth2CredentialController passes OauthService.getSsrfBridge(), refresh uses the same bridge, and callback rendering no longer serializes arbitrary response bodies.",
+        "ca3d42d8386515cd9f044377a15a632cd09b62f0 and private-source carrier c4488a956f3d48e53c5aa3cc6a99c5851e8b2009 have identical tree 77033e2954d683a27c8ea0c6e32d3c8566a95907; no finer public per-vulnerability fix object is reconstructable."
+      ]
+    },
+    "bic_only_ai_attribution": {
+      "status": "PASS",
+      "evidence": [
+        "The BIC commit object d2ea3ce877b4233e9c1cb20f8e2882e42ad964e0 names Ram Yalamanchili <ramyinc@gmail.com> as both author and committer and contains no Co-authored-by trailer, AI tool identity, generated-by marker, bot identity, or aggregate metadata.",
+        "Attribution is based only on the atomic BIC object; later AI-marked OAuth work, later security bundles, repository-level AI activity, and fix authorship are excluded."
+      ]
+    }
+  },
+  "bug_semantics": "A user allowed to create/configure OAuth2 credentials controls accessTokenUrl. During the authorization callback, n8n converts that value to ClientOAuth2.accessTokenUri and code.getToken constructs an authorization_code POST with fixed OAuth fields. Before the fix, @n8n/client-oauth2 sent that request through axios without the SSRF-protection service's initial-URL, DNS-rebinding, or redirect checks. The target's OAuth-shaped success data could be stored and error bodies were rendered into the callback page, allowing bounded internal response disclosure in addition to the server-side request.",
+  "flaw_origin": "d2ea3ce877b4233e9c1cb20f8e2882e42ad964e0 is the smallest public first-writer of the credential-controlled accessTokenUrl -> ClientOAuth2 -> code.getToken network path. Its immediate parent has no OAuth2 endpoint or token-exchange sink. A later revert temporarily removed the feature, but the original OAuth-support history was subsequently merged and the same unsafe mechanism survived through later changes; the revert, later merge/refactors, 2023 response-body enhancement, and 2026 fix bundles are not BICs.",
+  "introducer_sha": "d2ea3ce877b4233e9c1cb20f8e2882e42ad964e0",
+  "introducer_parent": "3b450b4372acfa4b56f025a1d55b6fa05f1409f8",
+  "introducer_parent_absent": true,
+  "squash_decomposed": false,
+  "decomposed_shas": [],
+  "fix_sha": "ca3d42d8386515cd9f044377a15a632cd09b62f0",
+  "direct_fix_sha": "ca3d42d8386515cd9f044377a15a632cd09b62f0",
+  "unpatched": null,
+  "ai_marker": {
+    "state": "ABSENT",
+    "evidence": [
+      "BIC d2ea3ce877b4233e9c1cb20f8e2882e42ad964e0 has named human author and committer Ram Yalamanchili <ramyinc@gmail.com>; its complete commit message has no AI, bot, generated-by, or Co-authored-by marker."
+    ]
+  },
+  "evidence": [
+    "CVE.org primary record: https://cveawg.mitre.org/api/cve/CVE-2026-77069 (state PUBLISHED; CWE-918; affected and fixed version claims).",
+    "n8n vendor advisory: https://github.com/n8n-io/n8n/security/advisories/GHSA-c4f6-59xq-95ww (published 2026-08-05; not withdrawn; mechanism and patch claims).",
+    "BIC/parent: git cat-file commit d2ea3ce877b4233e9c1cb20f8e2882e42ad964e0 and git diff 3b450b4372acfa4b56f025a1d55b6fa05f1409f8 d2ea3ce877b4233e9c1cb20f8e2882e42ad964e0 -- packages/cli/src/Server.ts.",
+    "Immediate-parent absence: git grep for oauth2-credential, accessTokenUri, and code.getToken in 3b450b4372acfa4b56f025a1d55b6fa05f1409f8 returned no matches.",
+    "Vulnerable implementation: n8n@2.34.0 controller converts credential.accessTokenUrl, code-flow.ts selects POST, and client-oauth2.ts dispatches axios without SsrfBridge.",
+    "Direct fix: git diff a7dec6df87d2eaedffd22e7c8939804e350185a9 ca3d42d8386515cd9f044377a15a632cd09b62f0 across OAuth controller/service and @n8n/client-oauth2 adds the bridge and suppresses arbitrary body reflection.",
+    "2.x release membership: n8n@2.33.4 and n8n@2.34.1 relevant blobs exactly match ca3d42d8386515cd9f044377a15a632cd09b62f0; vulnerable predecessor tags share the unpatched blobs.",
+    "1.x discrepancy: n8n@1.123.68 and n8n@1.123.69 have identical relevant source blobs, so the first-party source does not support the advertised 1.123.69 fixed boundary."
+  ],
+  "reasoning": "The vulnerability is real and source-closed on the 2.x lines: credential-controlled token endpoints reached an unguarded HTTP sink, and the 2.x fixed tags carry the direct SSRF bridge patch. The atomic origin is the 2020 OAuth2 endpoint commit, whose parent lacks the path and whose commit object is attributable to a named human with no AI marker. Later AI-associated repository activity and later OAuth error-handling changes are not BIC-local evidence. The 1.123.69 source/tag contradiction is a version-boundary defect in the advisory, not evidence that the vulnerability is false or AI-authored, so the causal verdict is NOT_AI.",
+  "remaining_gap": null
+}

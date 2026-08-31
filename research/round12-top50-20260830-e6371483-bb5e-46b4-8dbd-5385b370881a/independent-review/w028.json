@@ -1,0 +1,77 @@
+{
+  "worker": "w028",
+  "review_agent_id": "r12_w028",
+  "class_id": "alias-2946afa238c8db4a4719e22c",
+  "case_id": "CVE-2026-8421",
+  "repo": "concretecms/concretecms",
+  "primary_verdict": "NOT_AI",
+  "review_verdict": "CONFIRMED",
+  "protocol_checks": {
+    "vulnerability_mechanism": {
+      "status": "PASS",
+      "evidence": [
+        "CVE.org record https://cveawg.mitre.org/api/cve/CVE-2026-8421 is state PUBLISHED (CNA ConcreteCMS); not rejected/withdrawn. GitHub advisory GHSA-4c8m-6fwx-m7xq has withdrawn_at null.",
+        "Vendor 9.5.1 notes at https://documentation.concretecms.org/9-x/developers/introduction/version-history/951-release-notes describe CSRF in install_package() of concrete/controllers/single_page/dashboard/extend/install.php: a crafted page can make an authenticated administrator passing canInstallPackages install a package already under DIR_PACKAGES/<handle>/, running the package controller install() as the web server user (RCE).",
+        "At tag 9.5.0 (c747e425266ac50c12b5f2f74fa895ecec5cd777) install_package($package) at concrete/controllers/single_page/dashboard/extend/install.php:166-227 has no request-method check. After canInstallPackages() it loads the handle via PackageService::getClass and, when showInstallOptionsScreen() is false, reaches PackageService::install($p, $this->post()) at line 206 with only the optional install_options_selected token, which is skipped on that branch.",
+        "At the same tag, PackageService::install() (concrete/src/Package/PackageService.php:268-299) calls $p->install($data), confirming the package-controller RCE sink."
+      ]
+    },
+    "atomic_bic": {
+      "status": "PASS",
+      "evidence": [
+        "GIT_NO_LAZY_FETCH=1 git show 10236caea734eeb055cd0aa18f3178bf1c6f7c0b:trunk/web/concrete/controllers/dashboard/install.php contains public function install_package($package) that does $p = Loader::package($package); $p->install(); with no POST or CSRF-token check. The same blob 8cad5832cc7c99c4fe1aa05f1d9cc720c0ebaa86 is also at branches/releases/5.0.0b2/concrete/controllers/dashboard/install.php in that commit.",
+        "Reverse path log of trunk/web/concrete/controllers/dashboard/install.php starts at 10236caea734eeb055cd0aa18f3178bf1c6f7c0b (2008-08-04, 'initial import', git-svn-id revision 1). No earlier public object on this path exists in the assigned clone.",
+        "Later history only carries the unguarded sink: 7c6ab167ca0388181a63ccf50148238af4df170a is R100 trunk/web/... -> web/... with identical blob 514ec9e8976608ff0a7150bb2a8db154f21b9fd0; 8c5ce1164ee19f89013b19a8f34dc9c4da13b1b5 added a token only to uninstall_block_type, not install_package; 60e3483c3eb4c94366b836f7f1bdb13d05ca840d added a conditional install_options_selected token still bypassed when the package has no install notes/options; f0d6a2f9cc31c5bf8e544ca0bfec7866ce981f5d only renamed the class to Concrete5_Controller_Dashboard_Extend_Install; b59e5daa7c4a2d5ccf33f2058124ad417367b9cd is R100 web/concrete/controllers/single_page/dashboard/extend/install.php -> concrete/controllers/single_page/dashboard/extend/install.php."
+      ]
+    },
+    "immediate_parent_absence": {
+      "status": "PASS",
+      "evidence": [
+        "git cat-file -p 10236caea734eeb055cd0aa18f3178bf1c6f7c0b has no parent header. git rev-list --parents -n 1 10236caea734eeb055cd0aa18f3178bf1c6f7c0b prints only that SHA. It is the repository root, so an immediate parent tree does not exist to prove absence against; the first-write is the surviving public object itself."
+      ]
+    },
+    "squash_member_decomposition": {
+      "status": "PASS",
+      "evidence": [
+        "10236caea734eeb055cd0aa18f3178bf1c6f7c0b is a parentless non-merge commit (SVN revision 1 import). The assigned public history contains no earlier parent or reconstructable member commit to decompose into. Later path moves and the 2011 conditional-token addition are carriers/partial mitigations, not squash aggregates of the first write."
+      ]
+    },
+    "affected_release_membership": {
+      "status": "PASS",
+      "evidence": [
+        "Tag 9.5.0 peels to c747e425266ac50c12b5f2f74fa895ecec5cd777. git merge-base --is-ancestor confirms 10236caea734eeb055cd0aa18f3178bf1c6f7c0b is an ancestor and f22b9dff59454391a50a255a39995bf635deea9e is not.",
+        "The 9.5.0 tagged controller still implements the no-POST, options-screen-conditional-token path into PackageService::install, matching CNA affected 5.0 through 9.5.0 and GHSA range < 9.5.1."
+      ]
+    },
+    "fixed_release_membership": {
+      "status": "PASS",
+      "evidence": [
+        "Tag 9.5.1 peels to 92bae566b9ec573cfb3017fcbb6db454a6586997. git merge-base --is-ancestor confirms f22b9dff59454391a50a255a39995bf635deea9e is an ancestor of that tag.",
+        "At 9.5.1, install_package requires $this->request->isMethod('POST') and validates token install_package (no-options path) or install_options_selected (options-submission path) before PackageService::install, matching the vendor 9.5.1 security notes."
+      ]
+    },
+    "direct_fix_or_unpatched": {
+      "status": "PASS",
+      "evidence": [
+        "git log 9.5.0..9.5.1 -- concrete/controllers/single_page/dashboard/extend/install.php yields only f22b9dff59454391a50a255a39995bf635deea9e (Andrew Embler, 'Sec fixes 9.5.1 (#12920)'). git log -S \"validate('install_package')\" and -S \"isMethod('POST')\" on that path also first appear in this commit.",
+        "That commit object is a single-parent commit (parent 534841df7efff24065f17c9debb6d91c24430b61). The hunk on concrete/controllers/single_page/dashboard/extend/install.php adds the POST gate and the install_package / install_options_selected token checks that close the sink."
+      ]
+    },
+    "bic_only_ai_attribution": {
+      "status": "PASS",
+      "evidence": [
+        "git cat-file -p 10236caea734eeb055cd0aa18f3178bf1c6f7c0b names author and committer Andrew Embler <andrew@concrete5.org> at unix 1217867608 (2008-08-04). Message is 'initial import' plus git-svn-id revision 1 and Former-commit-id f65e81cd0d6e920df0ec228211e9f4208f10fdbd.",
+        "The BIC object contains no Co-Authored-By, Generated-with, Copilot, Cursor, Claude, ChatGPT, bot, or generator trailer. Attribution is a named human on the actual first-write object, not an inference from missing trailers on an anonymous placeholder."
+      ]
+    }
+  },
+  "findings": [
+    "CVE-2026-8421 / GHSA-4c8m-6fwx-m7xq is a real published CSRF-to-package-install/RCE in install_package(); vendor 9.5.1 documents and ships the fix.",
+    "Source-to-sink at 9.5.0: routed handle -> canInstallPackages -> PackageService::getClass -> PackageService::install -> package controller install(), with CSRF only on the install-options branch.",
+    "Atomic BIC is parentless root 10236caea734eeb055cd0aa18f3178bf1c6f7c0b, which first wrote unguarded install_package(); subsequent moves, class rename, and the 2011 conditional token are not first-writes of the missing CSRF.",
+    "Direct fix is f22b9dff59454391a50a255a39995bf635deea9e, present in tag 9.5.1 (92bae566b9ec573cfb3017fcbb6db454a6586997) and absent from tag 9.5.0 (c747e425266ac50c12b5f2f74fa895ecec5cd777).",
+    "BIC authorship is named human Andrew Embler with no AI/bot/generator marker; independent verdict is NOT_AI, matching the primary."
+  ],
+  "corrected_fields": {},
+  "remaining_gap": null
+}

@@ -1,0 +1,102 @@
+{
+  "schema_version": "independent-case-audit/v1",
+  "worker": "w048",
+  "review_agent_id": "round12-clean-w048",
+  "class_id": "alias-5dfeadcc6ccb7a49a21a5d3d",
+  "case_id": "GHSA-x2r2-rvhq-2mqv",
+  "repo": "spring-projects/spring-security",
+  "advisory_ids": [
+    "CVE-2026-41706",
+    "GHSA-x2r2-rvhq-2mqv"
+  ],
+  "input_binding": {
+    "bundle_sha256": "d74fd50c6e87f246966e51a2be373e8074572b1f41680045f2b5db9dee3f43c1",
+    "clone_head_sha": "3bb66ce1119c43dbffbf4b06e8b044c6204104b8"
+  },
+  "verdict": "NOT_AI",
+  "protocol_checks": {
+    "vulnerability_mechanism": {
+      "status": "PASS",
+      "evidence": [
+        "CVE.org CNA record https://cveawg.mitre.org/api/cve/CVE-2026-41706 is PUBLISHED and says an attacker-influenced REDIRECT_URI cookie is decoded and used as an unvalidated post-login redirect target.",
+        "Spring's first-party advisory https://spring.io/security/cve-2026-41706/ confirms both CookieRequestCache and CookieServerRequestCache accept the cookie-controlled absolute URL, enabling an authenticated-user redirect to an attacker-controlled site."
+      ]
+    },
+    "atomic_bic": {
+      "status": "PASS",
+      "evidence": [
+        "GIT_NO_LAZY_FETCH=1 git log --reverse -S'map(URI::create)' ae532c080cbd594af7eeeee99742152225de4087 -- CookieServerRequestCache.java identifies ae532c080cbd594af7eeeee99742152225de4087 as the Reactive first-writer; its new file reads REDIRECT_URI, Base64-decodes it, and passes it to URI::create without a same-origin or relative-path check.",
+        "Servlet landing 9708a2d63fb9a1898bae7971953f21ae8aff9340 is a squash carrier, not the BIC. GitHub PR #8653 exposes exactly one member, 92b7a327e2bf0bf2ee625bbcc223995bb2813f7c; that member creates CookieRequestCache with UrlUtils.buildFullRequestUrl on save and reconstructs scheme/host from the decoded cookie without validation."
+      ]
+    },
+    "immediate_parent_absence": {
+      "status": "PASS",
+      "evidence": [
+        "GIT_NO_LAZY_FETCH=1 git cat-file -e 38979b1b09bd4affc13a45d71e56e155140d5205:web/src/main/java/org/springframework/security/web/server/savedrequest/CookieServerRequestCache.java exits 128 because the path is absent.",
+        "GIT_NO_LAZY_FETCH=1 git cat-file -e bfb401eeed57f63f2504d04cb5fdf93e183206e8:web/src/main/java/org/springframework/security/web/savedrequest/CookieRequestCache.java exits 128 because the path is absent."
+      ]
+    },
+    "squash_member_decomposition": {
+      "status": "PASS",
+      "evidence": [
+        "GitHub's first-party commit-to-PR endpoint maps squash landing 9708a2d63fb9a1898bae7971953f21ae8aff9340 to PR #8653; /pulls/8653/commits returns the sole public member 92b7a327e2bf0bf2ee625bbcc223995bb2813f7c with parent bfb401eeed57f63f2504d04cb5fdf93e183206e8.",
+        "Reactive BIC ae532c080cbd594af7eeeee99742152225de4087 is a one-parent commit and GitHub's commit-to-PR endpoint returns no associated PR, so no finer public squash members exist for that path."
+      ]
+    },
+    "affected_release_membership": {
+      "status": "PASS",
+      "evidence": [
+        "Spring's first-party advisory lists affected releases 5.7.23 and earlier, 5.8.0-5.8.25, 6.3.0-6.3.16, 6.4.0-6.4.16, 6.5.0-6.5.10, and 7.0.0-7.0.5; the CVE.org CNA record independently carries the matching supported-line boundaries.",
+        "Local tag 5.7.0 (3497b0ed68a2cc373d4105c66308dfe0dd624333) contains Reactive BIC ae532c080cbd594af7eeeee99742152225de4087 and Servlet squash carrier 9708a2d63fb9a1898bae7971953f21ae8aff9340. Direct fix a14c9d66b15946d2040a3681b55fe29ac145c5c9 is not an ancestor of affected tags 6.5.10 (0a9d4dc8fc9d303dad7fc1ee25cc7381a9888899) or 7.0.5 (53bc6a77963209bb2a5f3efdd855b1f4a8051cc3); both merge-base checks exit 1."
+      ]
+    },
+    "fixed_release_membership": {
+      "status": "PASS",
+      "evidence": [
+        "Spring's advisory identifies fixed versions 7.0.6, 7.0.5.1, 6.5.11, 6.5.10.2, 6.4.17, 6.3.17, 5.8.26, and 5.7.24.",
+        "GIT_NO_LAZY_FETCH=1 git merge-base --is-ancestor a14c9d66b15946d2040a3681b55fe29ac145c5c9 succeeds for fixed tags 6.5.11 (73b077790fcb04ac3712033d3e939daf42264545) and 7.0.6 (acd131c3d1902c6422ae27fcd319d76fe7cafd3c)."
+      ]
+    },
+    "direct_fix_or_unpatched": {
+      "status": "PASS",
+      "evidence": [
+        "Direct fix a14c9d66b15946d2040a3681b55fe29ac145c5c9 changes Servlet storage from UrlUtils.buildFullRequestUrl to a relative path, derives origin from the current request, and rejects absolute and protocol-relative cookie values.",
+        "The same direct fix adds the Reactive isRelativePath gate before URI::create and adds regression tests rejecting https://evil.com/phishing and //evil.com/phishing for both implementations."
+      ]
+    },
+    "bic_only_ai_attribution": {
+      "status": "PASS",
+      "evidence": [
+        "Reactive BIC ae532c080cbd594af7eeeee99742152225de4087 has named human author and committer Eleftheria Stein <eleftheria.kousathana@gmail.com>; its raw commit object contains only the feature message and Fixes: gh-8033, with no AI, Copilot, LLM, generated-by, or Co-authored-by marker.",
+        "Servlet atomic PR member 92b7a327e2bf0bf2ee625bbcc223995bb2813f7c has named human author and committer Zeeshan Adnan <codepoet29@gmail.com>; PR #8653 maps it to GitHub user zeeshanadnan, and its raw commit object contains no AI, Copilot, LLM, generated-by, or Co-authored-by marker."
+      ]
+    }
+  },
+  "bug_semantics": "For Servlet, an attacker-controlled Base64 REDIRECT_URI cookie was decoded into UriComponents and its scheme, host, port, path, and query became the SavedRequest redirect URL. For Reactive, the attacker-controlled cookie was decoded and converted directly with URI.create. Neither sink required a relative path, so a successful login could redirect the user to an attacker-controlled origin.",
+  "flaw_origin": "The earliest mechanism BIC is the one-parent Reactive file-creation commit ae532c080cbd594af7eeeee99742152225de4087. The independent Servlet mechanism first appears in the sole public member 92b7a327e2bf0bf2ee625bbcc223995bb2813f7c of squash PR #8653 and lands through carrier 9708a2d63fb9a1898bae7971953f21ae8aff9340. Both immediate parents lack the respective class entirely.",
+  "introducer_sha": "ae532c080cbd594af7eeeee99742152225de4087",
+  "introducer_parent": "38979b1b09bd4affc13a45d71e56e155140d5205",
+  "introducer_parent_absent": true,
+  "squash_decomposed": true,
+  "decomposed_shas": [
+    "92b7a327e2bf0bf2ee625bbcc223995bb2813f7c"
+  ],
+  "fix_sha": "a14c9d66b15946d2040a3681b55fe29ac145c5c9",
+  "direct_fix_sha": "a14c9d66b15946d2040a3681b55fe29ac145c5c9",
+  "unpatched": null,
+  "ai_marker": {
+    "state": "ABSENT",
+    "evidence": [
+      "Both causal BIC objects are atomic and attributed to consistent named human authors/committers; neither BIC message contains an AI-origin marker.",
+      "The Servlet PR metadata independently maps the atomic member to its named GitHub contributor, and no repository-level or later-commit signal was used."
+    ]
+  },
+  "evidence": [
+    "Bundle SHA256 is d74fd50c6e87f246966e51a2be373e8074572b1f41680045f2b5db9dee3f43c1; audit checkout HEAD is the bound 3bb66ce1119c43dbffbf4b06e8b044c6204104b8.",
+    "Assigned local Spring Security clone is non-shallow, has origin https://github.com/spring-projects/spring-security.git, has clean worktree, and was inspected at 61feae94a04ab78ede3aa7c5c97b1b0e993cca48 with GIT_NO_LAZY_FETCH=1.",
+    "A bounded explicit --refetch --no-filter fetched only the missing objects for ae532c080cbd594af7eeeee99742152225de4087, 9708a2d63fb9a1898bae7971953f21ae8aff9340, and refs/pull/8653/head; all structured source SHAs then passed git cat-file -e <sha>^{commit}.",
+    "CVE.org CNA record: https://cveawg.mitre.org/api/cve/CVE-2026-41706; Spring advisory: https://spring.io/security/cve-2026-41706/; Servlet provenance: https://github.com/spring-projects/spring-security/pull/8653."
+  ],
+  "reasoning": "The advisory is a real published vulnerability, both Servlet and Reactive source-to-sink paths close to atomic first-writers with directly verified parent absence, the Servlet squash is decomposed to its only public member, affected and fixed release boundaries match first-party records and local tags, and a14c9d66b15946d2040a3681b55fe29ac145c5c9 is the direct fix. Both causal BICs are consistently attributed to named human author/committers and contain no BIC-local AI marker, so all eight gates support NOT_AI.",
+  "remaining_gap": null
+}

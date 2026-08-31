@@ -1,0 +1,73 @@
+{
+  "worker": "w004",
+  "review_agent_id": "r12_w004",
+  "class_id": "alias-98b8df0f369c05ce326a9b13",
+  "case_id": "GHSA-4hf6-j482-f379",
+  "repo": "jahlives/openssl_encrypt",
+  "primary_verdict": "AI_ROOT_CAUSE",
+  "review_verdict": "CONFIRMED",
+  "protocol_checks": {
+    "vulnerability_mechanism": {
+      "status": "PASS",
+      "evidence": [
+        "CVE.org https://cveawg.mitre.org/api/cve/CVE-2026-74884 is state PUBLISHED (not rejected/withdrawn). It describes unsanitized plugin_id path traversal in _is_safe_path, CWE-73, affected semver <1.4.0 and 1.4.0 unaffected. NVD 2.0 vulnStatus is Received, not Rejected.",
+        "Vendor advisory https://api.github.com/repos/jahlives/openssl_encrypt/security-advisories/GHSA-8jpj-w975-rwv5 is state published with withdrawn_at null. It states plugin_sandbox.py interpolates unsanitized plugin_id into ~/.openssl_encrypt/plugins/{plugin_id} while plugin_manager._validate_plugin only requires a nonempty string of length <=50, and names fix commit 0c7418b.",
+        "Source-to-sink on 0c7418bab59e80a2b40913d8ad8523e6bbab196b^: plugin_class() supplies plugin.plugin_id; plugin_manager.py:815-820 _validate_plugin accepts any nonempty str of max 50 characters; PluginSecurityContext stores that id; when READ_FILES is absent, restricted_open calls _is_safe_path; plugin_sandbox.py:754-768 sets config_dir=os.path.realpath(os.path.expanduser(f\"~/.openssl_encrypt/plugins/{plugin_id}\")) and returns True on abs_path.startswith(config_dir). Python evaluation of that exact construction with plugin_id='../../.ssh' (length 10) yields config_dir=/home/hanqing/.ssh and /home/hanqing/.ssh/id_ed25519 startswith config_dir."
+      ]
+    },
+    "atomic_bic": {
+      "status": "PASS",
+      "evidence": [
+        "git log -S 'plugins/{plugin_id}' --all on openssl_encrypt/modules/plugin_system/plugin_sandbox.py returns only 35499f201ae2dc531d1194f6810c953d8b9af78b. That commit's tree at plugin_sandbox.py:406-416 first writes plugin_id = context.plugin_id, config_dir = os.path.abspath(os.path.expanduser(f\"~/.openssl_encrypt/plugins/{plugin_id}\")), and if abs_path.startswith(config_dir): return True, plus current_context plumbing into restricted_open.",
+        "git blame -L 754,768 on 0c7418bab59e80a2b40913d8ad8523e6bbab196b^ attributes the unsanitized plugin_id assignment, expanduser interpolation, and startswith allow to 35499f201ae2dc531d1194f6810c953d8b9af78b. 5f8412ee11ac37e57190d6af4fe02f2cf7f2a5bd only later replaces abspath with realpath and adds a dead nested startswith check; that is a carrier/hardening change, not the first writer of the authorization branch."
+      ]
+    },
+    "immediate_parent_absence": {
+      "status": "PASS",
+      "evidence": [
+        "git cat-file -t confirms immediate parent 31d2bc8c8b5b3ee818d4cd7228ed9f42f9683004 is a commit. At that tree, plugin_sandbox.py:375-388 _is_safe_path(self, path) allows only self.temp_dir and os.path.dirname(os.__file__) via startswith and otherwise returns False. git grep current_context on that parent is empty; restricted_open at lines 299-304 calls _is_safe_path(abs_path) with no plugin_id-derived config directory."
+      ]
+    },
+    "squash_member_decomposition": {
+      "status": "PASS",
+      "evidence": [
+        "git rev-list --parents -n1 35499f201ae2dc531d1194f6810c953d8b9af78b prints exactly one parent 31d2bc8c8b5b3ee818d4cd7228ed9f42f9683004. GitHub commit API reports the same single parent. The object is a 2-file focused refactor (plugin_sandbox.py, plugin_manager.py), not a merge or squash aggregate, so no finer public member exists to reconstruct."
+      ]
+    },
+    "affected_release_membership": {
+      "status": "PASS",
+      "evidence": [
+        "PyPI JSON records openssl_encrypt 1.4.0b3 sdist uploaded 2026-01-04T19:20:48 with SHA-256 5a36c06595ddfcdc721231254c02ef6ba16ab2cf6c4ad432529bd24fc98ac6c9. The downloaded artifact hashes match; PKG-INFO Version is 1.4.0b3; plugin_sandbox.py:617-625 interpolates unsanitized context.plugin_id into config_dir via realpath/expanduser and has no _sanitize_plugin_id.",
+        "git merge-base --is-ancestor 35499f201ae2dc531d1194f6810c953d8b9af78b 62810a2f938ca57e5a408ecf213d5299f6cfb1ac succeeds and the fix is not an ancestor of that 1.4.0b3 version-bump commit. BIC is not an ancestor of tag v1.3.6; the shipped affected object for this mechanism is the 1.4.0 line beginning with 1.4.0b3."
+      ]
+    },
+    "fixed_release_membership": {
+      "status": "PASS",
+      "evidence": [
+        "git merge-base --is-ancestor 0c7418bab59e80a2b40913d8ad8523e6bbab196b v1.4.0 succeeds. Annotated tag v1.4.0 (5347915afac5f2974b761375de30fdf8bc10294c) peels to 768df5cd1910e349509f07a27eeac6951e0003bf. The first version-bump containing the fix is 1.4.0rc1 (c093616e054773d35a15c4276104970a9de92d0d); 1.4.0b10 still lacks it.",
+        "PyPI 1.4.0 sdist uploaded 2026-03-03T18:22:41 SHA-256 77a024c126ec6757703bd5e74da8c3af34683537b6e3f31585d9c3cf4497ca4f hashes match the downloaded artifact. PKG-INFO Version is 1.4.0; plugin_sandbox.py defines _sanitize_plugin_id at line 324 and calls it at line 801 before config_dir construction."
+      ]
+    },
+    "direct_fix_or_unpatched": {
+      "status": "PASS",
+      "evidence": [
+        "git show 0c7418bab59e80a2b40913d8ad8523e6bbab196b (parent d0be3e989b1632eadb68e17d07294cbf9ac57c1f) adds _sanitize_plugin_id at plugin_sandbox.py:312-345, which rejects '/', '\\\\', NUL, '..', and any character outside [A-Za-z0-9_-]. execute_plugin calls it at line 376 before execution; _is_safe_path calls it at line 797 before interpolating plugin_id into config_dir; the impossible nested startswith check is removed. Message names GHSA-8jpj-w975-rwv5."
+      ]
+    },
+    "bic_only_ai_attribution": {
+      "status": "PASS",
+      "evidence": [
+        "git cat-file -p 35499f201ae2dc531d1194f6810c953d8b9af78b (author/committer Tobi <jahlives@gmx.ch>) contains both 'Generated with [Claude Code](https://claude.com/claude-code)' and 'Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>'. GitHub commit API for that exact SHA reports the same message and single parent. Attribution uses only this BIC object; the later fix's Claude Opus 4.6 trailer is not used."
+      ]
+    }
+  },
+  "findings": [
+    "Independent hash check matched assignment: bundle sha256 0a0c1accc4ca19519d74dfa49da030cba5c3b90ecaf28eedafbcdc5ce784dd54, primary sha256 16312846e397a1e1560859eacea2af4d7725b6a1ceb85724bd184d9311490375; clone HEAD c2b412f6fd1bc33734de9fbce9bce68318eb3cbd.",
+    "The claimed path-traversal mechanism is a real sandbox-authorization bug: unsanitized plugin.plugin_id becomes the allowed config-directory prefix, so a plugin lacking READ_FILES can open paths under a resolved directory such as ~/.ssh.",
+    "Smallest public first writer is single-parent commit 35499f201ae2dc531d1194f6810c953d8b9af78b; parent 31d2bc8c8b5b3ee818d4cd7228ed9f42f9683004 only allowed temp and stdlib paths.",
+    "Direct fix 0c7418bab59e80a2b40913d8ad8523e6bbab196b is contained in tag v1.4.0 and in the official PyPI 1.4.0 sdist; PyPI 1.4.0b3 still ships the unsanitized interpolation.",
+    "BIC-object trailers Generated-with Claude Code and Co-Authored-By Claude Sonnet 4.5 independently support AI_ROOT_CAUSE. Primary verdict is confirmed; no field corrections."
+  ],
+  "corrected_fields": {},
+  "remaining_gap": null
+}

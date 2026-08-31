@@ -1,0 +1,172 @@
+{
+ "schema_version": "causal-audit-bundle/1",
+ "class_id": "alias-8bcea22b61479dcd5da95ea5",
+ "status_at_selection": "UNANALYZED",
+ "repo": "n8n-io/n8n",
+ "clone_dir": "/home/hanqing/agents/ai-slop/.ai-slop/state/repos/n8n-io_n8n",
+ "clone_url": "https://github.com/n8n-io/n8n.git",
+ "clone_head_sha": "5a0b3f02c7c4a4bbe1b14c7261fa8dca8b59962d",
+ "clone_shallow": "false",
+ "clone_promisor": true,
+ "clone_partial_filter": "blob:none",
+ "advisory_ids": [
+  "CVE-2026-77076",
+  "GHSA-8329-w544-9mx3"
+ ],
+ "base_ledger_revision": 1,
+ "ledger_snapshot_sha256": "2a8e0f606d9dbb6a509188d6f4da35598f233dce4b2b205fa1cb14136e75fbe5",
+ "advisory": {
+  "id": "GHSA-8329-w544-9mx3",
+  "cve_id": "CVE-2026-77076",
+  "summary": "n8n versions before 1.123.69, 2.33.4, and 2.34.1 contain an information disclosure vulnerability ...",
+  "description": "n8n versions before 1.123.69, 2.33.4, and 2.34.1 contain an information disclosure vulnerability in the GraphQL node. When a GraphQL request fails at the connection level, the node re-throws the underlying HTTP client error unchanged instead of wrapping it in n8n's standard error type. That error contains the live request's headers, including a decrypted credential secret, which the execution engine persists verbatim. Any authenticated user able to read the resulting execution can retrieve the decrypted credential secret from the stored run data.",
+  "severity": "high",
+  "cvss": {
+   "vector_string": null,
+   "score": null
+  },
+  "cwes": [
+   {
+    "cwe_id": "CWE-209",
+    "name": "Generation of Error Message Containing Sensitive Information"
+   }
+  ],
+  "published_at": "2026-08-20T12:31:25Z",
+  "updated_at": "2026-08-20T12:31:26Z",
+  "withdrawn_at": null,
+  "vulnerabilities": [],
+  "references": [
+   "https://github.com/n8n-io/n8n/security/advisories/GHSA-9fqj-7wc5-cwhx",
+   "https://nvd.nist.gov/vuln/detail/CVE-2026-77076",
+   "https://www.vulncheck.com/advisories/n8n-before-credential-leak-via-graphql-node-error",
+   "https://github.com/advisories/GHSA-8329-w544-9mx3"
+  ],
+  "source": "https://api.github.com/advisories/GHSA-8329-W544-9MX3",
+  "fetch_error": null
+ },
+ "same_repository_prior_hits": [
+  {
+   "case_id": "GHSA-6QC9-MQVW-JG7X",
+   "aliases": [
+    "CVE-2026-72774",
+    "alias-cd8905a09d54912a47ad4c62"
+   ],
+   "mechanism": "Credential authorization bypass: pre-execution CredentialsPermissionChecker trusts the unresolved literal of the genericAuthType parameter (which may be an expression) when filtering active credential types, so the ownership/access check is skipped and the attacker-referenced credential is loaded at execution time. An authenticated member with edit access to a shared workflow can reference another user's credential in the HTTP Request node, exfiltrate/use it.",
+   "scope_statement": null,
+   "candidate_set": [
+    "2d9a2ec76e180b54e8091e31b1e0638c909abd99"
+   ],
+   "minimum_fix_set": [
+    "f69dfc6dd2178a14ea1624d2e1d403c2e755042f",
+    "2222fe3a6c886a9059f28e1b6d4bdb10ee420624"
+   ],
+   "ai_marker": "Co-authored-by: Matsu <matias.huhta@n8n.io>",
+   "token_overlap": 8
+  },
+  {
+   "case_id": "GHSA-2664-HR5V-554W",
+   "aliases": [
+    "CVE-2026-77083",
+    "alias-7e22d7fa18af10c1d907af89"
+   ],
+   "mechanism": "The JavaScript Code node executes user code in the task-runner Node VM with host objects injected into the sandbox. `$input.constructor.constructor.prototype` is the host Function.prototype. The freeze loop only froze prototypes with `typeof === 'object'`, but `typeof Function.prototype === 'function'`, so that prototype stayed mutable. An authenticated user who can create and execute workflows can pollute Function.prototype, recover host globalThis, and complete a sandbox escape when allowlisted imports (NODE_FUNCTION_ALLOW_BUILTIN / NODE_FUNCTION_ALLOW_EXTERNAL) supply gadgets. CWE-1321. Patched in 1.123.69, 2.33.4, and 2.34.1 by freezing function-typed prototypes as well (`isFreezable` = object or function).",
+   "scope_statement": null,
+   "candidate_set": [
+    "562d867483e871b0f1e31776252e23bd721df75b"
+   ],
+   "minimum_fix_set": [
+    "ca3d42d8386515cd9f044377a15a632cd09b62f0"
+   ],
+   "ai_marker": "Co-authored-by: Tomi Turtiainen <10324676+tomi@users.noreply.github.com>",
+   "token_overlap": 6
+  },
+  {
+   "case_id": "GHSA-G3R5-9H93-4J2C",
+   "aliases": [
+    "CVE-2026-65598",
+    "alias-c6624e4a670e7ce0e02ceb97"
+   ],
+   "mechanism": "Git node clone TOCTOU: repositoryPath resolved (resolvePathAllowingMissingParents) and checked (isFilePathBlocked), then mkdir(dirname(resolvedRepositoryPath)) and git.clone(sourceRepository, resolvedRepositoryPath) run later; an authenticated user can swap a validated directory for a symlink in the window before the clone subprocess runs, so git writes a crafted repo into the community-node directory which n8n loads as custom nodes on restart -> RCE.",
+   "scope_statement": null,
+   "candidate_set": [
+    "bd3aafce75ddb2e6f8fc196aea5fd76a0d774363"
+   ],
+   "minimum_fix_set": [
+    "5e32b80df816334007d233da64bb6020e623d220"
+   ],
+   "ai_marker": "Co-authored-by: Cursor <cursoragent@cursor.com>",
+   "token_overlap": 5
+  },
+  {
+   "case_id": "GHSA-GF29-4F56-R2JF",
+   "aliases": [
+    "CVE-2026-72770",
+    "alias-d6a2f067f5adfbfa68207a41"
+   ],
+   "mechanism": "Git node fetch/pull/pushTags operations bypass sandbox path restriction: repository-path containment checks (assertRepositoryReferenceAllowed) protect clone and push, but fetch/pull/pushTags lack them, so an authenticated user with workflow create/execute rights can point an allowlisted remote config value at a local path outside the intended sandbox, pull an arbitrary local git repo into the workspace, and read its files/history.",
+   "scope_statement": null,
+   "candidate_set": [
+    "d4f9223842f0584579639647e047a0f4e78a2259"
+   ],
+   "minimum_fix_set": [
+    "f69dfc6dd2178a14ea1624d2e1d403c2e755042f",
+    "2222fe3a6c886a9059f28e1b6d4bdb10ee420624"
+   ],
+   "ai_marker": "Co-authored-by: Matsu <matias.huhta@n8n.io>",
+   "token_overlap": 4
+  },
+  {
+   "case_id": "GHSA-JP7M-XCGX-57QM",
+   "aliases": [
+    "CVE-2026-59259",
+    "alias-60cd52b01dca16560b0d1e74"
+   ],
+   "mechanism": "External Secrets permission bypass caused by parser mismatch: credential validation detected only tightly formatted $secrets expressions, while the runtime expression engine accepted whitespace/newline variants, allowing users without externalSecret:list to store references that later resolved to protected secret values.",
+   "scope_statement": null,
+   "candidate_set": [
+    "835094c34e59f64b8516e846ed40d1ec4c476346"
+   ],
+   "minimum_fix_set": [
+    "a4bc50f9a0633d0fb63b0ef1e4a4fd8e0fe7f34b"
+   ],
+   "ai_marker": "Co-authored-by: Claude Sonnet 4.6 <noreply@anthropic.com>",
+   "token_overlap": 3
+  },
+  {
+   "case_id": "GHSA-WRWR-H859-XH2R",
+   "aliases": [
+    "CVE-2026-44791",
+    "alias-ce739b4c84e161aef6fa82ab"
+   ],
+   "mechanism": "XML node prototype-pollution patch bypass: the GHSA-hqr4-h3xv-9m3r patch validated `String(options.attrkey ?? '')` / charkey against forbidden keys but forwarded the raw (uncoerced) options object to xml2js Parser/Builder; a stateful non-string value (toString() returning a safe string on first call, attacker key on later calls) passes validation yet coerces to __proto__/constructor when the parser uses it, restoring prototype pollution -> RCE.",
+   "scope_statement": null,
+   "candidate_set": [
+    "85b7796434df7e80c4023666e2c0ede6e526a6ba"
+   ],
+   "minimum_fix_set": [
+    "293d5afd643f2a6df6195073beed314679399290"
+   ],
+   "ai_marker": "Co-authored-by: Matsu <matias.huhta@n8n.io>",
+   "token_overlap": 1
+  },
+  {
+   "case_id": "GHSA-H5RM-9FHH-5PHJ",
+   "aliases": [
+    "CVE-2026-77068",
+    "alias-85443fa0b01cc0d808288b99"
+   ],
+   "mechanism": "Path traversal reaches dynamic require. CNA metadata says 2.0.0, but Git containment first proves the unsafe loader carrier in n8n@2.9.0 and the advisory-specific MCP source-to-sink in n8n@2.25.1; n8n@2.33.3 and n8n@2.34.0 are verified affected endpoints.",
+   "scope_statement": null,
+   "candidate_set": [
+    "6d88b9e1e9f24901985b1fb4e4200f18bd550e1b"
+   ],
+   "minimum_fix_set": [
+    "ca3d42d8386515cd9f044377a15a632cd09b62f0"
+   ],
+   "ai_marker": "Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>",
+   "token_overlap": 0
+  }
+ ],
+ "protocol": "docs/AUDIT-PROTOCOL.md",
+ "context_rule": "One case, one clean context. Do not read the canonical ledger, another case bundle/output, or a prior verdict. Prior hits are leads, never proof."
+}

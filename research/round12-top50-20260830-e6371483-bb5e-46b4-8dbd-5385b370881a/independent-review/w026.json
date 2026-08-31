@@ -1,0 +1,77 @@
+{
+  "worker": "w026",
+  "review_agent_id": "r12_w026",
+  "class_id": "alias-210750ec0e2ac99116c05189",
+  "case_id": "GHSA-f73j-pm2c-rxvr",
+  "repo": "concretecms/concretecms",
+  "primary_verdict": "NOT_AI",
+  "review_verdict": "CONFIRMED",
+  "protocol_checks": {
+    "vulnerability_mechanism": {
+      "status": "PASS",
+      "evidence": [
+        "CVE.org record https://cveawg.mitre.org/api/cve/CVE-2026-8245 is state=PUBLISHED (CNA ConcreteCMS). NVD vulnStatus is Analyzed, not Rejected. GitHub GHSA-f73j-pm2c-rxvr has withdrawn_at=null. Vendor 9.5.1 notes at https://documentation.concretecms.org/9-x/developers/introduction/version-history/951-release-notes list CVE-2026-8245 as a Security Fix for the same reflected XSS.",
+        "At tag 9.5.0 (c747e425266ac50c12b5f2f74fa895ecec5cd777), concrete/controllers/single_page/dashboard/reports/forms/legacy.php:196-201 does Loader::helper('pagination') then concatenates unsanitized $this->request->get('sortBy') into $paginator->init(..., $pageBaseSurvey . '&page=%pageNum%&sortBy=' . $sortBy). ApplicationServiceProvider maps helper/pagination to Concrete\\Core\\Legacy\\Pagination.",
+        "At the same tag, concrete/src/Legacy/Pagination.php blob fbd8244f73aaa8389e88cca30397b0c71d9d452f raw-interpolates $linkURL into href in getNext (lines 196-198), getPrevious (223-225), and getPages (303-308) with no htmlspecialchars/htmlentities. concrete/single_pages/dashboard/reports/forms/legacy.php:272-277 emits getPrevious(), getPages('li'), and getNext(). A quote in sortBy closes the attribute and injects markup for an authenticated /dashboard/reports/forms/legacy viewer."
+      ]
+    },
+    "atomic_bic": {
+      "status": "PASS",
+      "evidence": [
+        "GIT_NO_LAZY_FETCH=1 git log --follow --name-status on concrete/src/Legacy/Pagination.php and the predecessor web/concrete/core/Html/Service/Pagination.php traces the file through path moves (web/concrete/src/Legacy/Pagination.php, web/concrete/core/Legacy/Pagination.php, web/concrete/core/Html/Service/Pagination.php, web/concrete/helpers/Pagination.php, web/concrete/lib/Helper/Pagination.php, web/concrete/core/helpers/pagination.php, web/concrete/helpers/pagination.php, trunk/web/concrete/helpers/pagination.php) back to add at parentless root 10236caea734eeb055cd0aa18f3178bf1c6f7c0b.",
+        "git ls-tree 10236caea734eeb055cd0aa18f3178bf1c6f7c0b -- trunk/web/concrete/helpers/pagination.php is blob 58596a46b122ddb349403baa0d8849d68f8ba80a. That blob already does $linkURL=str_replace(\"%pageNum%\", ..., $this->URL) then '<a href=\"'.$linkURL.'\"' in getNext/getPrevious/getPages with no HTML-attribute encoding.",
+        "The same root also first-writes the advisory source: trunk/web/concrete/controllers/dashboard/form_results.php:90-92 does $sortBy=$_REQUEST['sortBy']; $paginator->init(..., $pageBaseSurvey.'&page=%pageNum%&sortBy='.$sortBy, ...), and trunk/web/concrete/single_pages/dashboard/form_results.php:120-122 emits getPrevious/getNext/getPages. Later commits restyle or rename the helper and dashboard path; they carry the same unescaped interpolation rather than first writing it."
+      ]
+    },
+    "immediate_parent_absence": {
+      "status": "PASS",
+      "evidence": [
+        "git cat-file -p 10236caea734eeb055cd0aa18f3178bf1c6f7c0b has tree/author/committer/message and no parent header. git rev-list --parents -n1 10236caea734eeb055cd0aa18f3178bf1c6f7c0b prints only that SHA. This is the public-history root (git-svn-id concrete5@1), so no immediate parent tree exists against which the mechanism could be absent."
+      ]
+    },
+    "squash_member_decomposition": {
+      "status": "PASS",
+      "evidence": [
+        "BIC 10236caea734eeb055cd0aa18f3178bf1c6f7c0b is a parentless git-svn r1 initial import, not a squash/merge with reconstructable public members.",
+        "Its Former-commit-id f65e81cd0d6e920df0ec228211e9f4208f10fdbd is itself a parentless commit object with the same author, timestamp, and git-svn-id @1. git merge-base --is-ancestor f65e81cd0d6e920df0ec228211e9f4208f10fdbd HEAD exits 1 (unreachable from HEAD). Both former-commit paths trunk/web/concrete/helpers/pagination.php and branches/releases/5.0.0b2/concrete/helpers/pagination.php are the identical blob 58596a46b122ddb349403baa0d8849d68f8ba80a, so it is not a finer first-write member."
+      ]
+    },
+    "affected_release_membership": {
+      "status": "PASS",
+      "evidence": [
+        "CVE.org affected versions are Concrete CMS 5.0 through 9.5.0 (versionType=git, defaultStatus=unaffected). GHSA vulnerable_version_range is < 9.5.1.",
+        "git rev-parse 9.5.0^{commit} is c747e425266ac50c12b5f2f74fa895ecec5cd777. git merge-base --is-ancestor 10236caea734eeb055cd0aa18f3178bf1c6f7c0b 9.5.0 succeeds; git merge-base --is-ancestor f22b9dff59454391a50a255a39995bf635deea9e 9.5.0 fails. Tag tree contains vulnerable Pagination blob fbd8244f73aaa8389e88cca30397b0c71d9d452f."
+      ]
+    },
+    "fixed_release_membership": {
+      "status": "PASS",
+      "evidence": [
+        "Vendor 9.5.1 release notes list CVE-2026-8245 under Security Fixes. GHSA first_patched_version is 9.5.1.",
+        "git rev-parse 9.5.1^{commit} is 92bae566b9ec573cfb3017fcbb6db454a6586997. git merge-base --is-ancestor f22b9dff59454391a50a255a39995bf635deea9e 9.5.1 succeeds. Tag tree contains fixed Pagination blob 47c857e9955d4ae3c50f85cfacc7628c34cb4dec, which applies htmlspecialchars($linkURL, ENT_QUOTES, 'UTF-8') at all three href sinks."
+      ]
+    },
+    "direct_fix_or_unpatched": {
+      "status": "PASS",
+      "evidence": [
+        "The only Pagination.php change between 9.5.0 and 9.5.1 is commit f22b9dff59454391a50a255a39995bf635deea9e (author Andrew Embler, committer GitHub, subject Sec fixes 9.5.1 (#12920), single parent 534841df7efff24065f17c9debb6d91c24430b61).",
+        "git show f22b9dff59454391a50a255a39995bf635deea9e -- concrete/src/Legacy/Pagination.php inserts $linkURL = htmlspecialchars($linkURL, ENT_QUOTES, 'UTF-8'); immediately before each of the three unescaped href interpolations in getNext, getPrevious, and getPages. That is the direct public closer of the sink; unpatched is not applicable."
+      ]
+    },
+    "bic_only_ai_attribution": {
+      "status": "PASS",
+      "evidence": [
+        "BIC object 10236caea734eeb055cd0aa18f3178bf1c6f7c0b names Andrew Embler <andrew@concrete5.org> as both author and committer at 2008-08-04 16:33:28 +0000. Message is 'initial import' plus git-svn-id @1 and Former-commit-id; no Co-Authored-By, Generated-with, assistant, bot, or generator trailer.",
+        "The BIC-local pagination blob header names Tony Trupp <tony@concrete5.org> as @author with a 2003-2008 Concrete5 copyright. These are named-human BIC-object signals, not an anonymous/placeholder snapshot, and AI role is judged only on this BIC."
+      ]
+    }
+  },
+  "findings": [
+    "CVE-2026-8245 / GHSA-f73j-pm2c-rxvr is a real reflected XSS (CWE-83): attacker-controlled sortBy is concatenated into Legacy Pagination $URL and emitted raw in href on /dashboard/reports/forms/legacy.",
+    "The same request-to-href path already exists in public-history root 10236caea734eeb055cd0aa18f3178bf1c6f7c0b (form_results.php + helpers/pagination.php). Subsequent path moves and markup restyles are carriers until the 9.5.1 htmlspecialchars fix.",
+    "Direct fix is f22b9dff59454391a50a255a39995bf635deea9e, present in tag 9.5.1 (92bae566b9ec573cfb3017fcbb6db454a6586997) and absent from tag 9.5.0 (c747e425266ac50c12b5f2f74fa895ecec5cd777).",
+    "BIC authorship is named-human (Andrew Embler author/committer; Tony Trupp in the source header) with no AI/bot/generator marker, so a real vulnerability closes as NOT_AI rather than FALSE_POSITIVE.",
+    "Primary introducer_sha, fix_sha, parent-absent root, and release membership match this independent reconstruction; no canonical-field correction is required."
+  ],
+  "corrected_fields": {},
+  "remaining_gap": null
+}

@@ -1,0 +1,102 @@
+{
+  "schema_version": "independent-case-audit/v1",
+  "worker": "w024",
+  "review_agent_id": "round12-clean-w024",
+  "class_id": "alias-df0575deabcdbe3381b64705",
+  "case_id": "GHSA-q547-25x8-mx66",
+  "repo": "gitlab.freedesktop.org/xorg/xserver",
+  "advisory_ids": [
+    "CVE-2025-49179",
+    "GHSA-q547-25x8-mx66"
+  ],
+  "input_binding": {
+    "bundle_sha256": "3420a00410549a1e8b86e9c610fc949d0e5cf5ef694e8ee4f61f8ebfd0c2cda6",
+    "clone_head_sha": "ddf3edc3682150ba1cc4c575bc17bc4baee47a1d"
+  },
+  "verdict": "NOT_AI",
+  "protocol_checks": {
+    "vulnerability_mechanism": {
+      "status": "PASS",
+      "evidence": [
+        "The CVE Program record at https://cveawg.mitre.org/api/cve/CVE-2025-49179 is PUBLISHED and states that RecordSanityCheckRegisterClients lacks an integer-overflow check when computing request length, allowing the length check to be bypassed; the Red Hat first-party record at https://access.redhat.com/hydra/rest/securitydata/cve/CVE-2025-49179.json independently records the same CWE-190 mechanism.",
+        "In d55c54cecb5e83eaa2d56bed5cc4461f9ba318c2:record/record.c, ProcRecordRegisterClients accepts an at-least-header-sized request and RecordSanityCheckRegisterClients compares the actual request payload length with 4 * nClients + SIZEOF(xRecordRange) * nRanges without first bounding either attacker-controlled count.",
+        "If that arithmetic wraps, the equality can accept a shorter request; the same function then derives pRange from &stuff[1] plus nClients and loops nRanges times dereferencing xRecordRange entries, and RecordRegisterClients subsequently passes those entries to RecordConvertRangesToIntervals, establishing the request-count source to out-of-request memory-access sink."
+      ]
+    },
+    "atomic_bic": {
+      "status": "PASS",
+      "evidence": [
+        "GIT_NO_LAZY_FETCH=1 git log --all --reverse -S '4 * stuff->nClients + SIZEOF(xRecordRange) * stuff->nRanges' -- record/record.c identifies ded6147bfb5d75ff1e67c858040a628b61bc17d1 as the first surviving commit containing the vulnerable length expression.",
+        "GIT_NO_LAZY_FETCH=1 git diff --name-status cb6ef07bf01e72d1a6e6e83ceb7f76d6534da941 ded6147bfb5d75ff1e67c858040a628b61bc17d1 -- record/record.c reports A record/record.c; blob bcc019f27fec9e629ee00b0ab680506eb1866fd4 contains the vulnerable expression at lines 1436-1438."
+      ]
+    },
+    "immediate_parent_absence": {
+      "status": "PASS",
+      "evidence": [
+        "The BIC commit object names immediate parent cb6ef07bf01e72d1a6e6e83ceb7f76d6534da941, which exists as a commit object.",
+        "GIT_NO_LAZY_FETCH=1 git ls-tree -r cb6ef07bf01e72d1a6e6e83ceb7f76d6534da941 -- record/record.c returns no entry, and a full parent-tree filename check for paths ending in record.c also returns no entry; the vulnerable file is therefore absent from the immediate parent rather than moved from another parent path."
+      ]
+    },
+    "squash_member_decomposition": {
+      "status": "PASS",
+      "evidence": [
+        "ded6147bfb5d75ff1e67c858040a628b61bc17d1 is a single-parent public baseline commit titled 'R6.6 is the Xorg base-line'; its verifiable immediate parent lacks record/record.c and any other record.c path, and no finer public member object for this first write is present in the assigned repository history.",
+        "The BIC is the smallest surviving public Git object that can be verified for this first write; it is not a merge, revert, later move, fix, or carrier of a finer in-repository member."
+      ]
+    },
+    "affected_release_membership": {
+      "status": "PASS",
+      "evidence": [
+        "The CVE Program record marks X.Org xwayland versions from 0 through less than 24.1.7 affected.",
+        "xwayland-24.1.6 resolves to 5b1d9da00f217d3b52bfd3cc862dff79a9433e63, contains BIC ded6147bfb5d75ff1e67c858040a628b61bc17d1, does not contain release-branch fix 9d205323894af62b9726fcbaeb5fc69b3c9f61ba, and its record/record.c retains the unbounded length expression."
+      ]
+    },
+    "fixed_release_membership": {
+      "status": "PASS",
+      "evidence": [
+        "xwayland-24.1.7 resolves to 2c5e87e3dfecbd60bcad5b74cad2cdcf0a992b57 and contains 9d205323894af62b9726fcbaeb5fc69b3c9f61ba as an ancestor.",
+        "Commit 9d205323894af62b9726fcbaeb5fc69b3c9f61ba states that it was cherry-picked from published direct fix 2bde9ca49a8fd9a1e6697d5e7ef837870d66f5d4, and xwayland-24.1.7:record/record.c contains both new count bounds before the original length comparison."
+      ]
+    },
+    "direct_fix_or_unpatched": {
+      "status": "PASS",
+      "evidence": [
+        "The first-party commit https://gitlab.freedesktop.org/xorg/xserver/-/commit/2bde9ca49a8fd9a1e6697d5e7ef837870d66f5d4 directly changes record/record.c: it rejects nClients above LimitClients and rejects nRanges above (MAXINT - 4 * nClients) / SIZEOF(xRecordRange) before evaluating the formerly overflowable payload-length sum.",
+        "The fix commit message explicitly names CVE-2025-49179 and explains that these bounds keep the final request-length computation below the maximum integer limit."
+      ]
+    },
+    "bic_only_ai_attribution": {
+      "status": "PASS",
+      "evidence": [
+        "The raw BIC object is dated 2003-11-14 and names Kaleb Keithley <kaleb@freedesktop.org> as both author and committer; its complete message is 'R6.6 is the Xorg base-line'.",
+        "That BIC-local object contains no AI attribution, generated-by marker, assistant trailer, or AI co-author, and its named-human 2003 provenance predates generative coding assistants; no repository-level or later-commit signal was used."
+      ]
+    }
+  },
+  "bug_semantics": "An authorized client controls the 32-bit nClients and nRanges fields of an X Record RegisterClients/CreateContext request. The server checked that the request payload length equaled 4*nClients + sizeof(xRecordRange)*nRanges, but the unchecked integer arithmetic could wrap and make a short request pass. The server then used those counts for pointer derivation and repeated xRecordRange reads/conversion, so the bypass reaches out-of-request memory access and can disclose or corrupt data or crash the server.",
+  "flaw_origin": "ded6147bfb5d75ff1e67c858040a628b61bc17d1 is the smallest surviving public Git object that first adds record/record.c with the unbounded payload-length sum. Its immediate parent cb6ef07bf01e72d1a6e6e83ceb7f76d6534da941 contains no record.c path, so this is a first write in the assigned public history rather than a move, refactor, revert, or later carrier.",
+  "introducer_sha": "ded6147bfb5d75ff1e67c858040a628b61bc17d1",
+  "introducer_parent": "cb6ef07bf01e72d1a6e6e83ceb7f76d6534da941",
+  "introducer_parent_absent": true,
+  "squash_decomposed": false,
+  "decomposed_shas": [],
+  "fix_sha": "2bde9ca49a8fd9a1e6697d5e7ef837870d66f5d4",
+  "direct_fix_sha": "2bde9ca49a8fd9a1e6697d5e7ef837870d66f5d4",
+  "unpatched": null,
+  "ai_marker": {
+    "state": "ABSENT",
+    "evidence": [
+      "The BIC commit object is dated 2003-11-14, names Kaleb Keithley <kaleb@freedesktop.org> as author and committer, and contains only the message 'R6.6 is the Xorg base-line'.",
+      "No AI attribution, generated-by marker, assistant trailer, or AI co-author appears in the BIC object."
+    ]
+  },
+  "evidence": [
+    "CVE Program primary record: https://cveawg.mitre.org/api/cve/CVE-2025-49179 (state PUBLISHED; X.Org xwayland 0 through <24.1.7 affected; integer-overflow length-check bypass).",
+    "Red Hat Product Security primary record: https://access.redhat.com/hydra/rest/securitydata/cve/CVE-2025-49179.json (CWE-190 and the same RecordSanityCheckRegisterClients mechanism).",
+    "Published X.Org fix: https://gitlab.freedesktop.org/xorg/xserver/-/commit/2bde9ca49a8fd9a1e6697d5e7ef837870d66f5d4; direct pre-checks bound both client and range counts before the request-length sum.",
+    "BIC ded6147bfb5d75ff1e67c858040a628b61bc17d1 adds record/record.c blob bcc019f27fec9e629ee00b0ab680506eb1866fd4; immediate parent cb6ef07bf01e72d1a6e6e83ceb7f76d6534da941 lacks that path and any other record.c path.",
+    "Affected tag xwayland-24.1.6 is 5b1d9da00f217d3b52bfd3cc862dff79a9433e63 and retains the vulnerable expression without 9d205323894af62b9726fcbaeb5fc69b3c9f61ba; fixed tag xwayland-24.1.7 is 2c5e87e3dfecbd60bcad5b74cad2cdcf0a992b57 and contains that explicit cherry-pick of 2bde9ca49a8fd9a1e6697d5e7ef837870d66f5d4."
+  ],
+  "reasoning": "Authoritative records and the direct patch establish a real, fixed integer-overflow vulnerability, so FALSE_POSITIVE does not apply. The vulnerable expression first enters the assigned public history in ded6147bfb5d75ff1e67c858040a628b61bc17d1, whose parent lacks the file. All lifecycle and release gates close, while the BIC itself has named-human 2003 authorship and no AI marker. Because AI attribution is judged only on that BIC, the closed verdict is NOT_AI.",
+  "remaining_gap": null
+}

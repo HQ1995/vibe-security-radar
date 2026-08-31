@@ -1,0 +1,78 @@
+{
+  "worker": "w049",
+  "review_agent_id": "r12_w049",
+  "class_id": "alias-78516bd8381013040a2fafbc",
+  "case_id": "CVE-2026-22754",
+  "repo": "spring-projects/spring-security",
+  "primary_verdict": "NOT_AI",
+  "review_verdict": "CONFIRMED",
+  "protocol_checks": {
+    "vulnerability_mechanism": {
+      "status": "PASS",
+      "evidence": [
+        "CVE.org API https://cveawg.mitre.org/api/cve/CVE-2026-22754 has cveMetadata.state=PUBLISHED (not rejected/withdrawn). CNA text: XML <sec:intercept-url servlet-path=... pattern=...> omits the servlet path from path matching so authorization rules are not exercised; affected Spring Security 7.0.0 through 7.0.4.",
+        "Vendor advisory https://spring.io/security/cve-2026-22754 (HIGH, 2026-04-20) restates the authorization bypass, lists 7.0.0-7.0.4 as affected, 7.0.5 OSS as the fix, and states 6.x and earlier are not affected. GHSA-4vrc-j85c-598c withdrawn_at is null.",
+        "At tag 7.0.4 (9bd793ffe65082f36305f6e285643fbb28f926e3), AuthorizationFilterParser.java:141-162 reads intercept-url attribute servlet-path and passes it to MatcherType.createMatcher. MatcherType.java:53-61 for MatcherType.path constructs PathPatternRequestMatcherFactoryBean and sets property basePath to that servlet path. PathPatternRequestMatcherFactoryBean.java:50-53 getObject() builds the matcher from this.builder; afterPropertiesSet at 70-74 calls this.builder.basePath(this.basePath) without assigning the return.",
+        "At the same tag, PathPatternRequestMatcher.java:243-248 Builder.basePath returns new Builder(this.parser, basePath) and does not mutate this. Builder.matcher at 318-324 concatenates this.basePath + path into the PathPattern used by matches()/matcher(HttpServletRequest). Discarding the returned builder therefore leaves basePath empty, so a request under the declared servlet path misses the intended authorization matcher and a later permissive rule can authorize it. Fix tests in 53bcf0d16b414d9f0436ac178c211ca6b9520d8e assert GET /spring/path is 403 and GET /path is 200 for servlet-path=/spring pattern=/path denyAll plus /** permitAll.",
+        "Tag 6.5.11 (73b077790fcb04ac3712033d3e939daf42264545) has no PathPatternRequestMatcherFactoryBean; MatcherType still applies servletPath via MvcRequestMatcher.setServletPath, matching the vendor 6.x-unaffected claim."
+      ]
+    },
+    "atomic_bic": {
+      "status": "PASS",
+      "evidence": [
+        "GIT_NO_LAZY_FETCH=1 git log --all -- config/src/main/java/org/springframework/security/config/http/PathPatternRequestMatcherFactoryBean.java yields first-writer ef50ff29ad3b13c7b9a75f4e0ff9c1b05c6a745e (message 'Prgress') then landed carrier 3e53cc2c4ac1fb88231d415a568e738088a954b0. git show ef50ff29ad3b13c7b9a75f4e0ff9c1b05c6a745e:...FactoryBean.java contains the unassigned this.builder.basePath(this.basePath) and MatcherType at that commit already wires servletPath to property basePath.",
+        "git diff --name-status 75f30d1701267742c7c2c541e3ff0333a15b0135 ef50ff29ad3b13c7b9a75f4e0ff9c1b05c6a745e -- .../PathPatternRequestMatcherFactoryBean.java reports A (new file). Builder.basePath already returned new Builder at the immediate parent 75f30d1701267742c7c2c541e3ff0333a15b0135 (git log -S 'return new Builder(this.parser, basePath)' first hit 86599afd438, earlier than the factory), so the factory was written against an already-immutable builder.",
+        "No finer public member reconstructs the discarded-return line: origin/gh-16886 feature range 75efb17c49d21831cf85886bfaa8b16bd65907a8..531c5cafdc9a70bf63198b4bdadcd13561faf8c7 is only b7ebf41ec7ca1bcd48f0f4e5d281c8ab4fd00871, 75f30d1701267742c7c2c541e3ff0333a15b0135, ef50ff29ad3b13c7b9a75f4e0ff9c1b05c6a745e, 531c5cafdc9a70bf63198b4bdadcd13561faf8c7, and only ef50ff29ad3b13c7b9a75f4e0ff9c1b05c6a745e adds the factory."
+      ]
+    },
+    "immediate_parent_absence": {
+      "status": "PASS",
+      "evidence": [
+        "git rev-list --parents -n 1 ef50ff29ad3b13c7b9a75f4e0ff9c1b05c6a745e = ef50ff29ad3b13c7b9a75f4e0ff9c1b05c6a745e 75f30d1701267742c7c2c541e3ff0333a15b0135 (single parent).",
+        "GIT_NO_LAZY_FETCH=1 git cat-file -e 75f30d1701267742c7c2c541e3ff0333a15b0135:config/src/main/java/org/springframework/security/config/http/PathPatternRequestMatcherFactoryBean.java exits 128 (path not in parent). Parent MatcherType still uses MvcRequestMatcher/AntPathRequestMatcher and servletPath property on MvcRequestMatcher, not PathPatternRequestMatcherFactoryBean.basePath."
+      ]
+    },
+    "squash_member_decomposition": {
+      "status": "PASS",
+      "evidence": [
+        "Landed 3e53cc2c4ac1fb88231d415a568e738088a954b0 is a single-parent 137-file aggregate (git rev-list --parents -n 1 = 3e53cc2c4ac1fb88231d415a568e738088a954b0 f709a9efef6e82ec480ab4230142670b6d2f9719; 495 insertions / 1570 deletions) citing Issue gh-16886. origin/gh-16886 still exists at 531c5cafdc9a70bf63198b4bdadcd13561faf8c7.",
+        "git range-diff f709a9efef6e82ec480ab4230142670b6d2f9719..3e53cc2c4ac1fb88231d415a568e738088a954b0 75efb17c49d21831cf85886bfaa8b16bd65907a8..531c5cafdc9a70bf63198b4bdadcd13561faf8c7 maps 1: 3e53cc2c4ac ! 3: ef50ff29ad3. git rev-parse of PathPatternRequestMatcherFactoryBean.java at ef50ff29ad3b13c7b9a75f4e0ff9c1b05c6a745e, 531c5cafdc9a70bf63198b4bdadcd13561faf8c7, and 3e53cc2c4ac1fb88231d415a568e738088a954b0 is identical blob 7037bd2853d2ea53e654a7773ac7e72b6fb25c81. Therefore 3e53cc2c4ac1fb88231d415a568e738088a954b0 is the squash carrier and ef50ff29ad3b13c7b9a75f4e0ff9c1b05c6a745e is the atomic first-writer."
+      ]
+    },
+    "affected_release_membership": {
+      "status": "PASS",
+      "evidence": [
+        "git rev-parse 7.0.0=1d99a7fb14c62354cac00412cce2071892cdf465 and 7.0.4=9bd793ffe65082f36305f6e285643fbb28f926e3. git merge-base --is-ancestor 3e53cc2c4ac1fb88231d415a568e738088a954b0 7.0.0 and the same against 7.0.4 both exit 0. git merge-base --is-ancestor 3e53cc2c4ac1fb88231d415a568e738088a954b0 6.5.11 exits 1.",
+        "git show 7.0.0:...FactoryBean.java and git show 7.0.4:...FactoryBean.java both contain the unassigned this.builder.basePath(this.basePath) (blob 116f2ccd12b2c2185fcd9aaf41847b75d16cfbf5, copyright-header-only change from introducer blob 7037bd2853d2ea53e654a7773ac7e72b6fb25c81). Matches vendor/CVE range 7.0.0 through 7.0.4."
+      ]
+    },
+    "fixed_release_membership": {
+      "status": "PASS",
+      "evidence": [
+        "git rev-parse 7.0.5=53bc6a77963209bb2a5f3efdd855b1f4a8051cc3. git merge-base --is-ancestor 53bcf0d16b414d9f0436ac178c211ca6b9520d8e 7.0.5 exits 0; the same check against 7.0.4 exits 1.",
+        "git show 7.0.5:...FactoryBean.java afterPropertiesSet contains this.builder = this.builder.basePath(this.basePath). git tag --contains 53bcf0d16b414d9f0436ac178c211ca6b9520d8e first GA tag is 7.0.5. git diff 7.0.4 7.0.5 -- ...FactoryBean.java is exactly that one-line assignment."
+      ]
+    },
+    "direct_fix_or_unpatched": {
+      "status": "PASS",
+      "evidence": [
+        "Commit 53bcf0d16b414d9f0436ac178c211ca6b9520d8e ('Fix Servlet Path Application', author/committer Josh Cummings) is the direct production fix: PathPatternRequestMatcherFactoryBean.java afterPropertiesSet changes this.builder.basePath(this.basePath) to this.builder = this.builder.basePath(this.basePath). Tests add requestWhenUsingDefaultMatcherAndServletPathThenAuthorizesRequestsAccordingly exercising servlet-path=/spring pattern=/path. unpatched is not applicable."
+      ]
+    },
+    "bic_only_ai_attribution": {
+      "status": "PASS",
+      "evidence": [
+        "git cat-file -p ef50ff29ad3b13c7b9a75f4e0ff9c1b05c6a745e: author and committer are both Josh Cummings <3627351+jzheaux@users.noreply.github.com>, includes a gpgsig block, and the message is only 'Prgress' with no Co-Authored-By, Signed-off-by, Generated-by, Copilot, ChatGPT, Claude, or other AI/bot/generator trailer. Attribution is taken from this BIC object only; the later squash 3e53cc2c4ac1fb88231d415a568e738088a954b0 and fix 53bcf0d16b414d9f0436ac178c211ca6b9520d8e were not used as introducer substitutes."
+      ]
+    }
+  },
+  "findings": [
+    "CVE-2026-22754 / GHSA-4vrc-j85c-598c is a real published authorization bypass: XML intercept-url servlet-path is parsed and stored as PathPatternRequestMatcherFactoryBean.basePath, but afterPropertiesSet discards the immutable Builder returned by basePath, so the authorization matcher is built without the servlet path.",
+    "Atomic BIC is public branch member ef50ff29ad3b13c7b9a75f4e0ff9c1b05c6a745e on origin/gh-16886, which first added PathPatternRequestMatcherFactoryBean.java with the unassigned basePath call. Immediate parent 75f30d1701267742c7c2c541e3ff0333a15b0135 lacks that path.",
+    "Landed 3e53cc2c4ac1fb88231d415a568e738088a954b0 is a reconstructable squash/aggregate carrier of the same factory blob 7037bd2853d2ea53e654a7773ac7e72b6fb25c81; range-diff maps it to ef50ff29ad3b13c7b9a75f4e0ff9c1b05c6a745e.",
+    "Direct fix is 53bcf0d16b414d9f0436ac178c211ca6b9520d8e, present in tag 7.0.5 and absent from 7.0.4, matching the vendor first patched version.",
+    "BIC authorship is named human Josh Cummings as both author and committer with a GPG signature and no AI/bot/generator markers; primary verdict NOT_AI is independently supported."
+  ],
+  "corrected_fields": {},
+  "remaining_gap": null
+}

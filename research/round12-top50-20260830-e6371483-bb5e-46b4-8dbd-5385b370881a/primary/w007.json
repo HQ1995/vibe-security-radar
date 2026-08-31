@@ -1,0 +1,98 @@
+{
+  "schema_version": "independent-case-audit/v1",
+  "worker": "w007",
+  "review_agent_id": "round12-clean-w007",
+  "class_id": "alias-a5472bde6709c5ed932dd021",
+  "case_id": "GHSA-7qj7-jv8m-rfjw",
+  "repo": "jahlives/openssl_encrypt",
+  "advisory_ids": [
+    "CVE-2026-74900",
+    "GHSA-7qj7-jv8m-rfjw"
+  ],
+  "input_binding": {
+    "bundle_sha256": "149e79448f5c629c43d0f491fc6412eec3125dedb60b46e02b0c590dd0f5c477",
+    "clone_head_sha": "c2b412f6fd1bc33734de9fbce9bce68318eb3cbd"
+  },
+  "verdict": "AI_ROOT_CAUSE",
+  "protocol_checks": {
+    "vulnerability_mechanism": {
+      "status": "PASS",
+      "evidence": [
+        "CVE.org record https://cveawg.mitre.org/api/cve/CVE-2026-74900 is PUBLISHED and identifies the unchecked KEM-failure fallback, affected versions <1.4.0, and 1.4.0 as unaffected.",
+        "Vendor advisory https://github.com/jahlives/openssl_encrypt/security/advisories/GHSA-p3gq-pcg9-qvfv identifies pqc.py's SHA-256 fallback over the public encapsulated key plus public_key_part(private_key), where public_key_part returns at most the first 16 private-key bytes.",
+        "In 472c088be14f5edb3dde1bf819419a8b86c8d72f^:openssl_encrypt/modules/pqc.py, KEM errors leave shared_secret unset, lines 1098-1103 compute simulation_secret from encapsulated_key and public_key_part(private_key), lines 1133-1137 select it on failure, and lines 1145-1147 derive the symmetric key consumed by the AEAD decrypt path."
+      ]
+    },
+    "atomic_bic": {
+      "status": "PASS",
+      "evidence": [
+        "GIT_NO_LAZY_FETCH=1 git show 5e3104481d9842d3d6989332ae32bee4b010d2db -- openssl_encrypt/modules/pqc.py directly adds public_key_part(), precomputes simulation_secret, and assigns it when real KEM decapsulation leaves shared_secret unset.",
+        "GIT_NO_LAZY_FETCH=1 git blame 472c088be14f5edb3dde1bf819419a8b86c8d72f^ -- openssl_encrypt/modules/pqc.py attributes the semantic fallback lines 1095-1100 and 1133-1135 to 5e3104481d9842d3d6989332ae32bee4b010d2db; intervening f03ee1a2 and fe2730c carriers only format or adjust output."
+      ]
+    },
+    "immediate_parent_absence": {
+      "status": "PASS",
+      "evidence": [
+        "The BIC's immediate parent is 295bf5f3df60ce08d2d8aed26d4fa0bc03592850. Searching that parent blob for public_key_part, SIMULATED_PQC_v1, simulation_secret, FALLING BACK TO SIMULATION, and decap_secret returned no match, while the BIC diff adds the vulnerable mechanism."
+      ]
+    },
+    "squash_member_decomposition": {
+      "status": "PASS",
+      "evidence": [
+        "git rev-list --parents -n 1 5e3104481d9842d3d6989332ae32bee4b010d2db reports exactly the BIC and parent 295bf5f3df60ce08d2d8aed26d4fa0bc03592850. The public commit itself is the direct first-write object, not a merge, move, revert, or carrier, and the clone exposes no finer public member to reconstruct."
+      ]
+    },
+    "affected_release_membership": {
+      "status": "PASS",
+      "evidence": [
+        "git tag --contains 5e3104481d9842d3d6989332ae32bee4b010d2db includes v1.0.0 through v1.3.6; git merge-base --is-ancestor confirms the BIC is in v1.3.6 and the fix is not, and git show v1.3.6:openssl_encrypt/modules/pqc.py contains simulation_secret and FALLING BACK TO SIMULATION MODE FOR DECRYPTION."
+      ]
+    },
+    "fixed_release_membership": {
+      "status": "PASS",
+      "evidence": [
+        "git merge-base --is-ancestor 472c088be14f5edb3dde1bf819419a8b86c8d72f v1.4.0 succeeds; git show v1.4.0:openssl_encrypt/modules/pqc.py contains the hard KEM decapsulation failure and no automatic simulation_secret fallback. This matches CVE.org's 1.4.0 unaffected boundary."
+      ]
+    },
+    "direct_fix_or_unpatched": {
+      "status": "PASS",
+      "evidence": [
+        "Vendor advisory GHSA-p3gq-pcg9-qvfv names 472c088be14f5edb3dde1bf819419a8b86c8d72f as the resolution. Its direct pqc.py hunk removes simulation_secret precomputation and assignment after KEM failure and instead raises ValueError when shared_secret remains None."
+      ]
+    },
+    "bic_only_ai_attribution": {
+      "status": "PASS",
+      "evidence": [
+        "The BIC commit object 5e3104481d9842d3d6989332ae32bee4b010d2db itself contains the line 'Generated with [Claude Code](https://claude.ai/code)' and trailer 'Co-Authored-By: Claude <noreply@anthropic.com>'. No repository-level or later-fix marker is needed for attribution."
+      ]
+    }
+  },
+  "bug_semantics": "The decrypt path accepts the encapsulated KEM ciphertext as input and tries real decapsulation. If both supported decapsulation APIs fail, it suppresses the KEM failure and substitutes SHA-256(encapsulated_key || first_16_bytes_of_private_key) as the shared secret, then hashes that into the AEAD key. Because encapsulated_key is carried with the ciphertext, anyone with those 16 private-key bytes can compute the fallback key and construct ciphertext that the recipient accepts after an intentionally failing KEM encapsulation; legacy simulation-mode ciphertexts use the same weak deterministic construction. Ordinary successfully encapsulated ciphertext still uses its real KEM secret, so the direct code evidence does not by itself show that the fallback decrypts every ordinary ciphertext.",
+  "flaw_origin": "Commit 5e3104481d9842d3d6989332ae32bee4b010d2db is the smallest public first-write: relative to immediate parent 295bf5f3df60ce08d2d8aed26d4fa0bc03592850 it adds public_key_part(), derives the deterministic simulation_secret, and selects it after KEM failure. Later formatting and quiet-output commits preserve rather than introduce the semantics.",
+  "introducer_sha": "5e3104481d9842d3d6989332ae32bee4b010d2db",
+  "introducer_parent": "295bf5f3df60ce08d2d8aed26d4fa0bc03592850",
+  "introducer_parent_absent": true,
+  "squash_decomposed": false,
+  "decomposed_shas": [],
+  "fix_sha": "472c088be14f5edb3dde1bf819419a8b86c8d72f",
+  "direct_fix_sha": "472c088be14f5edb3dde1bf819419a8b86c8d72f",
+  "unpatched": null,
+  "ai_marker": {
+    "state": "PRESENT",
+    "evidence": [
+      "BIC commit message: Generated with [Claude Code](https://claude.ai/code)",
+      "BIC trailer: Co-Authored-By: Claude <noreply@anthropic.com>"
+    ]
+  },
+  "evidence": [
+    "CVE.org primary record https://cveawg.mitre.org/api/cve/CVE-2026-74900: state PUBLISHED; affected semver <1.4.0; 1.4.0 unaffected; vendor-advisory reference GHSA-p3gq-pcg9-qvfv.",
+    "Vendor advisory https://github.com/jahlives/openssl_encrypt/security/advisories/GHSA-p3gq-pcg9-qvfv: PQC simulation-mode weak deterministic shared secret; resolution commit 472c088be14f5edb3dde1bf819419a8b86c8d72f.",
+    "GIT_NO_LAZY_FETCH=1 git show 5e3104481d9842d3d6989332ae32bee4b010d2db: first addition of public_key_part(private_key), simulation_secret, and the fallback assignment; the same BIC object carries explicit Claude Code generation and Claude co-author markers.",
+    "GIT_NO_LAZY_FETCH=1 git show 295bf5f3df60ce08d2d8aed26d4fa0bc03592850:openssl_encrypt/modules/pqc.py plus rg for the vulnerable identifiers: no match in the immediate parent tree.",
+    "GIT_NO_LAZY_FETCH=1 git show 472c088be14f5edb3dde1bf819419a8b86c8d72f -- openssl_encrypt/modules/pqc.py: removes automatic weak-secret fallback and raises a hard decapsulation error.",
+    "GIT_NO_LAZY_FETCH=1 git tag/merge-base/show checks: v1.3.6 contains BIC but not fix and retains the fallback; v1.4.0 contains the fix and hard-fails.",
+    "git cat-file batch-check confirms 5e3104481d9842d3d6989332ae32bee4b010d2db, 295bf5f3df60ce08d2d8aed26d4fa0bc03592850, and 472c088be14f5edb3dde1bf819419a8b86c8d72f are commit objects in the assigned clone."
+  ],
+  "reasoning": "The authoritative CVE and vendor record establish a real, non-withdrawn vulnerability and the affected/fixed boundary. Direct Git evidence closes the source-to-sink mechanism, the first-write boundary, immediate-parent absence, release membership, and direct fix. The smallest BIC's own commit message explicitly says it was generated with Claude Code and co-authored by Claude, so AI causally authored the root-cause fallback rather than merely touching the repository or remediation. All eight closed-result checks pass; therefore AI_ROOT_CAUSE.",
+  "remaining_gap": null
+}

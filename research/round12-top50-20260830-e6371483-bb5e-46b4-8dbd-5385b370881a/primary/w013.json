@@ -1,0 +1,102 @@
+{
+  "schema_version": "independent-case-audit/v1",
+  "worker": "w013",
+  "review_agent_id": "round12-clean-w013",
+  "class_id": "alias-e7db5ad028340b4793d174fd",
+  "case_id": "CVE-2026-78675",
+  "repo": "gitpython-developers/gitpython",
+  "advisory_ids": [
+    "CVE-2026-78675",
+    "GHSA-crmc-f4m7-33fj"
+  ],
+  "input_binding": {
+    "bundle_sha256": "518fcb958208a461f317e55f621f70ae3b29809bccdab22dc36af0573ad0edf5",
+    "clone_head_sha": "d160fb4124a56bd463a542a7bbff623354fb3397"
+  },
+  "verdict": "NOT_AI",
+  "protocol_checks": {
+    "vulnerability_mechanism": {
+      "status": "PASS",
+      "evidence": [
+        "CVE.org record API https://cveawg.mitre.org/api/cve/CVE-2026-78675 returned state=PUBLISHED and says GitPython before 3.1.59 follows attacker-controlled [include] paths in .gitmodules and exposes the target file's first line through MissingSectionHeaderError.",
+        "Vendor advisory https://github.com/gitpython-developers/GitPython/security/advisories/GHSA-7833-fr7j-v32q identifies Submodule._config_parser() as the source, merge_includes=True plus unrestricted include-path opening as the propagation path, and the uncaught MissingSectionHeaderError text as the disclosure sink.",
+        "At 619c989915b568e4737951fafcbae14cd06d6ea6, git/config.py opens readable absolute or normalized relative include paths, then _read() raises cp.MissingSectionHeaderError(fpname, lineno, line) when the included file lacks a section; git/objects/submodule/base.py passes the attacker-controlled .gitmodules path to that parser and iter_items() catches IOError only."
+      ]
+    },
+    "atomic_bic": {
+      "status": "PASS",
+      "evidence": [
+        "GIT_NO_LAZY_FETCH=1 git log --all --reverse -S'merge_includes' -- git/config.py git/objects/submodule/base.py identifies 619c989915b568e4737951fafcbae14cd06d6ea6 as the first commit that adds include merging.",
+        "git show 619c989915b568e4737951fafcbae14cd06d6ea6 directly adds merge_includes=True to GitConfigParser.__init__, records it in self._merge_includes, and adds the loop that opens readable absolute or normalized relative include paths; this is the smallest first-writer that activates the pre-existing .gitmodules parser call."
+      ]
+    },
+    "immediate_parent_absence": {
+      "status": "PASS",
+      "evidence": [
+        "git cat-file -p 619c989915b568e4737951fafcbae14cd06d6ea6 names immediate parent be074c655ad53927541fc6443eed8b0c2550e415, and both objects exist as commits in the assigned clone.",
+        "git show be074c655ad53927541fc6443eed8b0c2550e415:git/config.py shows GitConfigParser.read() reads only the caller-supplied file_or_files and has no merge_includes parameter, include-section traversal, or include-path open; therefore the parent cannot route a .gitmodules [include] path to a local file."
+      ]
+    },
+    "squash_member_decomposition": {
+      "status": "PASS",
+      "evidence": [
+        "The raw 619c989915b568e4737951fafcbae14cd06d6ea6 commit object has exactly one parent, be074c655ad53927541fc6443eed8b0c2550e415, and its own patch directly implements the include-merging feature; it is not a merge, revert, carrier, or squash aggregate requiring finer-member decomposition."
+      ]
+    },
+    "affected_release_membership": {
+      "status": "PASS",
+      "evidence": [
+        "GIT_NO_LAZY_FETCH=1 git merge-base --is-ancestor 619c989915b568e4737951fafcbae14cd06d6ea6 0.3.6 exits 0, while the same check against 0.3.5 exits 1; 0.3.6 is the first repository tag containing the introducer.",
+        "The introducer is an ancestor of tag 3.1.58, while direct fix ef7568e3b317ce617eacda39b8b54dcdff8c3b5c is not; git show 3.1.58:git/objects/submodule/base.py shows SubmoduleConfigParser(fp_module, read_only=read_only) without merge_includes=False.",
+        "The vendor advisory declares affected versions <=3.1.58, and the published CVE record declares versions below 3.1.59 affected."
+      ]
+    },
+    "fixed_release_membership": {
+      "status": "PASS",
+      "evidence": [
+        "GIT_NO_LAZY_FETCH=1 git tag --contains ef7568e3b317ce617eacda39b8b54dcdff8c3b5c returns 3.1.59, and git merge-base --is-ancestor ef7568e3b317ce617eacda39b8b54dcdff8c3b5c 3.1.59 exits 0.",
+        "git show 3.1.59:git/objects/submodule/base.py shows SubmoduleConfigParser(fp_module, read_only=read_only, merge_includes=False); both the vendor advisory and CVE record identify 3.1.59 as fixed/unaffected."
+      ]
+    },
+    "direct_fix_or_unpatched": {
+      "status": "PASS",
+      "evidence": [
+        "git show ef7568e3b317ce617eacda39b8b54dcdff8c3b5c changes the vulnerable construction site from SubmoduleConfigParser(fp_module, read_only=read_only) to the same call with merge_includes=False and adds a regression test whose .gitmodules points at a non-config file.",
+        "ef7568e3b317ce617eacda39b8b54dcdff8c3b5c exists as a commit object in the assigned clone and its message explicitly states that it addresses vendor advisory GHSA-7833-fr7j-v32q."
+      ]
+    },
+    "bic_only_ai_attribution": {
+      "status": "PASS",
+      "evidence": [
+        "The raw BIC commit object attributes both author and committer to Sebastian Thiel <byronimo@gmail.com> at 2015-01-14T12:46:51+01:00; its message describes the hand-implemented include feature, cites Stack Overflow, and closes issue #201, with no AI, assistant, Copilot, generated-by, assisted-by, or co-author marker.",
+        "The GPT markers on the 2026 fix ef7568e3b317ce617eacda39b8b54dcdff8c3b5c are later-fix metadata and are excluded by the BIC-only attribution rule."
+      ]
+    }
+  },
+  "bug_semantics": "An attacker-controlled .gitmodules file is passed by Submodule._config_parser() to GitConfigParser. Because that parser defaults merge_includes to true, an [include] path is resolved without repository containment and a readable local file is opened. Parsing a normal non-config target raises MissingSectionHeaderError with its first non-header line embedded, and Submodule.iter_items() does not catch configparser errors, so repo.submodules exposes that local content through the exception.",
+  "flaw_origin": "The .gitmodules parser construction predates the vulnerability, but immediate parent be074c655ad53927541fc6443eed8b0c2550e415 reads only explicitly supplied files. Commit 619c989915b568e4737951fafcbae14cd06d6ea6 is the smallest public first-writer that adds default-on include merging and arbitrary readable include-path opening to the shared parser, thereby activating the vulnerable source-to-sink path at the existing submodule call site.",
+  "introducer_sha": "619c989915b568e4737951fafcbae14cd06d6ea6",
+  "introducer_parent": "be074c655ad53927541fc6443eed8b0c2550e415",
+  "introducer_parent_absent": false,
+  "squash_decomposed": false,
+  "decomposed_shas": [],
+  "fix_sha": "ef7568e3b317ce617eacda39b8b54dcdff8c3b5c",
+  "direct_fix_sha": "ef7568e3b317ce617eacda39b8b54dcdff8c3b5c",
+  "unpatched": null,
+  "ai_marker": {
+    "state": "ABSENT",
+    "evidence": [
+      "BIC 619c989915b568e4737951fafcbae14cd06d6ea6 has named author and committer Sebastian Thiel <byronimo@gmail.com>, dated 2015-01-14, and its complete commit message contains no AI-assistance marker or AI co-author trailer."
+    ]
+  },
+  "evidence": [
+    "CVE.org CVE Services record https://cveawg.mitre.org/api/cve/CVE-2026-78675: PUBLISHED; GitPython before 3.1.59 affected; 3.1.59 unaffected; vendor-advisory reference GHSA-7833-fr7j-v32q.",
+    "Vendor first-party advisory https://github.com/gitpython-developers/GitPython/security/advisories/GHSA-7833-fr7j-v32q: confirmed arbitrary local first-line disclosure through [include] in untrusted .gitmodules; affected <=3.1.58; patched >=3.1.59.",
+    "Assigned clone HEAD verified as d160fb4124a56bd463a542a7bbff623354fb3397 with GIT_NO_LAZY_FETCH=1.",
+    "git show 619c989915b568e4737951fafcbae14cd06d6ea6 and its raw commit object establish the default-on include implementation, single parent be074c655ad53927541fc6443eed8b0c2550e415, and named-human authorship.",
+    "git show be074c655ad53927541fc6443eed8b0c2550e415:git/config.py establishes that the immediate parent has no include traversal; tag ancestry places the BIC in 0.3.6 but not 0.3.5.",
+    "git show ef7568e3b317ce617eacda39b8b54dcdff8c3b5c establishes the one-line construction-site fix plus regression test; tag ancestry places it in 3.1.59 and not 3.1.58."
+  ],
+  "reasoning": "The advisory is published and the vendor's source-to-sink mechanism is present in primary source. The smallest first-writer is the 2015 single-parent commit that introduced default-on include merging; its immediate parent cannot follow include paths, affected and fixed release membership is directly verified, and the direct fix disables merging at the .gitmodules construction site. The BIC commit object has explicit named-human author/committer provenance and no BIC-local AI marker. Later AI assistance on the fix is non-causal under the protocol, so all eight closure gates imply NOT_AI.",
+  "remaining_gap": null
+}

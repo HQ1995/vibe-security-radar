@@ -1,0 +1,104 @@
+{
+  "schema_version": "independent-case-audit/v1",
+  "worker": "w021",
+  "review_agent_id": "round12-clean-w021",
+  "class_id": "alias-ff78c956d01983a087c2cc46",
+  "case_id": "CVE-2026-75919",
+  "repo": "thorsten/phpmyfaq",
+  "advisory_ids": [
+    "CVE-2026-75919",
+    "GHSA-gjx5-c2mr-w8c7"
+  ],
+  "input_binding": {
+    "bundle_sha256": "96148bca33b0b122e0f3c9bfbcc31cda559478ad28cdf561528bd41f9a51a71c",
+    "clone_head_sha": "2da26942172d87b3f0624bccfbfd0e356b1b1187"
+  },
+  "verdict": "NOT_AI",
+  "protocol_checks": {
+    "vulnerability_mechanism": {
+      "status": "PASS",
+      "evidence": [
+        "CVE.org record https://cveawg.mitre.org/api/cve/CVE-2026-75919 is PUBLISHED and identifies unauthenticated SetupController database migration/config-backup operations before 4.1.7; it is not rejected or withdrawn.",
+        "The vendor advisory https://github.com/thorsten/phpMyFAQ/security/advisories/GHSA-f96w-7fx2-79c8 is published, withdrawn_at=null, and documents unauthenticated POST /api/setup/backup and POST /api/setup/update-database while maintenance mode is true.",
+        "At tag 4.1.6, SetupController::isSecured() is an empty override; backup() calls Update::createConfigBackup() on content/core/config, and updateDatabase() calls Update::applyUpdates() then sets main.maintenanceMode=false."
+      ]
+    },
+    "atomic_bic": {
+      "status": "PASS",
+      "evidence": [
+        "git show a32a00a37faa6e5919d18ec72b79e150656ee1ab shows the first public SetupController file and setup/update POST route, with the unauthenticated controller calling Update::applyUpdates(); the commit has exactly one parent.",
+        "The later 75062f0d186369d4de0294775dad3c019c03ebb1 rewrote the same setup-update flow into setup/update-database and added setup/backup, so it is a scope-expanding descendant rather than the first source-to-migration-sink writer."
+      ]
+    },
+    "immediate_parent_absence": {
+      "status": "PASS",
+      "evidence": [
+        "git ls-tree -r --name-only 414eb183793bd702bac8cea61280cf8d624795c5 contains no phpmyfaq/src/phpMyFAQ/Controller/SetupController.php.",
+        "git grep on 414eb183793bd702bac8cea61280cf8d624795c5 finds zero public setup/update route hits, while a32a00a37faa6e5919d18ec72b79e150656ee1ab has the route and applyUpdates call."
+      ]
+    },
+    "squash_member_decomposition": {
+      "status": "PASS",
+      "evidence": [
+        "git cat-file -p a32a00a37faa6e5919d18ec72b79e150656ee1ab records one parent, 414eb183793bd702bac8cea61280cf8d624795c5; the setup controller is a new file and the matching public route is added in that same surviving public commit.",
+        "The repository records the #2492 work as a sequence of ordinary commits; a32a00a37faa6e5919d18ec72b79e150656ee1ab itself is the member that first adds the public setup controller/route, not a merge carrier or later squash aggregate."
+      ]
+    },
+    "affected_release_membership": {
+      "status": "PASS",
+      "evidence": [
+        "git merge-base --is-ancestor a32a00a37faa6e5919d18ec72b79e150656ee1ab 4.0.0, 4.1.1, and 4.1.6 returns success for each; tag 4.1.6 resolves to 58c1d7f2fa36f7074664fc6d862afee0ca8bcc89.",
+        "The vendor advisory gives vulnerable_version_range <= v4.1.6, and CVE.org gives affected semver <4.1.7."
+      ]
+    },
+    "fixed_release_membership": {
+      "status": "PASS",
+      "evidence": [
+        "git merge-base --is-ancestor d6a6a033ee788727c0e6ceaaeee16b9b537c67e7 4.1.6 returns failure and the same command against 4.1.7 returns success; tag 4.1.7 resolves to 28d6f641c16e3015d51d0a01d14841b845251f35.",
+        "Both the vendor advisory and CVE.org identify 4.1.7 as the patched/unaffected boundary."
+      ]
+    },
+    "direct_fix_or_unpatched": {
+      "status": "PASS",
+      "evidence": [
+        "git diff d6a6a033ee788727c0e6ceaaeee16b9b537c67e7^ d6a6a033ee788727c0e6ceaaeee16b9b537c67e7 -- phpmyfaq/src/phpMyFAQ/Controller/Api/SetupController.php adds denyUnauthorizedRequest() at the start of check(), backup(), and updateDatabase().",
+        "The same direct fix permits only an authenticated administrator/configuration editor or a valid filesystem-backed update token, and changes the backup response from a full path to basename()."
+      ]
+    },
+    "bic_only_ai_attribution": {
+      "status": "PASS",
+      "evidence": [
+        "The raw commit object for a32a00a37faa6e5919d18ec72b79e150656ee1ab names Thorsten Rinne <thorsten@phpmyfaq.de> as both author and committer and contains only the subject 'feat: added API for classic update script (#2492)' with no AI/bot/co-author trailer.",
+        "GitHub's first-party commit API maps both the BIC author and committer to the named maintainer account thorsten; no repository-level or later-commit signal is used for attribution."
+      ]
+    }
+  },
+  "bug_semantics": "An unauthenticated network request reached the public setup update controller without a credential or authorization check. The original route invoked Update::applyUpdates() directly; its surviving descendants exposed POST /api/setup/update-database, which ran database migrations and disabled maintenance mode, and POST /api/setup/backup, which recursively archived the configuration directory containing database credentials. Maintenance mode was only an operational-state gate, not caller authentication.",
+  "flaw_origin": "a32a00a37faa6e5919d18ec72b79e150656ee1ab is the smallest surviving public first-writer: it created SetupController and the public POST setup/update route whose controller called Update::applyUpdates() without authentication. Its immediate parent lacks both the controller and route. 75062f0d186369d4de0294775dad3c019c03ebb1 later preserved that unauthenticated migration flow under setup/update-database and added the unauthenticated configuration-backup sink; subsequent moves/refactors and b8d628d65bf7aaff94069d18306d6b0bbf41817c's explicit no-op isSecured() are descendants, not the BIC.",
+  "introducer_sha": "a32a00a37faa6e5919d18ec72b79e150656ee1ab",
+  "introducer_parent": "414eb183793bd702bac8cea61280cf8d624795c5",
+  "introducer_parent_absent": true,
+  "squash_decomposed": false,
+  "decomposed_shas": [],
+  "fix_sha": "d6a6a033ee788727c0e6ceaaeee16b9b537c67e7",
+  "direct_fix_sha": "d6a6a033ee788727c0e6ceaaeee16b9b537c67e7",
+  "unpatched": null,
+  "ai_marker": {
+    "state": "ABSENT",
+    "evidence": [
+      "BIC raw object author and committer are Thorsten Rinne <thorsten@phpmyfaq.de>.",
+      "BIC message contains no AI-generation, bot, or co-author marker/trailer, and the GitHub commit API maps both identities to maintainer account thorsten."
+    ]
+  },
+  "evidence": [
+    "CVE.org primary record: https://cveawg.mitre.org/api/cve/CVE-2026-75919 (PUBLISHED; affected <4.1.7; 4.1.7 unaffected).",
+    "Vendor primary advisory: https://github.com/thorsten/phpMyFAQ/security/advisories/GHSA-f96w-7fx2-79c8 (published; <=v4.1.6; patched 4.1.7; withdrawn_at null).",
+    "GIT_NO_LAZY_FETCH=1 git show a32a00a37faa6e5919d18ec72b79e150656ee1ab: first public setup/update route plus new SetupController calling applyUpdates().",
+    "GIT_NO_LAZY_FETCH=1 git show 414eb183793bd702bac8cea61280cf8d624795c5 and git ls-tree: no SetupController and no public setup/update route in the immediate parent.",
+    "GIT_NO_LAZY_FETCH=1 ancestry chain: a32a00a37faa6e5919d18ec72b79e150656ee1ab -> 75062f0d186369d4de0294775dad3c019c03ebb1 -> 5034dc2b3026581cd318aa63fb886a30860cccb0 -> b8d628d65bf7aaff94069d18306d6b0bbf41817c -> d6a6a033ee788727c0e6ceaaeee16b9b537c67e7.",
+    "GIT_NO_LAZY_FETCH=1 tag ancestry: BIC is in 4.0.0/4.1.1/4.1.6; direct fix is absent from 4.1.6 and present in 4.1.7.",
+    "GitHub first-party commit API for a32a00a37faa6e5919d18ec72b79e150656ee1ab identifies thorsten/Thorsten Rinne as both author and committer and returns the same single parent."
+  ],
+  "reasoning": "The authoritative records confirm a real, non-withdrawn vulnerability. Exact Git history closes the source-to-sink lifecycle, immediate-parent absence, affected/fixed tag membership, and direct repair. The earliest surviving public BIC is a named-human, single-parent commit with no AI-local marker, so the closed result is NOT_AI rather than EVIDENCE_GAP or FALSE_POSITIVE.",
+  "remaining_gap": null
+}

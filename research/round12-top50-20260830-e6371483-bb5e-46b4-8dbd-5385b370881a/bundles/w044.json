@@ -1,0 +1,68 @@
+{
+ "schema_version": "causal-audit-bundle/1",
+ "class_id": "alias-cc0bb6dc405966eeec190a5a",
+ "status_at_selection": "UNANALYZED",
+ "repo": "messagepack-csharp/messagepack-csharp",
+ "clone_dir": "/home/hanqing/agents/ai-slop/.ai-slop/state/repos/messagepack-csharp_messagepack-csharp",
+ "clone_url": "https://github.com/messagepack-csharp/messagepack-csharp.git",
+ "clone_head_sha": "21f6e635d5b5a40ec82a0cd642b1d19b7d1fbe88",
+ "clone_shallow": "false",
+ "clone_promisor": true,
+ "clone_partial_filter": "blob:none",
+ "advisory_ids": [
+  "CVE-2026-48509",
+  "GHSA-2f33-pr97-265q"
+ ],
+ "base_ledger_revision": 1,
+ "ledger_snapshot_sha256": "2a8e0f606d9dbb6a509188d6f4da35598f233dce4b2b205fa1cb14136e75fbe5",
+ "advisory": {
+  "id": "GHSA-2f33-pr97-265q",
+  "cve_id": "CVE-2026-48509",
+  "summary": "MessagePack-CSharp: ASP.NET Core MessagePackInputFormatter defaults to TrustedData for HTTP request bodies",
+  "description": "## Summary\n\nThe parameterless `MessagePackInputFormatter()` constructor uses default serializer options, which resolve to `MessagePackSerializerOptions.Standard` with `MessagePackSecurity.TrustedData`. The formatter is designed for ASP.NET Core MVC request bodies, which commonly cross an HTTP trust boundary.\n\nThis insecure default can expose applications to denial-of-service attacks that `MessagePackSecurity.UntrustedData` is intended to mitigate, such as hash-collision attacks against dictionary-like model properties.\n\n## Impact\n\nApplications are affected when they register `new MessagePackInputFormatter()` without explicitly passing serializer options configured for untrusted data.\n\nAn unauthenticated or otherwise untrusted HTTP client can send MessagePack request bodies that are deserialized using the trusted-data posture. For models containing hash-based collections, this can enable algorithmic complexity attacks using colliding keys. The default constructor makes the unsafe posture easy to use at the exact boundary where request bodies should be treated as untrusted.\n\n## Affected components\n\n- Package: `MessagePack.AspNetCoreMvcFormatter`\n- API: `MessagePackInputFormatter()` parameterless constructor\n- Scenario: ASP.NET Core MVC model binding from HTTP request bodies\n- Finding IDs: `MESSAGEPACKCSHARP-OPEN-009`, duplicate `MESSAGEPACKCSHARP-095`\n\n## Patches\n\nFixes are prepared and will be released in coordinated patch versions.\n\nUpgrade guidance:\n\n1. Upgrade `MessagePack.AspNetCoreMvcFormatter` to the patched version for your release line.\n2. Upgrade companion MessagePack packages in the same dependency graph to the coordinated patched versions.\n\nThe fix should default the parameterless constructor to `MessagePackSerializerOptions.Standard.WithSecurity(MessagePackSecurity.UntrustedData)`, or require callers to pass explicit options so the trust posture is deliberate.\n\n## Workarounds\n\nDo not use the parameterless constructor on affected versions. Register the formatter with explicit untrusted-data options, for example:\n\n```csharp\noptions.InputFormatters.Add(\n    new MessagePackInputFormatter(\n        MessagePackSerializerOptions.Standard.WithSecurity(MessagePackSecurity.UntrustedData)));\n```\n\nAlso apply normal HTTP request-size limits and model validation appropriate for your service.\n\n## Resources\n\n- `MESSAGEPACKCSHARP-OPEN-009`: MVC input formatter defaults to trusted-data security posture\n- `MESSAGEPACKCSHARP-095`: duplicate finding for the same root cause\n- CWE-1188: Initialization of a Resource with an Insecure Default",
+  "severity": "medium",
+  "cvss": {
+   "vector_string": null,
+   "score": null
+  },
+  "cwes": [
+   {
+    "cwe_id": "CWE-1188",
+    "name": "Initialization of a Resource with an Insecure Default"
+   }
+  ],
+  "published_at": "2026-06-25T18:52:46Z",
+  "updated_at": "2026-06-25T18:52:50Z",
+  "withdrawn_at": null,
+  "vulnerabilities": [
+   {
+    "package": {
+     "ecosystem": "nuget",
+     "name": "MessagePack"
+    },
+    "vulnerable_version_range": "< 2.5.301",
+    "first_patched_version": "2.5.301",
+    "vulnerable_functions": []
+   },
+   {
+    "package": {
+     "ecosystem": "nuget",
+     "name": "MessagePack"
+    },
+    "vulnerable_version_range": ">= 3.0, < 3.1.7",
+    "first_patched_version": "3.1.7",
+    "vulnerable_functions": []
+   }
+  ],
+  "references": [
+   "https://github.com/MessagePack-CSharp/MessagePack-CSharp/security/advisories/GHSA-2f33-pr97-265q",
+   "https://nvd.nist.gov/vuln/detail/CVE-2026-48509",
+   "https://github.com/advisories/GHSA-2f33-pr97-265q"
+  ],
+  "source": "https://api.github.com/advisories/GHSA-2F33-PR97-265Q",
+  "fetch_error": null
+ },
+ "same_repository_prior_hits": [],
+ "protocol": "docs/AUDIT-PROTOCOL.md",
+ "context_rule": "One case, one clean context. Do not read the canonical ledger, another case bundle/output, or a prior verdict. Prior hits are leads, never proof."
+}

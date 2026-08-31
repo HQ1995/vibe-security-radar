@@ -1,0 +1,66 @@
+{
+  "worker": "w018",
+  "review_agent_id": "r12_w018",
+  "class_id": "alias-b1b4b377b091ef1953915732",
+  "case_id": "CVE-2026-76213",
+  "repo": "thorsten/phpmyfaq",
+  "primary_verdict": "NOT_AI",
+  "review_verdict": "CORRECTION_REQUIRED",
+  "protocol_checks": {
+    "vulnerability_mechanism": {
+      "status": "PASS",
+      "evidence": "CVE Services record CVE-2026-76213 is state=PUBLISHED (https://cveawg.mitre.org/api/cve/CVE-2026-76213) and describes CWE-307: the 2FA failure counter is session-scoped and reset on successful password re-authentication, so an attacker who already knows the password can obtain a fresh session or re-authenticate to keep guessing TOTP codes. Vendor advisory GHSA-f98m-hcjv-7rp9 (https://github.com/thorsten/phpMyFAQ/security/advisories/GHSA-f98m-hcjv-7rp9) is published, not withdrawn, and traces POST authenticate setting 2fa_pending_user_id plus 2fa_failed_attempts=0, then POST check incrementing only that session counter and dropping pending state at five. At advisory tree 5d4a975cdc53dca26383f2b8a56596b1272fcac2 those exact assignments exist in both phpmyfaq/src/phpMyFAQ/Controller/Frontend/AuthenticationController.php (lines 207-208, 286, 305) and phpmyfaq/src/phpMyFAQ/Controller/Administration/AuthenticationController.php (lines 81-82, 239, 263). GitHub advisory GHSA-xgjh-9vcx-v63q withdrawn_at is null; GitHub withdrawn_at is not authoritative in any case."
+    },
+    "atomic_bic": {
+      "status": "PASS",
+      "evidence": "GIT_NO_LAZY_FETCH=1 git log --all --reverse -S'2fa_failed_attempts' first hits 2acabf760cd7e44ec589a3e207381e9a480dd64f (author 2026-04-23T21:37:24+02:00, committer 2026-04-24T07:28:24+02:00, subject 'test: added missing tests for brute force protection'). That non-merge commit's production diff on phpmyfaq/src/phpMyFAQ/Controller/Administration/AuthenticationController.php is the first public write of the vulnerable state machine: session set of 2fa_pending_user_id, unconditional 2fa_failed_attempts=0 after password success, five-guess session cap, per-failure increment. git blame on tag 4.1.6 attributes those admin lines to 2acabf760cd7e44ec589a3e207381e9a480dd64f. 388bcf3cb1ee356c0b7b54d127ad9b5e448ae19f is a later parallel first-write of the same admin patch on main (same author date, commit 2026-05-02T11:31:57+02:00, not an ancestor of 4.1.x). 410208b90f1d01534812ac5203d3e8d9c7bd591f (2026-06-19, phpmyfaq/index.php) and 6a69f6e2142fde722165c65b7e0a49f3176e87be (same day, Frontend AuthenticationController; message 'Mirror the admin flow') copy the already-written mechanism onto frontend surfaces and are not the BIC. The primary's index.php-only pickaxe therefore named a later copy."
+    },
+    "immediate_parent_absence": {
+      "status": "PASS",
+      "evidence": "2acabf760cd7e44ec589a3e207381e9a480dd64f has exactly one parent, 4e31e12a9c54afbfee03bc67c5300624c61013e7, which exists as a commit object. git grep on that parent tree finds neither 2fa_failed_attempts nor 2fa_pending_user_id anywhere. Parent phpmyfaq/src/phpMyFAQ/Controller/Administration/AuthenticationController.php authenticate() redirects to the token page after password success with no session binding, and check() accepts an attacker-supplied user-id with no counter (the predecessor unbound-token issue later published as GHSA-9pq7-mfwh-xx2j / CVE-2026-45010)."
+    },
+    "squash_member_decomposition": {
+      "status": "PASS",
+      "evidence": "2acabf760cd7e44ec589a3e207381e9a480dd64f is a non-merge commit (one parent 4e31e12a9c54afbfee03bc67c5300624c61013e7) changing only phpmyfaq/src/phpMyFAQ/Controller/Administration/AuthenticationController.php and adding tests/phpMyFAQ/Controller/Administration/AuthenticationControllerTest.php. No merge, squash, or reconstructable finer public member writes the vulnerable production lines. 388bcf3cb1ee356c0b7b54d127ad9b5e448ae19f is a later independent replay onto main, not a member inside 2acabf760cd7e44ec589a3e207381e9a480dd64f."
+    },
+    "affected_release_membership": {
+      "status": "PASS",
+      "evidence": "git rev-list -n 1 4.1.1 = f791858b2aa4b811f5b19d10c20ba5c4a30786de; 4.1.2 = 66792f2575b07d65896b504d47deb5f4f903f9ff; 4.1.5 = e807a988bb58682211bd2e03c17d86fb1c70ea34; 4.1.6 = 58c1d7f2fa36f7074664fc6d862afee0ca8bcc89. git merge-base --is-ancestor shows 2acabf760cd7e44ec589a3e207381e9a480dd64f is not in 4.1.1 and is in 4.1.2 through 4.1.6. Tag 4.1.6 still contains admin session reset (AuthenticationController.php sets 2fa_failed_attempts to 0 at lines 69-70) and the later frontend copy from 410208b90f1d01534812ac5203d3e8d9c7bd591f in phpmyfaq/index.php (lines 243-244). 59593a013862094724e68b3ace5c9dd0a2b516cb is not an ancestor of 4.1.6. The session-reset mechanism therefore ships in 4.1.2 through 4.1.6, not only 4.1.6. Vendor GHSA-f98m-hcjv-7rp9 lists affected versions <= 4.1.6; the CVE lessThan 4.1.7 range also covers pre-4.1.2 trees that had the predecessor unbound-token flaw rather than these lines."
+    },
+    "fixed_release_membership": {
+      "status": "PASS",
+      "evidence": "git rev-list -n 1 4.1.7 = 28d6f641c16e3015d51d0a01d14841b845251f35. git merge-base --is-ancestor confirms 59593a013862094724e68b3ace5c9dd0a2b516cb is an ancestor of 4.1.7 and is not an ancestor of 4.1.6. Tag 4.1.7 phpmyfaq/index.php and phpmyfaq/src/phpMyFAQ/Controller/Administration/AuthenticationController.php no longer write 2fa_failed_attempts; they call CurrentUser::isTwoFactorLockedOut() / twoFactorFailure() instead. Vendor advisory independently names 4.1.7 as the patched release."
+    },
+    "direct_fix_or_unpatched": {
+      "status": "PASS",
+      "evidence": "59593a013862094724e68b3ace5c9dd0a2b516cb (parent 4565a6dbf53f2d12868d6f73d2d5dda2fb41be08, subject 'fix: throttled 2FA brute-force attempts per account') directly removes the session counter checks, increments, clears, and password-success reset from phpmyfaq/index.php and phpmyfaq/src/phpMyFAQ/Controller/Administration/AuthenticationController.php, and adds CurrentUser::twoFactorFailure() / isTwoFactorLockedOut() in phpmyfaq/src/phpMyFAQ/User/CurrentUser.php so the budget is per-account in the database and is not restored by a new session or a correct password. unpatched is not applicable."
+    },
+    "bic_only_ai_attribution": {
+      "status": "PASS",
+      "evidence": "git cat-file commit 2acabf760cd7e44ec589a3e207381e9a480dd64f records named human Thorsten Rinne <thorsten@phpmyfaq.de> as both author and committer, a single subject line, and no Co-Authored-By, Generated-with, Copilot, Claude, ChatGPT, bot, or other generator trailer. The GitHub commit page has no co-author annotations. Later copies 410208b90f1d01534812ac5203d3e8d9c7bd591f and 6a69f6e2142fde722165c65b7e0a49f3176e87be are the same named human with no AI trailers. GHSA-f98m-hcjv-7rp9's reporter note that AI assisted advisory navigation and drafting is not a BIC-object signal and is excluded. Named-human BIC with no AI/bot/generator marker supports NOT_AI."
+    }
+  },
+  "findings": [
+    "CVE-2026-76213 is a real CWE-307: 2FA lockout lives only in the session and is reset to zero on every successful password authentication, so a password-holding attacker can rotate cookies or re-authenticate to guess TOTP without bound. CVE.org state is PUBLISHED; vendor GHSA-f98m-hcjv-7rp9 is published.",
+    "Primary introducer_sha 410208b90f1d01534812ac5203d3e8d9c7bd591f is not the BIC. That commit is the 2026-06-19 frontend copy into phpmyfaq/index.php. The first public write of the session-reset throttle is 2acabf760cd7e44ec589a3e207381e9a480dd64f on 2026-04-24 in Administration AuthenticationController.php; git blame on 4.1.6 attributes the admin reset lines to that commit. 6a69f6e2142fde722165c65b7e0a49f3176e87be later mirrors the same admin flow into Frontend AuthenticationController.php on main.",
+    "Immediate parent 4e31e12a9c54afbfee03bc67c5300624c61013e7 lacks both session keys; admin check() there still accepts an arbitrary user-id (predecessor GHSA-9pq7-mfwh-xx2j / CVE-2026-45010, patched in 4.1.2 by this same BIC plus pending-user binding).",
+    "Affected exact objects: session-reset mechanism is absent from 4.1.1 and present in 4.1.2 through 4.1.6. Primary claim that only 4.1.6 has these lines is true of the frontend index.php copy, not of the admin first-write. Direct fix 59593a013862094724e68b3ace5c9dd0a2b516cb is in 4.1.7 (28d6f641c16e3015d51d0a01d14841b845251f35) and not in 4.1.6.",
+    "BIC-object authorship is named human Thorsten Rinne with no AI/bot/generator/co-author marker, so the NOT_AI class still holds. Do not project the advisory's later AI-drafting sentence onto the BIC."
+  ],
+  "corrected_fields": {
+    "introducer_sha": "2acabf760cd7e44ec589a3e207381e9a480dd64f",
+    "introducer_parent": "4e31e12a9c54afbfee03bc67c5300624c61013e7",
+    "introducer_parent_absent": true,
+    "squash_decomposed": false,
+    "decomposed_shas": [],
+    "bug_semantics": "A correct password reaches the 2FA pending state and sets 2fa_failed_attempts to 0 in the current session. Wrong TOTP submissions increment only that session value and clear the pending state at the five-guess cap. An attacker who knows the password can re-authenticate, or use a fresh cookie jar, to recreate the pending state with a zero counter; correct-password requests do not consume the failed-password budget. The state machine was first written on admin POST /authenticate and POST /check, then copied to the 4.1 frontend phpmyfaq/index.php and the main Frontend AuthenticationController.",
+    "flaw_origin": "Commit 2acabf760cd7e44ec589a3e207381e9a480dd64f is the smallest public first-writer of the advisory mechanism: its Administration AuthenticationController.php diff introduced the session-only five-attempt counter, increment and cap, and the unconditional counter reset after each successful password authentication. Immediate parent 4e31e12a9c54afbfee03bc67c5300624c61013e7 has neither 2FA session key. 410208b90f1d01534812ac5203d3e8d9c7bd591f and 6a69f6e2142fde722165c65b7e0a49f3176e87be are later frontend copies of that already-written pattern, not the BIC.",
+    "ai_marker": {
+      "state": "ABSENT",
+      "evidence": [
+        "The complete BIC commit object 2acabf760cd7e44ec589a3e207381e9a480dd64f has named-human author and committer Thorsten Rinne <thorsten@phpmyfaq.de> and a single subject line, with no AI-assistance, agent, bot, generated-by, or co-author trailer."
+      ]
+    }
+  },
+  "remaining_gap": null
+}

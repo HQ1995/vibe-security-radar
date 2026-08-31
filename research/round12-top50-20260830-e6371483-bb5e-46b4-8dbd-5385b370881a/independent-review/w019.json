@@ -1,0 +1,83 @@
+{
+  "worker": "w019",
+  "review_agent_id": "r12_w019",
+  "class_id": "alias-d9a7e4a47cab0d0f5c776542",
+  "case_id": "CVE-2026-76206",
+  "repo": "thorsten/phpmyfaq",
+  "primary_verdict": "NOT_AI",
+  "review_verdict": "CONFIRMED",
+  "protocol_checks": {
+    "vulnerability_mechanism": {
+      "status": "PASS",
+      "evidence": [
+        "CVE.org record https://cveawg.mitre.org/api/cve/CVE-2026-76206 is state PUBLISHED (not rejected/withdrawn). CNA VulnCheck describes unauthenticated draft-FAQ metadata disclosure via the public PDF export, CWE-200, affected semver from 0 lessThan 4.1.7, version 4.1.7 unaffected.",
+        "Vendor advisory https://github.com/thorsten/phpMyFAQ/security/advisories/GHSA-f8pr-32pp-mp7h is state published with withdrawn_at null; vulnerable_version_range <=4.1.6, patched_versions 4.1.7. GitHub Advisory Database GHSA-7wx9-j8xm-mjmq is the unreviewed CVE import (published_at 2026-08-19T15:32:30Z, no withdrawn_at).",
+        "Source-to-sink on tag 4.1.6 (58c1d7f2fa36f7074664fc6d862afee0ca8bcc89): phpmyfaq/pdf.php is a public GET /pdf.php?cat=&id= path that optionally reads a session (anonymous user id -1) and, without any publication check, calls $faq->getFaq($faqId) then Pdf::generateFile($faq->faqRecord).",
+        "At 4.1.6, phpmyfaq/src/phpMyFAQ/Faq.php getFaq() (line 599) loads via getFaqResult() whose WHERE is id+lang plus QueryHelper::queryPermission only (no fd.active). For non-admin callers it replaces only the answer with err_inactiveArticle while copying title (thema), solution_id, author, and date verbatim. generateFile then writes those four fields into the PDF (title ~216, solution_id ~246, author ~255, last-update date ~259).",
+        "The same loader/sink pairing already exists at BIC 4639bf25d8b4b7026527c012e9b9f94767247bf6: PMF_Faq::getRecord() SELECTs faqdata by id and lang with no active predicate, sets content to err_inactiveArticle when active is not yes, and pdf.php writes faqRecord title, solution_id, author, and date into the generated PDF."
+      ]
+    },
+    "atomic_bic": {
+      "status": "PASS",
+      "evidence": [
+        "GIT_NO_LAZY_FETCH=1 git rev-parse / cat-file -p / show --stat 4639bf25d8b4b7026527c012e9b9f94767247bf6: commit object, single parent 7e06d6df29d235f5d9905683fbdee57598d19187, message 'Removed query', authorDate 2006-08-13 18:20:01 +0000, one-file change M phpmyfaq/pdf.php (+12/-24).",
+        "The BIC diff is the first write of this source-to-sink: it deletes the endpoint-local SELECT that ended in AND active = 'yes' (and the no-row Error! exit) and substitutes $faq->getRecord($id) plus PDF writes of $faq->faqRecord['title'|'solution_id'|'author'|'date'].",
+        "git log -S \"active = 'yes'\" -- phpmyfaq/pdf.php changes that string only at e0254a32c3c834054884553743b4989b7f656c05 (Import, file birth with the predicate present) and 4639bf25d8b4b7026527c012e9b9f94767247bf6 (predicate removed). No earlier public pdf.php revision lacked the gate.",
+        "Later getRecord->getFaq rename 22be681f18927fba73b51604afbaf13e8588d712 and 4.2 controller migration 4182bee11c852210f34bbfd5c849817ee81ccc10 are carriers/refactors of already-vulnerable behavior; 4182bee11 is not an ancestor of 4.1.6 or 4.1.7."
+      ]
+    },
+    "immediate_parent_absence": {
+      "status": "PASS",
+      "evidence": [
+        "Immediate parent is 7e06d6df29d235f5d9905683fbdee57598d19187 (message 'Moved query into class PMF_Faq', 2006-08-13 18:11:54 +0000, eight minutes earlier).",
+        "GIT_NO_LAZY_FETCH=1 git show 7e06d6df29d235f5d9905683fbdee57598d19187:phpmyfaq/pdf.php still queries SELECT id, lang, solution_id, thema, content, datum, author FROM ...faqdata WHERE id = $id AND lang = '$lang' AND active = 'yes' and exits with Error! when num_rows is 0, so inactive FAQ metadata never reaches the PDF writer."
+      ]
+    },
+    "squash_member_decomposition": {
+      "status": "PASS",
+      "evidence": [
+        "git cat-file -p 4639bf25d8b4b7026527c012e9b9f94767247bf6 shows exactly one parent and a one-line body 'Removed query' with no merge, Co-authored-by, or squash trailer. git diff-tree --no-commit-id --name-status -r reports only M phpmyfaq/pdf.php.",
+        "Neighboring history is a sequence of small CVS-converted commits (parent 18:11:54, BIC 18:20:01, $Id$ 1.22 -> 1.23). This is the finest surviving public object; there is no reconstructable inner member, import blob, or revert/squash aggregate to decompose."
+      ]
+    },
+    "affected_release_membership": {
+      "status": "PASS",
+      "evidence": [
+        "CVE.org affected range is semver >=0 <4.1.7; vendor GHSA-f8pr-32pp-mp7h lists <=4.1.6.",
+        "Lightweight tag 4.1.6 is commit 58c1d7f2fa36f7074664fc6d862afee0ca8bcc89 (package.json version 4.1.6). git merge-base --is-ancestor 4639bf25d8b4b7026527c012e9b9f94767247bf6 58c1d7f2fa36f7074664fc6d862afee0ca8bcc89 succeeds; git merge-base --is-ancestor b0daab0c2dedb880b2a9296082b7f1ba7a146cf8 58c1d7f2fa36f7074664fc6d862afee0ca8bcc89 fails.",
+        "On 4.1.6, phpmyfaq/pdf.php:145 still does $faq->getFaq($faqId) then generateFile with no isFaqRecordVisible/active gate."
+      ]
+    },
+    "fixed_release_membership": {
+      "status": "PASS",
+      "evidence": [
+        "CVE.org and the vendor advisory identify 4.1.7 as unaffected/patched.",
+        "Lightweight tag 4.1.7 is commit 28d6f641c16e3015d51d0a01d14841b845251f35 (package.json version 4.1.7). git merge-base --is-ancestor b0daab0c2dedb880b2a9296082b7f1ba7a146cf8 28d6f641c16e3015d51d0a01d14841b845251f35 succeeds.",
+        "On 4.1.7, phpmyfaq/pdf.php:149-152 calls isFaqRecordVisible() immediately after getFaq() and returns HTTP 404 before category assignment or generateFile()."
+      ]
+    },
+    "direct_fix_or_unpatched": {
+      "status": "PASS",
+      "evidence": [
+        "Direct fix is commit b0daab0c2dedb880b2a9296082b7f1ba7a146cf8 (Author Thorsten Rinne <thorsten@phpmyfaq.de>, 2026-08-02, message 'fix: prevented metadata disclosure of unpublished FAQs on public read paths', single parent eceecd3185823d225bbe0af40bc733d73cb771cf).",
+        "The pdf.php hunk inserts, immediately after $faq->getFaq($faqId), if (!$faq->isFaqRecordVisible()) { setStatusCode(HTTP_NOT_FOUND); send; exit; } so inactive/unpublished metadata never reaches generateFile.",
+        "The same commit adds Faq::isFaqRecordVisible() which returns false for empty records, solution_id 42, active !== 'yes', dateStart in the future, or dateEnd in the past — closing the publication-state hole the PDF path inherited from getFaq()/getRecord()."
+      ]
+    },
+    "bic_only_ai_attribution": {
+      "status": "PASS",
+      "evidence": [
+        "Attribution is limited to BIC 4639bf25d8b4b7026527c012e9b9f94767247bf6. git cat-file -p / git log -1 --format names author and committer thorstenr <thorstenr@838f1ae0-46ae-11dd-8317-05e2edd5b3f7> at unix 1155493201; the BIC-local phpmyfaq/pdf.php header is @author Thorsten Rinne <thorsten@phpmyfaq.de>.",
+        "The raw commit object body is exactly 'Removed query' with no Co-Authored-By, Signed-off-by, Generated-with, Cursor/Copilot/ChatGPT, bot identity, or other generator trailer. This is a 2006 named-human CVS-era object, not an anonymous or untraceable snapshot, so absent AI markers plus named human authorship support NOT_AI."
+      ]
+    }
+  },
+  "findings": [
+    "CVE-2026-76206 is a real published CWE-200: the public PDF export loads a FAQ by numeric id without an active/publication gate, redacts only the answer body, and writes title, solution_id, author, and last-update date into a downloadable PDF.",
+    "The smallest surviving public BIC is 4639bf25d8b4b7026527c012e9b9f94767247bf6 (2006-08-13 'Removed query'), which replaced pdf.php's local SQL active = 'yes' predicate with PMF_Faq::getRecord() that never filtered active. Parent 7e06d6df29d235f5d9905683fbdee57598d19187 still had that predicate and exited when no active row was found.",
+    "Tag 4.1.6 (58c1d7f2fa36f7074664fc6d862afee0ca8bcc89) contains the BIC and not the fix; tag 4.1.7 (28d6f641c16e3015d51d0a01d14841b845251f35) contains direct fix b0daab0c2dedb880b2a9296082b7f1ba7a146cf8, which 404s on !isFaqRecordVisible() before PDF generation.",
+    "BIC author and committer are named human thorstenr / Thorsten Rinne with no AI/bot/generator/co-author marker on the BIC object. The required closed verdict is therefore NOT_AI. Independent re-research agrees with the primary on BIC, parent, fix, releases, and attribution; no field corrections."
+  ],
+  "corrected_fields": {},
+  "remaining_gap": null
+}

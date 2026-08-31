@@ -1,0 +1,78 @@
+{
+  "worker": "w022",
+  "review_agent_id": "r12_w022",
+  "class_id": "alias-fe39cd7b56d2f10a8740d77b",
+  "case_id": "GHSA-pc8g-78pf-4xrp",
+  "repo": "olivetin/olivetin",
+  "primary_verdict": "NOT_AI",
+  "review_verdict": "CONFIRMED",
+  "protocol_checks": {
+    "vulnerability_mechanism": {
+      "status": "PASS",
+      "evidence": [
+        "CVE.org https://cveawg.mitre.org/api/cve/CVE-2026-28342 is state=PUBLISHED (not rejected/withdrawn). GitHub advisory GHSA-pc8g-78pf-4xrp has withdrawn_at=null. Both describe unauthenticated concurrent PasswordHash requests exhausting memory via unbounded Argon2.",
+        "At affected tag 3000.10.1 (60176b6078ed32aa664329c50aa5a42604dc3f96), GetNewHandler in service/internal/api/api.go registers apiv1connect.NewOliveTinApiServiceHandler with no auth interceptor; service/internal/httpservers/frontend.go mounts that handler at /api/ and rewrites POST /api/olivetin.api.v1.OliveTinApiService/PasswordHash onto the Connect procedure.",
+        "oliveTinAPI.PasswordHash at 3000.10.1:143 calls createHash(req.Msg.Password) with no authentication, rate limit, or concurrency guard. createHash/CreateHash in service/internal/api/local_user_login.go calls argon2id.CreateHash with Memory 64*1024 (64 MiB per request). That is a complete unauthenticated source-to-sink for CWE-770."
+      ]
+    },
+    "atomic_bic": {
+      "status": "PASS",
+      "evidence": [
+        "git log -S PasswordHash -- '*.go' '*.proto' (excluding generated) and git log -S argon2id.CreateHash -- '*.go' both first hit 1af2e921323ee0ba3bf3d922c8861652d3913222 (one parent 71ad5d2e3a14fae7755b2e856981f50887745558, message 'feature: Local user login!').",
+        "git diff 71ad5d2e3a14fae7755b2e856981f50887745558..1af2e921323ee0ba3bf3d922c8861652d3913222 adds OliveTin.proto rpc PasswordHash POST /api/PasswordHash, internal/grpcapi/grpcApi.go handler PasswordHash -> createHash(req.Password) with no auth, and new internal/grpcapi/local_user_login.go argon2id.CreateHash sink at Memory 64*1024.",
+        "Later ff31abe66cfd46f8cccca00ad708529e4d920144 is an R100 directory move of those files into service/, and a62d58f11955fe192f45da13e23ba996a2759404 rewrites the same handler to Connect RPC. Both are carriers, not first-writers."
+      ]
+    },
+    "immediate_parent_absence": {
+      "status": "PASS",
+      "evidence": [
+        "git cat-file -p 1af2e921323ee0ba3bf3d922c8861652d3913222 records a single parent 71ad5d2e3a14fae7755b2e856981f50887745558.",
+        "git grep -E 'PasswordHash|argon2id|createHash|CreateHash' 71ad5d2e3a14fae7755b2e856981f50887745558 -- '*.go' '*.proto' returns no matches. Parent only has a stub rpc Authenticate and a commented Authenticate handler; it does not contain the PasswordHash route, handler, or Argon2 sink."
+      ]
+    },
+    "squash_member_decomposition": {
+      "status": "PASS",
+      "evidence": [
+        "1af2e921323ee0ba3bf3d922c8861652d3913222 is a single-parent non-merge with message 'feature: Local user login!' and no PR/squash/member list. GitHub /commits/1af2e921323ee0ba3bf3d922c8861652d3913222/pulls returns []. No finer public member is reconstructable.",
+        "Advisory-referenced 2eb5f0ba79d4bbef3c802bf8b4666a7e18dcfd90 is a two-parent merge 'Next (#905)'. The atomic fix member is a7be68b35917682b3af022191d72f8af8af0dee9 (single-parent; GitHub PR #904 head SHA), later merged via 6dfffd1170771bdaa6f32b5f89100bce27fbdd55 then 2eb5f0ba79d4bbef3c802bf8b4666a7e18dcfd90."
+      ]
+    },
+    "affected_release_membership": {
+      "status": "PASS",
+      "evidence": [
+        "CVE.org affected versions are '< 3000.10.2'. Vendor tag 3000.10.1 resolves to 60176b6078ed32aa664329c50aa5a42604dc3f96.",
+        "git merge-base --is-ancestor 1af2e921323ee0ba3bf3d922c8861652d3913222 60176b6078ed32aa664329c50aa5a42604dc3f96 is true; git merge-base --is-ancestor a7be68b35917682b3af022191d72f8af8af0dee9 60176b6078ed32aa664329c50aa5a42604dc3f96 is false. 3000.10.1 still has the unauthenticated PasswordHash handler and lacks argon2Sem."
+      ]
+    },
+    "fixed_release_membership": {
+      "status": "PASS",
+      "evidence": [
+        "CVE.org states patched in 3000.10.2. GitHub advisory first_patched_version is go pseudo-version 0.0.0-20260227002407-2eb5f0ba79d4. Vendor tag 3000.10.2 and advisory commit both resolve to 2eb5f0ba79d4bbef3c802bf8b4666a7e18dcfd90.",
+        "git merge-base --is-ancestor a7be68b35917682b3af022191d72f8af8af0dee9 2eb5f0ba79d4bbef3c802bf8b4666a7e18dcfd90 is true (via second parent 54eb2a658681b232cad8abe3cf15ee0b5dda0884, not first parent 60176b6078ed32aa664329c50aa5a42604dc3f96). 3000.10.2 contains argon2Sem/ErrArgon2Busy."
+      ]
+    },
+    "direct_fix_or_unpatched": {
+      "status": "PASS",
+      "evidence": [
+        "git log -S argon2Sem and -S ErrArgon2Busy first hit a7be68b35917682b3af022191d72f8af8af0dee9 (parent e487288287b654c821e83a3261b944a0b0a6391b, message 'security: 10-slot Semaphore around password hash functions to prevent resource exhaustion attacks').",
+        "That commit wraps CreateHash and ComparePasswordAndHash in a nonblocking 10-slot channel semaphore, maps overflow to ErrArgon2Busy, and oliveTinAPI.PasswordHash returns connect.CodeResourceExhausted. It is the atomic direct fix; 2eb5f0ba79d4bbef3c802bf8b4666a7e18dcfd90 is the later release merge that carries it."
+      ]
+    },
+    "bic_only_ai_attribution": {
+      "status": "PASS",
+      "evidence": [
+        "BIC object 1af2e921323ee0ba3bf3d922c8861652d3913222: author and committer are both jamesread <contact@jread.com> (GitHub user jamesread, unsigned). Message is only 'feature: Local user login!' with no Co-Authored-By, Generated-with, bot, or generator trailer.",
+        "Attribution uses only that BIC object. Named human author/committer plus absent AI/bot/generator markers supports NOT_AI."
+      ]
+    }
+  },
+  "findings": [
+    "Real published vulnerability: unauthenticated PasswordHash RPC drives unbounded concurrent argon2id.CreateHash at 64 MiB per request (CWE-770/CWE-400). CVE-2026-28342 is PUBLISHED; GHSA-pc8g-78pf-4xrp is not withdrawn.",
+    "Atomic public BIC is 1af2e921323ee0ba3bf3d922c8861652d3913222, which first added the route, unauthenticated handler, and Argon2 sink together. Immediate parent 71ad5d2e3a14fae7755b2e856981f50887745558 lacks all three.",
+    "ff31abe66cfd46f8cccca00ad708529e4d920144 and a62d58f11955fe192f45da13e23ba996a2759404 only relocate/rewrite the same handler; they are not introducers.",
+    "Direct fix is a7be68b35917682b3af022191d72f8af8af0dee9 (10-slot semaphore). Advisory/tag 3000.10.2 object 2eb5f0ba79d4bbef3c802bf8b4666a7e18dcfd90 is a merge aggregate that includes that fix. 3000.10.1 contains the BIC and not the fix.",
+    "BIC authorship is named human jamesread <contact@jread.com> with no AI/bot/generator marker on the object, so the closed verdict is NOT_AI."
+  ],
+  "corrected_fields": {},
+  "remaining_gap": null
+}

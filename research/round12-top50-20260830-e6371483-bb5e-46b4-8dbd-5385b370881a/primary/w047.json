@@ -1,0 +1,98 @@
+{
+  "schema_version": "independent-case-audit/v1",
+  "worker": "w047",
+  "review_agent_id": "round12-clean-w047-r2",
+  "class_id": "alias-f8b24c536967b204c96b1a24",
+  "case_id": "CVE-2026-37458",
+  "repo": "frrouting/frr",
+  "advisory_ids": [
+    "CVE-2026-37458",
+    "GHSA-m357-6hwr-7w53"
+  ],
+  "input_binding": {
+    "bundle_sha256": "a0af48755dad5ab2ee1f39dab871adcde53ef45630e2ecc634dd41730b121298",
+    "clone_head_sha": "f276f0db350cc26bf041ce68bd94c8418161c650"
+  },
+  "verdict": "NOT_AI",
+  "protocol_checks": {
+    "vulnerability_mechanism": {
+      "status": "PASS",
+      "evidence": [
+        "CVE.org record https://cveawg.mitre.org/api/cve/CVE-2026-37458 is PUBLISHED and states that an authenticated attacker can cause DoS with a crafted UPDATE carrying an MP_REACH_NLRI value lacking input validation.",
+        "In first-party tag frr-10.5.3, bgpd/bgp_attr.c bgp_mp_reach_parse reads the four-byte IPv4/VPNv4 next hop into attr->mp_nexthop_global_in without ipv4_martian validation; bgpd/bgp_route.c:4894-4896 returns before its later next-hop validation for SAFIs other than unicast, multicast, and EVPN, leaving the VPNv4 MP_REACH path accepted with an unusable martian next hop.",
+        "FRRouting PR https://github.com/FRRouting/frr/pull/21075 and direct commit 8102a8aeceb9f86fdfe1f80cd77080522bab69c8 add parser-level ipv4_martian validation for the shared VPNv4/IPv4 fallthrough and return BGP_ATTR_PARSE_WITHDRAW, closing the crafted-UPDATE route-acceptance path."
+      ]
+    },
+    "atomic_bic": {
+      "status": "PASS",
+      "evidence": [
+        "GitHub blame at fix parent 5c4ca8895b3a7ce7e9f5f58548c33db3950fd170 maps the vulnerable stream_get line through carriers 7d67b9ff28d09de58c632f80ef7d330e45e698f6 (fallthrough-comment cleanup), 176b30508018c831639220c201ecef946d328035 (fallthrough comment), and d62a17aedeb0eebdba98238874bb13d62c48dbf9 (reindent) to 718e3744195351130f4ce7dbe0613f4b3e23df93.",
+        "GIT_NO_LAZY_FETCH=1 git show 718e3744195351130f4ce7dbe0613f4b3e23df93:bgpd/bgp_attr.c shows the root object already reading attr->mp_nexthop_global_in at lines 945 and 954 with no martian validation; its tree binds bgpd/bgp_attr.c to blob 480bb912fa87823e834e57b8edac499db2458e73."
+      ]
+    },
+    "immediate_parent_absence": {
+      "status": "PASS",
+      "evidence": [
+        "GIT_NO_LAZY_FETCH=1 git rev-list --parents -n 1 718e3744195351130f4ce7dbe0613f4b3e23df93 outputs only that SHA, and git cat-file commit shows no parent header; the vulnerable parser code is therefore present in the earliest surviving public commit in this clone."
+      ]
+    },
+    "squash_member_decomposition": {
+      "status": "PASS",
+      "evidence": [
+        "718e3744195351130f4ce7dbe0613f4b3e23df93 is a parentless initial repository revision, not a squash with addressable member commits; the assigned public history contains no finer predecessor object to decompose, while the later blame carriers were explicitly rejected."
+      ]
+    },
+    "affected_release_membership": {
+      "status": "PASS",
+      "evidence": [
+        "GIT_NO_LAZY_FETCH=1 git tag --contains 718e3744195351130f4ce7dbe0613f4b3e23df93 --list frr-10.5.3 frr-10.5.4 returns both tags, while git tag --contains 031bdbf5b6832c31048111b56807769236ac85e2 --list frr-10.5.3 frr-10.5.4 returns only frr-10.5.4; first-party frr-10.5.3 source has no parser-level MP_REACH martian check."
+      ]
+    },
+    "fixed_release_membership": {
+      "status": "PASS",
+      "evidence": [
+        "FRRouting tag frr-10.5.4 contains equivalent direct backport 031bdbf5b6832c31048111b56807769236ac85e2 and its source has the new MP_REACH martian check; git tag --contains 8102a8aeceb9f86fdfe1f80cd77080522bab69c8 --list frr-10.0.1 frr-10.6.2 frr-10.7.0 returns frr-10.7.0 for the upstream-line fix."
+      ]
+    },
+    "direct_fix_or_unpatched": {
+      "status": "PASS",
+      "evidence": [
+        "git show 8102a8aeceb9f86fdfe1f80cd77080522bab69c8 -- bgpd/bgp_attr.c is a one-file, 11-line direct fix: immediately after stream_get it rejects ipv4_martian(&attr->mp_nexthop_global_in) unless allow_martian is configured and returns BGP_ATTR_PARSE_WITHDRAW; parent 5c4ca8895b3a7ce7e9f5f58548c33db3950fd170 lacks that block."
+      ]
+    },
+    "bic_only_ai_attribution": {
+      "status": "PASS",
+      "evidence": [
+        "The BIC commit object alone records author paul <paul>, author date 2002-12-13T20:15:29+00:00, and subject Initial revision. That positive human-and-timestamp provenance predates code-generating LLM use by decades and contains no AI marker; no repository-level or later-commit signal is used."
+      ]
+    }
+  },
+  "bug_semantics": "An authenticated BGP peer can place an IPv4 martian address such as 0.0.0.0 in the IPv4/VPNv4 next-hop field of MP_REACH_NLRI. bgp_mp_reach_parse copied that attacker-controlled value into attr->mp_nexthop_global_in without the validation applied to ordinary NEXT_HOP. In affected VPN SAFI processing, the later generic martian check returns early because it only covers unicast, multicast, and EVPN, so the unusable route can survive parsing and disrupt reachability. The direct fix validates at the common parser source and treats the attribute as withdrawn.",
+  "flaw_origin": "The parentless initial revision 718e3744195351130f4ce7dbe0613f4b3e23df93 is the smallest surviving public commit that first contains both IPv4 and VPNv4 stream_get writes into mp_nexthop_global_in without martian validation. Blame-visible commits 7d67b9ff28d09de58c632f80ef7d330e45e698f6, 176b30508018c831639220c201ecef946d328035, and d62a17aedeb0eebdba98238874bb13d62c48dbf9 only change fallthrough comments or indentation and are not introducers.",
+  "introducer_sha": "718e3744195351130f4ce7dbe0613f4b3e23df93",
+  "introducer_parent": null,
+  "introducer_parent_absent": true,
+  "squash_decomposed": false,
+  "decomposed_shas": [],
+  "fix_sha": "8102a8aeceb9f86fdfe1f80cd77080522bab69c8",
+  "direct_fix_sha": "8102a8aeceb9f86fdfe1f80cd77080522bab69c8",
+  "unpatched": null,
+  "ai_marker": {
+    "state": "ABSENT",
+    "evidence": [
+      "BIC object: author paul <paul>; author date 2002-12-13T20:15:29+00:00; subject Initial revision; no AI-authorship marker."
+    ]
+  },
+  "evidence": [
+    "CVE.org primary record: https://cveawg.mitre.org/api/cve/CVE-2026-37458 (state PUBLISHED; crafted UPDATE/MP_REACH_NLRI DoS description).",
+    "FRRouting primary PR: https://github.com/FRRouting/frr/pull/21075 (one-commit fix, merged 2026-03-17, requested backports stable/10.0 through stable/10.6).",
+    "FRRouting direct fix: https://github.com/FRRouting/frr/commit/8102a8aeceb9f86fdfe1f80cd77080522bab69c8 (adds the parser-level martian check and treat-as-withdraw return).",
+    "Assigned clone HEAD exactly matches bundle binding f276f0db350cc26bf041ce68bd94c8418161c650.",
+    "GIT_NO_LAZY_FETCH=1 git show of fix and parent proves the direct 11-line hunk and its absence from 5c4ca8895b3a7ce7e9f5f58548c33db3950fd170.",
+    "GIT_NO_LAZY_FETCH=1 root-tree inspection binds vulnerable bgpd/bgp_attr.c blob 480bb912fa87823e834e57b8edac499db2458e73 to introducer 718e3744195351130f4ce7dbe0613f4b3e23df93.",
+    "GIT_NO_LAZY_FETCH=1 git rev-list --parents proves introducer 718e3744195351130f4ce7dbe0613f4b3e23df93 has no parent.",
+    "GIT_NO_LAZY_FETCH=1 git show of backport 031bdbf5b6832c31048111b56807769236ac85e2 proves the same direct hunk is in fixed tag frr-10.5.4 and absent from frr-10.5.3 membership."
+  ],
+  "reasoning": "The authoritative CVE record, first-party vulnerable/fixed source, direct fix, affected/fixed tag membership, and root-object blame chain close all vulnerability lifecycle gates. The vulnerable parser write is already present in the repository's parentless 2002 initial revision; later blame carriers are non-semantic formatting/comment changes. The BIC object itself supplies affirmative human-era provenance (paul, dated 2002) and no AI marker. Therefore the vulnerability is real and fixed, but its smallest surviving introducer is not AI-authored: NOT_AI.",
+  "remaining_gap": null
+}

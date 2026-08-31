@@ -44,7 +44,7 @@
   "mechanism": "abadd469bc85e9fa5137ff5ffce433f1c2db2c0b is the smallest commit that completed the disclosed RCE chain. It added the implicit board-actor middleware, mounted company and expanded agent routes without Host validation, added heartbeat invocation, and added the heartbeat service's p"
  },
  "GHSA-GWMJ-HF32-5V8V": {
-  "summary": "Paperclip before 0.3.1 in default local_trusted mode fails to validate Host headers, letting attackers use DNS rebinding to execute arbitrary commands.",
+  "summary": "Claude-coauthored local-trust code omitted Host validation, so DNS rebinding could give an attacker admin context and arbitrary command execution.",
   "mechanism": "abadd469bc85e9fa5137ff5ffce433f1c2db2c0b is the smallest commit that completed the disclosed RCE chain. It added the implicit board-actor middleware, mounted company and expanded agent routes without Host validation, added heartbeat invocation, and added the heartbeat service's p"
  },
  "ALIAS-64BDAACD95A7EAC731941C69": {
@@ -72,15 +72,15 @@
   "mechanism": ""
  },
  "ALIAS-7C96B769D0E8D26817538AA3": {
-  "summary": "The AI-written code in core/webhook.go authenticated an exec argument from remote JSON and executed it, enabling remote code injection.",
+  "summary": "AI-written webhook code treated an empty configured token as authenticated, then passed a caller-supplied command to a shell, enabling unauthenticated remote code execution.",
   "mechanism": "The complete vulnerable mechanism originated in the single-parent feature commit 6ae088a658077a2f11a83ded6ac53c0dbddefd38: it created core/webhook.go, added the network listener and /hook handler, defined the JSON exec field, made an empty token authenticate successfully, passed"
  },
  "GHSA-WFX9-6H8H-F3GM": {
-  "summary": "The AI-written code in core/webhook.go authenticated an exec argument from remote JSON and executed it, enabling remote code injection.",
+  "summary": "AI-written webhook code treated an empty configured token as authenticated, then passed a caller-supplied command to a shell, enabling unauthenticated remote code execution.",
   "mechanism": "The complete vulnerable mechanism originated in the single-parent feature commit 6ae088a658077a2f11a83ded6ac53c0dbddefd38: it created core/webhook.go, added the network listener and /hook handler, defined the JSON exec field, made an empty token authenticate successfully, passed"
  },
  "CVE-2026-76760": {
-  "summary": "The AI-written code in core/webhook.go authenticated an exec argument from remote JSON and executed it, enabling remote code injection.",
+  "summary": "AI-written webhook code treated an empty configured token as authenticated, then passed a caller-supplied command to a shell, enabling unauthenticated remote code execution.",
   "mechanism": "The complete vulnerable mechanism originated in the single-parent feature commit 6ae088a658077a2f11a83ded6ac53c0dbddefd38: it created core/webhook.go, added the network listener and /hook handler, defined the JSON exec field, made an empty token authenticate successfully, passed"
  },
  "GHSA-V2JJ-5G64-RXP4": {
@@ -208,7 +208,7 @@
   "mechanism": "Commit e588aaa3a53ef291406b02745c20fdea8cea7f7c newly added PluginImportGuard and both causal mechanisms in openssl_encrypt/modules/plugin_system/plugin_sandbox.py: the clear-before-count restoration log and the non-atomic hide-then-install ordering. Its direct parent had no Plug"
  },
  "GHSA-9J5F-PJWJ-62R3": {
-  "summary": "AI-written code in openssl_encrypt logged restored module counts after clearing them and installed import hooks non-atomically, corrupting audit trails and allowing blocked module re-imports in multi-threaded use.",
+  "summary": "Claude-generated plugin code logged false restoration counts and installed import guards non-atomically, allowing a concurrent blocked-module re-import.",
   "mechanism": "Commit e588aaa3a53ef291406b02745c20fdea8cea7f7c newly added PluginImportGuard and both causal mechanisms in openssl_encrypt/modules/plugin_system/plugin_sandbox.py: the clear-before-count restoration log and the non-atomic hide-then-install ordering. Its direct parent had no Plug"
  },
  "CVE-2026-74885": {
@@ -560,7 +560,7 @@
   "mechanism": "datamodel-code-generator vulnerable to arbitrary local file read via JSON-Schema `$ref` (`file://` and `../` traversal), bypassing `--no-allow-remote-refs`"
  },
  "GHSA-8359-H9FX-J6V9": {
-  "summary": "The AI-written code resolved JSON-Schema `$ref` targets without restricting them to the input directory or honoring `--no-allow-remote-refs`, enabling arbitrary local file reads and host filesystem mapping from attacker-controlled schemas.",
+  "summary": "Human code introduced unsafe local references; a Claude-coauthored remediation still allowed traversal, so crafted schemas could read arbitrary files.",
   "mechanism": "datamodel-code-generator vulnerable to arbitrary local file read via JSON-Schema `$ref` (`file://` and `../` traversal), bypassing `--no-allow-remote-refs`"
  },
  "ALIAS-9F69684E62A2B96F144D613F": {
@@ -596,7 +596,7 @@
   "mechanism": "kwarg value becomes option token"
  },
  "GHSA-P5RM-JG5C-8C77": {
-  "summary": "Kiota wrote an OpenAPI-provided `file` reference into plugin manifests and resolved it relative to the package, allowing path traversal to read arbitrary files.",
+  "summary": "Copilot-assisted path validation still accepted encoded traversal in OpenAPI file references, allowing generated plugin manifests to read arbitrary files.",
   "mechanism": "Microsoft Kiota: Path traversal in generated plugin manifest static_template.file reference (percent-encoding bypass)"
  },
  "ALIAS-1969788CC13F838042E11CE1": {
@@ -620,7 +620,7 @@
   "mechanism": "open-webui terminal proxy path traversal guard bypass via 9x encoded traversal"
  },
  "GHSA-FRVJ-C5QP-XJ4W": {
-  "summary": "The fix stops decoding at 8 passes, letting a 9x-encoded `../` bypass the check and reach the terminal server as a traversal path.",
+  "summary": "Claude-assisted path sanitization stopped decoding after eight passes instead of failing closed. A deeply encoded traversal path could survive the check.",
   "mechanism": "open-webui terminal proxy path traversal guard bypass via 9x encoded traversal"
  },
  "CVE-2026-59221": {
@@ -656,7 +656,7 @@
   "mechanism": "assertRepositoryReferenceAllowed / assertLocalRepositoryPathAllowed introduced in packages/nodes-base/nodes/Git/Git.node.ts but wired only into operation==='clone' (sourceRepository) and operation==='push' (customTargetRepository + remote origin urls); fetch/pull/pushTags operati"
  },
  "GHSA-GF29-4F56-R2JF": {
-  "summary": "Git fetch/pull/pushTags operations omitted sandbox path containment checks, letting authenticated users pull arbitrary local repos and read files/history.",
+  "summary": "Cursor-assisted Git operations omitted sandbox path checks on fetch, pull, and tag pushes, letting authenticated workflow users read arbitrary local repositories.",
   "mechanism": "assertRepositoryReferenceAllowed / assertLocalRepositoryPathAllowed introduced in packages/nodes-base/nodes/Git/Git.node.ts but wired only into operation==='clone' (sourceRepository) and operation==='push' (customTargetRepository + remote origin urls); fetch/pull/pushTags operati"
  },
  "GHSA-G3R5-9H93-4J2C": {
@@ -804,7 +804,7 @@
   "mechanism": "CNA CVE-2026-56678 (GitHub_M) source.advisory is GitHub-reviewed GHSA-6mwv-4mrm-5p3m, omitted from the row public_ids. Advisory names POST /api/oauth/kiro/api-key interpolating user-controlled region into https://codewhisperer.${region}.amazonaws.com and forwarding the submitted API key as Authorization. Parent 3de6ce15 has no api-key route; list-profiles host is hardcoded codewhisperer.us-east-1.amazonaws.com. Member 706e6513 (Claude Opus 4.8 and Cursor trailers) adds the route, validateApiKey, and listAvailableProfiles with unvalidated region. Fix 126aa244 (GHSA-6mwv in subject) adds assertValidAwsRegion before interpolation and stops reflecting upstream bodies. Published GitHub releases v0.5.2 (tag commit 5da508af, GHSA-named) and v0.5.4 contain origin without the fix; v0.5.6 contains 126aa244."
  },
  "GHSA-6MWV-4MRM-5P3M": {
-  "summary": "AI-written code interpolated a user-controlled region into an upstream URL without validation, allowing an authenticated attacker to redirect a request carrying a Kiro API key to an attacker-controlled host.",
+  "summary": "Claude-coauthored code put an unvalidated region into an upstream hostname, letting an authenticated caller send a Kiro API key to an attacker-controlled server.",
   "mechanism": "CNA CVE-2026-56678 (GitHub_M) source.advisory is GitHub-reviewed GHSA-6mwv-4mrm-5p3m, omitted from the row public_ids. Advisory names POST /api/oauth/kiro/api-key interpolating user-controlled region into https://codewhisperer.${region}.amazonaws.com and forwarding the submitted API key as Authorization. Parent 3de6ce15 has no api-key route; list-profiles host is hardcoded codewhisperer.us-east-1.amazonaws.com. Member 706e6513 (Claude Opus 4.8 and Cursor trailers) adds the route, validateApiKey, and listAvailableProfiles with unvalidated region. Fix 126aa244 (GHSA-6mwv in subject) adds assertValidAwsRegion before interpolation and stops reflecting upstream bodies. Published GitHub releases v0.5.2 (tag commit 5da508af, GHSA-named) and v0.5.4 contain origin without the fix; v0.5.6 contains 126aa244."
  },
  "CVE-2026-56678": {
@@ -872,23 +872,23 @@
   "mechanism": "app/Livewire/Settings/Updates.php cloud instance Server::findOrFail(0) commit cloud 404 server if (! isCloud()) $this->server = Server::findOrFail(0); 404 isInstanceAdmin() fix 0fed5532 mount() if (! isInstanceAdmin()) return redirect()->route('dashboard');"
  },
  "ALIAS-ED9B3734B369568D840F0ED2": {
-  "summary": "AI-written code used api.ability:read tokens to reach validate endpoints that dispatch write-scoped provider or server calls, letting read-only tokens trigger actions until fix c15bcd56 enforced api.ability:write and 403s.",
-  "mechanism": "API CVE-2026-327184.0.0-beta.466 POST /api/v1/cloud-tokens/{uuid}/validate GET /api/v1/servers/{uuid}/validate api.ability:read——cloud-tokens validate provider token Hetzner/DigitalOcean API servers validate dispatch ValidateServer scope API token fix c15bcd56 api.ability:write r"
+  "summary": "Claude-generated code put the cloud-token validation endpoint behind a read-only permission even though it performed write-level provider actions. A read-only API token could therefore trigger those actions.",
+  "mechanism": "The validate endpoints accepted a read-scoped API token and then dispatched provider or server calls that require write scope; the fix tightened the required token scope so read-only tokens receive a 403 response."
  },
  "CVE-2026-32718": {
-  "summary": "AI-written code used api.ability:read tokens to reach validate endpoints that dispatch write-scoped provider or server calls, letting read-only tokens trigger actions until fix c15bcd56 enforced api.ability:write and 403s.",
+  "summary": "Claude-generated validation endpoints accepted read-only API tokens but performed write-scoped provider actions, letting those tokens trigger changes.",
   "mechanism": "API CVE-2026-327184.0.0-beta.466 POST /api/v1/cloud-tokens/{uuid}/validate GET /api/v1/servers/{uuid}/validate api.ability:read——cloud-tokens validate provider token Hetzner/DigitalOcean API servers validate dispatch ValidateServer scope API token fix c15bcd56 api.ability:write r"
  },
  "GHSA-FWPR-59HH-GR98": {
-  "summary": "AI-written code in MemoryManager.ts improperly handled the workspacePath argument, allowing remote exposure of project resources before version 0.4.0.",
+  "summary": "AI-written per-project memory code let a remote caller choose a workspace path and expose project resources.",
   "mechanism": "/tmp/fp211-cross-04/pages/ghsa/GHSA-fwpr-59hh-gr98.json aliases CVE-2026-14611; repo DeepMyst/Mysti GHSA 404 preserved"
  },
  "CVE-2026-14611": {
-  "summary": "AI-written code in MemoryManager.ts improperly handled the workspacePath argument, allowing remote exposure of project resources before version 0.4.0.",
+  "summary": "AI-written per-project memory code let a remote caller choose a workspace path and expose project resources.",
   "mechanism": "/tmp/fp211-cross-04/pages/ghsa/GHSA-fwpr-59hh-gr98.json aliases CVE-2026-14611; repo DeepMyst/Mysti GHSA 404 preserved"
  },
  "ALIAS-08F4EE97E5BE53CDA71A58D8": {
-  "summary": "AI-written code in MemoryManager.ts improperly handled the workspacePath argument, allowing remote exposure of project resources before version 0.4.0.",
+  "summary": "AI-written per-project memory code let a remote caller choose a workspace path and expose project resources.",
   "mechanism": "/tmp/fp211-cross-04/pages/ghsa/GHSA-fwpr-59hh-gr98.json aliases CVE-2026-14611; repo DeepMyst/Mysti GHSA 404 preserved"
  },
  "GHSA-XW57-23P8-9WC5": {
@@ -912,7 +912,7 @@
   "mechanism": "Slack native plugin-approval buttons reused isSlackExecApprovalApprover (execApprovals.approvers / ownerAllowFrom) instead of isSlackApprovalAuthorizedSender (channel allowFrom), so an exec-only Slack approver could resolve plugin: approvals through the exec gate."
  },
  "GHSA-WV26-J37Q-2G7P": {
-  "summary": "Slack plugin-approval buttons used the exec-only approver check, letting exec-only approvers bypass channel rules to resolve plugin: approvals.",
+  "summary": "Claude-coauthored Slack approval code reused an exec-only approver check for plugin approvals, letting exec approvers bypass channel rules.",
   "mechanism": "Slack native plugin-approval buttons reused isSlackExecApprovalApprover (execApprovals.approvers / ownerAllowFrom) instead of isSlackApprovalAuthorizedSender (channel allowFrom), so an exec-only Slack approver could resolve plugin: approvals through the exec gate."
  },
  "ALIAS-A7EE9486911C2E06BBA9F79C": {
@@ -932,15 +932,15 @@
   "mechanism": "AI-assisted authorship with explicit attribution: maintainer Sam Caldwell works with Claude Opus 4.6 and stamps every security commit with 'Co-Authored-By: Claude Opus 4.6 (1M context)'; the specific ungated console.warn lines (the reported weakness) were added by those AI-co-aut"
  },
  "GHSA-PMCH-G965-GRMR": {
-  "summary": "AI-written SQL validation blocklisted only specific function names, missing pg_read_file/pg_stat_file/pg_ls_logdir/pg_ls_waldir/pg_current_logfile, OPENDATASOURCE, and SQLite ATTACH variants, enabling filesystem disclosure.",
+  "summary": "Claude-authored SQL validation used an incomplete function denylist, allowing database users with sufficient privileges to read server files.",
   "mechanism": "Count Claude-marked single-parent 60933b48, whose first-parent introduces _DANGEROUS_SQL_PATTERNS and _validate_query with per-name PostgreSQL filesystem regexes that miss pg_read_file/pg_stat_file/pg_ls_logdir/pg_ls_waldir/pg_current_logfile. Do not count parent 763d5cba or pre-AI 0.62.0 (no validator; that is GHSA-MXFR/CVE-2026-25879 COPY PROGRAM). Do not count 56e2756e file-tool path traversal. Count PyPI langroid 0.63.0 wheel/sdist blob 887a10a4 as the residual and 00b7dd7b / PyPI 0.64.0 blob a55f6d34 as the family-prefix amendment of that same list."
  },
  "ALIAS-E8E15A41DBB7F098796C61F7": {
-  "summary": "AI-written SQL validation blocklisted only specific function names, missing pg_read_file/pg_stat_file/pg_ls_logdir/pg_ls_waldir/pg_current_logfile, OPENDATASOURCE, and SQLite ATTACH variants, enabling filesystem disclosure.",
+  "summary": "Claude-authored SQL validation used an incomplete function denylist, allowing database users with sufficient privileges to read server files.",
   "mechanism": "Count Claude-marked single-parent 60933b48, whose first-parent introduces _DANGEROUS_SQL_PATTERNS and _validate_query with per-name PostgreSQL filesystem regexes that miss pg_read_file/pg_stat_file/pg_ls_logdir/pg_ls_waldir/pg_current_logfile. Do not count parent 763d5cba or pre-AI 0.62.0 (no validator; that is GHSA-MXFR/CVE-2026-25879 COPY PROGRAM). Do not count 56e2756e file-tool path traversal. Count PyPI langroid 0.63.0 wheel/sdist blob 887a10a4 as the residual and 00b7dd7b / PyPI 0.64.0 blob a55f6d34 as the family-prefix amendment of that same list."
  },
  "CVE-2026-50180": {
-  "summary": "AI-written SQL validation blocklisted only specific function names, missing pg_read_file/pg_stat_file/pg_ls_logdir/pg_ls_waldir/pg_current_logfile, OPENDATASOURCE, and SQLite ATTACH variants, enabling filesystem disclosure.",
+  "summary": "Claude-authored SQL validation used an incomplete function denylist, allowing database users with sufficient privileges to read server files.",
   "mechanism": "Count Claude-marked single-parent 60933b48, whose first-parent introduces _DANGEROUS_SQL_PATTERNS and _validate_query with per-name PostgreSQL filesystem regexes that miss pg_read_file/pg_stat_file/pg_ls_logdir/pg_ls_waldir/pg_current_logfile. Do not count parent 763d5cba or pre-AI 0.62.0 (no validator; that is GHSA-MXFR/CVE-2026-25879 COPY PROGRAM). Do not count 56e2756e file-tool path traversal. Count PyPI langroid 0.63.0 wheel/sdist blob 887a10a4 as the residual and 00b7dd7b / PyPI 0.64.0 blob a55f6d34 as the family-prefix amendment of that same list."
  },
  "GHSA-P8RR-9CVG-CX5J": {
@@ -1052,15 +1052,15 @@
   "mechanism": "unreviewed GHSA-7x5q / CVE-2026-58138 names unauthenticated RCE in Conductor 3.21.21 before 3.30.2"
  },
  "CVE-2026-13591": {
-  "summary": "AI-written ChannelBridge.ts misclassifies tracked conversations via _channelType, permitting remote improper authorization on contact tracking under complex attack conditions.",
+  "summary": "AI-written contact tracking trusted a caller-controlled channel type when deciding whether a conversation was authorized, allowing remote access under complex conditions.",
   "mechanism": "unreviewed GHSA-4pqr / CVE-2026-13591 names Mysti 0.4.0 _isTrackedConversation channel-scope"
  },
  "GHSA-4PQR-V6C3-X77J": {
-  "summary": "AI-written ChannelBridge.ts misclassifies tracked conversations via _channelType, permitting remote improper authorization on contact tracking under complex attack conditions.",
+  "summary": "AI-written contact tracking trusted a caller-controlled channel type when deciding whether a conversation was authorized, allowing remote access under complex conditions.",
   "mechanism": "unreviewed GHSA-4pqr / CVE-2026-13591 names Mysti 0.4.0 _isTrackedConversation channel-scope"
  },
  "ALIAS-EC754F179BA2CC618A27A98B": {
-  "summary": "AI-written ChannelBridge.ts misclassifies tracked conversations via _channelType, permitting remote improper authorization on contact tracking under complex attack conditions.",
+  "summary": "AI-written contact tracking trusted a caller-controlled channel type when deciding whether a conversation was authorized, allowing remote access under complex conditions.",
   "mechanism": "unreviewed GHSA-4pqr / CVE-2026-13591 names Mysti 0.4.0 _isTrackedConversation channel-scope"
  },
  "GHSA-RP72-5V5Q-2446": {
@@ -1072,7 +1072,7 @@
   "mechanism": "MCP server v0.1.x (GHSA-rp72-5v5q-2446) combines three flaws: (1) no spending limits - a connected client can request arbitrarily large payments from the wallet; (2) HTTP transports (Streamable/SSE) bind 0.0.0.0 with no authentication, exposing wallet-triggering endpoints on all"
  },
  "GHSA-Q6RR-FM2G-G5X8": {
-  "summary": "Scriban's array multiplication skipped the LoopLimit and overflow checks, letting a tiny template trigger a multi-gigabyte allocation denial-of-service.",
+  "summary": "Copilot-assisted limits still skipped array multiplication, so a tiny Scriban template could allocate gigabytes and deny service.",
   "mechanism": "array multiplication misses loop limit"
  },
  "ALIAS-DA613206A4E663837E4C6661": {
@@ -1176,8 +1176,8 @@
   "mechanism": "@kozou/mcp Streamable HTTP 1) Host/Origin DNS rebinding / MCP schema 2) (chunked/ Content-Length )3) err.message 7c3ae2e3(#163) DNS-rebinding guardmaxBodyBytes 1MiB 500 dev stack loopbacksink: node http server (handleRequest/handleMcp/respondError)guard"
  },
  "GHSA-F9M7-VC86-P6JJ": {
-  "summary": "The qbee transport release contains the advisory-described security flaw, but with no auditable source history available to determine the exact faulty AI-written code or its full impact.",
-  "mechanism": "qbee transport has the advisory-described security flaw in the affected release range; no auditable source history was available."
+  "summary": "Claude-coauthored tar extraction failed to exclude link-based targets before truncating files, allowing a crafted archive to overwrite arbitrary files.",
+  "mechanism": "Claude-coauthored extraction code opened regular tar entries with truncation after only lexical path checks. An earlier symlink entry could redirect that open outside the extraction directory; the fix rejects existing link targets and creates new files exclusively."
  },
  "ALIAS-8545A65A3D21EA7AB297AB66": {
   "summary": "The qbee transport release contains the advisory-described security flaw, but with no auditable source history available to determine the exact faulty AI-written code or its full impact.",
@@ -1204,7 +1204,7 @@
   "mechanism": "SSRF guard _host_is_blocked/_validate_url in spider_tools.py validates literal IP encodings only and never resolves DNS; any hostname whose A/AAAA record points at loopback/private/metadata addresses passes validation and the request is issued"
  },
  "GHSA-VXGJ-XG5C-P4H7": {
-  "summary": "The SSRF guard in spider_tools.py only validates literal IPs without DNS resolution, so hostnames resolving to loopback/private/metadata addresses bypass checks and requests are issued.",
+  "summary": "Claude-bot code checked SSRF targets without DNS resolution, so hostnames resolving to private, loopback, or metadata addresses could bypass the guard.",
   "mechanism": "SSRF guard _host_is_blocked/_validate_url in spider_tools.py validates literal IP encodings only and never resolves DNS; any hostname whose A/AAAA record points at loopback/private/metadata addresses passes validation and the request is issued"
  },
  "ALIAS-D6C20DFCC532FA83EB45816B": {
@@ -1232,7 +1232,7 @@
   "mechanism": "LinearBot webhook signature fail-open: LinearBot in src/praisonai/praisonai/bots/linear.py started a public webhook listener on 0.0.0.0 and silently skipped Linear-Signature HMAC verification when LINEAR_WEBHOOK_SECRET was unset, allowing unauthenticated network callers to forge"
  },
  "GHSA-FC26-M9PF-V56Q": {
-  "summary": "LinearBot skipped Linear-Signature HMAC verification when LINEAR_WEBHOOK_SECRET was unset, letting unauthenticated callers forge webhooks to trigger agent executions and comment posting.",
+  "summary": "Claude-generated Linear webhook code skipped signature checks when the secret was unset, letting unauthenticated callers trigger agents and post comments.",
   "mechanism": "LinearBot webhook signature fail-open: LinearBot in src/praisonai/praisonai/bots/linear.py started a public webhook listener on 0.0.0.0 and silently skipped Linear-Signature HMAC verification when LINEAR_WEBHOOK_SECRET was unset, allowing unauthenticated network callers to forge"
  },
  "GHSA-F38V-77QJ-H4JQ": {
@@ -1248,28 +1248,28 @@
   "mechanism": "praisonai-platform 0.1.4 still boots on the hardcoded JWT secret dev-secret-change-me (default-open production guard)"
  },
  "ALIAS-8EFF3FC4B483B48C2CEB498E": {
-  "summary": "AI-written code made SandlockSandbox fail open by silently falling back to SubprocessSandbox without enforcing the filesystem allowlist or network=False boundary when Landlock is unavailable, allowing sandboxed payloads to read/write outside allowed paths and open network connections.",
-  "mechanism": "SandlockSandbox fails open: when the sandlock module reports Landlock unavailable, execute()/run_command() silently fall back to SubprocessSandbox, keeping the native SecurityPolicy object but not enforcing the configured filesystem allowlist or network=False boundary, so sandbox"
+  "summary": "Cursor-assisted authentication code let disabled mode bypass token verification for requests from any host. A remote caller could invoke agents without a credential.",
+  "mechanism": "The agent-invocation API skipped token verification whenever disabled mode was selected, regardless of request origin. The fix restricted disabled authentication to loopback-bound requests and stopped advertising the bypass in errors."
  },
  "GHSA-8CCJ-P46R-JWQQ": {
-  "summary": "AI-written code made SandlockSandbox fail open by silently falling back to SubprocessSandbox without enforcing the filesystem allowlist or network=False boundary when Landlock is unavailable, allowing sandboxed payloads to read/write outside allowed paths and open network connections.",
-  "mechanism": "SandlockSandbox fails open: when the sandlock module reports Landlock unavailable, execute()/run_command() silently fall back to SubprocessSandbox, keeping the native SecurityPolicy object but not enforcing the configured filesystem allowlist or network=False boundary, so sandbox"
+  "summary": "Cursor-assisted authentication code let disabled mode bypass token verification for requests from any host. A remote caller could invoke agents without a credential.",
+  "mechanism": "The agent-invocation API skipped token verification whenever disabled mode was selected, regardless of request origin. The fix restricted disabled authentication to loopback-bound requests and stopped advertising the bypass in errors."
  },
  "CVE-2026-57132": {
-  "summary": "AI-written code made SandlockSandbox fail open by silently falling back to SubprocessSandbox without enforcing the filesystem allowlist or network=False boundary when Landlock is unavailable, allowing sandboxed payloads to read/write outside allowed paths and open network connections.",
-  "mechanism": "SandlockSandbox fails open: when the sandlock module reports Landlock unavailable, execute()/run_command() silently fall back to SubprocessSandbox, keeping the native SecurityPolicy object but not enforcing the configured filesystem allowlist or network=False boundary, so sandbox"
+  "summary": "Cursor-assisted authentication code let disabled mode bypass token verification for requests from any host. A remote caller could invoke agents without a credential.",
+  "mechanism": "The agent-invocation API skipped token verification whenever disabled mode was selected, regardless of request origin. The fix restricted disabled authentication to loopback-bound requests and stopped advertising the bypass in errors."
  },
  "CVE-2026-57144": {
-  "summary": "AI-written code made an env var unconditionally bypass token verification on the agent invoke API, leaving it fully open when set.",
-  "mechanism": "PRAISONAI_CALL_AUTH=disabled env var unconditionally disables auth on POST /api/v1/agents/{id}/invoke: _CALL_AUTH_DISABLED module constant makes verify_token return immediately for any request, and the 503 error message itself advertises the bypass, so it leaks into production do"
+  "summary": "Copilot-assisted sandbox code silently fell back to a weaker subprocess backend when Landlock was unavailable. Sandboxed code could then access files or networks outside configured limits.",
+  "mechanism": "When Landlock was unavailable, the sandbox silently delegated execution to a subprocess backend that did not enforce the configured filesystem allowlist or network restriction. The fix removed that implicit downgrade and failed closed."
  },
  "GHSA-6JCQ-6546-QRRW": {
-  "summary": "AI-written code made an env var unconditionally bypass token verification on the agent invoke API, leaving it fully open when set.",
-  "mechanism": "PRAISONAI_CALL_AUTH=disabled env var unconditionally disables auth on POST /api/v1/agents/{id}/invoke: _CALL_AUTH_DISABLED module constant makes verify_token return immediately for any request, and the 503 error message itself advertises the bypass, so it leaks into production do"
+  "summary": "Copilot-assisted sandbox code silently fell back to a weaker subprocess backend when Landlock was unavailable. Sandboxed code could then access files or networks outside configured limits.",
+  "mechanism": "When Landlock was unavailable, the sandbox silently delegated execution to a subprocess backend that did not enforce the configured filesystem allowlist or network restriction. The fix removed that implicit downgrade and failed closed."
  },
  "ALIAS-9638CEDAB2290AB95B10127C": {
-  "summary": "AI-written code made an env var unconditionally bypass token verification on the agent invoke API, leaving it fully open when set.",
-  "mechanism": "PRAISONAI_CALL_AUTH=disabled env var unconditionally disables auth on POST /api/v1/agents/{id}/invoke: _CALL_AUTH_DISABLED module constant makes verify_token return immediately for any request, and the 503 error message itself advertises the bypass, so it leaks into production do"
+  "summary": "Copilot-assisted sandbox code silently fell back to a weaker subprocess backend when Landlock was unavailable. Sandboxed code could then access files or networks outside configured limits.",
+  "mechanism": "When Landlock was unavailable, the sandbox silently delegated execution to a subprocess backend that did not enforce the configured filesystem allowlist or network restriction. The fix removed that implicit downgrade and failed closed."
  },
  "GHSA-4PCV-MG8V-VRGF": {
   "summary": "AI-written code passed an attacker-controlled searxng_url directly into requests.get without validating scheme, host, or port, enabling SSRF to internal endpoints.",
@@ -1284,7 +1284,7 @@
   "mechanism": "PraisonAI SearxNG SSRF via unvalidated searxng_url: searxng_search() in searxng_tools.py and _search_searxng() in web_search.py accepted an attacker-controlled searxng_url parameter and issued requests.get(url, ...) without validating scheme, host, or port, allowing agents proces"
  },
  "GHSA-2C85-RFCC-G74J": {
-  "summary": "MockHandler evaluates embedded expressions from attacker-controlled request data with the full Java bridge enabled, causing remote code execution.",
+  "summary": "Claude-generated mock-server code evaluated attacker-controlled request expressions with the full Java bridge, enabling remote code execution.",
   "mechanism": "Mock Server RCE via embedded expression evaluation of request-derived data (GHSA-2c85-rfcc-g74j, CWE-20/502/915): MockHandler binds attacker-controlled request/requestHeaders/requestParams into the JS engine, and def/response processing (StepExecutor.processEmbeddedExpressions) r"
  },
  "ALIAS-70303C93C85D55D590BAA876": {
@@ -1440,7 +1440,7 @@
   "mechanism": "SSRF alternate loopback encodings"
  },
  "GHSA-5C6W-WWFQ-7QQM": {
-  "summary": "PraisonAI's spider_tools URL validation only blocks exact loopback strings and fails to normalize or resolve hosts, allowing SSRF via alternate loopback encodings.",
+  "summary": "Cursor-assisted SSRF validation blocked only literal loopback names, so alternate IP encodings could reach internal services.",
   "mechanism": "SSRF alternate loopback encodings"
  },
  "ALIAS-4993DDDE0EF3F6E023CCA94A": {
@@ -1472,7 +1472,7 @@
   "mechanism": "First writer of the vulnerable behavior: commit 95b6bd5df62bfa4e343e83018f26189dc18040d8 'Harden agent attack surface: scan writes to memory, skills, cron, and context files' (2026-02-25, Raeli Savitt <raelisavitt@macbookpro.mynetworksettings.com>, author=committer) added _CONTEX"
  },
  "GHSA-PGP4-XR4J-H5CG": {
-  "summary": "The AI-written prompt-injection blocklist regex only matched single-keyword phrases, allowing multi-word variants in auto-loaded context files to bypass scanning and inject instructions into the LLM system prompt.",
+  "summary": "Claude-coauthored prompt scanning matched only simple phrases, so multi-word injections in auto-loaded project files could alter the agent's system prompt.",
   "mechanism": "First writer of the vulnerable behavior: commit 95b6bd5df62bfa4e343e83018f26189dc18040d8 'Harden agent attack surface: scan writes to memory, skills, cron, and context files' (2026-02-25, Raeli Savitt <raelisavitt@macbookpro.mynetworksettings.com>, author=committer) added _CONTEX"
  },
  "ALIAS-FA56AF7F270EE4DFC8FF3CF8": {
@@ -1544,7 +1544,7 @@
   "mechanism": "n8n-MCP: Workflow telemetry sanitizer could retain partial values from URL-shaped node parameters. Sink: dist/telemetry/event-validator.d.ts."
  },
  "GHSA-WXW3-Q3M9-C3JR": {
-  "summary": "OAuth cookie-stored state was decrypted and parsed without comparing it to the callback state parameter, allowing OAuth CSRF/state mismatch.",
+  "summary": "Copilot-coauthored OAuth cookie handling decrypted state but never compared it with the callback value, allowing state mismatch and OAuth CSRF.",
   "mechanism": "packages/better-auth/src/oauth2/state.ts cookie branch (storeStateStrategy === 'cookie'): BIC b5f3bad633d8ae79fd5ffbb35ec2a39afdfc2f5e (2025-10-21, Alex Yang, 'feat: add `storeStateStrategy` (#5470)', Co-authored-by: Copilot <175728472+Copilot@users.noreply.github.com>) first wro"
  },
  "ALIAS-F0B371318E30448B9A250D8A": {
@@ -1552,11 +1552,11 @@
   "mechanism": "packages/better-auth/src/oauth2/state.ts cookie branch (storeStateStrategy === 'cookie'): BIC b5f3bad633d8ae79fd5ffbb35ec2a39afdfc2f5e (2025-10-21, Alex Yang, 'feat: add `storeStateStrategy` (#5470)', Co-authored-by: Copilot <175728472+Copilot@users.noreply.github.com>) first wro"
  },
  "CVE-2026-46383": {
-  "summary": "AI-written code in local_bundle.py allowed a Windows absolute-path tar member to overwrite files during legacy-bundle probing in `apm install`.",
+  "summary": "AI-written archive extraction accepted Windows absolute-path entries while probing legacy bundles, allowing file overwrite during apm install.",
   "mechanism": "Microsoft APM: Windows absolute-path tar member overwrite during legacy-bundle probing in apm install. Sink: src/apm_cli/bundle/local_bundle.py."
  },
  "ALIAS-5215E36F51CB38D13F3063BA": {
-  "summary": "AI-written code in local_bundle.py allowed a Windows absolute-path tar member to overwrite files during legacy-bundle probing in `apm install`.",
+  "summary": "AI-written archive extraction accepted Windows absolute-path entries while probing legacy bundles, allowing file overwrite during apm install.",
   "mechanism": "Microsoft APM: Windows absolute-path tar member overwrite during legacy-bundle probing in apm install. Sink: src/apm_cli/bundle/local_bundle.py."
  },
  "ALIAS-CE739B4C84E161AEF6FA82AB": {
@@ -1568,7 +1568,7 @@
   "mechanism": "XML node prototype-pollution patch bypass: the GHSA-hqr4-h3xv-9m3r patch validated `String(options.attrkey ?? '')` / charkey against forbidden keys but forwarded the raw (uncoerced) options object to xml2js Parser/Builder; a stateful non-string value (toString() returning a safe"
  },
  "GHSA-WRWR-H859-XH2R": {
-  "summary": "The patch validated stringified option keys but forwarded the raw object, letting a stateful toString bypass checks and restore prototype pollution to RCE.",
+  "summary": "Cursor-assisted XML validation checked a string view but forwarded the raw object. Stateful coercion could bypass the patch and restore prototype-pollution RCE.",
   "mechanism": "XML node prototype-pollution patch bypass: the GHSA-hqr4-h3xv-9m3r patch validated `String(options.attrkey ?? '')` / charkey against forbidden keys but forwarded the raw (uncoerced) options object to xml2js Parser/Builder; a stateful non-string value (toString() returning a safe"
  },
  "ALIAS-E185A69FDF0F5A626F9BC3D0": {
@@ -1644,11 +1644,11 @@
   "mechanism": "gateway assertGatewayConfigMutationAllowed 400+ hook gateway isRemoteGatewayTargetForAgentTools SSH //plugin auto-enable collectEnabledInsecureOrDangerousFlags set-diff hook gateway gateway fe30b31a (#69377) PROTECTED_GATEWAY_CONFIG_PATHSagents.list[].sandbox/toolsgateway.auth/tl"
  },
  "ALIAS-606FFD0FE0D4ADB8A222028F": {
-  "summary": "AI-written SSRF in mlflow/environment_variables.py allowed attacker-controlled URLs to be fetched server-side, exposing internal services and data.",
+  "summary": "AI-written webhook dispatch sent requests to attacker-controlled URLs without destination validation, exposing internal services and data.",
   "mechanism": "Server-Side Request Forgery (SSRF) in mlflow/mlflow. Sink: mlflow/environment_variables.py."
  },
  "CVE-2026-2393": {
-  "summary": "AI-written SSRF in mlflow/environment_variables.py allowed attacker-controlled URLs to be fetched server-side, exposing internal services and data.",
+  "summary": "AI-written webhook dispatch sent requests to attacker-controlled URLs without destination validation, exposing internal services and data.",
   "mechanism": "Server-Side Request Forgery (SSRF) in mlflow/mlflow. Sink: mlflow/environment_variables.py."
  },
  "GHSA-R48C-V28R-PF6V": {
@@ -1672,15 +1672,15 @@
   "mechanism": "n8n-mcp affected by path traversal, redirect-following SSRF, and telemetry payload exposure"
  },
  "ALIAS-32624290DED12D479653D429": {
-  "summary": "AI-written code in IArchive.WriteToDirectory() failed to validate directory entry paths, allowing path traversal that can create directories outside the intended root and, with symlink chaining, enable arbitrary file writes.",
+  "summary": "Copilot SWE-agent added an asynchronous archive-extraction path without validating directory-entry names. Traversal, combined with symlinks, could write outside the target root.",
   "mechanism": "SharpCompress has directory traversal via directory entries in WriteToDirectory (zip slip variant)"
  },
  "GHSA-6C8G-7P36-R338": {
-  "summary": "AI-written code in IArchive.WriteToDirectory() failed to validate directory entry paths, allowing path traversal that can create directories outside the intended root and, with symlink chaining, enable arbitrary file writes.",
+  "summary": "Copilot SWE-agent added archive extraction without validating directory-entry paths, allowing traversal and, with symlinks, writes outside the target root.",
   "mechanism": "SharpCompress has directory traversal via directory entries in WriteToDirectory (zip slip variant)"
  },
  "CVE-2026-44788": {
-  "summary": "AI-written code in IArchive.WriteToDirectory() failed to validate directory entry paths, allowing path traversal that can create directories outside the intended root and, with symlink chaining, enable arbitrary file writes.",
+  "summary": "Copilot SWE-agent added an asynchronous archive-extraction path without validating directory-entry names. Traversal, combined with symlinks, could write outside the target root.",
   "mechanism": "SharpCompress has directory traversal via directory entries in WriteToDirectory (zip slip variant)"
  },
  "CVE-2026-44427": {
@@ -1724,7 +1724,7 @@
   "mechanism": "discover_pipeline_files followed directory and file symlinks outside the requested scan root, allowing a planted link to expose pipeline-shaped files and subsequent contents from outside the root."
  },
  "GHSA-8CXW-CC62-Q28V": {
-  "summary": "discover_pipeline_files followed symlinks outside the requested scan root, letting a planted link expose pipeline-shaped files and their contents from outside the root.",
+  "summary": "Claude-coauthored pipeline discovery followed symlinks outside the scan root, allowing a planted link to expose external files and their contents.",
   "mechanism": "discover_pipeline_files followed directory and file symlinks outside the requested scan root, allowing a planted link to expose pipeline-shaped files and subsequent contents from outside the root."
  },
  "CVE-2026-44220": {
@@ -1980,7 +1980,7 @@
   "mechanism": "Approval/decision endpoints accepted client-supplied decidedByUserId and wrote it as the authoritative actor, forging the governance audit trail."
  },
  "GHSA-P7MM-R948-4Q3Q": {
-  "summary": "Approval endpoints trusted client-supplied decidedByUserId and recorded it as the actor, letting users forge governance audit entries.",
+  "summary": "Claude-coauthored approval endpoints trusted a caller-supplied actor ID, letting users forge who approved a governance decision in the audit trail.",
   "mechanism": "Approval/decision endpoints accepted client-supplied decidedByUserId and wrote it as the authoritative actor, forging the governance audit trail."
  },
  "ALIAS-6D7148C5065803B623DF7041": {
@@ -2024,7 +2024,7 @@
   "mechanism": "gcloud argument injection: deploy.py builds '--set-env-vars' f-string OPENAI_MODEL_NAME=...,OPENAI_API_KEY=...,OPENAI_API_BASE=... from env values with no comma validation; a comma in any value makes gcloud parse trailing text as extra KEY=VALUE pairs, injecting arbitrary env var"
  },
  "GHSA-FVXX-GGMX-3CJG": {
-  "summary": "AI-written deploy.py concatenates user-controlled env values into a gcloud --set-env-vars argument without validating commas, allowing arbitrary environment variable injection into the deployed Cloud Run service.",
+  "summary": "Claude-bot deployment code let commas in settings become extra Cloud Run environment variables, allowing configuration injection during deployment.",
   "mechanism": "gcloud argument injection: deploy.py builds '--set-env-vars' f-string OPENAI_MODEL_NAME=...,OPENAI_API_KEY=...,OPENAI_API_BASE=... from env values with no comma validation; a comma in any value makes gcloud parse trailing text as extra KEY=VALUE pairs, injecting arbitrary env var"
  },
  "ALIAS-AD4422C93367E1EC0FCB4D5E": {
@@ -2176,7 +2176,7 @@
   "mechanism": "OpenClaw: Heartbeat context inheritance bypasses sandbox via senderIsOwner escalation"
  },
  "GHSA-G5CG-8X5W-7JPM": {
-  "summary": "A sandbox escape in openclaw allowed heartbeat context inheritance to escalate senderIsOwner, enabling unauthorized privilege escalation in versions through 2026.3.28.",
+  "summary": "Claude-coauthored heartbeat code inherited owner status across a sandbox boundary, allowing an untrusted sender to gain owner-level privileges.",
   "mechanism": "OpenClaw: Heartbeat context inheritance bypasses sandbox via senderIsOwner escalation"
  },
  "CVE-2026-41365": {
@@ -2184,7 +2184,7 @@
   "mechanism": "Commit 8c852d86f759bc769dfdb070ce568b91c30f2b67 (2026-03-25, 'msteams: fetch thread history via Graph API for channel replies (#51643)', GitHub squash of PR #51643, author sudie-codes <suvenkat95@gmail.com>, committer GitHub) is the minimum atomic introducer: it added the Graph A"
  },
  "GHSA-CHFM-XGC4-47RJ": {
-  "summary": "The AI-written code fetched full thread history via Graph API and injected all parent and reply messages into the model context without sender allowlist enforcement, allowing unauthorized senders to influence channel replies.",
+  "summary": "Claude-coauthored Teams reply code copied unfiltered thread history into the model context, letting blocked senders influence channel replies.",
   "mechanism": "Commit 8c852d86f759bc769dfdb070ce568b91c30f2b67 (2026-03-25, 'msteams: fetch thread history via Graph API for channel replies (#51643)', GitHub squash of PR #51643, author sudie-codes <suvenkat95@gmail.com>, committer GitHub) is the minimum atomic introducer: it added the Graph A"
  },
  "ALIAS-3DE20442D5AE44530A898AB0": {
@@ -2300,7 +2300,7 @@
   "mechanism": "SSRF in opt-in clerkFrontendApiProxy: proxy target URL built with new URL(targetPath, fapiBaseUrl), so a request path like /__clerk//evil.com/steal resolves protocol-relatively to attacker-controlled host; proxy then forwards Clerk-Secret-Key header to that host (leak of secret k"
  },
  "GHSA-GJXX-92W9-8V8F": {
-  "summary": "The AI-written code built a proxy URL with `new URL(targetPath, fapiBaseUrl)`, allowing paths like `/__clerk//evil.com/steal` to resolve to an attacker-controlled host and leak the `Clerk-Secret-Key` header.",
+  "summary": "Claude-coauthored proxy code could treat a crafted path as a new host and forward the application's Clerk secret key to that host.",
   "mechanism": "SSRF in opt-in clerkFrontendApiProxy: proxy target URL built with new URL(targetPath, fapiBaseUrl), so a request path like /__clerk//evil.com/steal resolves protocol-relatively to attacker-controlled host; proxy then forwards Clerk-Secret-Key header to that host (leak of secret k"
  },
  "ALIAS-CA1D9B49A71FDDC2BD6F4D93": {
@@ -2396,7 +2396,7 @@
   "mechanism": "minimum atomic introducer is commit 403ccf079be0ee5e6660f0ed2fa64174d76eff2f (2025-11-21, nairdahh <nn.adrian28@gmail.com>, 'Add Logs viewer page with connection status indicators'): a large commit (+1132 lines in web/script.js) that created populateJellyseerrUserSelect() and sel"
  },
  "GHSA-QPMQ-6WJC-W28Q": {
-  "summary": "Stored XSS in the User Mapping dropdown lets any guild user run JavaScript in the admin's browser and exfiltrate all secrets from /api/config.",
+  "summary": "Claude-generated UI code rendered user-controlled names as HTML. A guild user could run script in an admin's browser and steal exposed service secrets.",
   "mechanism": "A Claude commit whose subject is unrelated (logs viewer) can still be the first introduction of the named XSS sink; match the hunk, not the subject. Recover 404 global GHSAs from the first-party repo advisory."
  },
  "CVE-2026-32890": {
@@ -2464,16 +2464,16 @@
   "mechanism": "Cypher/RediSearch injection: _build_neo4j_fulltext_query and FalkorDriver.build_fulltext_query interpolate unvalidated group_ids into the query string (neo4j: group_id:\"{g}\", falkordb: (@group_id:{gid})); attacker-controlled group_ids can escape with quotes/special chars. Fix 7d6"
  },
  "GHSA-V9V4-F5WM-PHH4": {
-  "summary": "Sensitive-data logging was introduced in AI-generated commit eba7d2efe, causing v2.1.2 to log sensitive information.",
-  "mechanism": "The sensitive-data logging was introduced at the advisory-pinned release commit eba7d2efe0a5f37670ffe2f0f2ff91677cb9d735 (v2.1.2, the ONLY version in the OSV affected range, 'introduced' == 'last_affected' == eba7d2efe): commit message is '🤖 Generated with Claude Code' + Co-Autho"
+  "summary": "Claude-generated logging code wrote upload credentials and signed request URLs to debug output. Anyone able to read the logs could recover sensitive tokens and request data.",
+  "mechanism": "The sensitive-data logging entered with the AI-written change released in v2.1.2, the only version inside the affected range, and persisted for that entire version."
  },
  "ALIAS-010F70C5D8FA86368C907FCE": {
-  "summary": "Sensitive-data logging was introduced in AI-generated commit eba7d2efe, causing v2.1.2 to log sensitive information.",
-  "mechanism": "The sensitive-data logging was introduced at the advisory-pinned release commit eba7d2efe0a5f37670ffe2f0f2ff91677cb9d735 (v2.1.2, the ONLY version in the OSV affected range, 'introduced' == 'last_affected' == eba7d2efe): commit message is '🤖 Generated with Claude Code' + Co-Autho"
+  "summary": "Claude-generated logging code wrote upload credentials and signed request URLs to debug output. Anyone able to read the logs could recover sensitive tokens and request data.",
+  "mechanism": "The sensitive-data logging entered with the AI-written change released in v2.1.2, the only version inside the affected range, and persisted for that entire version."
  },
  "CVE-2025-70040": {
-  "summary": "Sensitive-data logging was introduced in AI-generated commit eba7d2efe, causing v2.1.2 to log sensitive information.",
-  "mechanism": "The sensitive-data logging was introduced at the advisory-pinned release commit eba7d2efe0a5f37670ffe2f0f2ff91677cb9d735 (v2.1.2, the ONLY version in the OSV affected range, 'introduced' == 'last_affected' == eba7d2efe): commit message is '🤖 Generated with Claude Code' + Co-Autho"
+  "summary": "Claude-generated logging code wrote upload credentials and signed request URLs to debug output. Anyone able to read the logs could recover sensitive tokens and request data.",
+  "mechanism": "The sensitive-data logging entered with the AI-written change released in v2.1.2, the only version inside the affected range, and persisted for that entire version."
  },
  "GHSA-HHJV-JQ77-CMVX": {
   "summary": "Android's AI-written device_shell blocklist only checked literal substrings, so permuted destructive commands like `rm -fr` bypassed it and reached the device.",
@@ -2488,7 +2488,7 @@
   "mechanism": "zeptoclaw has Shell allowlist-blocklist bypass via command/argument injection and file name wildcards"
  },
  "GHSA-5WP8-Q9MX-8JX8": {
-  "summary": "zeptoclaw’s shell allowlist/blocklist can be bypassed via command/argument injection and file-name wildcards, allowing attackers to execute malicious commands even in Strict mode.",
+  "summary": "Claude-coauthored shell restrictions were incomplete, so command arguments and filename wildcards could still execute blocked commands in Strict mode.",
   "mechanism": "zeptoclaw has Shell allowlist-blocklist bypass via command/argument injection and file name wildcards"
  },
  "GHSA-Q6QF-4P5J-R25G": {
@@ -2552,7 +2552,7 @@
   "mechanism": "Upstream Claude root 4286755f grants allowFrom on mutable senderName. OpenClaw parent 02842bef of import 2267d58a is ID-only. Import copies the name grant into extensions/feishu. Fix 4ed87a66 is ID-only. Not origin of the upstream plugin bug."
  },
  "GHSA-HFF7-CCV5-52F8": {
-  "summary": "Tokenless Tailscale auth intended only for Control UI websocket auth was also applied to HTTP gateway routes, allowing attackers on trusted networks to bypass token/password requirements.",
+  "summary": "Claude-coauthored HTTP gateway code reused tokenless Tailscale UI trust, letting attackers on trusted networks bypass token or password checks.",
   "mechanism": "OpenClaw's gateway tokenless Tailscale auth applied to HTTP routes"
  },
  "ALIAS-81F12ADB7F1B7AE03D0C07F1": {
@@ -2608,7 +2608,7 @@
   "mechanism": "Entity-controlled high-rate writes -> one DynamoDB partition for every bucket of that entity; invariant: bucket writes must spread across independently shardable partition keys before the per-partition WCU ceiling is reached."
  },
  "GHSA-76RV-2R9V-C5M6": {
-  "summary": "AI-written code keyed all rate limit buckets for one entity under a single DynamoDB partition, allowing high-traffic entities to hit per-partition throughput limits and throttle service for that entity and co-located tenants.",
+  "summary": "Claude-coauthored rate limiting put one customer's writes on one DynamoDB partition, so heavy traffic could throttle that customer and nearby tenants.",
   "mechanism": "Entity-controlled high-rate writes -> one DynamoDB partition for every bucket of that entity; invariant: bucket writes must spread across independently shardable partition keys before the per-partition WCU ceiling is reached."
  },
  "CVE-2026-27203": {
@@ -2708,7 +2708,7 @@
   "mechanism": "Recover null ledger identity from GHSA+git; a shared Feishu fix can cover local-path and SSRF as distinct mechanisms, and leftover createReadStream(string) narrows reversal."
  },
  "CVE-2026-28473": {
-  "summary": "The AI-written /approve command invoked exec.approval.resolve through a privileged internal client that only checked isAuthorizedSender, letting operator.write-only users bypass authorization and approve or deny pending exec approvals.",
+  "summary": "Claude-coauthored approval code used a privileged internal client, letting users limited to operator.write approve or deny command executions.",
   "mechanism": "OpenClaw authorization bypass: a gateway client scoped only to operator.write can approve/deny pending exec approvals via the /approve chat command. exec.approval.resolve is correctly scoped for direct RPC, but the /approve command path invoked it via an internal privileged gatew"
  },
  "ALIAS-DBE3AF76EF839C90EA4540AB": {
@@ -2804,19 +2804,19 @@
   "mechanism": "openBrowser() in auth.js uses child_process.exec() with unescaped URL interpolation: exec(`${command} \"${url}\"`); attacker-controlled oauth_token in the OAuth authorize URL can inject shell commands (e.g. '\"; touch /tmp/pwned #') executed in the MCP server process (local privileg"
  },
  "ALIAS-6CC43B070D8C0D98AB41F2C2": {
-  "summary": "The AI-written download_workflow in api_server.py fails to sanitize paths, letting attackers read arbitrary files via directory traversal.",
+  "summary": "AI-written workflow-download code failed to confine caller-controlled filenames to the workflow directory, allowing arbitrary file reads through traversal.",
   "mechanism": "fetch_error: candidate: HTTP 403: error: too big or took too long to generate"
  },
  "GHSA-C7RR-QHWX-6Q49": {
-  "summary": "The AI-written download_workflow in api_server.py fails to sanitize paths, letting attackers read arbitrary files via directory traversal.",
+  "summary": "AI-written workflow-download code failed to confine caller-controlled filenames to the workflow directory, allowing arbitrary file reads through traversal.",
   "mechanism": "fetch_error: candidate: HTTP 403: error: too big or took too long to generate"
  },
  "CVE-2025-55526": {
-  "summary": "The AI-written download_workflow in api_server.py fails to sanitize paths, letting attackers read arbitrary files via directory traversal.",
+  "summary": "AI-written workflow-download code failed to confine caller-controlled filenames to the workflow directory, allowing arbitrary file reads through traversal.",
   "mechanism": "fetch_error: candidate: HTTP 403: error: too big or took too long to generate"
  },
  "GHSA-VH5J-5FHQ-9XWG": {
-  "summary": "A race condition between the SELECT and UPDATE in /get-patch lets two simultaneous requests reuse the same purchase token.",
+  "summary": "Jules AI code checked and consumed purchase tokens in separate queries, so simultaneous requests could reuse one token and download a paid patch twice.",
   "mechanism": "Taylor has race condition in /get-patch that allows purchase token replay"
  },
  "ALIAS-F2C6E699F63934AB4A567432": {
@@ -2824,11 +2824,47 @@
   "mechanism": "Taylor has race condition in /get-patch that allows purchase token replay"
  },
  "ALIAS-A57DF415A930E4DB1EF3B6F7": {
-  "summary": "AI-written code in taylored 7.0.7's backend template allowed arbitrary file reads, patch downloads without purchase, and weakened encryption.",
-  "mechanism": "Taylored webhook validation vulnerabilities"
+  "summary": "Google Jules-created backend code trusted unverified PayPal webhook bodies, so attackers could mark purchases complete without a valid PayPal signature.",
+  "mechanism": "The AI-created PayPal webhook accepted purchase status directly from the request body. The fix verifies the transmission with PayPal before recording a completed purchase."
  },
  "GHSA-8G98-M4J9-QWW5": {
-  "summary": "AI-written code in taylored 7.0.7's backend template allowed arbitrary file reads, patch downloads without purchase, and weakened encryption.",
-  "mechanism": "Taylored webhook validation vulnerabilities"
+  "summary": "Google Jules-created backend code trusted unverified PayPal webhook bodies, so attackers could mark purchases complete without a valid PayPal signature.",
+  "mechanism": "The AI-created PayPal webhook accepted purchase status directly from the request body. The fix verifies the transmission with PayPal before recording a completed purchase."
+ },
+ "GHSA-Q8HH-M6V5-4F3X": {
+  "summary": "Cursor-assisted access-control code let ordinary session tokens skip admin-only scope checks. A signed-in non-admin could read user records and system logs; separate code caused the advisory's other exposed routes."
+ },
+ "GHSA-HW36-J4Q7-VJXX": {
+  "summary": "Claude-assisted code let requests select DeepStream GPU decoding and control a shared pool without the normal frame-size limit. An unauthenticated client could starve other requests."
+ },
+ "GHSA-H5RM-9FHH-5PHJ": {
+  "summary": "Claude-coauthored schema loading used an untrusted node type as a module path. An authenticated n8n member could traverse directories and execute code in the main process."
+ },
+ "GHSA-2664-HR5V-554W": {
+  "summary": "Claude-assisted sandbox code left JavaScript function prototypes mutable. An authenticated workflow author could combine that flaw with an allowed import to escape the sandbox."
+ },
+ "GHSA-JJ45-W38G-GFRJ": {
+  "summary": "Copilot SWE-agent changed wildcard escaping without matching native PostgreSQL SQL, so unauthenticated searches could force broad scans and degrade availability."
+ },
+ "GHSA-GVQ9-CMXR-844M": {
+  "summary": "Claude-coauthored key-server code accepted any non-empty bearer token, allowing unauthenticated upload of attacker-controlled, self-signed key bundles."
+ },
+ "GHSA-C7VW-VFXJ-3MVH": {
+  "summary": "Claude-generated plugin guards omitted dangerous Python modules. A plugin that bypassed the static scan could import them and escape the sandbox."
+ },
+ "GHSA-723W-CRW6-P9HX": {
+  "summary": "Claude-coauthored key-bundle code allowed conversion without signature verification, which could make callers encrypt data to an attacker-controlled key."
+ },
+ "GHSA-QGP8-V765-QXX9": {
+  "summary": "Claude-implemented PKCE checked a verifier only when a challenge was already stored. Removing the challenge could downgrade the authorization flow and bypass PKCE."
+ },
+ "GHSA-4PC9-X2FX-P7VJ": {
+  "summary": "Claude-generated OAuth code accepted unregistered callback URLs, so an auto-approved authorization flow could send a live code to an attacker's site."
+ },
+ "GHSA-Q6QC-XP4Q-RJQ5": {
+  "summary": "Claude-coauthored code created an embedded control server with no authentication. Anyone who could reach it could invoke non-health command routes."
+ },
+ "GHSA-G8P2-7WF7-98MQ": {
+  "summary": "Claude-coauthored Control UI code auto-connected to a gateway URL from a crafted link, sending the user's stored gateway token to an attacker."
  }
 }

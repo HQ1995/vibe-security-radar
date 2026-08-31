@@ -1,0 +1,103 @@
+{
+  "schema_version": "independent-case-audit/v1",
+  "worker": "w040",
+  "review_agent_id": "round12-clean-w040",
+  "class_id": "alias-a7967367c198f0a1ddf4d3f8",
+  "case_id": "GHSA-q2h6-ghwm-5qm8",
+  "repo": "messagepack-csharp/messagepack-csharp",
+  "advisory_ids": [
+    "CVE-2026-48516",
+    "GHSA-q2h6-ghwm-5qm8"
+  ],
+  "input_binding": {
+    "bundle_sha256": "c27597acbbff7d03f1743bd30304a5bc9852cc4854148a6c6aba382fe8615665",
+    "clone_head_sha": "21f6e635d5b5a40ec82a0cd642b1d19b7d1fbe88"
+  },
+  "verdict": "NOT_AI",
+  "protocol_checks": {
+    "vulnerability_mechanism": {
+      "status": "PASS",
+      "evidence": [
+        "CVE Services record https://cveawg.mitre.org/api/cve/CVE-2026-48516 has cveMetadata.state=PUBLISHED and says versions before 2.5.301 and 3.0 through 3.1.6 use the default comparer instead of options.Security.GetEqualityComparer<TKey>(), enabling hash-collision CPU denial of service during untrusted ILookup deserialization.",
+        "The vendor advisory https://github.com/MessagePack-CSharp/MessagePack-CSharp/security/advisories/GHSA-q2h6-ghwm-5qm8 identifies InterfaceLookupFormatter<TKey,TElement>.Create as the affected API and lists patched versions 2.5.301 and 3.1.7.",
+        "In CollectionFormatterBase.Deserialize, the array header controls len, Create(len, options) creates the intermediate collection, and every deserialized grouping is passed to Add; InterfaceLookupFormatter.Add calls Dictionary.Add(value.Key, value), making the dictionary comparer the attacker-controlled-key sink."
+      ]
+    },
+    "atomic_bic": {
+      "status": "PASS",
+      "evidence": [
+        "GIT_NO_LAZY_FETCH=1 git log 19d9d34a8997abc18c07ca33043c62509e47ee3d --follow --reverse -S 'new Dictionary<TKey, IGrouping<TKey, TElement>>(count)' -- src/MessagePack/Formatters/SequenceFormatter.cs returns only 19d9d34a8997abc18c07ca33043c62509e47ee3d.",
+        "The direct 990135b7c628b5ed188d1598959c101f71323e7e..19d9d34a8997abc18c07ca33043c62509e47ee3d hunk adds InterfaceLookupFormatter and its default-comparer Dictionary constructor together; later path moves are not first writers."
+      ]
+    },
+    "immediate_parent_absence": {
+      "status": "PASS",
+      "evidence": [
+        "git cat-file -e verifies both 19d9d34a8997abc18c07ca33043c62509e47ee3d and immediate parent 990135b7c628b5ed188d1598959c101f71323e7e as commit objects.",
+        "GIT_NO_LAZY_FETCH=1 git grep in parent 990135b7c628b5ed188d1598959c101f71323e7e finds neither InterfaceLookupFormatter nor new Dictionary<TKey, IGrouping<TKey, TElement>>(count) in src/MessagePack/Formatters/SequenceFormatter.cs."
+      ]
+    },
+    "squash_member_decomposition": {
+      "status": "PASS",
+      "evidence": [
+        "Raw commit 19d9d34a8997abc18c07ca33043c62509e47ee3d has exactly one parent, 990135b7c628b5ed188d1598959c101f71323e7e, and directly adds the vulnerable class and constructor; it is not a merge, move, revert, or carrier commit.",
+        "The public first-writer object is itself the smallest reconstructable history member for this hunk, so no squash-member SHA replaces it and decomposed_shas remains empty."
+      ]
+    },
+    "affected_release_membership": {
+      "status": "PASS",
+      "evidence": [
+        "CVE-2026-48516's published CNA record declares <2.5.301 and >=3.0,<3.1.7 affected; the vendor advisory independently lists 2.5.301 and 3.1.7 as patched boundaries.",
+        "git merge-base --is-ancestor confirms BIC 19d9d34a8997abc18c07ca33043c62509e47ee3d is an ancestor of both v2.5.205 (81b03dcf09720d4a2a6b497f260195cfc70caffe) and v3.1.6 (3a020c238ad98c9d737c7dee8b8c091097ebcec8); both tag trees show the one-argument default-comparer Dictionary constructor."
+      ]
+    },
+    "fixed_release_membership": {
+      "status": "PASS",
+      "evidence": [
+        "git merge-base --is-ancestor confirms branch fix e97f71e7caff627e915a486f495f91a388c19276 is in v2.5.301 (5657b1e34ea2869a2ca6bc0aa6617158620201ba), whose tag tree uses options.Security.GetEqualityComparer<TKey>().",
+        "git merge-base --is-ancestor confirms branch fix f96fcf053fd2b22f4b13b0a68d8981fecc2fee1a is in v3.1.7 (1b53ae8b7681340199faf337bcbb0eb5aed702de), whose tag tree uses options.Security.GetEqualityComparer<TKey>().",
+        "Vendor release pages https://github.com/MessagePack-CSharp/MessagePack-CSharp/releases/tag/v2.5.301 and https://github.com/MessagePack-CSharp/MessagePack-CSharp/releases/tag/v3.1.7 explicitly associate e97f71e and f96fcf0 respectively with GHSA-q2h6-ghwm-5qm8."
+      ]
+    },
+    "direct_fix_or_unpatched": {
+      "status": "PASS",
+      "evidence": [
+        "Direct fix f96fcf053fd2b22f4b13b0a68d8981fecc2fee1a changes only InterfaceLookupFormatter.Create from new Dictionary(...)(count) to new Dictionary(...)(count, options.Security.GetEqualityComparer<TKey>()) on the 3.x line.",
+        "Direct backport e97f71e7caff627e915a486f495f91a388c19276 makes the identical one-line source-to-sink correction on the 2.5 line."
+      ]
+    },
+    "bic_only_ai_attribution": {
+      "status": "PASS",
+      "evidence": [
+        "The raw BIC object 19d9d34a8997abc18c07ca33043c62509e47ee3d records the same named author and committer identity, neuecc <ils@neue.cc>, at 2017-02-22T01:14:06+09:00.",
+        "The BIC commit object has the human-authored message 'cosmetic changes' and no Co-authored-by, generator, assistant, bot, or AI attribution; the NOT_AI finding rests on the BIC's positive named-human authorship, not repository-level activity or a later commit."
+      ]
+    }
+  },
+  "bug_semantics": "An untrusted MessagePack array targeting ILookup<TKey,TElement> reaches CollectionFormatterBase.Deserialize, which creates InterfaceLookupFormatter's intermediate Dictionary and repeatedly inserts attacker-controlled grouping keys. Before the fix, Create ignored MessagePackSerializerOptions.Security and selected EqualityComparer<TKey>.Default. Colliding attacker keys therefore force repeated Dictionary.Add operations into worst-case quadratic CPU work even when MessagePackSecurity.UntrustedData requested a collision-resistant comparer. Passing options.Security.GetEqualityComparer<TKey>() closes that bypass at the sink.",
+  "flaw_origin": "Single-parent commit 19d9d34a8997abc18c07ca33043c62509e47ee3d is the smallest public first-writer: it directly introduced InterfaceLookupFormatter plus return new Dictionary<TKey, IGrouping<TKey, TElement>>(count), while immediate parent 990135b7c628b5ed188d1598959c101f71323e7e contains neither. Subsequent renames and API refactors preserve the constructor's default-comparer semantics and are not introducers.",
+  "introducer_sha": "19d9d34a8997abc18c07ca33043c62509e47ee3d",
+  "introducer_parent": "990135b7c628b5ed188d1598959c101f71323e7e",
+  "introducer_parent_absent": true,
+  "squash_decomposed": false,
+  "decomposed_shas": [],
+  "fix_sha": "f96fcf053fd2b22f4b13b0a68d8981fecc2fee1a",
+  "direct_fix_sha": "f96fcf053fd2b22f4b13b0a68d8981fecc2fee1a",
+  "unpatched": null,
+  "ai_marker": {
+    "state": "ABSENT",
+    "evidence": [
+      "Raw BIC object author and committer are both neuecc <ils@neue.cc> with the same 2017 timestamp.",
+      "The BIC object contains no co-author, bot, generator, assistant, or AI marker."
+    ]
+  },
+  "evidence": [
+    "CVE record: https://www.cve.org/CVERecord?id=CVE-2026-48516; CVE Services JSON reports state PUBLISHED and the same mechanism and fixed boundaries at https://cveawg.mitre.org/api/cve/CVE-2026-48516.",
+    "Vendor advisory: https://github.com/MessagePack-CSharp/MessagePack-CSharp/security/advisories/GHSA-q2h6-ghwm-5qm8 is published, identifies CVE-2026-48516, the default-comparer omission, and patched versions 2.5.301 and 3.1.7.",
+    "BIC: 19d9d34a8997abc18c07ca33043c62509e47ee3d; immediate parent: 990135b7c628b5ed188d1598959c101f71323e7e; direct parent diff adds the full formatter and vulnerable Dictionary constructor.",
+    "Fixes: e97f71e7caff627e915a486f495f91a388c19276 on v2.5.301 and f96fcf053fd2b22f4b13b0a68d8981fecc2fee1a on v3.1.7 each replace the default constructor with the security-provided equality comparer.",
+    "Affected tag trees v2.5.205 and v3.1.6 retain the one-argument constructor; fixed tag trees v2.5.301 and v3.1.7 contain options.Security.GetEqualityComparer<TKey>()."
+  ],
+  "reasoning": "The advisory is an active, published vulnerability and its source-to-sink mechanism is present in affected tag trees. Exact Git history identifies a direct, non-carrier first-write whose immediate parent lacks the vulnerable code, and branch-specific one-line fixes are members of both patched releases. The BIC object attributes the code to the same named human author/committer and has no causal AI attribution. With all lifecycle and BIC-only attribution gates closed, this is NOT_AI rather than EVIDENCE_GAP or FALSE_POSITIVE.",
+  "remaining_gap": null
+}

@@ -1,0 +1,77 @@
+{
+  "worker": "w012",
+  "review_agent_id": "r12_w012",
+  "class_id": "alias-e417b414cae3394aa802b9b6",
+  "case_id": "GHSA-mj42-9vh2-f8v3",
+  "repo": "lin-snow/ech0",
+  "primary_verdict": "NOT_AI",
+  "review_verdict": "CONFIRMED",
+  "protocol_checks": {
+    "vulnerability_mechanism": {
+      "status": "PASS",
+      "evidence": [
+        "CVE.org https://cveawg.mitre.org/api/cve/CVE-2026-79670 is state=PUBLISHED (not rejected/withdrawn) and describes stored XSS from file-upload Content-Type validation that uses only client-supplied headers, with admin-upload of SVG/HTML that executes in the application origin.",
+        "Vendor advisory GHSA-69hx-63pv-f8f4 (https://github.com/lin-snow/Ech0/security/advisories/GHSA-69hx-63pv-f8f4) is published with withdrawn_at null; GitHub global API https://api.github.com/advisories/GHSA-69hx-63pv-f8f4 and repo advisory API both remain published. Assigned GitHub advisory GHSA-mj42-9vh2-f8v3 has withdrawn_at null.",
+        "Complete source-to-sink at annotated tag v4.4.2 (peels to 7b7890cbe294659df39c36feb51fcfbe9ec9bdb2): internal/service/file/file.go:89 takes file.Header.Get(\"Content-Type\") and line 90 compares it with isAllowedType (exact string match at file.go:945-951); internal/storage/keygen.go:41 keeps filepath.Ext(originalFilename); internal/config/config.go:241 allowlists image/svg+xml; internal/router/modules.go:51 registers ctx.Engine.Static(\"api/files\", root) outside auth. No X-Content-Type-Options/CSP in that tag's middleware. Admin-only upload (file.go:85-87) plus unauthenticated same-origin static serving yields stored XSS (SVG allowed directly; HTML smuggled under an allowed image MIME while the .html extension is preserved)."
+      ]
+    },
+    "atomic_bic": {
+      "status": "PASS",
+      "evidence": [
+        "git log --all --reverse -S 'file.Header.Get(\"Content-Type\")' first hits 896116abca946cdec9c09208b30a0eda82717f43 (message 'first commit'); later hits e20af2cb3dbb34e9a98576949f1903a69dadbf25, d87ddc2085435189b969cffbdc5f87640e6e7929 ('Rewrite project to 2.x'), d1645e081c5a185e60e9a1ac68dedbced8c535f7, cd300e74a07c6f5487184060ce59c7682aa441d6, e0a45f8dc7f402f561dfd0d8860fae3a48449bbb, 03ce6cfb6e6430f8a8ad33cd1c45366fe2b6e014 are rewrites/moves of the same header-trust decision; ca0387a895c71ebcb1aef3ca5fbe7cb66eb5f4b5 removes it.",
+        "In 896116abca946cdec9c09208b30a0eda82717f43, pkg/upload.go:26 compares file.Header.Get(\"Content-Type\") to the allowlist with no body sniffing; lines 40-45 take filepath.Ext(file.Filename) and write that extension into the stored name; internal/routers/routers.go:20 publishes r.Static(\"/api/images\", \"./data/images\") on the engine (unauthenticated). That is the first public complete upload-to-static chain (HTML Content-Type spoof already works; SVG-without-spoofing is a later allowlist widening, not a new first-write of the chain).",
+        "d87ddc2085435189b969cffbdc5f87640e6e7929 re-homes the same Header.Get + Static pattern into internal/service/common/common.go:39 and internal/router/router.go:59 after moving the old tree under Ech0_OLD/; protocol treats that rewrite as a non-BIC move/refactor."
+      ]
+    },
+    "immediate_parent_absence": {
+      "status": "PASS",
+      "evidence": [
+        "git cat-file -p 896116abca946cdec9c09208b30a0eda82717f43 shows tree 595d0604f760adae6ea9dc91cbb9417c4d745cab, author/committer L1nSn0w <l1nsn0w@qq.com>, and no parent header. git rev-list --parents -n 1 prints only 896116abca946cdec9c09208b30a0eda82717f43; git rev-parse 896116abca946cdec9c09208b30a0eda82717f43^ fails; no .git/info/grafts and no refs/replace. The mechanism is absent before this object because no parent tree exists."
+      ]
+    },
+    "squash_member_decomposition": {
+      "status": "PASS",
+      "evidence": [
+        "896116abca946cdec9c09208b30a0eda82717f43 is a zero-parent ordinary commit (git cat-file -t = commit; no second parent). Public DAG has no earlier member commits to decompose, so this root object is the smallest surviving public first-write of the vulnerable lines."
+      ]
+    },
+    "affected_release_membership": {
+      "status": "PASS",
+      "evidence": [
+        "CVE.org affected versions are semver status=affected version=0 lessThan=4.4.3. GitHub global advisory API for GHSA-69hx-63pv-f8f4 reports vulnerable_version_range \"< 4.4.3\".",
+        "Annotated tag v4.4.2 peels to 7b7890cbe294659df39c36feb51fcfbe9ec9bdb2 (git rev-parse v4.4.2^{}); git merge-base --is-ancestor 896116abca946cdec9c09208b30a0eda82717f43 7b7890cbe294659df39c36feb51fcfbe9ec9bdb2 succeeds and the tag tree still contains Header.Get Content-Type (file.go:89), image/svg+xml (config.go:241), and Engine.Static(\"api/files\", root) (modules.go:51). First-party release https://github.com/lin-snow/Ech0/releases/tag/v4.4.2 is published, draft=false, prerelease=false.",
+        "The same three sinks remain at v4.2.2 (47bafa98941b6b583ee906933f4cd13be3b42054), so the repo-advisory HTML bound \"<= 4.2.1\" is looser than the objects; CVE <4.4.3 matches the trees."
+      ]
+    },
+    "fixed_release_membership": {
+      "status": "PASS",
+      "evidence": [
+        "CVE.org marks version 4.4.3 status=unaffected. GitHub global advisory API first_patched_version is 4.4.3. First-party release https://github.com/lin-snow/Ech0/releases/tag/v4.4.3 is published (draft=false, prerelease=false, published_at 2026-04-09T16:09:10Z).",
+        "Annotated tag v4.4.3 peels to b934467d26b91c96dc7c937b6a4e47d8d01484eb. git merge-base --is-ancestor ca0387a895c71ebcb1aef3ca5fbe7cb66eb5f4b5 b934467d26b91c96dc7c937b6a4e47d8d01484eb succeeds; the same test against v4.4.2 (7b7890cbe294659df39c36feb51fcfbe9ec9bdb2) fails. The v4.4.3 tree uses detectContentType + validateFileUpload (file.go:93-99), drops image/svg+xml from AllowedTypes (config.go:235-245), and serves files through StaticFileSecurity (modules.go:54-55)."
+      ]
+    },
+    "direct_fix_or_unpatched": {
+      "status": "PASS",
+      "evidence": [
+        "Direct fix ca0387a895c71ebcb1aef3ca5fbe7cb66eb5f4b5 (parent 1b2adc9b5d2e0694c35c9f7a2f63c1df6c0c2796, ordinary non-merge commit) is titled 'refactor(file): enhance file upload validation and MIME type handling' and changes internal/service/file/file.go, internal/config/config.go, internal/router/modules.go, and adds internal/middleware/staticfile.go.",
+        "The patch deletes contentType := file.Header.Get(\"Content-Type\") and replaces it with detectContentType body sniffing plus validateFileUpload; dangerousExtensions includes .html/.htm/.xhtml/.svg and blocked MIMEs include text/html and image/svg+xml; AllowedTypes no longer lists image/svg+xml; Engine.Static is replaced by Group(\"api/files\", middleware.StaticFileSecurity()) + StaticFS with nosniff and Content-Disposition: attachment for non-image/audio."
+      ]
+    },
+    "bic_only_ai_attribution": {
+      "status": "PASS",
+      "evidence": [
+        "Raw BIC object 896116abca946cdec9c09208b30a0eda82717f43: author L1nSn0w <l1nsn0w@qq.com>, committer L1nSn0w <l1nsn0w@qq.com>, message 'first commit', empty trailers, unsigned. git cat-file / git log show no Co-authored-by, Generated-by, Made-with, Copilot, Cursor, GPT, Claude, or bot identity on that object.",
+        "GitHub commit API https://api.github.com/repos/lin-snow/Ech0/commits/896116abca946cdec9c09208b30a0eda82717f43 maps both author and committer to user login lin-snow (type User), parents []. Named human maintainer identity on the actual BIC, with no AI/bot/generator marker, supports NOT_AI. Attribution is restricted to this BIC; later rewrite/fix authorship was not used to invert the search."
+      ]
+    }
+  },
+  "findings": [
+    "Independently confirmed stored XSS (CWE-434) via client-controlled multipart Content-Type, preserved dangerous extensions, and unauthenticated same-origin static file serving. CVE-2026-79670 is PUBLISHED; GHSA-69hx-63pv-f8f4 and GHSA-mj42-9vh2-f8v3 are not withdrawn.",
+    "Smallest surviving public BIC is the zero-parent root 896116abca946cdec9c09208b30a0eda82717f43, which first wrote the complete source-to-sink. Subsequent 2.x/v4 rewrites re-homed the same mechanism and are not atomic introducers.",
+    "Direct fix is ca0387a895c71ebcb1aef3ca5fbe7cb66eb5f4b5, present in annotated v4.4.3 (b934467d26b91c96dc7c937b6a4e47d8d01484eb) and absent from v4.4.2 (7b7890cbe294659df39c36feb51fcfbe9ec9bdb2).",
+    "BIC author/committer is named human L1nSn0w / GitHub user lin-snow with no AI/bot/co-author marker, so the primary NOT_AI verdict is independently supported.",
+    "Repo-advisory HTML/API for GHSA-69hx-63pv-f8f4 lists affected <= 4.2.1, but v4.2.2 and v4.4.2 still contain the sinks; CVE.org and the GitHub global advisory range < 4.4.3 match the objects. That HTML mismatch does not change BIC, fix, or AI attribution."
+  ],
+  "corrected_fields": {},
+  "remaining_gap": null
+}

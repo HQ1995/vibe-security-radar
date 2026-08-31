@@ -1,0 +1,96 @@
+{
+  "schema_version": "independent-case-audit/v1",
+  "worker": "w016",
+  "review_agent_id": "round12-clean-w016",
+  "class_id": "alias-775173b22f8159a217307738",
+  "case_id": "GHSA-jm78-9fvv-mhgr",
+  "repo": "gitpython-developers/gitpython",
+  "advisory_ids": [
+    "GHSA-jm78-9fvv-mhgr"
+  ],
+  "input_binding": {
+    "bundle_sha256": "24227e3d97e0a14cf2fbb883906059c5329ed95bdbd9663fdec25d76799d6615",
+    "clone_head_sha": "d160fb4124a56bd463a542a7bbff623354fb3397"
+  },
+  "verdict": "NOT_AI",
+  "protocol_checks": {
+    "vulnerability_mechanism": {
+      "status": "PASS",
+      "evidence": [
+        "The current vendor advisory https://github.com/gitpython-developers/GitPython/security/advisories/GHSA-jm78-9fvv-mhgr is published, identifies CVE-2026-76221, describes option-name config injection through equals, hash, and whitespace, and lists affected <=3.1.57 and patched >=3.1.58.",
+        "CVE Services GET https://cveawg.mitre.org/api/cve/CVE-2026-76221 returned state PUBLISHED and describes attacker-controlled option names forging directives such as core.sshCommand or core.hooksPath; it identifies versions below 3.1.58 as affected and 3.1.58 as unaffected.",
+        "At tag 3.1.57, git/config.py:897-915 rejects only CR, LF, and NUL for label option, while the delimiter state machine is gated on label == section; git/config.py:925-956 routes set and set_value option names through that incomplete check.",
+        "At tag 3.1.57, git/config.py:692-702 serializes each option key verbatim as a tab followed by key = value. Feeding the resulting line '[core]\\n\\tsshCommand = touch /tmp/RCE # = x' to 'git config --file /dev/stdin --get core.sshCommand' returned 'touch /tmp/RCE'."
+      ]
+    },
+    "atomic_bic": {
+      "status": "PASS",
+      "evidence": [
+        "GIT_NO_LAZY_FETCH=1 git log --all --reverse -S'def write_section' and -S'%s = %s' identify 3fd37230e76a014cf5c45d55daf0be2caa6948b7 as the earliest public commit that added the config writer and verbatim option-key sink in lib/git/config.py:258-271.",
+        "Commit 3fd37230e76a014cf5c45d55daf0be2caa6948b7 is a normal one-parent implementation commit; later cb68eef0865df6aedbc11cd81888625a70da6777 is a 100% path rename, and later f573b6840509bf41be822ab7ed79e0a776005133 and e530544546b2a4e5f00e8d9458bf1b895573ec41 are formatting carriers rather than first writers."
+      ]
+    },
+    "immediate_parent_absence": {
+      "status": "PASS",
+      "evidence": [
+        "The immediate parent is 9513aa01fab73f53e4fe18644c7d5b530a66c6a1. Direct inspection of parent:lib/git/config.py shows a parser scaffold and stub write method but no _write, write_section, or '%s = %s' option serialization sink."
+      ]
+    },
+    "squash_member_decomposition": {
+      "status": "PASS",
+      "evidence": [
+        "git cat-file commit 3fd37230e76a014cf5c45d55daf0be2caa6948b7 shows exactly one parent, 9513aa01fab73f53e4fe18644c7d5b530a66c6a1, and an ordinary config-class implementation message; the all-history pickaxe finds no finer public first-writer before it. No merge, squash carrier, or decomposable public member is present."
+      ]
+    },
+    "affected_release_membership": {
+      "status": "PASS",
+      "evidence": [
+        "Local annotated tag 3.1.57 peels to ccbd573ac4ab52ccdcf395c400e600d5809bcc88. 'git merge-base --is-ancestor 3fd37230... 3.1.57^{}' succeeds, while the same check for a495ccd3... fails; direct tag source inspection shows the vulnerable validator and sink. The vendor advisory lists <=3.1.57 as affected."
+      ]
+    },
+    "fixed_release_membership": {
+      "status": "PASS",
+      "evidence": [
+        "Local annotated tag 3.1.58 peels to 30be45d786e95023e23c616fec5cbabca861b44c. 'git merge-base --is-ancestor a495ccd3b547ccd60b2187215823b72a9c0188bf 3.1.58^{}' succeeds. The vendor release page https://github.com/gitpython-developers/GitPython/releases/tag/3.1.58 exists and the vendor advisory lists >=3.1.58 as patched."
+      ]
+    },
+    "direct_fix_or_unpatched": {
+      "status": "PASS",
+      "evidence": [
+        "Commit a495ccd3b547ccd60b2187215823b72a9c0188bf directly adds VALID_CONFIG_OPTION_NAME_RE = ^[A-Za-z0-9_.-]+$ and rejects option names that do not fullmatch it inside _assure_config_name_safe; its regression test covers delimiter, comment, bracket, whitespace, colon, quote, and backslash option names."
+      ]
+    },
+    "bic_only_ai_attribution": {
+      "status": "PASS",
+      "evidence": [
+        "The raw BIC commit object names Sebastian Thiel <byronimo@gmail.com> as both author and committer and contains only the two-line config implementation message, with no AI author, assistant marker, generation marker, or AI trailer. AI markers on the 2026 fix are later lifecycle evidence and were excluded from BIC attribution."
+      ]
+    }
+  },
+  "bug_semantics": "An embedding application can pass an attacker-controlled option name to GitConfigParser.set, set_value, or add_value. In 3.1.57, the option-name guard rejects only CR, LF, and NUL, so syntax characters such as spaces, '=', and '#' survive. The custom writer inserts that key verbatim before ' = value'; for 'sshCommand = touch /tmp/RCE #' the resulting core-section line is parsed by Git as core.sshCommand = touch /tmp/RCE because '#' comments out the intended suffix. A later SSH Git operation executes the forged command; the same primitive can forge core.hooksPath.",
+  "flaw_origin": "The smallest public first-writer is 3fd37230e76a014cf5c45d55daf0be2caa6948b7: it implemented the writable config path and first wrote arbitrary option keys verbatim as '\\t%s = %s\\n'. Its immediate parent had only a parser scaffold and no serialization sink. Later moves and formatting changes merely carried the sink, and the 2026 partial name validator did not introduce the already-existing injection.",
+  "introducer_sha": "3fd37230e76a014cf5c45d55daf0be2caa6948b7",
+  "introducer_parent": "9513aa01fab73f53e4fe18644c7d5b530a66c6a1",
+  "introducer_parent_absent": true,
+  "squash_decomposed": false,
+  "decomposed_shas": [],
+  "fix_sha": "a495ccd3b547ccd60b2187215823b72a9c0188bf",
+  "direct_fix_sha": "a495ccd3b547ccd60b2187215823b72a9c0188bf",
+  "unpatched": null,
+  "ai_marker": {
+    "state": "ABSENT",
+    "evidence": [
+      "git cat-file commit 3fd37230e76a014cf5c45d55daf0be2caa6948b7: author Sebastian Thiel <byronimo@gmail.com>; committer Sebastian Thiel <byronimo@gmail.com>; no AI-related message text or trailers."
+    ]
+  },
+  "evidence": [
+    "Vendor advisory: https://github.com/gitpython-developers/GitPython/security/advisories/GHSA-jm78-9fvv-mhgr is published as GHSA-jm78-9fvv-mhgr, now maps to CVE-2026-76221, and lists affected <=3.1.57 / patched >=3.1.58.",
+    "CVE.org/CVE Services record: https://cveawg.mitre.org/api/cve/CVE-2026-76221 has cveMetadata.state=PUBLISHED and the same option-name-to-core.sshCommand/core.hooksPath mechanism.",
+    "BIC: 3fd37230e76a014cf5c45d55daf0be2caa6948b7 first adds lib/git/config.py write_section and verbatim option serialization; parent 9513aa01fab73f53e4fe18644c7d5b530a66c6a1 lacks those lines.",
+    "Release boundary: 3.1.57 (ccbd573ac4ab52ccdcf395c400e600d5809bcc88) contains the BIC and not the fix; 3.1.58 (30be45d786e95023e23c616fec5cbabca861b44c) contains direct fix a495ccd3b547ccd60b2187215823b72a9c0188bf.",
+    "Downstream parser proof: the serialized payload line yields 'touch /tmp/RCE' from 'git config --file /dev/stdin --get core.sshCommand'.",
+    "BIC-local attribution: raw commit object names Sebastian Thiel as author and committer and has no AI marker."
+  ],
+  "reasoning": "The advisory is a current published vulnerability, and both first-party source and Git parsing establish the complete option-name-to-command-directive mechanism. The earliest surviving public commit that made the flaw possible is the 2009 human-authored config-writer implementation, whose parent lacks the sink. Affected and fixed tags and the direct repair are verified. Because every lifecycle gate passes and the BIC alone has named-human authorship with no AI marker, the correct verdict is NOT_AI; later AI-assisted validation and repair commits do not change causal attribution.",
+  "remaining_gap": null
+}

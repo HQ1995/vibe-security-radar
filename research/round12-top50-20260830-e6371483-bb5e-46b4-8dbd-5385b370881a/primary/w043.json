@@ -1,0 +1,99 @@
+{
+  "schema_version": "independent-case-audit/v1",
+  "worker": "w043",
+  "review_agent_id": "round12-clean-w043-r2",
+  "class_id": "alias-cae8c11bed31aa07b41bf083",
+  "case_id": "CVE-2026-21446",
+  "repo": "bagisto/bagisto",
+  "advisory_ids": [
+    "CVE-2026-21446",
+    "GHSA-6h7w-v2xr-mqvw"
+  ],
+  "input_binding": {
+    "bundle_sha256": "370e54b8e61b3a8124a49a665b45717b79bed0c87c4fe7465a07fd8d2407f5e7",
+    "clone_head_sha": "863ec89905ca8b7916dbe9614f1e8b985240f2eb"
+  },
+  "verdict": "NOT_AI",
+  "protocol_checks": {
+    "vulnerability_mechanism": {
+      "status": "PASS",
+      "evidence": [
+        "CVE.org record https://cveawg.mitre.org/api/cve/CVE-2026-21446 is PUBLISHED and states that Bagisto >=2.3.0,<2.3.10 leaves /install/api/* exploitable without authentication after installation, permitting admin creation and configuration changes; it names 2.3.10 as fixed.",
+        "At v2.3.9, packages/Webkul/Installer/src/Routes/web.php maps POST /install/api/admin-config-setup to InstallerController::adminConfigSetup and removes the web middleware; InstallerController.php hashes attacker inputs and updateOrInsert writes the id=1 admin row.",
+        "At v2.3.9, global CanInstall middleware is appended in bootstrap/app.php, but CanInstall::handle only redirects an already-installed request when !$request->ajax(); the attacker-controlled XMLHttpRequest classification therefore reaches the installer controller without authentication or CSRF protection."
+      ]
+    },
+    "atomic_bic": {
+      "status": "PASS",
+      "evidence": [
+        "GitHub first-party blame for v2.3.9 packages/Webkul/Installer/src/Http/Middleware/CanInstall.php assigns the exact '&& ! $request->ajax()' bypass condition to e050c9d66656ae50fe208f4ce0a91c2f5956c77d.",
+        "git cat-file -p e050c9d66656ae50fe208f4ce0a91c2f5956c77d shows one parent, and its direct patch changes the installed check from unconditional to 'isAlreadyInstalled() && ! $request->ajax()'; the already-existing API routes and admin sink are unchanged across that commit."
+      ]
+    },
+    "immediate_parent_absence": {
+      "status": "PASS",
+      "evidence": [
+        "git cat-file -p e050c9d66656ae50fe208f4ce0a91c2f5956c77d identifies immediate parent ce555ac4c5dced0f882b2508d2016e811d5a978a.",
+        "git ls-tree shows CanInstall.php blob 2ee2f8b4a991e7b98e5f47862aaf0b525540b5f2 in ce555ac4c5dced0f882b2508d2016e811d5a978a and blob 0f25f2ed4796e5f3782bb94726d35f54b113497c in the BIC; the parent source has unconditional isAlreadyInstalled() blocking and no ajax exception."
+      ]
+    },
+    "squash_member_decomposition": {
+      "status": "PASS",
+      "evidence": [
+        "e050c9d66656ae50fe208f4ce0a91c2f5956c77d is an ordinary one-parent public commit, not a merge; the vulnerable condition is introduced by its own one-line middleware hunk, so there is no finer public squash member to decompose."
+      ]
+    },
+    "affected_release_membership": {
+      "status": "PASS",
+      "evidence": [
+        "git rev-parse v2.3.0^{commit} = 722554b731c4f6eeb0fe1c041fca7568b5deb2e6 and git merge-base --is-ancestor e050c9d66656ae50fe208f4ce0a91c2f5956c77d v2.3.0^{commit} exits 0.",
+        "First-party v2.3.0 sources contain both the ajax exception in CanInstall.php and POST /install/api/admin-config-setup withoutMiddleware('web') in Routes/web.php; v2.3.9 retains both."
+      ]
+    },
+    "fixed_release_membership": {
+      "status": "PASS",
+      "evidence": [
+        "git rev-parse v2.3.10^{commit} = 813e28551dd1d3207b9e275e6c2bd63f68f0f8b0; git merge-base --is-ancestor 380c045e48490da740cd505fb192cc45e1809bed v2.3.10^{commit} exits 0, while the same check against v2.3.9 exits 1."
+      ]
+    },
+    "direct_fix_or_unpatched": {
+      "status": "PASS",
+      "evidence": [
+        "Direct patch 380c045e48490da740cd505fb192cc45e1809bed changes CanInstall::handle so every already-installed /install request is blocked: non-AJAX requests redirect and AJAX requests receive JSON status 403; it also changes adminConfigSetup from updateOrInsert to insert."
+      ]
+    },
+    "bic_only_ai_attribution": {
+      "status": "PASS",
+      "evidence": [
+        "The BIC commit object alone names human author and committer 'amit kumar laravel <amitkumar.laravel358@webkul.in>', has subject 'Fix Installer Issue', and contains no AI, Copilot, generated-by, or co-author marker."
+      ]
+    }
+  },
+  "bug_semantics": "CanInstall is global middleware and recognizes an installed application, but e050c9d66656ae50fe208f4ce0a91c2f5956c77d made that protection conditional on the request not being classified as AJAX. Because the classification is controlled by an HTTP header rather than authentication, an unauthenticated caller can make an AJAX-classified request to /install/api/admin-config-setup. That route removes the web middleware and invokes adminConfigSetup, whose database sink writes the id=1 administrator credentials from request input.",
+  "flaw_origin": "The installer API routes, global CanInstall registration, installed-state test, and admin update sink all existed in ce555ac4c5dced0f882b2508d2016e811d5a978a. The smallest public first-writer of the bypass is its child e050c9d66656ae50fe208f4ce0a91c2f5956c77d, whose one-line hunk adds '&& ! $request->ajax()' and thereby permits attacker-classified AJAX requests to continue to the pre-existing sink.",
+  "introducer_sha": "e050c9d66656ae50fe208f4ce0a91c2f5956c77d",
+  "introducer_parent": "ce555ac4c5dced0f882b2508d2016e811d5a978a",
+  "introducer_parent_absent": true,
+  "squash_decomposed": false,
+  "decomposed_shas": [],
+  "fix_sha": "380c045e48490da740cd505fb192cc45e1809bed",
+  "direct_fix_sha": "380c045e48490da740cd505fb192cc45e1809bed",
+  "unpatched": null,
+  "ai_marker": {
+    "state": "ABSENT",
+    "evidence": [
+      "git cat-file -p e050c9d66656ae50fe208f4ce0a91c2f5956c77d: author and committer are amit kumar laravel <amitkumar.laravel358@webkul.in>; the complete message is 'Fix Installer Issue' and has no trailers or AI marker."
+    ]
+  },
+  "evidence": [
+    "CVE.org CNA record: https://cveawg.mitre.org/api/cve/CVE-2026-21446 (PUBLISHED; affected >=2.3.0,<2.3.10; fixed 2.3.10).",
+    "Vendor advisory: https://github.com/bagisto/bagisto/security/advisories/GHSA-6h7w-v2xr-mqvw (published, not withdrawn; installer API authentication flaw and fixed-version boundary).",
+    "BIC patch: https://github.com/bagisto/bagisto/commit/e050c9d66656ae50fe208f4ce0a91c2f5956c77d.patch adds the AJAX exception to the installed-state guard.",
+    "Immediate-parent source: https://raw.githubusercontent.com/bagisto/bagisto/ce555ac4c5dced0f882b2508d2016e811d5a978a/packages/Webkul/Installer/src/Http/Middleware/CanInstall.php blocks installed /install requests unconditionally.",
+    "Affected tag sources: https://raw.githubusercontent.com/bagisto/bagisto/v2.3.9/packages/Webkul/Installer/src/Routes/web.php and https://raw.githubusercontent.com/bagisto/bagisto/v2.3.9/packages/Webkul/Installer/src/Http/Controllers/InstallerController.php show the unauthenticated route-to-admin-write sink.",
+    "Fix patch: https://github.com/bagisto/bagisto/commit/380c045e48490da740cd505fb192cc45e1809bed.patch returns 403 for already-installed AJAX requests.",
+    "Assigned clone exact-object checks with GIT_NO_LAZY_FETCH=1 report commit objects for e050c9d66656ae50fe208f4ce0a91c2f5956c77d, ce555ac4c5dced0f882b2508d2016e811d5a978a, and 380c045e48490da740cd505fb192cc45e1809bed."
+  ],
+  "reasoning": "The advisory describes a real, published vulnerability and the source-to-sink path is present in affected tags. Direct parent comparison identifies an atomic one-line first-writer, and the named fixed release contains the direct blocking patch. The BIC commit object attributes that first-write to a named Webkul human author/committer and has no causal AI marker, so the closed verdict is NOT_AI.",
+  "remaining_gap": null
+}

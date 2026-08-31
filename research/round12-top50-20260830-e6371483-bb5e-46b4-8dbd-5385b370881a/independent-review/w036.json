@@ -1,0 +1,79 @@
+{
+  "worker": "w036",
+  "review_agent_id": "r12_w036",
+  "class_id": "alias-d54007086debbb3e50282cf1",
+  "case_id": "CVE-2026-77639",
+  "repo": "gitlab.torproject.org/tpo/core/tor",
+  "primary_verdict": "NOT_AI",
+  "review_verdict": "CONFIRMED",
+  "protocol_checks": {
+    "vulnerability_mechanism": {
+      "status": "PASS",
+      "evidence": [
+        "CVE Services record https://cveawg.mitre.org/api/cve/CVE-2026-77639 is state=PUBLISHED (not rejected/withdrawn). CNA description: concatenated gzip/zlib sub-streams each just under the per-stream detection threshold bypass the compression-bomb check (TROVE-2026-022). Affected: Tor 0.3.1.1-alpha inclusive to before 0.4.9.9. CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:L.",
+        "Vendor ChangeLog at tag tor-0.4.9.9: 'Fix a compression bomb bypass where an attacker could concatenate many gzip or zlib sub-streams, each just under the per-stream detection threshold, to avoid the compression bomb check entirely. TROVE-2026-022. Fixes bug 41275; bugfix on 0.3.1.1-alpha.'",
+        "Source-to-sink in the assigned clone: directory HTTP bodies are passed to tor_uncompress() from src/feature/dirclient/dirclient.c (declared and guessed compression methods). tor_uncompress() calls tor_compress_impl(). On TOR_COMPRESS_DONE with remaining input, tor_compress_impl() does tor_compress_free()+tor_compress_new(), which allocates a fresh zlib backend whose input_so_far/output_so_far start at zero. Backend tor_zlib_compress_process() only runs tor_compress_is_compression_bomb() on those per-state counters, and the helper returns 0 while size_out < CHECK_FOR_COMPRESSION_BOMB_AFTER (5 MiB at fix time). The outer BUFFER_FULL check uses in_len_orig (total original input, including unconsumed later members) so concatenated members inflate the denominator. A malicious relay can therefore keep each member under the per-stream size gate while cumulative client allocation grows.",
+        "GHSA-jm5p-g55h-rwhg withdrawn_at is null; GitHub withdrawn_at is not treated as authoritative. CVE.org remains PUBLISHED."
+      ]
+    },
+    "atomic_bic": {
+      "status": "PASS",
+      "evidence": [
+        "git log -S 'tor_compress_free(stream)' -- src/common/compress.c src/lib/compress/compress.c returns only 880fb3e3a9aba21c0b36aa4aa5659432e90eb827 ('Combine all *compress/*uncompress backend function into one'). That commit first writes static tor_compress_impl() and, on TOR_COMPRESS_DONE with in_len != 0 while decompressing, frees the stream and calls tor_compress_new(), then routes tor_uncompress() through this common path.",
+        "git rev-list --parents -n 1 880fb3e3a9aba21c0b36aa4aa5659432e90eb827 is a single-parent commit (parent 91dd4a00f7d4891e24187a849933547128aeeb9f). It is not a merge, revert, file-move, or later carrier. Follow-on same-branch commits 4b01b45ec1a2d561eab8bf7d8934857268e48701 (BEST_COMPRESSION flag only) and 49a5b50b31b8305e63dea5db0cc0de1cb093ff4f (UINT_MAX zlib error) do not write the reset.",
+        "The 2025 threshold change 732e70214f74a52b9259bc9bab5f53fb042b5968 (64 KiB -> 5 MiB) changes exploitability, not the first write of the counter-reset path. Vendor 'bugfix on 0.3.1.1-alpha' matches this introducer, not the later threshold bump."
+      ]
+    },
+    "immediate_parent_absence": {
+      "status": "PASS",
+      "evidence": [
+        "Parent 91dd4a00f7d4891e24187a849933547128aeeb9f has no tor_compress_impl(). gzip/zlib one-shot decompression is tor_zlib_uncompress() in src/common/compress_zlib.c, which on Z_STREAM_END with avail_in != 0 does inflateEnd()+inflateInit2() on the same z_stream and checks tor_compress_is_compression_bomb(in_len, out_size) using the original total input length and cumulative output allocation. That path never constructs a new tor_compress_state_t and therefore never zeroes streaming input_so_far/output_so_far.",
+        "git diff 91dd4a00f7d4891e24187a849933547128aeeb9f 880fb3e3a9aba21c0b36aa4aa5659432e90eb827 -- src/common/compress.c shows the vulnerable common reinitialization loop as added lines. Parent-tree absence of the streaming-counter-reset mechanism is therefore established by the immediate parent."
+      ]
+    },
+    "squash_member_decomposition": {
+      "status": "PASS",
+      "evidence": [
+        "git rev-list --parents -n 1 49868340f7346a7c30603b21d580a3bb54701b0a yields two parents 232c9e14a8319040c59fd9da1b5d242a57d10a04 and 49a5b50b31b8305e63dea5db0cc0de1cb093ff4f ('Merge branch unified_compress_squashed'). git log --reverse 91dd4a00f7d4891e24187a849933547128aeeb9f..49a5b50b31b8305e63dea5db0cc0de1cb093ff4f lists public members 880fb3e3a9aba21c0b36aa4aa5659432e90eb827, 4b01b45ec1a2d561eab8bf7d8934857268e48701, 49a5b50b31b8305e63dea5db0cc0de1cb093ff4f.",
+        "git merge-base --is-ancestor 880fb3e3a9aba21c0b36aa4aa5659432e90eb827 49a5b50b31b8305e63dea5db0cc0de1cb093ff4f exits 0. The merge is a carrier; the reconstructable first writer is the surviving public member 880fb3e3a9aba21c0b36aa4aa5659432e90eb827, which itself is not a squash aggregate."
+      ]
+    },
+    "affected_release_membership": {
+      "status": "PASS",
+      "evidence": [
+        "CVE CNA affected range is Tor 0.3.1.1-alpha (versionStartIncluding) to before 0.4.9.9. Vendor ChangeLog independently says bugfix on 0.3.1.1-alpha.",
+        "git merge-base --is-ancestor 880fb3e3a9aba21c0b36aa4aa5659432e90eb827 tor-0.3.1.1-alpha exits 0 (tag object a11e2547e4ce2467da71b5298ba2db987b846ae1). The same command against tor-0.3.0.13 (5873d18baafe84dcfc4198ae159c2ab2c4ab9b12) exits 1. git tag --contains 880fb3e3a9aba21c0b36aa4aa5659432e90eb827 lists tor-0.3.1.1-alpha as the first 0.3.1 tag and no 0.3.0.x tags."
+      ]
+    },
+    "fixed_release_membership": {
+      "status": "PASS",
+      "evidence": [
+        "tor-0.4.9.9 ChangeLog dated 2026-06-01 records TROVE-2026-022 as a major compression security fix in that release.",
+        "git merge-base --is-ancestor b105d4007927a68b6f3dcf80e55c60ce37fdedf4 tor-0.4.9.8 exits 1 (tag ca5eaed74cf8b14b2a10ec68149e13697edcd0c1). The same command against tor-0.4.9.9 exits 0 (tag 227e6ede1dc127a9b359c5701ed64b5761d40e0f). git tag --contains b105d4007927a68b6f3dcf80e55c60ce37fdedf4 lists tor-0.4.9.9, tor-0.4.9.10, tor-0.4.9.11."
+      ]
+    },
+    "direct_fix_or_unpatched": {
+      "status": "PASS",
+      "evidence": [
+        "b105d4007927a68b6f3dcf80e55c60ce37fdedf4 (author/committer David Goulet, single parent dec2222c65159fc21ca5e40a3e85cb3f821454bd) inserts in tor_compress_impl() a cumulative check out_so_far=(outptr-*out), in_so_far=(in_len_orig-in_len) via tor_compress_is_compression_bomb() immediately before tor_compress_free()/tor_compress_new() at the concatenated-member boundary, then logs 'Possible compression bomb across concatenated streams; abandoning.' That is a direct close of the reset bypass, not a later refactor.",
+        "The same commit adds gzip/zlib tests that concatenate three 3 MiB-zero members (each under the 5 MiB inner gate) and require tor_uncompress() to fail. changes/ticket41275 names TROVE-2026-022 / bug 41275 / bugfix on 0.3.1.1-alpha. 13a42c2a5116a7a0240e4825c724d96e2635b2eb is only the later two-parent merge of that fix into maint-0.4.9."
+      ]
+    },
+    "bic_only_ai_attribution": {
+      "status": "PASS",
+      "evidence": [
+        "git cat-file commit 880fb3e3a9aba21c0b36aa4aa5659432e90eb827: author and committer are Nick Mathewson <nickm@torproject.org> (author 1493127683 -0400, committer 1493131850 -0400). Message body is only the common compression API rationale. No Co-Authored-By, Generated-by, Generated-with, assistant, bot, or generator trailer.",
+        "Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com> is on the 2026 fix b105d4007927a68b6f3dcf80e55c60ce37fdedf4 only and is excluded from BIC-only attribution. Named human on the actual BIC with no BIC-local AI/bot marker supports NOT_AI."
+      ]
+    }
+  },
+  "findings": [
+    "CVE-2026-77639 is a real published availability bug (TROVE-2026-022): concatenated gzip/zlib members reset per-stream compression-bomb counters in tor_compress_impl() while directory clients decompress relay HTTP bodies.",
+    "Atomic BIC is 880fb3e3a9aba21c0b36aa4aa5659432e90eb827, the first writer of the free/new reinitialization at TOR_COMPRESS_DONE; immediate parent 91dd4a00f7d4891e24187a849933547128aeeb9f still used tor_zlib_uncompress() with a cumulative in_len/out_size check.",
+    "Merge 49868340f7346a7c30603b21d580a3bb54701b0a is a carrier of reconstructable public members; the later 5 MiB threshold bump is not the introducer.",
+    "Direct fix is b105d4007927a68b6f3dcf80e55c60ce37fdedf4, present in tor-0.4.9.9 and absent from tor-0.4.9.8; BIC is present in tor-0.3.1.1-alpha and absent from tor-0.3.0.13, matching the CNA range.",
+    "BIC authorship is named-human Nick Mathewson with no AI/bot/generator marker. The Claude trailer on the fix is non-causal for origin. Primary NOT_AI is confirmed; no canonical field replacements."
+  ],
+  "corrected_fields": {},
+  "remaining_gap": null
+}

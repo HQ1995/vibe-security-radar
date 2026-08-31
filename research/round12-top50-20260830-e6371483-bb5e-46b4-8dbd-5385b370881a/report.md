@@ -1,0 +1,2114 @@
+# Round12 top-50 clean-context causal audits
+
+Independent, read-only research report. No result in this lane has been
+landed to Neon or written to the canonical ledger. Each case was assigned
+to one fresh subagent context and audited under `docs/AUDIT-PROTOCOL.md`.
+
+## Selection and integrity
+
+- selected/result count: 50/50
+- selection statuses: `{'UNANALYZED': 50}`
+- repositories: 15 (maximum five cases per repo)
+- score range: 211.0 .. 170.925
+- excluded prior/in-flight classes: 5192
+- excluded advisory identities: 9592
+- full-history non-shallow clones at freeze: 50/50
+- manifest sha256: `fbbbf85b05d3f08867bbafb804843eb9b347ef6027e0465544da60cf00e8ff2b`
+- ledger sha256 at selection freeze: `2a8e0f606d9dbb6a509188d6f4da35598f233dce4b2b205fa1cb14136e75fbe5`
+- ledger sha256 when report built: `59699d7ab3e102cd08907aee1135bc6f0097cdbbe0db55a685571cce9d28fbc2`
+- result validation problems: 0
+
+The ledger may change concurrently outside this lane; the two hashes are
+reported as observations, not as a claim that this lane landed anything.
+Ranking is a review-priority heuristic, not causal evidence. Repository-level
+AI activity contributes to selection only; verdicts require BIC-local proof.
+
+## Verdict histogram
+
+- `NOT_AI`: 39
+- `EVIDENCE_GAP`: 5
+- `AI_ROOT_CAUSE`: 3
+- `FALSE_POSITIVE`: 2
+- `AI_CODE_FLAWED`: 1
+
+## Review index
+
+| worker | case | repo | verdict | BIC | direct fix | result sha256 |
+|---|---|---|---|---|---|---|
+| w000 | CVE-2026-72766 | n8n-io/n8n | `NOT_AI` | `9cb9804eeec1` | `1cd2c5fb22a9` | `a968131413f970ffe529199816921ab753f525dd56a96040a939145b023b319a` |
+| w001 | CVE-2026-72764 | n8n-io/n8n | `EVIDENCE_GAP` | `—` | `1cd2c5fb22a9` | `cb6e03fdc2fe5c1036b2a61887b81b90c9ddc2b957fc74838293671facf3c1d1` |
+| w002 | CVE-2026-77076 | n8n-io/n8n | `NOT_AI` | `0dc28e4e813d` | `ca3d42d83865` | `e977d5b934d951cd5b9be22a5c18bb889eafb574bb07782d2a4e338970e49c36` |
+| w003 | CVE-2026-72768 | n8n-io/n8n | `NOT_AI` | `5b3feb332f8b` | `97f5ba3f8240` | `c95fae71c322fcf6d2e82fbe6b7325f85bc22f920d72ed6bdb011ce317cb95c8` |
+| w004 | GHSA-4hf6-j482-f379 | jahlives/openssl_encrypt | `AI_ROOT_CAUSE` | `35499f201ae2` | `0c7418bab59e` | `16312846e397a1e1560859eacea2af4d7725b6a1ceb85724bd184d9311490375` |
+| w005 | CVE-2026-77069 | n8n-io/n8n | `NOT_AI` | `d2ea3ce877b4` | `ca3d42d83865` | `fc040d2f4b818bd0725951e52b6cbf063a814caefacd4fd503aa4c2356448caf` |
+| w006 | GHSA-hmf7-54mh-cvp4 | jahlives/openssl_encrypt | `FALSE_POSITIVE` | `—` | `—` | `719a06c0078d17c2fc989a061420c5159714d8dc98c2c51c91cd2bee3896a3fc` |
+| w007 | GHSA-7qj7-jv8m-rfjw | jahlives/openssl_encrypt | `AI_ROOT_CAUSE` | `5e3104481d98` | `472c088be14f` | `bd5d36c80904fc6931a11e7924c23a839e3a8979624adf4500f291fd351b764f` |
+| w008 | GHSA-5cp4-g2w4-gm8p | jahlives/openssl_encrypt | `AI_ROOT_CAUSE` | `8a5ed7e62417` | `afda18bfe41c` | `468f79688ee276677ea5f3aed93368ed8f5fdb878c28a1b426d49686bb8aef9e` |
+| w009 | GHSA-crfx-7r98-6r44 | jahlives/openssl_encrypt | `FALSE_POSITIVE` | `—` | `—` | `ce9d73f33876a3e7c60dbc399104ca1815caee66432cf50ce1a92880d9aadbd7` |
+| w010 | CVE-2026-78678 | gitpython-developers/gitpython | `AI_CODE_FLAWED` | `701ce32fe5ba` | `1b0d2d9b9157` | `9f81946e0a64a6ced4670211a03086ae2991d3a1aff047eb926a9ef09e4c1b30` |
+| w011 | CVE-2026-73622 | gitpython-developers/gitpython | `NOT_AI` | `e6e23ed24b35` | `863417457a06` | `1abf8e3c17c940828c84591e546817892ed8946db79e9ac9279ffceb9d09154b` |
+| w012 | GHSA-mj42-9vh2-f8v3 | lin-snow/ech0 | `NOT_AI` | `896116abca94` | `ca0387a895c7` | `a0fafffa4550c2d271f4045eab8e55bc581f1c1d992691be042584b30b4134c5` |
+| w013 | CVE-2026-78675 | gitpython-developers/gitpython | `NOT_AI` | `619c989915b5` | `ef7568e3b317` | `e9dafa4830093a47259f8fb9662ac0e2e626ef5d5530e253fcd1eb5d370a2f94` |
+| w014 | CVE-2026-79660 | lin-snow/ech0 | `NOT_AI` | `975b98016352` | `cb8d7a997dd8` | `017c1b3c1461228f0e0ae5070e9b89a75001c798acddeeae1c6653fa39ebc276` |
+| w015 | GHSA-mv93-w799-cj2w | gitpython-developers/gitpython | `NOT_AI` | `3fd37230e76a` | `54538428f79b` | `ddac69372b12cfe38c2ebc84531052203bd52628749138ec23092cf414b33e3d` |
+| w016 | GHSA-jm78-9fvv-mhgr | gitpython-developers/gitpython | `NOT_AI` | `3fd37230e76a` | `a495ccd3b547` | `ea93ea77ea8e1554678df484a65d882d546333ee422ff5a7383a4398f86d7171` |
+| w017 | CVE-2026-76208 | thorsten/phpmyfaq | `NOT_AI` | `e3b2e72aa0c7` | `4c5eec9adf61` | `ac5509d7770cd9972ce4a807b86961f607196020bcfd8c39eddc44914ce81bb0` |
+| w018 | CVE-2026-76213 | thorsten/phpmyfaq | `NOT_AI` | `410208b90f1d` | `59593a013862` | `cdfc5e9c8ed0e5af7370791f169b722326844d02dd4c49e2e2f4385021a6abe1` |
+| w019 | CVE-2026-76206 | thorsten/phpmyfaq | `NOT_AI` | `4639bf25d8b4` | `b0daab0c2ded` | `22d6f01c6a69c960fc42ea902986032a4f2cc65d65949ac5bb6e7aa6f1c688ca` |
+| w020 | CVE-2026-76207 | thorsten/phpmyfaq | `NOT_AI` | `d60a0f52368b` | `eceecd318582` | `77c95a67b66d9c580ffc3458780f97cb0b927c7bc39ab735edf7c7e70b2281f0` |
+| w021 | CVE-2026-75919 | thorsten/phpmyfaq | `NOT_AI` | `a32a00a37faa` | `d6a6a033ee78` | `7fb997a04eaefd883f9556317e533d602f33fbff8bf23c8b8a5cf80b85983606` |
+| w022 | GHSA-pc8g-78pf-4xrp | olivetin/olivetin | `NOT_AI` | `1af2e921323e` | `a7be68b35917` | `1a4255a15fb81a0d2d4ba4df7af2e578041fb4251dc3d20940e6a2420fe145b5` |
+| w023 | CVE-2025-49175 | gitlab.freedesktop.org/xorg/xserver | `NOT_AI` | `9508a382f8a9` | `0885e0b26225` | `73e77a2bd148ff842b20f19736cc1ca784831b4367c01150c8263f73539bbfd8` |
+| w024 | GHSA-q547-25x8-mx66 | gitlab.freedesktop.org/xorg/xserver | `NOT_AI` | `ded6147bfb5d` | `2bde9ca49a8f` | `75a2d8d89608c7c8c4b521439b9a04ce3e2386ba9670c54e2aa46f7228c79e28` |
+| w025 | GHSA-p3qf-84rg-jxfc | olivetin/olivetin | `NOT_AI` | `08a1ac2591cf` | `c917d1b1e7a2` | `95ee5470c93f6e806ca344c9a073766fbeb1ff5ab9f11a3eb23ea81de5c6ca30` |
+| w026 | GHSA-f73j-pm2c-rxvr | concretecms/concretecms | `NOT_AI` | `10236caea734` | `f22b9dff5945` | `fd414a0733430fa9360e50065d5b7b0c8d4e002db946cc7a28f00f4df805be76` |
+| w027 | CVE-2026-3242 | concretecms/concretecms | `NOT_AI` | `57fad9e0a284` | `59bac5a412f4` | `a85d3bcffb7db1dff6e9b67f89fbe4719304c38ae91f7b42ad45ab5cfd472871` |
+| w028 | CVE-2026-8421 | concretecms/concretecms | `NOT_AI` | `10236caea734` | `f22b9dff5945` | `788c1b1825932c65b55d4cad63522bd44ffdecf78be1903f4da44755d19402c6` |
+| w029 | CVE-2026-8239 | concretecms/concretecms | `NOT_AI` | `50a7913e82c5` | `f22b9dff5945` | `b53c0ce5f965c12acc3affa2699854c3426cf9091faeeb5798fd4b0d5851946c` |
+| w030 | GHSA-jr5g-qv3g-rxxx | concretecms/concretecms | `NOT_AI` | `f0d6a2f9cc31` | `f22b9dff5945` | `41f237c66715155ba11c9cac9096727b1ab375397f8f6ea1a710ab673022636c` |
+| w031 | CVE-2025-43585 | magento/magento2 | `NOT_AI` | `7f25fa6a5ec0` | `9bf2c06ea8c9` | `8131fc4b7c39da99eeb1c9e3c9675ebfb4d4df29ec269315be0fec0363965dd3` |
+| w032 | CVE-2025-54267 | magento/magento2 | `NOT_AI` | `dd15e184efe6` | `485febbd60a1` | `6ee2b1d33e9a78b13c55aa48b106878b9ef257a869e10f0eca8df70d429fec03` |
+| w033 | GHSA-69x9-xp2j-w8g8 | magento/magento2 | `EVIDENCE_GAP` | `—` | `—` | `bb7d2f8ed53ac8529caa8d255f89e209e1f480aa08954bf4b26e9e01c1639f3e` |
+| w034 | CVE-2025-49550 | magento/magento2 | `EVIDENCE_GAP` | `—` | `—` | `070af82ff633325fb489ba456a370102ef5dc2c4ec3e0d2a3e6fe806f2d4df8b` |
+| w035 | CVE-2025-54266 | magento/magento2 | `EVIDENCE_GAP` | `—` | `—` | `c7d17bc48812abb4cd18bc2f2c5e3d60c45c7d7c22b284a1d12995cade5d8b38` |
+| w036 | CVE-2026-77639 | gitlab.torproject.org/tpo/core/tor | `NOT_AI` | `880fb3e3a9ab` | `b105d4007927` | `08fbeed1b3431dd49a81691c2859f8111c093cb4355a9e80f4c86c2952252241` |
+| w037 | CVE-2026-77640 | gitlab.torproject.org/tpo/core/tor | `NOT_AI` | `7573e66b9961` | `a10ff1e283ef` | `a1af12686e19f8fb2f7b60f04a4a156e6f0f0f7a8d9e0b58e65b4a3fd2f9264c` |
+| w038 | GHSA-9qgj-r9fj-454p | krayin/laravel-crm | `NOT_AI` | `dc012873261e` | `cccc12df2c40` | `b426b41eb655dcc205b876dc95037104336dc86025d0830362c9682b3d4f9758` |
+| w039 | GHSA-wfr3-xj75-pfwh | messagepack-csharp/messagepack-csharp | `NOT_AI` | `700058579a35` | `b414e6dffc7b` | `1a74d2970f451e4d628a9b96660eb7aa7939267bc0da936941783dae93630351` |
+| w040 | GHSA-q2h6-ghwm-5qm8 | messagepack-csharp/messagepack-csharp | `NOT_AI` | `19d9d34a8997` | `f96fcf053fd2` | `306067d0ce2285e361527263033d73447b2f7b9c17e857698b7a433e0195f84f` |
+| w041 | GHSA-cxmj-83gh-fp49 | messagepack-csharp/messagepack-csharp | `NOT_AI` | `e70d54ec657e` | `9b5783a7e40b` | `a1e96f76c963a01fe2569d0b8aaf8ca9828e0d24a4395b79967082cf70b2e223` |
+| w042 | GHSA-v72x-2h86-7f8m | messagepack-csharp/messagepack-csharp | `NOT_AI` | `bf5f2dd91bad` | `2b5a500ac56c` | `51fa4e822b9c929187b6ef6cb70df571261f897796d4b3c29ce3a1f8cd6a12ab` |
+| w043 | CVE-2026-21446 | bagisto/bagisto | `NOT_AI` | `e050c9d66656` | `380c045e4849` | `a925b1fcca6e7e176babbca1e3ac37b1fd36e84debb2c6f2d5293c580f286422` |
+| w044 | GHSA-2f33-pr97-265q | messagepack-csharp/messagepack-csharp | `NOT_AI` | `1b7f0bbf790b` | `f077798ea399` | `3bb20e860f5cbc3899ab84dbef7566ec005f2d6267587f5a5814e7195be63f3b` |
+| w045 | GHSA-9hvg-qw5q-wqwp | bagisto/bagisto | `NOT_AI` | `71b8aa0a2280` | `b1b276a34bc8` | `c5234f06373f2780e745724f54a999f15652e6f4a582ed0194011f3716513e67` |
+| w046 | GHSA-5j4h-4f72-qpm6 | bagisto/bagisto | `EVIDENCE_GAP` | `—` | `813e28551dd1` | `551bb9ad00f4273a31907e875fab6a2843d307d7c212247ea21642d4883960d8` |
+| w047 | CVE-2026-37458 | frrouting/frr | `NOT_AI` | `718e37441953` | `8102a8aeceb9` | `b2ebb5558d158f7de5b7e1e022041c8f36d24e62cab8301e952c81d3b56660fe` |
+| w048 | CVE-2026-41706 | spring-projects/spring-security | `NOT_AI` | `ae532c080cbd` | `a14c9d66b159` | `360ab5aadf760032895db3f1655c897842820444a66a981637557306a37ca5f1` |
+| w049 | CVE-2026-22754 | spring-projects/spring-security | `NOT_AI` | `ef50ff29ad3b` | `53bcf0d16b41` | `24625dea9e0ba02f62f884f9d26f8a07db97149acc014b3ee97413652bd12b10` |
+
+## Case dossiers
+
+### w000 — CVE-2026-72766 — `NOT_AI`
+
+- class: `alias-89c9736a80f3b359cefa2e68`
+- repository: `n8n-io/n8n`
+- review context: `round12-clean-w000`
+- bundle sha256: `d212019ef430b381730793c16ec9e5318521af48922ce1fb2925b425c8cfbe3c`
+- clone HEAD at freeze: `5a0b3f02c7c4a4bbe1b14c7261fa8dca8b59962d`
+- introducer: `9cb9804eeec1576d935817ecda6bd345480b97fa`
+- immediate parent: `null`
+- direct fix: `1cd2c5fb22a906058cc083c3af2d561ce7f4332d`
+- fix/carrier: `1cd2c5fb22a906058cc083c3af2d561ce7f4332d`
+
+**Mechanism.** A workflow expression used for the Send Email text or HTML field can evaluate to an object. getNodeParameter returns that object, while TypeScript 'as string' assertions perform no runtime conversion. The node places the object unchanged into Nodemailer's mailOptions and invokes sendMail; Nodemailer content-object keys such as path or href cause local-file or URL retrieval, turning untrusted webhook data mapped into the body into local-file disclosure or SSRF.
+
+**Origin.** The parentless public root commit 9cb9804eeec1576d935817ecda6bd345480b97fa is the smallest surviving Git object that first wrote both halves of the flaw: expression evaluation returning non-string objects and EmailSend forwarding text/html results unchanged to Nodemailer.
+
+**AI marker.** `ABSENT` — BIC 9cb9804eeec1576d935817ecda6bd345480b97fa has named-human author and committer Jan Oberhauser <jan.oberhauser@gmail.com> and no AI/bot/co-author marker in the complete commit object.
+
+**Reasoning.** The published, non-withdrawn vulnerability is reproduced structurally from the root commit through affected releases and is directly reversed in each stated fixed release. The atomic public BIC is the parentless 2019 root object, whose complete commit metadata attributes the code to a named human and has no AI marker. AI/co-author signals on later fix bundles are non-causal, so all eight gates close as NOT_AI.
+
+Protocol checks:
+
+- `vulnerability_mechanism` — **PASS**: CVEProject record CVE-2026-72766 is PUBLISHED and identifies CWE-843: a non-string workflow-expression value reaching Send Email text/html can be interpreted by Nodemailer as a file path or URL, causing local-file disclosure or SSRF; https://raw.githubusercontent.com/CVEProject/cvelistV5/main/cves/2026/72xxx/CVE-2026-72766.json n8n vendor advisory GHSA-2x35-3fw4-9jr4 confirms the same prerequisite-bound source-to-sink and is not withdrawn; https://github.com/n8n-io/n8n/security/advisories/GHSA-2x35-3fw4-9jr4 At 9cb9804eeec1576d935817ecda6bd345480b97fa, packages/core/src/NodeExecuteFunctions.ts:216-224 passes a node parameter through Workflow.getParameterValue, packages/workflow/src/Workflow.ts:741-769 returns an expression result without object-to-string conversion by default, and packages/nodes-base/nodes/EmailSend.node.ts:97-128,153 places text/html directly in mailOptions and calls transporter.sendMail(mailOptions). Nodemailer's official message documentation describes path/URL-backed message content and states disableFileAccess/disableUrlAccess prevent filesystem/URL reads from untrusted JSON; https://nodemailer.com/message
+- `atomic_bic` — **PASS**: GIT_NO_LAZY_FETCH=1 git cat-file -e 9cb9804eeec1576d935817ecda6bd345480b97fa^{commit} succeeds in the assigned clone. git log --all --reverse -S"getNodeParameter('text'" -- packages/nodes-base/nodes identifies 9cb9804eeec1576d935817ecda6bd345480b97fa as the first public commit containing the vulnerable EmailSend body-field read; git show confirms the same root object first writes mailOptions.text/html and sendMail(mailOptions). The same root object also first supplies the expression-return path, so no later runtime-enablement commit is needed to complete the vulnerability mechanism.
+- `immediate_parent_absence` — **PASS**: GIT_NO_LAZY_FETCH=1 git cat-file -p 9cb9804eeec1576d935817ecda6bd345480b97fa contains tree, author, committer, and message headers but no parent header; it is the repository root, so introducer_parent is null and the vulnerable lines are necessarily absent from an immediate parent tree.
+- `squash_member_decomposition` — **PASS**: The BIC is the parentless public root commit, not a merge, move, revert, release-carrier descendant, or PR squash with reconstructable member commits; there is no finer parent/member object to decompose.
+- `affected_release_membership` — **PASS**: CVEProject and the n8n vendor advisory define affected ranges as <1.123.67, <2.31.5 on the 2.31 line, and <2.32.1 on the 2.32 line. Resolved affected tags are n8n@1.123.66=205a227df8a488f45fbac2f39ce8b57fb5380e25, n8n@2.31.4=c7dd6b93e9bae126b7a829b1d667a1740e50c9d0, and n8n@2.32.0=662a23c20278e66fb430c37ea18024dea31f69f3; git merge-base --is-ancestor confirms the BIC is in all three, and git show at each tag shows text/html values reaching mailOptions without toMailString.
+- `fixed_release_membership` — **PASS**: Resolved fixed tags are n8n@1.123.67=ff05cd3be8c4a8f2ac73f42b54f5213493810313, n8n@2.31.5=aa3d214338d610300c3c7c70f0ed08e5675bc722, and n8n@2.32.1=7d43cce19523691ee00d89bcc12786fd511d2329. git merge-base --is-ancestor maps the direct patch carriers to those tags respectively: 1cd2c5fb22a906058cc083c3af2d561ce7f4332d, f6cb6cf3ab177c3740a5ef624b89bae5165405a1, and f69dfc6dd2178a14ea1624d2e1d403c2e755042f; git show at every fixed tag confirms toMailString on text/html and disableFileAccess/disableUrlAccess in v1.
+- `direct_fix_or_unpatched` — **PASS**: git diff 1cd2c5fb22a906058cc083c3af2d561ce7f4332d^ 1cd2c5fb22a906058cc083c3af2d561ce7f4332d directly replaces raw Send Email parameter values with toMailString in both v1 and v2, adds disableFileAccess/disableUrlAccess to v1 mailOptions, and adds EmailSend/utils.ts whose toMailString serializes objects rather than allowing Nodemailer content objects. The 2.31 and 2.32 patch carriers f6cb6cf3ab177c3740a5ef624b89bae5165405a1 and f69dfc6dd2178a14ea1624d2e1d403c2e755042f carry the same direct hunks on their release branches.
+- `bic_only_ai_attribution` — **PASS**: GIT_NO_LAZY_FETCH=1 git cat-file -p 9cb9804eeec1576d935817ecda6bd345480b97fa identifies Jan Oberhauser <jan.oberhauser@gmail.com> as both author and committer and contains no co-author, bot, model, assistant, generated-code, or other AI marker; this BIC-local metadata, not the AI-marked 2026 fix bundles, controls attribution.
+
+Primary/Git evidence:
+
+- CVEProject CVE-2026-72766 record state=PUBLISHED, published 2026-08-11, with affected and fixed semver boundaries and vendor-advisory reference.
+- n8n vendor advisory GHSA-2x35-3fw4-9jr4, published 2026-07-22, withdrawn_at=null, documents the Send Email non-string content-object issue and fixed versions 1.123.67, 2.31.5, and 2.32.1.
+- Assigned clone HEAD 5a0b3f02c7c4a4bbe1b14c7261fa8dca8b59962d resolves with GIT_NO_LAZY_FETCH=1; clone is non-shallow and promisor blob:none, and every recorded SHA resolves as a local commit object.
+- Root BIC 9cb9804eeec1576d935817ecda6bd345480b97fa contains no parent and first writes the complete raw expression-to-Nodemailer path.
+- Affected tags retain raw text/html values; fixed tags contain their branch-specific direct patch carriers and stringize the values before sendMail.
+
+### w001 — CVE-2026-72764 — `EVIDENCE_GAP`
+
+- class: `alias-8ab8caedd90d63afa7be32b1`
+- repository: `n8n-io/n8n`
+- review context: `round12-clean-w001`
+- bundle sha256: `66b3e3225552dd34a0d92e4ddf6bf126c6e3f3afc24da39ae36feb38aec68820`
+- clone HEAD at freeze: `5a0b3f02c7c4a4bbe1b14c7261fa8dca8b59962d`
+- introducer: `null`
+- immediate parent: `null`
+- direct fix: `1cd2c5fb22a906058cc083c3af2d561ce7f4332d`
+- fix/carrier: `1cd2c5fb22a906058cc083c3af2d561ce7f4332d`
+
+**Mechanism.** An authenticated Code-node user can call an allowlisted built-in or external module through a persistent JavaScript task runner. The VM receives the host process's require result directly, so Node returns the same mutable cached module export to later tasks. The attacker mutates that export or nested state; a later user's Code-node execution on the same runner observes attacker-controlled state, breaking cross-user confidentiality, integrity, or availability without requiring a sandbox escape.
+
+**Origin.** Mainline squash 27d83e0d918f5009101bb27bb09ea8c6374a11d9 first exposes the vulnerable runner in released history, but public PR decomposition finds finer member feb31f61bbcf80bec25acf82c440cd97ed09aa54 adding the persistent runner and raw require binding as a move into the main repository. Because that carrier is absent from the bound clone and the pre-move first-writer history is not reconstructible from permitted evidence, no atomic introducer is asserted.
+
+**AI marker.** `UNKNOWN` — No AI marker is present on the rejected mainline squash or displayed public carrier, but BIC-only attribution remains unknown until the atomic pre-move first-writer commit object is recovered and inspected.
+
+**Reasoning.** The advisory identity, vulnerable source-to-sink, affected releases, fixed releases, and direct fix are established. A closed AI or human verdict nevertheless requires the smallest first-writer and AI evidence from that commit only. The released mainline commit is a squash aggregate, and its finer public member is explicitly a move/carrier whose object and pre-move origin are unavailable in the bound read-only promisor clone. Treating either aggregate or carrier metadata as the BIC would violate the protocol, so the result remains EVIDENCE_GAP.
+
+**Remaining gap.** In an isolated writable clone, fetch refs/pull/10698/head (or at minimum feb31f61bbcf80bec25acf82c440cd97ed09aa54 and its ancestry), verify the carrier's immediate-parent trees, recover the pre-move source repository/history if public or prove no finer public object survives, then inspect the resulting atomic BIC commit object alone for AI attribution and record clone-valid full SHAs.
+
+Protocol checks:
+
+- `vulnerability_mechanism` — **PASS**: CVEProject cvelistV5 record https://raw.githubusercontent.com/CVEProject/cvelistV5/main/cves/2026/72xxx/CVE-2026-72764.json is PUBLISHED and identifies the vendor advisory GHSA-9cmh-xcqm-5hqr, the cross-user shared JavaScript task-runner module cache, and fixed versions 1.123.67, 2.31.5, and 2.32.1. Vendor advisory https://github.com/n8n-io/n8n/security/advisories/GHSA-9cmh-xcqm-5hqr states that a Code-node user can mutate a cached allowed module and affect later users on the same runner; the condition is a multi-user instance with built-in or external modules enabled. At n8n@1.123.66, packages/@n8n/task-runner/src/js-task-runner/require-resolver.ts returns require(request) directly, while JsTaskRunner creates one resolver on the persistent runner and injects it as require into each VM context.
+- `atomic_bic` — **GAP**: git log --all --follow -S'require,' identifies main-history commit 27d83e0d918f5009101bb27bb09ea8c6374a11d9 as the first mainline writer, but it is the squash of PR #10698 and is therefore not accepted as an atomic BIC. The first relevant public PR member is feb31f61bbcf80bec25acf82c440cd97ed09aa54, titled 'move task runner into main repo'; its first-party patch adds code.ts with the raw require binding and a persistent maxConcurrency=5 runner, so it is a carrier whose pre-move origin must be recovered or shown unreconstructible. GIT_NO_LAZY_FETCH=1 git cat-file -t feb31f61bbcf80bec25acf82c440cd97ed09aa54 reports the commit object unavailable in the assigned promisor clone.
+- `immediate_parent_absence` — **GAP**: GitHub's first-party commit page records feb31f61bbcf80bec25acf82c440cd97ed09aa54 with immediate parent d0ec54c9bff74d908d36b02c2c08a06ba1762eda and shows the task-runner package as newly added, but the carrier commit object is unavailable in the assigned clone for direct tree verification. For the rejected squash 27d83e0d918f5009101bb27bb09ea8c6374a11d9, local git verifies parent bdaadf10e058e2c0b1141289189d6526c030a2ca lacks packages/@n8n/task-runner-node-js/src/code.ts; this does not substitute for the atomic pre-move parent boundary.
+- `squash_member_decomposition` — **GAP**: GitHub PR #10698 exposes 28 public commits; the member list includes feb31f61bbcf80bec25acf82c440cd97ed09aa54 ('move task runner into main repo'), followed by cleanup and review commits, while mainline commit 27d83e0d918f5009101bb27bb09ea8c6374a11d9 is the squash aggregate. The relevant PR member is absent from the bound clone and its stated move source has no reconstructible first-writer object in the permitted evidence, so decomposition cannot yet produce a clone-valid atomic BIC.
+- `affected_release_membership` — **PASS**: Local ancestry checks show 27d83e0d918f5009101bb27bb09ea8c6374a11d9 absent from n8n@1.61.0 and present in n8n@1.62.1, the earliest version-sorted n8n@1.x tag containing it. Local git verifies n8n@1.123.66 resolves to 205a227df8a488f45fbac2f39ce8b57fb5380e25, contains the introduced runner history, lacks the fix carrier, and has package.json version 1.123.66; corresponding checks also confirm affected endpoints 2.31.4 and 2.32.0.
+- `fixed_release_membership` — **PASS**: Local git ancestry verifies fix carrier 1cd2c5fb22a906058cc083c3af2d561ce7f4332d is in n8n@1.123.67 and not n8n@1.123.66. Local git ancestry verifies f6cb6cf3ab177c3740a5ef624b89bae5165405a1 is in n8n@2.31.5 and not n8n@2.31.4, and f69dfc6dd2178a14ea1624d2e1d403c2e755042f is in n8n@2.32.1 and not n8n@2.32.0.
+- `direct_fix_or_unpatched` — **PASS**: git diff 1cd2c5fb22a906058cc083c3af2d561ce7f4332d^..1cd2c5fb22a906058cc083c3af2d561ce7f4332d adds secureModules in JsTaskRunner and replaces raw module exports with a write-blocking recursive proxy membrane in require-resolver.ts. The direct tests added by the same carrier verify that one resolution cannot mutate the shared module seen by another, nested writes and reflection writes are blocked, and repeated resolution preserves stable identity.
+- `bic_only_ai_attribution` — **GAP**: The rejected mainline squash 27d83e0d918f5009101bb27bb09ea8c6374a11d9 has human author Val and only human Co-authored-by trailers, but squash metadata cannot decide the BIC's AI role. GitHub presents carrier feb31f61bbcf80bec25acf82c440cd97ed09aa54 as authored by Valya Bullions with no displayed AI marker, but the carrier is not yet the accepted atomic BIC and its commit object is unavailable in the assigned clone.
+
+Primary/Git evidence:
+
+- CVE record: https://raw.githubusercontent.com/CVEProject/cvelistV5/main/cves/2026/72xxx/CVE-2026-72764.json (state PUBLISHED; vendor advisory reference; affected/fixed boundaries).
+- Vendor advisory: https://github.com/n8n-io/n8n/security/advisories/GHSA-9cmh-xcqm-5hqr (cross-tenant module-cache poisoning; affected conditions; fixed releases).
+- GitHub Advisory Database alias: https://github.com/advisories/GHSA-6fvf-89gw-r6cx maps GHSA-6fvf-89gw-r6cx to CVE-2026-72764 and references the vendor advisory.
+- First-party PR commit list: https://github.com/n8n-io/n8n/pull/10698/commits shows 28 members and the squash decomposition trail.
+- First-party carrier patch: https://github.com/n8n-io/n8n/commit/feb31f61bbcf80bec25acf82c440cd97ed09aa54.patch adds the persistent task runner and raw require binding; commit page records parent d0ec54c9bff74d908d36b02c2c08a06ba1762eda.
+- Bound clone HEAD 5a0b3f02c7c4a4bbe1b14c7261fa8dca8b59962d contains commit objects for released squash 27d83e0d918f5009101bb27bb09ea8c6374a11d9 and fix 1cd2c5fb22a906058cc083c3af2d561ce7f4332d, but not PR member feb31f61bbcf80bec25acf82c440cd97ed09aa54 under GIT_NO_LAZY_FETCH=1.
+
+### w002 — CVE-2026-77076 — `NOT_AI`
+
+- class: `alias-8bcea22b61479dcd5da95ea5`
+- repository: `n8n-io/n8n`
+- review context: `round12-clean-w002`
+- bundle sha256: `6df44c8edc0b987c7158eae669b66d6c19360a1d83110635139460ee54f3f198`
+- clone HEAD at freeze: `5a0b3f02c7c4a4bbe1b14c7261fa8dca8b59962d`
+- introducer: `0dc28e4e813defaa0c16004c3cb72f30e52b0eba`
+- immediate parent: `2ac4e425d681c3147067c176c54cdef04ef16f10`
+- direct fix: `ca3d42d8386515cd9f044377a15a632cd09b62f0`
+- fix/carrier: `ca3d42d8386515cd9f044377a15a632cd09b62f0`
+
+**Mechanism.** The GraphQL node decrypts a selected header credential and copies its value into requestOptions.headers. On a connection-level helpers.request failure, the client error retains those live request options. The node propagated that non-n8n error unchanged, allowing the execution engine to persist the credential-bearing error object; an authenticated execution reader could then recover the decrypted secret.
+
+**Origin.** Public PR member 0dc28e4e813defaa0c16004c3cb72f30e52b0eba is the smallest first-writer that closes the mechanism: its parent already lets helpers.request failures escape, but the member first adds the decrypted httpHeaderAuth credential source and places that value in the live request headers. The one-member PR was squash-landed as the patch-equivalent carrier d3aa637ff4e634abad08150a27e9d2fce7d8fa07; later catch/refactor commits do not introduce the underlying leak.
+
+**AI marker.** `ABSENT` — BIC 0dc28e4e813defaa0c16004c3cb72f30e52b0eba is a signed atomic commit authored and committed by Jacob Spizziri <jspizziri@weare5stones.com> with a single conventional feature message and no bot, model, agent, co-author, or AI marker.
+
+**Reasoning.** The vulnerability is authoritative and source-to-sink complete. The atomic first-writer is the decomposed one-member PR commit that introduced decrypted header credentials into a request path whose errors already escaped for persistence; its immediate parent lacks that source, the landing carrier is patch-identical, affected and fixed tags are verified, and the direct fix wraps the credential-bearing client error. Attribution is limited to that atomic BIC: its signed object identifies a named human author/committer and contains no AI marker, so all closed-result gates support NOT_AI.
+
+Protocol checks:
+
+- `vulnerability_mechanism` — **PASS**: CVE.org record https://cveawg.mitre.org/api/cve/CVE-2026-77076 is PUBLISHED and identifies the GraphQL connection-error path: the live request headers include a decrypted credential secret, the unchanged client error is persisted, and a reader of the execution can recover the secret. Vendor advisory https://github.com/n8n-io/n8n/security/advisories/GHSA-9fqj-7wc5-cwhx independently states the same source-to-sink mechanism and is not withdrawn or rejected. In affected tags n8n@1.123.68, n8n@2.33.3, and n8n@2.34.0, GraphQL.node.ts calls helpers.request(requestOptions), catches the rejection, and executes `throw error`; requestOptions can contain the decrypted credential header. The fix test added by ca3d42d8386515cd9f044377a15a632cd09b62f0 constructs a request error whose options.headers.Authorization is `credential-value` and asserts the resulting NodeApiError has no options property and its serialization omits that value.
+- `atomic_bic` — **PASS**: PR #1805 has exactly one public member, 0dc28e4e813defaa0c16004c3cb72f30e52b0eba, and that one-file commit adds the httpHeaderAuth credential declaration, calls getCredentials('httpHeaderAuth'), and copies httpHeaderAuth.value into requestOptions.headers immediately before helpers.request. The pre-existing unwrapped request-error path and the newly added decrypted credential source are jointly present for the first time in 0dc28e4e813defaa0c16004c3cb72f30e52b0eba; the later continue-on-fail change only made the already escaping rejection explicit and is not the BIC.
+- `immediate_parent_absence` — **PASS**: GIT_NO_LAZY_FETCH=1 git cat-file verifies parent 2ac4e425d681c3147067c176c54cdef04ef16f10 as a commit object. At 2ac4e425d681c3147067c176c54cdef04ef16f10, GraphQL.node.ts contains helpers.request(requestOptions) but has no httpHeaderAuth, no getCredentials call, and no credential value copied into requestOptions.headers.
+- `squash_member_decomposition` — **PASS**: GitHub PR #1805 lists one public member, 0dc28e4e813defaa0c16004c3cb72f30e52b0eba; the master landing carrier is d3aa637ff4e634abad08150a27e9d2fce7d8fa07. Stable patch-id for parent 2ac4e425d681c3147067c176c54cdef04ef16f10 to member 0dc28e4e813defaa0c16004c3cb72f30e52b0eba and for landing parent 7ccc0f40a2067a8e4c259693ca1caa636c42f5e2 to carrier d3aa637ff4e634abad08150a27e9d2fce7d8fa07 is identically d146eb1b8b94b08ef84018701f2d43513cd582fb.
+- `affected_release_membership` — **PASS**: git merge-base --is-ancestor shows landing carrier d3aa637ff4e634abad08150a27e9d2fce7d8fa07 absent from n8n@0.120.0 and present in n8n@0.121.0, establishing the first affected release boundary for decrypted header credentials. The carrier is also an ancestor of affected endpoint tags n8n@1.123.68, n8n@2.33.3, and n8n@2.34.0; each tag's GraphQL.node.ts contains the raw `throw error` path.
+- `fixed_release_membership` — **PASS**: Backport 3e4fb19caf73276a68b38d45d96b3da5baf7cab7 is an ancestor of n8n@1.123.69, 0405fc550f55051f6c459252f5860fa78d27ab80 is an ancestor of n8n@2.33.4, and 170cfc787015d352488f6b6403af07a74e95ca1d is an ancestor of n8n@2.34.1. Those fixed tags contain the wrapping branch while the immediately preceding affected endpoint tags n8n@1.123.68, n8n@2.33.3, and n8n@2.34.0 contain raw `throw error`, matching the CVE.org and vendor-advisory boundaries.
+- `direct_fix_or_unpatched` — **PASS**: Master fix ca3d42d8386515cd9f044377a15a632cd09b62f0 directly replaces raw `throw error` with pass-through only for ExecutionBaseError and `throw new NodeApiError(this.getNode(), error as JsonObject, { itemIndex })` for underlying request errors. The same direct hunk is present in release backports 3e4fb19caf73276a68b38d45d96b3da5baf7cab7, 0405fc550f55051f6c459252f5860fa78d27ab80, and 170cfc787015d352488f6b6403af07a74e95ca1d; the added regression test asserts credential-bearing request options are not serialized.
+- `bic_only_ai_attribution` — **PASS**: The atomic BIC object 0dc28e4e813defaa0c16004c3cb72f30e52b0eba is a signed, one-file commit authored and committed by the named individual Jacob Spizziri <jspizziri@weare5stones.com>; its complete message is `feat(graphql): add header authentication to GraphQL node` and contains no bot, model, agent, co-author, or AI marker.
+
+Primary/Git evidence:
+
+- CVE.org authoritative record: https://cveawg.mitre.org/api/cve/CVE-2026-77076 (state PUBLISHED; updated 2026-08-21).
+- n8n vendor advisory: https://github.com/n8n-io/n8n/security/advisories/GHSA-9fqj-7wc5-cwhx (published 2026-08-05; affected <1.123.69, <2.33.4, <2.34.1; fixed 1.123.69, 2.33.4, 2.34.1).
+- Public atomic BIC: https://github.com/n8n-io/n8n/pull/1805/commits/0dc28e4e813defaa0c16004c3cb72f30e52b0eba; PR #1805 reports exactly one member.
+- Local GIT_NO_LAZY_FETCH=1 inspection verifies BIC 0dc28e4e813defaa0c16004c3cb72f30e52b0eba, parent 2ac4e425d681c3147067c176c54cdef04ef16f10, patch-equivalent landing carrier d3aa637ff4e634abad08150a27e9d2fce7d8fa07, and direct fix ca3d42d8386515cd9f044377a15a632cd09b62f0 as commit objects.
+- Affected/fixed tag pairs inspected directly: n8n@1.123.68/1.123.69, n8n@2.33.3/2.33.4, and n8n@2.34.0/2.34.1; all three pairs change raw propagation to NodeApiError wrapping.
+- Bundle SHA-256 is 6df44c8edc0b987c7158eae669b66d6c19360a1d83110635139460ee54f3f198 and assigned clone HEAD is 5a0b3f02c7c4a4bbe1b14c7261fa8dca8b59962d.
+
+### w003 — CVE-2026-72768 — `NOT_AI`
+
+- class: `alias-931207adaa63708eecc8c46d`
+- repository: `n8n-io/n8n`
+- review context: `round12-clean-w003`
+- bundle sha256: `5d66add1194030647ea0feeaba375e93df8e0e24b97341985691e50dd7a0ad85`
+- clone HEAD at freeze: `5a0b3f02c7c4a4bbe1b14c7261fa8dca8b59962d`
+- introducer: `5b3feb332f8b85a1e00319c69dffa6726b57feff`
+- immediate parent: `1b22890f3a03b2a1e5e9d7d7c550046dcaf2506d`
+- direct fix: `97f5ba3f824019665adb81a9976174e5f778d71d`
+- fix/carrier: `f69dfc6dd2178a14ea1624d2e1d403c2e755042f`
+
+**Mechanism.** An authenticated workflow editor controls the MCP endpoint URL. McpClient.node.ts passes that value into connectMcpClientForCredential, whose transport fetch wrapper sent the initial request and redirect hops through proxyFetch without the instance NodeEgressFilter or a secure DNS lookup. The server therefore connected to internal, link-local, or otherwise blocked destinations and returned MCP tool metadata/results into the workflow. The fix validates every hop through getSecureEgressFilter and pins the validated address at connect time.
+
+**Origin.** The public PR member 5b3feb332f8b85a1e00319c69dffa6726b57feff is the smallest first-writer: it adds the user-controlled MCP Server URL, outbound SSE/StreamableHTTP transports, and response-returning MCP client helpers in one commit. Its immediate parent has no McpClient subtree. The later public squash landing 69e092a263fc5890d783247eb2759d1419f9c7f1 and intermediate moves/extensions are carriers, not the first writer.
+
+**AI marker.** `ABSENT` — BIC commit object 5b3feb332f8b85a1e00319c69dffa6726b57feff names and signs as Roman Davydchuk <roman.davydchuk@n8n.io> and contains no AI author/co-author/generation marker.
+
+**Reasoning.** The advisory is authoritative and the complete source-to-sink, affected/fixed tags, parent absence, squash decomposition, and direct fix are all locally verified. The atomic BIC is the public PR member 5b3feb332f8b85a1e00319c69dffa6726b57feff, not its squash landing or the later fix bundles. That BIC is a named, signed human commit with no AI-local marker. Because AI evidence exists only on a later fix and attribution is restricted to the BIC, all eight closure gates imply NOT_AI.
+
+Protocol checks:
+
+- `vulnerability_mechanism` — **PASS**: CVE.org record https://cveawg.mitre.org/api/cve/CVE-2026-72768 has cveMetadata.state=PUBLISHED and describes authenticated MCP Client requests to internal or blocked hosts bypassing SSRF protection. Vendor advisory https://github.com/n8n-io/n8n/security/advisories/GHSA-vhf8-cg2h-cg3p says the user-supplied endpoint was neither routed through SSRF protection nor address-pinned, and responses were readable through the workflow. At n8n@2.31.4, McpClient.node.ts reads endpointUrl from node parameters and passes it to connectMcpClientForCredential; shared/utils.ts then calls proxyFetch and validates only credential allowedDomains, with no instance NodeEgressFilter.
+- `atomic_bic` — **PASS**: GitHub PR API https://api.github.com/repos/n8n-io/n8n/pulls/21942/commits exposes finer public members beneath squash landing 69e092a263fc5890d783247eb2759d1419f9c7f1. Member 5b3feb332f8b85a1e00319c69dffa6726b57feff first adds McpClient.node.ts with user-controlled mcpServerUrl plus listSearch.ts and utils.ts that construct SSE/StreamableHTTP transports and return MCP responses; later members move or extend this implementation rather than first-write it.
+- `immediate_parent_absence` — **PASS**: git cat-file -t confirms 5b3feb332f8b85a1e00319c69dffa6726b57feff and parent 1b22890f3a03b2a1e5e9d7d7c550046dcaf2506d are commit objects. git ls-tree -r --name-only 1b22890f3a03b2a1e5e9d7d7c550046dcaf2506d -- packages/@n8n/nodes-langchain/nodes/mcp/McpClient returned no paths; git diff-tree for 5b3feb332f8b85a1e00319c69dffa6726b57feff reports all four McpClient source files as added.
+- `squash_member_decomposition` — **PASS**: GitHub PR #21942 reports merge_commit_sha 69e092a263fc5890d783247eb2759d1419f9c7f1 and 47 public commits; the bounded refs/pull/21942/head fetch made the member objects locally inspectable. The earliest causal member is 5b3feb332f8b85a1e00319c69dffa6726b57feff; 24f88fe6d2f5fc3e28ca4c6f20f48e76fea2e254 later moves the same unsafe connection helper to mcp/shared/utils.ts, and 69e092a263fc5890d783247eb2759d1419f9c7f1 is therefore a squash carrier, not the atomic BIC.
+- `affected_release_membership` — **PASS**: Vendor advisory GHSA-vhf8-cg2h-cg3p gives vulnerable ranges <2.31.5 and >=2.32.0,<2.32.1. Tags n8n@2.31.4 (c7dd6b93e9bae126b7a829b1d667a1740e50c9d0) and n8n@2.32.0 (662a23c20278e66fb430c37ea18024dea31f69f3) both contain vulnerable shared/utils.ts blob 71d6b6f29556d212b6afe339e35fff0e766e49fe, which calls proxyFetch without a secure egress filter.
+- `fixed_release_membership` — **PASS**: Tag n8n@2.31.5 (aa3d214338d610300c3c7c70f0ed08e5675bc722) contains backport f6cb6cf3ab177c3740a5ef624b89bae5165405a1; tag n8n@2.32.1 (7d43cce19523691ee00d89bcc12786fd511d2329) contains vendor-linked backport f69dfc6dd2178a14ea1624d2e1d403c2e755042f. Both fixed tags contain shared/utils.ts blob d1ac743e47689367d7d95c46b697542cdec4210c, while their immediately preceding affected tags contain 71d6b6f29556d212b6afe339e35fff0e766e49fe.
+- `direct_fix_or_unpatched` — **PASS**: Public bundle member 97f5ba3f824019665adb81a9976174e5f778d71d directly changes shared/utils.ts from blob 71d6b6f29556d212b6afe339e35fff0e766e49fe to d1ac743e47689367d7d95c46b697542cdec4210c. The direct hunk passes ctx.helpers.getSecureEgressFilter into connectMcpClient, validates the initial URL and every redirect hop with validateUrl, and supplies createSecureLookup to proxyFetch for address pinning. Backports f6cb6cf3ab177c3740a5ef624b89bae5165405a1 and f69dfc6dd2178a14ea1624d2e1d403c2e755042f make the identical blob transition.
+- `bic_only_ai_attribution` — **PASS**: git cat-file commit 5b3feb332f8b85a1e00319c69dffa6726b57feff records author and committer Roman Davydchuk <roman.davydchuk@n8n.io>, a GPG signature, and subject 'wip: MCP client', with no AI author, AI co-author, or AI-generation trailer. AI-related trailers on the July 2026 fix bundle are fix-local and are excluded from BIC attribution.
+
+Primary/Git evidence:
+
+- CVE.org primary record: https://cveawg.mitre.org/api/cve/CVE-2026-72768 (PUBLISHED; affected before 2.31.5 and before 2.32.1 as enumerated by the CNA).
+- Vendor primary advisory: https://github.com/n8n-io/n8n/security/advisories/GHSA-vhf8-cg2h-cg3p (unwithdrawn; fixed in 2.31.5 and 2.32.1; references f69dfc6dd2178a14ea1624d2e1d403c2e755042f).
+- GitHub PR #21942 primary API: https://api.github.com/repos/n8n-io/n8n/pulls/21942 and /pulls/21942/commits show the 47-member public history beneath squash landing 69e092a263fc5890d783247eb2759d1419f9c7f1.
+- Git object 5b3feb332f8b85a1e00319c69dffa6726b57feff adds the MCP Client source-to-sink; parent 1b22890f3a03b2a1e5e9d7d7c550046dcaf2506d lacks the entire added subtree.
+- Affected tags n8n@2.31.4 and n8n@2.32.0 resolve shared/utils.ts to 71d6b6f29556d212b6afe339e35fff0e766e49fe; fixed tags n8n@2.31.5 and n8n@2.32.1 resolve it to d1ac743e47689367d7d95c46b697542cdec4210c.
+- Direct public fix member 97f5ba3f824019665adb81a9976174e5f778d71d and release backports f6cb6cf3ab177c3740a5ef624b89bae5165405a1/f69dfc6dd2178a14ea1624d2e1d403c2e755042f all make the same vulnerable-to-fixed blob transition.
+
+### w004 — GHSA-4hf6-j482-f379 — `AI_ROOT_CAUSE`
+
+- class: `alias-98b8df0f369c05ce326a9b13`
+- repository: `jahlives/openssl_encrypt`
+- review context: `round12-clean-w004`
+- bundle sha256: `0a0c1accc4ca19519d74dfa49da030cba5c3b90ecaf28eedafbcdc5ce784dd54`
+- clone HEAD at freeze: `c2b412f6fd1bc33734de9fbce9bce68318eb3cbd`
+- introducer: `35499f201ae2dc531d1194f6810c953d8b9af78b`
+- immediate parent: `31d2bc8c8b5b3ee818d4cd7228ed9f42f9683004`
+- direct fix: `0c7418bab59e80a2b40913d8ad8523e6bbab196b`
+- fix/carrier: `0c7418bab59e80a2b40913d8ad8523e6bbab196b`
+
+**Mechanism.** An untrusted plugin class controls plugin.plugin_id. PluginManager instantiated the class and accepted any nonempty string of at most 50 characters, then propagated that value into PluginSecurityContext. For a plugin without READ_FILES, the sandbox intercepted file operations and called _is_safe_path, but _is_safe_path resolved ~/.openssl_encrypt/plugins/<plugin_id> without validating plugin_id and treated every path with that resolved prefix as allowed. Traversal such as '../../.ssh' therefore changes the purported per-plugin config root to a user directory outside ~/.openssl_encrypt/plugins, allowing the sandboxed plugin to read or write paths there despite lacking general file capability.
+
+**Origin.** Single-parent commit 35499f201ae2dc531d1194f6810c953d8b9af78b is the smallest public first writer: it introduced context propagation into the file-operation wrapper and added the unsanitized plugin_id-derived config/code directory allowances. Its immediate parent denied all paths except the temp and standard-library roots.
+
+**AI marker.** `PRESENT` — BIC 35499f201ae2dc531d1194f6810c953d8b9af78b commit message: Generated with [Claude Code] (https://claude.com/claude-code). BIC 35499f201ae2dc531d1194f6810c953d8b9af78b trailer: Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>.
+
+**Reasoning.** The authoritative advisory disposition is live, the source-to-sink mechanism is present in a shipped beta artifact, and Git identifies a smallest non-aggregate first writer whose immediate parent lacks the flawed authorization branch. The direct sanitization fix is present in the stable fixed release. Because the exact BIC itself explicitly records Claude Code generation and Claude Sonnet 4.5 co-authorship, all lifecycle and causal-attribution gates close as AI_ROOT_CAUSE.
+
+Protocol checks:
+
+- `vulnerability_mechanism` — **PASS**: The CVE.org record API at https://cveawg.mitre.org/api/cve/CVE-2026-74884 reports state PUBLISHED and describes unsanitized plugin_id path traversal in _is_safe_path; its affected range is <1.4.0 and 1.4.0 is unaffected. The vendor advisory API at https://api.github.com/repos/jahlives/openssl_encrypt/security-advisories/GHSA-8jpj-w975-rwv5 reports state published, withdrawn_at null, and explains that _validate_plugin accepted any string up to 50 characters while _is_safe_path interpolated plugin_id into the allowed config directory. At 0c7418bab59e80a2b40913d8ad8523e6bbab196b^, plugin_manager.py:815-820 validates plugin_id only for presence, string type, and length; plugin_sandbox.py:754-768 then builds ~/.openssl_encrypt/plugins/<plugin_id> and grants access when abs_path.startswith(config_dir). A deterministic Python evaluation with plugin_id='../../.ssh' produced config_dir=/home/hanqing/.ssh and made /home/hanqing/.ssh/id_ed25519 pass startswith(config_dir).
+- `atomic_bic` — **PASS**: git blame at 0c7418bab59e80a2b40913d8ad8523e6bbab196b^ attributes the vulnerable plugin-specific config-directory branch, including unsanitized plugin_id assignment, path interpolation, and startswith allow decision, to 35499f201ae2dc531d1194f6810c953d8b9af78b. git diff 31d2bc8c8b5b3ee818d4cd7228ed9f42f9683004..35499f201ae2dc531d1194f6810c953d8b9af78b directly adds current_context propagation and the vulnerable per-plugin directory allow rule; later realpath and formatting commits are carriers/hardening changes, not the first writer.
+- `immediate_parent_absence` — **PASS**: git cat-file verifies immediate parent 31d2bc8c8b5b3ee818d4cd7228ed9f42f9683004 as a commit. Its plugin_sandbox.py _is_safe_path accepts only the temp directory and standard-library directory at lines 375-388 and has no plugin_id-derived config-directory allowance.
+- `squash_member_decomposition` — **PASS**: git rev-list --parents -n1 shows 35499f201ae2dc531d1194f6810c953d8b9af78b has exactly one parent, 31d2bc8c8b5b3ee818d4cd7228ed9f42f9683004. The public commit itself directly writes the vulnerable lines and is neither a merge nor a squash aggregate, so no finer member decomposition applies.
+- `affected_release_membership` — **PASS**: PyPI JSON at https://pypi.org/pypi/openssl-encrypt/json records the official openssl_encrypt 1.4.0b3 sdist, uploaded 2026-01-04T19:20:48.382107Z with SHA-256 5a36c06595ddfcdc721231254c02ef6ba16ab2cf6c4ad432529bd24fc98ac6c9. Streaming inspection of that exact 1.4.0b3 sdist shows PKG-INFO Version: 1.4.0b3 and plugin_sandbox.py:617-632 interpolating unsanitized context.plugin_id into config_dir and returning true on the prefix test; the artifact contains no _sanitize_plugin_id. git merge-base --is-ancestor also confirms BIC 35499f201ae2dc531d1194f6810c953d8b9af78b is an ancestor of the 1.4.0b3 version-bump commit 62810a2f938ca57e5a408ecf213d5299f6cfb1ac.
+- `fixed_release_membership` — **PASS**: git merge-base --is-ancestor confirms direct fix 0c7418bab59e80a2b40913d8ad8523e6bbab196b is an ancestor of tag v1.4.0 (tag target 768df5cd1910e349509f07a27eeac6951e0003bf). PyPI JSON records the 1.4.0 sdist uploaded 2026-03-03T18:22:41.178065Z with SHA-256 77a024c126ec6757703bd5e74da8c3af34683537b6e3f31585d9c3cf4497ca4f; streaming inspection shows PKG-INFO Version: 1.4.0, _sanitize_plugin_id at lines 323-351, and its use before config_dir construction at lines 798-809.
+- `direct_fix_or_unpatched` — **PASS**: git show 0c7418bab59e80a2b40913d8ad8523e6bbab196b directly adds _sanitize_plugin_id, rejects slash, backslash, NUL, '..', and all characters outside [A-Za-z0-9_-], calls it before plugin execution and before _is_safe_path path construction, and removes the impossible nested duplicate prefix check.
+- `bic_only_ai_attribution` — **PASS**: The raw commit object for BIC 35499f201ae2dc531d1194f6810c953d8b9af78b itself contains both 'Generated with [Claude Code]' and 'Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>'. No repository-wide or later-fix marker is used for attribution.
+
+Primary/Git evidence:
+
+- CVE.org record API https://cveawg.mitre.org/api/cve/CVE-2026-74884: PUBLISHED; affected <1.4.0; 1.4.0 unaffected; vendor advisory reference GHSA-8jpj-w975-rwv5.
+- Vendor advisory API https://api.github.com/repos/jahlives/openssl_encrypt/security-advisories/GHSA-8jpj-w975-rwv5: published, not withdrawn; identifies 0c7418b as the fix.
+- Git BIC 35499f201ae2dc531d1194f6810c953d8b9af78b and immediate parent 31d2bc8c8b5b3ee818d4cd7228ed9f42f9683004 both exist as commit objects in the assigned clone; their direct diff creates the vulnerable authorization path.
+- Git direct fix 0c7418bab59e80a2b40913d8ad8523e6bbab196b exists as a commit object and is contained by v1.4.0.
+- Exact PyPI 1.4.0b3 and 1.4.0 source distributions independently demonstrate the vulnerable and fixed shipped code, respectively.
+
+### w005 — CVE-2026-77069 — `NOT_AI`
+
+- class: `alias-a01054677de611cc0331f469`
+- repository: `n8n-io/n8n`
+- review context: `round12-clean-w005`
+- bundle sha256: `6af3e011082c304f33a1c2a093579cc040c13b623bc7b20fd967d9d1df0413ac`
+- clone HEAD at freeze: `5a0b3f02c7c4a4bbe1b14c7261fa8dca8b59962d`
+- introducer: `d2ea3ce877b4233e9c1cb20f8e2882e42ad964e0`
+- immediate parent: `3b450b4372acfa4b56f025a1d55b6fa05f1409f8`
+- direct fix: `ca3d42d8386515cd9f044377a15a632cd09b62f0`
+- fix/carrier: `ca3d42d8386515cd9f044377a15a632cd09b62f0`
+
+**Mechanism.** A user allowed to create/configure OAuth2 credentials controls accessTokenUrl. During the authorization callback, n8n converts that value to ClientOAuth2.accessTokenUri and code.getToken constructs an authorization_code POST with fixed OAuth fields. Before the fix, @n8n/client-oauth2 sent that request through axios without the SSRF-protection service's initial-URL, DNS-rebinding, or redirect checks. The target's OAuth-shaped success data could be stored and error bodies were rendered into the callback page, allowing bounded internal response disclosure in addition to the server-side request.
+
+**Origin.** d2ea3ce877b4233e9c1cb20f8e2882e42ad964e0 is the smallest public first-writer of the credential-controlled accessTokenUrl -> ClientOAuth2 -> code.getToken network path. Its immediate parent has no OAuth2 endpoint or token-exchange sink. A later revert temporarily removed the feature, but the original OAuth-support history was subsequently merged and the same unsafe mechanism survived through later changes; the revert, later merge/refactors, 2023 response-body enhancement, and 2026 fix bundles are not BICs.
+
+**AI marker.** `ABSENT` — BIC d2ea3ce877b4233e9c1cb20f8e2882e42ad964e0 has named human author and committer Ram Yalamanchili <ramyinc@gmail.com>; its complete commit message has no AI, bot, generated-by, or Co-authored-by marker.
+
+**Reasoning.** The vulnerability is real and source-closed on the 2.x lines: credential-controlled token endpoints reached an unguarded HTTP sink, and the 2.x fixed tags carry the direct SSRF bridge patch. The atomic origin is the 2020 OAuth2 endpoint commit, whose parent lacks the path and whose commit object is attributable to a named human with no AI marker. Later AI-associated repository activity and later OAuth error-handling changes are not BIC-local evidence. The 1.123.69 source/tag contradiction is a version-boundary defect in the advisory, not evidence that the vulnerability is false or AI-authored, so the causal verdict is NOT_AI.
+
+Protocol checks:
+
+- `vulnerability_mechanism` — **PASS**: CVE.org JSON record https://cveawg.mitre.org/api/cve/CVE-2026-77069 is PUBLISHED and identifies CWE-918: the OAuth2 authorization-code token exchange sends a fixed-shape POST to a credential-selected access-token URL without the SSRF guard and can reflect the target response. Vendor advisory https://github.com/n8n-io/n8n/security/advisories/GHSA-c4f6-59xq-95ww is published and not withdrawn; it describes the same unguarded token exchange and bounded response reflection. At n8n@2.34.0, packages/cli/src/controllers/oauth/oauth2-credential.controller.ts maps credential.accessTokenUrl to accessTokenUri, constructs ClientOAuth2 without an SSRF bridge, and invokes code.getToken; packages/@n8n/client-oauth2/src/code-flow.ts:123-133 makes the POST, and client-oauth2.ts:97-135 dispatches it through axios without URL, DNS, or redirect SSRF validation.
+- `atomic_bic` — **PASS**: git diff 3b450b4372acfa4b56f025a1d55b6fa05f1409f8 d2ea3ce877b4233e9c1cb20f8e2882e42ad964e0 -- packages/cli/src/Server.ts shows the first credential accessTokenUrl -> clientOAuth2 -> code.getToken request chain; the commit adds only packages/cli/package.json and 135 lines in Server.ts for the OAuth2 authorization/callback feature. d2ea3ce877b4233e9c1cb20f8e2882e42ad964e0 is a direct single-parent feature commit, not a move, revert, merge, release carrier, or security-bundle aggregate. Later f71737928f6d51d849ca5006f47032934b6eafa0 and acec9bad7106b2ad51800a650be68b3ec5003357 are refactors/moves and were rejected as BICs.
+- `immediate_parent_absence` — **PASS**: git cat-file -t 3b450b4372acfa4b56f025a1d55b6fa05f1409f8 returns commit. git grep -n -E 'oauth2-credential|accessTokenUri|code.getToken' 3b450b4372acfa4b56f025a1d55b6fa05f1409f8 -- packages/cli/src/Server.ts packages/cli/package.json returns no matches, while the child diff adds both the attacker-selected URL source and unguarded token-exchange sink.
+- `squash_member_decomposition` — **PASS**: git cat-file commit d2ea3ce877b4233e9c1cb20f8e2882e42ad964e0 shows exactly one parent, 3b450b4372acfa4b56f025a1d55b6fa05f1409f8, and no PR/squash aggregate metadata; there is no finer public member to decompose. The later error-body enhancement squash 79d0a0f2470905f98b71fb5c8ca007244004f99a was decomposed via public PR #5794 into af66f9fe74dbcea8a761821e809d76ef7cf6ddd3, a65d1493bc8bc0477b2cddb29b39a2f241568e31, and 0d9c554bc74dbde45ae6a7362dfebf5264bea4ac; those 2023 members amplify response disclosure but postdate the 2020 unguarded SSRF sink and are not the BIC.
+- `affected_release_membership` — **PASS**: CVE.org and the vendor advisory identify affected ranges below 1.123.69, below 2.33.4 on the 2.33 line, and 2.34.0 below 2.34.1. git source inspection confirms n8n@1.123.68 controller blob 7e1f6c8bc86c33a62557b511d798f0ccd45f8957 and client blob 5bbbde43552b1de707e2343edb613393164cd00a retain ClientOAuth2 without an SSRF bridge and render error.body. n8n@2.33.3 and n8n@2.34.0 share vulnerable controller blob 7dceeff43304715616d6a52a00c8f45ebdb28509 and client blob b9653aa75c463bdf551d83a1244ebd07331d03c8; both lack ssrfBridge at token exchange and serialize error.body into the callback page.
+- `fixed_release_membership` — **PASS**: n8n@2.33.4 and n8n@2.34.1 both contain patched controller blob c51eb166905b0d78a25c49cf5d16ecc2d7d6fb5e and patched client blob 7deb2673a58f1bee33e5aa6c5a46e6da83d483a1, identical to direct-fix commit ca3d42d8386515cd9f044377a15a632cd09b62f0; their backport commits are 0405fc550f55051f6c459252f5860fa78d27ab80 and 170cfc787015d352488f6b6403af07a74e95ca1d. The advertised 1.x boundary is contradicted by first-party Git source: n8n@1.123.69 has the exact same controller blob 7e1f6c8bc86c33a62557b511d798f0ccd45f8957 and client blob 5bbbde43552b1de707e2343edb613393164cd00a as n8n@1.123.68, and 3e4fb19caf73276a68b38d45d96b3da5baf7cab7 does not modify OAuth or backend-network files. Thus 1.123.69 is not source-fixed despite the advisory claim.
+- `direct_fix_or_unpatched` — **PASS**: git diff a7dec6df87d2eaedffd22e7c8939804e350185a9 ca3d42d8386515cd9f044377a15a632cd09b62f0 shows the direct fix: ClientOAuth2 accepts an SsrfBridge, validates the initial URL and every redirect, installs secure DNS lookup, OAuth2CredentialController passes OauthService.getSsrfBridge(), refresh uses the same bridge, and callback rendering no longer serializes arbitrary response bodies. ca3d42d8386515cd9f044377a15a632cd09b62f0 and private-source carrier c4488a956f3d48e53c5aa3cc6a99c5851e8b2009 have identical tree 77033e2954d683a27c8ea0c6e32d3c8566a95907; no finer public per-vulnerability fix object is reconstructable.
+- `bic_only_ai_attribution` — **PASS**: The BIC commit object d2ea3ce877b4233e9c1cb20f8e2882e42ad964e0 names Ram Yalamanchili <ramyinc@gmail.com> as both author and committer and contains no Co-authored-by trailer, AI tool identity, generated-by marker, bot identity, or aggregate metadata. Attribution is based only on the atomic BIC object; later AI-marked OAuth work, later security bundles, repository-level AI activity, and fix authorship are excluded.
+
+Primary/Git evidence:
+
+- CVE.org primary record: https://cveawg.mitre.org/api/cve/CVE-2026-77069 (state PUBLISHED; CWE-918; affected and fixed version claims).
+- n8n vendor advisory: https://github.com/n8n-io/n8n/security/advisories/GHSA-c4f6-59xq-95ww (published 2026-08-05; not withdrawn; mechanism and patch claims).
+- BIC/parent: git cat-file commit d2ea3ce877b4233e9c1cb20f8e2882e42ad964e0 and git diff 3b450b4372acfa4b56f025a1d55b6fa05f1409f8 d2ea3ce877b4233e9c1cb20f8e2882e42ad964e0 -- packages/cli/src/Server.ts.
+- Immediate-parent absence: git grep for oauth2-credential, accessTokenUri, and code.getToken in 3b450b4372acfa4b56f025a1d55b6fa05f1409f8 returned no matches.
+- Vulnerable implementation: n8n@2.34.0 controller converts credential.accessTokenUrl, code-flow.ts selects POST, and client-oauth2.ts dispatches axios without SsrfBridge.
+- Direct fix: git diff a7dec6df87d2eaedffd22e7c8939804e350185a9 ca3d42d8386515cd9f044377a15a632cd09b62f0 across OAuth controller/service and @n8n/client-oauth2 adds the bridge and suppresses arbitrary body reflection.
+- 2.x release membership: n8n@2.33.4 and n8n@2.34.1 relevant blobs exactly match ca3d42d8386515cd9f044377a15a632cd09b62f0; vulnerable predecessor tags share the unpatched blobs.
+- 1.x discrepancy: n8n@1.123.68 and n8n@1.123.69 have identical relevant source blobs, so the first-party source does not support the advertised 1.123.69 fixed boundary.
+
+### w006 — GHSA-hmf7-54mh-cvp4 — `FALSE_POSITIVE`
+
+- class: `alias-a39bbcb4f9d32e18ec24c4c8`
+- repository: `jahlives/openssl_encrypt`
+- review context: `round12-clean-w006`
+- bundle sha256: `a502b488ec8c1a70c74a120c644a08fbf5f2bdb5c6c34b259a9c40b91afaf8cf`
+- clone HEAD at freeze: `c2b412f6fd1bc33734de9fbce9bce68318eb3cbd`
+- introducer: `null`
+- immediate parent: `null`
+- direct fix: `null`
+- fix/carrier: `null`
+
+**Mechanism.** The request supplies a target fingerprint and a purported revocation signature. The server looks up the target key, extracts the signing public key from that target's stored, self-signed bundle, and verifies an ML-DSA signature over the same fingerprint before mutating the revoked flag. A different authenticated client identifier does not bypass this cryptographic gate: without the private signing key corresponding to the target bundle, its signature fails and the mutation is not reached. Possession of a valid target-key signature is the protocol's proof of key ownership, so the reported account-ID comparison omission does not create the claimed unauthorized source-to-sink path.
+
+**Origin.** No flaw origin exists. The earliest inspected implementation in fafdfeed1b279cfe61e86cd8adc132b206eef8d4 already loaded the target bundle's signing key and required a valid signature over its fingerprint before revocation; the later alleged fix only documented that existing invariant.
+
+**AI marker.** `UNKNOWN` — No BIC exists because the reported mechanism is not a security issue; commit-local AI attribution is therefore inapplicable.
+
+**Reasoning.** This is a false positive and not a security issue under the claimed mechanism. The CVE description equates absence of an account client_id equality check with absence of ownership verification, but both the pre-fix implementation and the vendor disposition show that revocation is authorized by cryptographic control of the target key: the supplied signature must validate against the target bundle's signing public key before any state change. The vendor's alleged fix changes no security behavior, which independently confirms that there was no missing check to repair. Because the mechanism does not exist, BIC, release, direct-fix, and BIC-only AI gates are inapplicable.
+
+Protocol checks:
+
+- `vulnerability_mechanism` — **PASS**: The official CVE Services record at https://cveawg.mitre.org/api/cve/CVE-2026-74877 is PUBLISHED and claims that any authenticated client can revoke another client's key by supplying a valid ML-DSA signature; the record is not rejected or withdrawn. The vendor advisory https://github.com/jahlives/openssl_encrypt/security/advisories/GHSA-hvc7-763r-4f3h admits that a requester needs the private key to produce the valid revocation signature and identifies 05e45f393886b5bf7e924d2dd42099a9dd37f91d as the fix that documents that signature verification is the cryptographic ownership check. At the alleged pre-fix tree 4b2adb05cde8a7ee03cdd271755da3b377c68011, server/key-server/app/api/v1/keys.py selects the target record by fingerprint, loads that target bundle's signing_public_key, and calls verify_revocation_signature before setting revoked=True; server/key-server/app/services/verification.py verifies the supplied signature over that fingerprint with that target public key and raises VerificationError on failure. git diff-tree --no-commit-id --name-status -r 05e45f393886b5bf7e924d2dd42099a9dd37f91d reports only M server/key-server/app/api/v1/keys.py, and the hunk adds explanatory comments plus a success log without changing the authorization or signature-verification control flow. The claimed missing-ownership mechanism is therefore absent.
+- `atomic_bic` — **N/A**: N/A for FALSE_POSITIVE: there is no vulnerable behavior to assign to a bug-introducing commit; the earliest inspected keyserver implementation fafdfeed1b279cfe61e86cd8adc132b206eef8d4 already required proof with the target key's signing public key.
+- `immediate_parent_absence` — **N/A**: N/A for FALSE_POSITIVE because no BIC exists; no immediate-parent absence claim is made.
+- `squash_member_decomposition` — **N/A**: N/A for FALSE_POSITIVE because there is no vulnerable aggregate or alleged BIC to decompose.
+- `affected_release_membership` — **N/A**: N/A for FALSE_POSITIVE: although the CVE record labels versions below 1.4.0 affected, the required target-key signature check already exists in the earliest inspected implementation, so no genuinely affected release membership exists.
+- `fixed_release_membership` — **N/A**: N/A for FALSE_POSITIVE: v1.4.0 contains 05e45f393886b5bf7e924d2dd42099a9dd37f91d, but that commit is documentation and logging only rather than a security fix.
+- `direct_fix_or_unpatched` — **N/A**: N/A for FALSE_POSITIVE: 05e45f393886b5bf7e924d2dd42099a9dd37f91d changes no authorization predicate and merely states what the existing signature verification already enforces.
+- `bic_only_ai_attribution` — **N/A**: N/A for FALSE_POSITIVE: without a real vulnerability or BIC, no causal AI attribution is possible or attempted.
+
+Primary/Git evidence:
+
+- Official CVE Services record https://cveawg.mitre.org/api/cve/CVE-2026-74877 has cveMetadata.state=PUBLISHED, identifies CVE-2026-74877, and points to the vendor advisory; it is not rejected or withdrawn.
+- Vendor advisory https://github.com/jahlives/openssl_encrypt/security/advisories/GHSA-hvc7-763r-4f3h says a valid revocation signature requires the private key and says commit 05e45f3 documents that ML-DSA signature verification is the cryptographic ownership check.
+- git rev-parse 05e45f3^{commit} => 05e45f393886b5bf7e924d2dd42099a9dd37f91d; git rev-parse 05e45f3^ => 4b2adb05cde8a7ee03cdd271755da3b377c68011.
+- In 4b2adb05cde8a7ee03cdd271755da3b377c68011:server/key-server/app/api/v1/keys.py, the mutation key.revoked=True occurs only after verify_revocation_signature receives bundle_data['signing_public_key'] from the target record selected by fingerprint.
+- In 4b2adb05cde8a7ee03cdd271755da3b377c68011:server/key-server/app/services/verification.py, verifier.verify(fingerprint.encode('utf-8'), supplied_signature, target_public_key) must return true; otherwise VerificationError aborts the route.
+- git show 05e45f393886b5bf7e924d2dd42099a9dd37f91d changes only comments and an info-level log in server/key-server/app/api/v1/keys.py; it adds no client_id comparison or other authorization decision.
+- git rev-parse v1.4.0^{commit} => 768df5cd1910e349509f07a27eeac6951e0003bf, and git merge-base --is-ancestor 05e45f393886b5bf7e924d2dd42099a9dd37f91d v1.4.0^{commit} exits 0, confirming only the vendor's documentation commit is in the claimed fixed release.
+- The assigned clone HEAD is c2b412f6fd1bc33734de9fbce9bce68318eb3cbd and the assigned bundle SHA-256 is a502b488ec8c1a70c74a120c644a08fbf5f2bdb5c6c34b259a9c40b91afaf8cf.
+
+### w007 — GHSA-7qj7-jv8m-rfjw — `AI_ROOT_CAUSE`
+
+- class: `alias-a5472bde6709c5ed932dd021`
+- repository: `jahlives/openssl_encrypt`
+- review context: `round12-clean-w007`
+- bundle sha256: `149e79448f5c629c43d0f491fc6412eec3125dedb60b46e02b0c590dd0f5c477`
+- clone HEAD at freeze: `c2b412f6fd1bc33734de9fbce9bce68318eb3cbd`
+- introducer: `5e3104481d9842d3d6989332ae32bee4b010d2db`
+- immediate parent: `295bf5f3df60ce08d2d8aed26d4fa0bc03592850`
+- direct fix: `472c088be14f5edb3dde1bf819419a8b86c8d72f`
+- fix/carrier: `472c088be14f5edb3dde1bf819419a8b86c8d72f`
+
+**Mechanism.** The decrypt path accepts the encapsulated KEM ciphertext as input and tries real decapsulation. If both supported decapsulation APIs fail, it suppresses the KEM failure and substitutes SHA-256(encapsulated_key || first_16_bytes_of_private_key) as the shared secret, then hashes that into the AEAD key. Because encapsulated_key is carried with the ciphertext, anyone with those 16 private-key bytes can compute the fallback key and construct ciphertext that the recipient accepts after an intentionally failing KEM encapsulation; legacy simulation-mode ciphertexts use the same weak deterministic construction. Ordinary successfully encapsulated ciphertext still uses its real KEM secret, so the direct code evidence does not by itself show that the fallback decrypts every ordinary ciphertext.
+
+**Origin.** Commit 5e3104481d9842d3d6989332ae32bee4b010d2db is the smallest public first-write: relative to immediate parent 295bf5f3df60ce08d2d8aed26d4fa0bc03592850 it adds public_key_part(), derives the deterministic simulation_secret, and selects it after KEM failure. Later formatting and quiet-output commits preserve rather than introduce the semantics.
+
+**AI marker.** `PRESENT` — BIC commit message: Generated with [Claude Code](https://claude.ai/code) BIC trailer: Co-Authored-By: Claude <noreply@anthropic.com>
+
+**Reasoning.** The authoritative CVE and vendor record establish a real, non-withdrawn vulnerability and the affected/fixed boundary. Direct Git evidence closes the source-to-sink mechanism, the first-write boundary, immediate-parent absence, release membership, and direct fix. The smallest BIC's own commit message explicitly says it was generated with Claude Code and co-authored by Claude, so AI causally authored the root-cause fallback rather than merely touching the repository or remediation. All eight closed-result checks pass; therefore AI_ROOT_CAUSE.
+
+Protocol checks:
+
+- `vulnerability_mechanism` — **PASS**: CVE.org record https://cveawg.mitre.org/api/cve/CVE-2026-74900 is PUBLISHED and identifies the unchecked KEM-failure fallback, affected versions <1.4.0, and 1.4.0 as unaffected. Vendor advisory https://github.com/jahlives/openssl_encrypt/security/advisories/GHSA-p3gq-pcg9-qvfv identifies pqc.py's SHA-256 fallback over the public encapsulated key plus public_key_part(private_key), where public_key_part returns at most the first 16 private-key bytes. In 472c088be14f5edb3dde1bf819419a8b86c8d72f^:openssl_encrypt/modules/pqc.py, KEM errors leave shared_secret unset, lines 1098-1103 compute simulation_secret from encapsulated_key and public_key_part(private_key), lines 1133-1137 select it on failure, and lines 1145-1147 derive the symmetric key consumed by the AEAD decrypt path.
+- `atomic_bic` — **PASS**: GIT_NO_LAZY_FETCH=1 git show 5e3104481d9842d3d6989332ae32bee4b010d2db -- openssl_encrypt/modules/pqc.py directly adds public_key_part(), precomputes simulation_secret, and assigns it when real KEM decapsulation leaves shared_secret unset. GIT_NO_LAZY_FETCH=1 git blame 472c088be14f5edb3dde1bf819419a8b86c8d72f^ -- openssl_encrypt/modules/pqc.py attributes the semantic fallback lines 1095-1100 and 1133-1135 to 5e3104481d9842d3d6989332ae32bee4b010d2db; intervening f03ee1a2 and fe2730c carriers only format or adjust output.
+- `immediate_parent_absence` — **PASS**: The BIC's immediate parent is 295bf5f3df60ce08d2d8aed26d4fa0bc03592850. Searching that parent blob for public_key_part, SIMULATED_PQC_v1, simulation_secret, FALLING BACK TO SIMULATION, and decap_secret returned no match, while the BIC diff adds the vulnerable mechanism.
+- `squash_member_decomposition` — **PASS**: git rev-list --parents -n 1 5e3104481d9842d3d6989332ae32bee4b010d2db reports exactly the BIC and parent 295bf5f3df60ce08d2d8aed26d4fa0bc03592850. The public commit itself is the direct first-write object, not a merge, move, revert, or carrier, and the clone exposes no finer public member to reconstruct.
+- `affected_release_membership` — **PASS**: git tag --contains 5e3104481d9842d3d6989332ae32bee4b010d2db includes v1.0.0 through v1.3.6; git merge-base --is-ancestor confirms the BIC is in v1.3.6 and the fix is not, and git show v1.3.6:openssl_encrypt/modules/pqc.py contains simulation_secret and FALLING BACK TO SIMULATION MODE FOR DECRYPTION.
+- `fixed_release_membership` — **PASS**: git merge-base --is-ancestor 472c088be14f5edb3dde1bf819419a8b86c8d72f v1.4.0 succeeds; git show v1.4.0:openssl_encrypt/modules/pqc.py contains the hard KEM decapsulation failure and no automatic simulation_secret fallback. This matches CVE.org's 1.4.0 unaffected boundary.
+- `direct_fix_or_unpatched` — **PASS**: Vendor advisory GHSA-p3gq-pcg9-qvfv names 472c088be14f5edb3dde1bf819419a8b86c8d72f as the resolution. Its direct pqc.py hunk removes simulation_secret precomputation and assignment after KEM failure and instead raises ValueError when shared_secret remains None.
+- `bic_only_ai_attribution` — **PASS**: The BIC commit object 5e3104481d9842d3d6989332ae32bee4b010d2db itself contains the line 'Generated with [Claude Code](https://claude.ai/code)' and trailer 'Co-Authored-By: Claude <noreply@anthropic.com>'. No repository-level or later-fix marker is needed for attribution.
+
+Primary/Git evidence:
+
+- CVE.org primary record https://cveawg.mitre.org/api/cve/CVE-2026-74900: state PUBLISHED; affected semver <1.4.0; 1.4.0 unaffected; vendor-advisory reference GHSA-p3gq-pcg9-qvfv.
+- Vendor advisory https://github.com/jahlives/openssl_encrypt/security/advisories/GHSA-p3gq-pcg9-qvfv: PQC simulation-mode weak deterministic shared secret; resolution commit 472c088be14f5edb3dde1bf819419a8b86c8d72f.
+- GIT_NO_LAZY_FETCH=1 git show 5e3104481d9842d3d6989332ae32bee4b010d2db: first addition of public_key_part(private_key), simulation_secret, and the fallback assignment; the same BIC object carries explicit Claude Code generation and Claude co-author markers.
+- GIT_NO_LAZY_FETCH=1 git show 295bf5f3df60ce08d2d8aed26d4fa0bc03592850:openssl_encrypt/modules/pqc.py plus rg for the vulnerable identifiers: no match in the immediate parent tree.
+- GIT_NO_LAZY_FETCH=1 git show 472c088be14f5edb3dde1bf819419a8b86c8d72f -- openssl_encrypt/modules/pqc.py: removes automatic weak-secret fallback and raises a hard decapsulation error.
+- GIT_NO_LAZY_FETCH=1 git tag/merge-base/show checks: v1.3.6 contains BIC but not fix and retains the fallback; v1.4.0 contains the fix and hard-fails.
+- git cat-file batch-check confirms 5e3104481d9842d3d6989332ae32bee4b010d2db, 295bf5f3df60ce08d2d8aed26d4fa0bc03592850, and 472c088be14f5edb3dde1bf819419a8b86c8d72f are commit objects in the assigned clone.
+
+### w008 — GHSA-5cp4-g2w4-gm8p — `AI_ROOT_CAUSE`
+
+- class: `alias-a7c0a5cf4967b77842042fd7`
+- repository: `jahlives/openssl_encrypt`
+- review context: `round12-clean-w008`
+- bundle sha256: `fa8e6c117cacf671ec04afb7655ac2ec22472b4ea98ed1bfac9073b65d4c2650`
+- clone HEAD at freeze: `c2b412f6fd1bc33734de9fbce9bce68318eb3cbd`
+- introducer: `8a5ed7e62417441ed98b39481ac1a47510c1a9ef`
+- immediate parent: `649f737a9f04645508d079c0c772a8a2b4c7457a`
+- direct fix: `afda18bfe41cfec51b2fe150a0db9d9cf526fed6`
+- fix/carrier: `ccb60e1a29ef67700128ca54eb25a95413d71ff1`
+
+**Mechanism.** Untrusted plugin_code enters IsolatedPluginExecutor.execute_in_process() and is passed to exec() with a nominally restricted __builtins__ dictionary. That dictionary exposes Python type objects such as str, int, and list. An attacker can traverse from those objects through the Python type hierarchy, for example str.__class__.__mro__[-1].__subclasses__(), recover function globals that expose system functionality, and execute arbitrary host commands despite the restricted builtins.
+
+**Origin.** Commit 8a5ed7e62417441ed98b39481ac1a47510c1a9ef is the smallest surviving public first-writer: it creates plugin_sandbox.py and introduces both the attacker-controlled plugin_code-to-exec sink and the type-object escape primitives. Its immediate parent 649f737a9f04645508d079c0c772a8a2b4c7457a has no such file or class.
+
+**AI marker.** `PRESENT` — BIC message: Generated with [Claude Code](https://claude.ai/code) BIC trailer: Co-Authored-By: Claude <noreply@anthropic.com>
+
+**Reasoning.** The real vulnerability is closed causally to the smallest public first-writer: the BIC creates the exposed type objects and attacker-controlled exec sink, its immediate parent lacks the entire path, and no finer public member exists. The BIC itself explicitly records Claude Code generation and Claude co-authorship, so BIC-only attribution establishes AI causal authorship. Advisory-linked ccb60e1 is incomplete for the named IsolatedPluginExecutor path; afda18bf is the direct fix and establishes the actual fixed-release boundary at v1.4.1 rather than v1.4.0. Those later fix facts do not contribute to AI attribution.
+
+Protocol checks:
+
+- `vulnerability_mechanism` — **PASS**: CVE.org record CVE-2026-74899 is PUBLISHED and describes attacker traversal from type objects exposed in IsolatedPluginExecutor restricted builtins through __class__.__mro__.__subclasses__() to arbitrary OS command execution. Vendor advisory https://github.com/jahlives/openssl_encrypt/security/advisories/GHSA-m25m-ggxg-239c identifies plugin_sandbox.py's type-valued restricted builtins and exec(plugin_code, exec_globals) as the source-to-sink path. At 8a5ed7e62417441ed98b39481ac1a47510c1a9ef, IsolatedPluginExecutor.execute_in_process accepts plugin_code, exposes str/int/float/dict/list/tuple/set in __builtins__, and passes plugin_code directly to exec().
+- `atomic_bic` — **PASS**: GIT_NO_LAZY_FETCH=1 git log --all -S 'exec(plugin_code, exec_globals)' -- openssl_encrypt/modules/plugin_system/plugin_sandbox.py returns only 8a5ed7e62417441ed98b39481ac1a47510c1a9ef as the first writer of the vulnerable sink. git show 8a5ed7e62417441ed98b39481ac1a47510c1a9ef adds plugin_sandbox.py as a new file and adds the type-valued exec_globals plus direct exec(plugin_code, exec_globals) in the same commit; it is not a move, revert, fix, or merge carrier.
+- `immediate_parent_absence` — **PASS**: The BIC has the single immediate parent 649f737a9f04645508d079c0c772a8a2b4c7457a, which exists as a commit object. GIT_NO_LAZY_FETCH=1 git cat-file -e 8a5ed7e62417441ed98b39481ac1a47510c1a9ef^:openssl_encrypt/modules/plugin_system/plugin_sandbox.py fails because the path does not exist in the immediate parent; git grep also finds no IsolatedPluginExecutor there.
+- `squash_member_decomposition` — **PASS**: 8a5ed7e62417441ed98b39481ac1a47510c1a9ef is a one-parent, non-merge public commit that creates the complete vulnerable file; all local public refs retain this object itself. The all-ref -S history contains no finer public commit that first wrote the sink, so there is no reconstructable squash member to substitute for the BIC.
+- `affected_release_membership` — **PASS**: git tag --contains 8a5ed7e62417441ed98b39481ac1a47510c1a9ef starts at v1.3.0; the BIC is not an ancestor of v1.2.0 and is an ancestor of v1.3.0 through v1.4.0. v1.4.0 (commit 768df5cd1910e349509f07a27eeac6951e0003bf) still exports IsolatedPluginExecutor and still reaches exec(plugin_code, exec_globals) without an IsolatedPluginExecutor-local AST check.
+- `fixed_release_membership` — **PASS**: The vendor-named remediation ccb60e1a29ef67700128ca54eb25a95413d71ff1 is in v1.4.0 but validates PluginSandbox plugin objects, not raw plugin_code inside IsolatedPluginExecutor, so it is not the direct fix for this sink. The direct fix afda18bfe41cfec51b2fe150a0db9d9cf526fed6 is not an ancestor of v1.4.0, but is an ancestor of v1.4.1rc1 (8e255e5e9bfe9454d4a7360d29919653cf9fd3a6) and v1.4.1 (9d2f6208d9be61571dfd87a1a28b3bab8f36a524); git tag --contains lists v1.4.1rc1, v1.4.1, and later releases.
+- `direct_fix_or_unpatched` — **PASS**: The parent fdc2af79fc1af84ff8200c9e1b3a53f3e7728d6c still has the raw exec sink and no 'Validate plugin code via AST analysis before execution' guard in IsolatedPluginExecutor. afda18bfe41cfec51b2fe150a0db9d9cf526fed6 directly inserts analyze_plugin_code(plugin_code, '<isolated-exec>', strict_mode=True) before exec(), returns an error when analysis fails, and hardens the analyzer's blocked dunder/introspection set.
+- `bic_only_ai_attribution` — **PASS**: The raw BIC commit object itself contains 'Generated with [Claude Code](https://claude.ai/code)' and 'Co-Authored-By: Claude <noreply@anthropic.com>'. Attribution uses only 8a5ed7e62417441ed98b39481ac1a47510c1a9ef; AI markers on later remediation commits are not used.
+
+Primary/Git evidence:
+
+- CVE.org API https://cveawg.mitre.org/api/cve/CVE-2026-74899: state PUBLISHED; describes the IsolatedPluginExecutor type-hierarchy sandbox escape and records an affected range below 1.4.0.
+- Vendor advisory https://github.com/jahlives/openssl_encrypt/security/advisories/GHSA-m25m-ggxg-239c: identifies restricted type builtins, the exec sink, and ccb60e1 as its stated resolution.
+- Commit 8a5ed7e62417441ed98b39481ac1a47510c1a9ef creates plugin_sandbox.py with type-valued restricted builtins and direct exec(plugin_code, exec_globals); its parent is 649f737a9f04645508d079c0c772a8a2b4c7457a and lacks the path.
+- The BIC commit object contains direct Claude Code generation and co-authorship markers.
+- v1.4.0 retains the vulnerable IsolatedPluginExecutor sink without raw-source AST validation, despite containing advisory-linked ccb60e1a29ef67700128ca54eb25a95413d71ff1.
+- Commit afda18bfe41cfec51b2fe150a0db9d9cf526fed6 directly validates plugin_code before exec and is first released in v1.4.1rc1/v1.4.1.
+
+### w009 — GHSA-crfx-7r98-6r44 — `FALSE_POSITIVE`
+
+- class: `alias-aa527ce9484af760a24803d1`
+- repository: `jahlives/openssl_encrypt`
+- review context: `round12-clean-w009`
+- bundle sha256: `29aae7458dcbf3c8fb42d3b95035756eecdbd51dea3d421b63d42adbc7b5615c`
+- clone HEAD at freeze: `c2b412f6fd1bc33734de9fbce9bce68318eb3cbd`
+- introducer: `null`
+- immediate parent: `null`
+- direct fix: `null`
+- fix/carrier: `null`
+
+**Mechanism.** As alleged, TOTPService.verify_code consults a class-level TOTPRateLimiter whose InMemoryBackend stores attempts and lockouts in process-local dictionaries. Multiple workers therefore enforce independent counters, and a restart discards them, allowing distributed or post-restart attempts to evade the nominal limit. That mechanism is absent from every inspected pre-1.4.0 release and first appears in the release the advisory calls fixed.
+
+**Origin.** No flaw origin exists within the advisory's claimed affected release range. The first public commit writing the alleged process-local limiter is 1b6f732232018609189c863a165a11aaa89db250, but tag containment places it in v1.4.0 and later, while v1.3.6 has no Pepper server module at all; it is therefore evidence that the advisory's version/mechanism pairing is reversed, not a valid case introducer.
+
+**AI marker.** `UNKNOWN` — No BIC exists for the stated affected releases. The Claude marker on out-of-range commit 1b6f732232018609189c863a165a11aaa89db250 is not causal evidence for this case.
+
+**Reasoning.** This is a false positive for the advisory's stated version/mechanism pair. The authoritative records claim that releases before 1.4.0 contain an in-memory TOTP limiter and that 1.4.0 fixes it, but the repository's release trees show the opposite: v1.3.6 contains no Pepper/TOTP server code, while v1.4.0 first contains the process-local limiter and still uses it by default after the advisory-linked commit. A real BIC, affected release, and direct fix cannot be assigned without inverting the advisory boundary, so AI attribution is not made.
+
+Protocol checks:
+
+- `vulnerability_mechanism` — **PASS**: The published CVE.org record for CVE-2026-74878 states that openssl_encrypt versions before 1.4.0 use a process-local in-memory TOTP limiter and marks 1.4.0 unaffected; the vendor advisory GHSA-h45m-mgcp-q388 states the same <1.4.0/1.4.0 boundary and is not withdrawn. The alleged source-to-sink mechanism is process-local dictionaries in TOTPRateLimiter feeding TOTPService.verify_code: independent worker processes and restarts do not share or retain attempt and lockout state. Git tree evidence shows that mechanism does not exist in the claimed affected releases.
+- `atomic_bic` — **N/A**: No BIC exists for the advisory's stated <1.4.0 affected range because the entire openssl_encrypt_server/modules/pepper path is absent from v1.3.6. Commit 1b6f732232018609189c863a165a11aaa89db250 first writes the in-memory limiter, but it is contained only by v1.4.0 and later tags and therefore is not a BIC for the claimed affected releases.
+- `immediate_parent_absence` — **N/A**: The non-case first-writer 1b6f732232018609189c863a165a11aaa89db250 has immediate parent c21f2a81b6bc6999c4067d1b2e4ea6d97448d037; its one-file diff adds TOTPRateLimiter and the _rate_limiter class variable, but this boundary lies outside the advisory's affected releases.
+- `squash_member_decomposition` — **N/A**: There is no case BIC to decompose. The later out-of-range first-writer 1b6f732232018609189c863a165a11aaa89db250 is a single-parent, one-file commit rather than a squash aggregate.
+- `affected_release_membership` — **PASS**: GIT_NO_LAZY_FETCH=1 git rev-parse v1.3.6^{commit} resolves to f69305effbab0bdc0c8df0f2297cdfddf8929b6e. git cat-file -e f69305effbab0bdc0c8df0f2297cdfddf8929b6e:openssl_encrypt_server/modules/pepper/totp.py exits 128, and git ls-tree -r under openssl_encrypt_server/modules/pepper returns zero paths. Thus the highest pre-1.4.0 tag cannot contain the alleged in-memory-limiter mechanism.
+- `fixed_release_membership` — **PASS**: GIT_NO_LAZY_FETCH=1 git rev-parse v1.4.0^{commit} resolves to 768df5cd1910e349509f07a27eeac6951e0003bf, which contains both 1b6f732232018609189c863a165a11aaa89db250 and the advisory-linked 2749bc0949b34a5921a35fb4a3f1856fc51916de. Its totp.py exists and still documents InMemoryBackend as the default.
+- `direct_fix_or_unpatched` — **N/A**: The advisory-linked 2749bc0949b34a5921a35fb4a3f1856fc51916de adds DatabaseBackend but leaves TOTPService._rate_limiter = TOTPRateLimiter(); git grep at v1.4.0 finds no production assignment selecting DatabaseBackend. Because the stated affected version/mechanism pair is nonexistent, this is not recorded as a fix or an unpatched finding.
+- `bic_only_ai_attribution` — **N/A**: There is no BIC for the claimed affected range, so no AI attribution is made. AI markers on later out-of-range commits cannot establish causal authorship for this false-positive advisory.
+
+Primary/Git evidence:
+
+- CVE.org API record https://cveawg.mitre.org/api/cve/CVE-2026-74878: state PUBLISHED; title 'openssl_encrypt before 1.4.0 TOTP Rate Limiter Bypass'; affected semver 0..<1.4.0; 1.4.0 unaffected; vendor-advisory reference GHSA-h45m-mgcp-q388.
+- GitHub repository security-advisory API https://api.github.com/repos/jahlives/openssl_encrypt/security-advisories/GHSA-h45m-mgcp-q388: not withdrawn; vulnerable range <1.4.0; patched version 1.4.0; stated fix 2749bc0.
+- GitHub global advisory API https://api.github.com/advisories/GHSA-crfx-7r98-6r44 binds CVE-2026-74878 to the same in-memory, multi-worker/restart bypass description and is not withdrawn.
+- Assigned clone HEAD is c2b412f6fd1bc33734de9fbce9bce68318eb3cbd and all inspected objects were available with GIT_NO_LAZY_FETCH=1.
+- v1.3.6 peels to f69305effbab0bdc0c8df0f2297cdfddf8929b6e; its Pepper module path count is zero and totp.py is absent.
+- Commit 1b6f732232018609189c863a165a11aaa89db250 has parent c21f2a81b6bc6999c4067d1b2e4ea6d97448d037 and adds the process-local attempts and lockouts dictionaries plus TOTPService._rate_limiter = TOTPRateLimiter(); git tag --contains lists v1.4.0 and later, not any v1.3.x tag.
+- v1.4.0 peels to 768df5cd1910e349509f07a27eeac6951e0003bf and contains both 1b6f732232018609189c863a165a11aaa89db250 and 2749bc0949b34a5921a35fb4a3f1856fc51916de; its TOTPService still constructs the default InMemoryBackend, and no production reference selects DatabaseBackend.
+
+### w010 — CVE-2026-78678 — `AI_CODE_FLAWED`
+
+- class: `alias-b9176a7227ad946b34143643`
+- repository: `gitpython-developers/gitpython`
+- review context: `round12-clean-w010`
+- bundle sha256: `acea662fbf0a384cd9a29e26e1963c9c49868a0024f19fb3e6ec0e7e5f4d2931`
+- clone HEAD at freeze: `d160fb4124a56bd463a542a7bbff623354fb3397`
+- introducer: `701ce32fe5ba8cb622c0e0342a376a6beb47d738`
+- immediate parent: `65a72839c92768754bd51a37381235842a5ae0d8`
+- direct fix: `1b0d2d9b91575f7db44ef4ff58ac37fc9335e5f6`
+- fix/carrier: `1b0d2d9b91575f7db44ef4ff58ac37fc9335e5f6`
+
+**Mechanism.** Repo.blame() and Repo.blame_incremental() collect a caller-controlled rev as an option candidate and then pass that value to git blame before the '--' path separator. The guard introduced for unsafe revision options listed only the write options --output/-o, so --contents=<path> and -S=<path> passed with allow_unsafe_options=False. Git blame treats those as file-input options, and its porcelain result exposes victim-file lines to the API caller.
+
+**Origin.** 701ce32fe5ba8cb622c0e0342a376a6beb47d738 is the smallest public commit that first wrote the incomplete blame security guard: it added unsafe_git_revision_options with only --output/-o and routed blame through it. Its parent already had the unguarded blame source-to-sink, so this AI-authored change is an incomplete remediation of a pre-existing unsafe API path, not the original creation of that path.
+
+**AI marker.** `PRESENT` — BIC 701ce32fe5ba8cb622c0e0342a376a6beb47d738 has commit-object author 'GPT 5.6 <codex@openai.com>' and a human Reviewed-by trailer.
+
+**Reasoning.** The accepted vendor advisory and local source agree on the source-to-sink and the omitted file-read options. The first writer of the flawed denylist is the one-parent, one-PR-member commit 701ce32fe5ba8cb622c0e0342a376a6beb47d738; its immediate parent proves the new guard absent but the older unguarded sink present. The BIC commit object directly names GPT 5.6 as author. Because the AI-authored commit attempted security remediation yet left the same read path open, the causal role is AI_CODE_FLAWED rather than AI_ROOT_CAUSE. Direct fix 1b0d2d9b91575f7db44ef4ff58ac37fc9335e5f6 adds blame-specific path-reading options and is contained in fixed release 3.1.59 but not affected release 3.1.58.
+
+Protocol checks:
+
+- `vulnerability_mechanism` — **PASS**: CVE.org record https://cveawg.mitre.org/api/cve/CVE-2026-78678 is PUBLISHED and identifies Repo.blame() arbitrary-file read through --contents/-S, affecting versions before 3.1.59. Vendor advisory https://github.com/gitpython-developers/GitPython/security/advisories/GHSA-5xxx-qhh7-9287 records the exact chain: caller-controlled rev -> _option_candidates -> incomplete unsafe_git_revision_options check -> self.git.blame(rev, '--', file, ...) -> victim lines in the returned blame result. At 701ce32fe5ba8cb622c0e0342a376a6beb47d738, unsafe_git_revision_options contains only --output and -o while both blame methods pass rev before the -- path separator.
+- `atomic_bic` — **PASS**: git log --all --reverse -Sunsafe_git_revision_options -- git/repo/base.py returns 701ce32fe5ba8cb622c0e0342a376a6beb47d738 as the first writer of the incomplete denylist. git diff 65a72839c92768754bd51a37381235842a5ae0d8 701ce32fe5ba8cb622c0e0342a376a6beb47d738 -- git/repo/base.py shows that this commit atomically added the two-entry revision denylist, default allow_unsafe_options=False checks to blame/blame_incremental, and retained the pre-separator rev sink.
+- `immediate_parent_absence` — **PASS**: git show -s --format=%P 701ce32fe5ba8cb622c0e0342a376a6beb47d738 yields the sole immediate parent 65a72839c92768754bd51a37381235842a5ae0d8. git show 65a72839c92768754bd51a37381235842a5ae0d8:git/repo/base.py shows blame forwarding rev directly and no unsafe_git_revision_options or blame-local check; the flawed security guard is absent, while the older unguarded sink is present.
+- `squash_member_decomposition` — **PASS**: GitHub's first-party PR API for https://github.com/gitpython-developers/GitPython/pull/2163 lists exactly one public member commit, 701ce32fe5ba8cb622c0e0342a376a6beb47d738. Local Git shows 701ce32fe5ba8cb622c0e0342a376a6beb47d738 has one parent and its tree 28214564f9ed17941ec94b64307510e7cfcf5d6f equals merge carrier af027be78693962c233cc989915f40e9b135f3a5's tree; the BIC is already the finest public member, not the carrier.
+- `affected_release_membership` — **PASS**: CVE.org and the vendor advisory both mark versions through 3.1.58 affected. git merge-base --is-ancestor 701ce32fe5ba8cb622c0e0342a376a6beb47d738 3.1.58 exits 0, while git merge-base --is-ancestor 1b0d2d9b91575f7db44ef4ff58ac37fc9335e5f6 3.1.58 exits 1; tag 3.1.58 contains the incomplete revision-only denylist and not the direct fix.
+- `fixed_release_membership` — **PASS**: Vendor release https://github.com/gitpython-developers/GitPython/releases/tag/3.1.59 is titled '3.1.59 - Security' and names PR 2208 'Block file-reading Git options'. git merge-base --is-ancestor 1b0d2d9b91575f7db44ef4ff58ac37fc9335e5f6 3.1.59 exits 0; tag 3.1.59 contains unsafe_git_blame_options with --contents, -S, and --ignore-revs-file.
+- `direct_fix_or_unpatched` — **PASS**: git diff 4ba9ce61b709f52ac92fa0c711efe2dcbe2bd89e 1b0d2d9b91575f7db44ef4ff58ac37fc9335e5f6 -- git/repo/base.py adds unsafe_git_blame_options = unsafe_git_revision_options + [--contents, -S, --ignore-revs-file] and switches both blame checks to that list. Commit 1b0d2d9b91575f7db44ef4ff58ac37fc9335e5f6 explicitly states it closes GHSA-5xxx-qhh7-9287 and adds regression coverage for long, short, and clustered blame options.
+- `bic_only_ai_attribution` — **PASS**: The BIC commit object identifies Author: GPT 5.6 <codex@openai.com>; its message records Reviewed-by: Sebastian Thiel. No repository-level or later-fix marker is used for attribution.
+
+Primary/Git evidence:
+
+- CVE.org primary record: https://cveawg.mitre.org/api/cve/CVE-2026-78678 (PUBLISHED; affected <3.1.59; fixed 3.1.59).
+- Vendor primary advisory: https://github.com/gitpython-developers/GitPython/security/advisories/GHSA-5xxx-qhh7-9287 (published, not withdrawn; exact guard-bypass and reproduction evidence).
+- Vendor release: https://github.com/gitpython-developers/GitPython/releases/tag/3.1.59.
+- Local commit objects verified with GIT_NO_LAZY_FETCH=1: 701ce32fe5ba8cb622c0e0342a376a6beb47d738, parent 65a72839c92768754bd51a37381235842a5ae0d8, direct fix 1b0d2d9b91575f7db44ef4ff58ac37fc9335e5f6, tags 3.1.58 and 3.1.59.
+- GitHub first-party commit and PR APIs confirm BIC authorship, one-member PR 2163, and direct-fix PR 2208.
+
+### w011 — CVE-2026-73622 — `NOT_AI`
+
+- class: `alias-bef04a61e80c73f29e82acb9`
+- repository: `gitpython-developers/gitpython`
+- review context: `round12-clean-w011`
+- bundle sha256: `486aa7d2c1f204a90420e36334d0d574e25fca10c311d573566e86958163e88c`
+- clone HEAD at freeze: `d160fb4124a56bd463a542a7bbff623354fb3397`
+- introducer: `e6e23ed24b35c6154b4ee0da5ae51cd5688e5e67`
+- immediate parent: `ba7c2a0f81f83c358ae256963da86f907ca7f13c`
+- direct fix: `863417457a0633db7ea5aed4fd01e0b291a41162`
+- fix/carrier: `863417457a0633db7ea5aed4fd01e0b291a41162`
+
+**Mechanism.** An attacker-controlled URL supplied to Repo.create_remote()/Remote.add() or Submodule.add() is passed through Git.polish_url(). Beginning with the BIC's Cygwin path, scp-like remote values fall through cygpath() to _cygexpath(), which expands environment variables; a later native-path change expanded arbitrary variables on non-Cygwin systems too. The expanded secret is persisted in .git/config or .gitmodules and is disclosed when Git fetches/pulls from the attacker-controlled remote (with .gitmodules also being trackable).
+
+**Origin.** The smallest first-writer is single-parent commit e6e23ed24b35c6154b4ee0da5ae51cd5688e5e67: it made Git.polish_url() route through newly added Cygwin conversion code whose _cygexpath() expands variables, while both vulnerable Remote and Submodule callers already existed. Its immediate parent only normalized slashes. Commit 43564d2e8f3b95f33e10a5c8cc2d75c0252d659a later generalized arbitrary-variable expansion to native systems, and AI-authored 8ac5a30519b6f4af85398b9b9d7064ff4d452da2 retained the vulnerable default while fixing only clone; neither is the first writer.
+
+**AI marker.** `ABSENT` — git cat-file commit e6e23ed24b35c6154b4ee0da5ae51cd5688e5e67 names Kostis Anagnostopoulos <ankostis@gmail.com> as author and committer and has no AI marker or AI co-author trailer. The BIC is dated 2016-10-13/2016-10-14 and its message is a Cygwin compatibility change; attribution is based only on this atomic BIC object.
+
+**Reasoning.** The advisory is valid and its data flow is present in release history. Full-history inspection rejects the AI-authored 2026 clone fix as the BIC because variable expansion was already reachable from the remaining Remote/Submodule callers. The earliest public first-writer of that primitive is the 2016 Cygwin compatibility commit e6e23ed24b35c6154b4ee0da5ae51cd5688e5e67; its parent lacks the expanding route, and its commit object is a named-human, single-parent change with no AI attribution. The 2019 native broadening does not alter that earliest boundary. Since the direct fix and release memberships are verified and every lifecycle gate closes, the correct BIC-only verdict is NOT_AI.
+
+Protocol checks:
+
+- `vulnerability_mechanism` — **PASS**: CVE.org record https://cveawg.mitre.org/api/cve/CVE-2026-73622 is PUBLISHED and describes attacker-supplied variable-bearing URLs being expanded into .git/config/.gitmodules and later sent to an attacker-controlled host. Vendor advisory https://github.com/gitpython-developers/GitPython/security/advisories/GHSA-94p4-4cq8-9g67 identifies Repo.create_remote()/Remote.add() and Submodule.add() as untrusted URL sources, Git.polish_url() expansion as the transform, and Git configuration plus later fetch/pull as the disclosure sinks. At e6e23ed24b35c6154b4ee0da5ae51cd5688e5e67, git/remote.py calls Git.polish_url(url) before git remote add, git/objects/submodule/base.py calls it before configuration writes, and git/util.py _cygexpath applies osp.expandvars(os.path.expanduser(path)); scp-like remote URLs fall through to that parser on the Cygwin path. Commit 43564d2e8f3b95f33e10a5c8cc2d75c0252d659a later broadened arbitrary-variable expansion to the native non-Cygwin path with os.path.expandvars(url).
+- `atomic_bic` — **PASS**: git log --all --reverse -S'osp.expandvars(os.path.expanduser(path))' -- git/util.py identifies e6e23ed24b35c6154b4ee0da5ae51cd5688e5e67 as the first writer of the expansion reached by the already-existing Remote.create and Submodule.add polish_url calls. git rev-list --parents -n 1 e6e23ed24b35c6154b4ee0da5ae51cd5688e5e67 reports exactly one parent, ba7c2a0f81f83c358ae256963da86f907ca7f13c; the relevant hunk directly adds cygpath routing and _cygexpath variable expansion rather than moving or reverting it.
+- `immediate_parent_absence` — **PASS**: git show ba7c2a0f81f83c358ae256963da86f907ca7f13c:git/cmd.py shows Git.polish_url only replacing backslashes; git grep at that parent finds both pre-existing sink calls but no url = cygpath(url) and no osp.expandvars(os.path.expanduser(path)). git diff e6e23ed24b35c6154b4ee0da5ae51cd5688e5e67^ e6e23ed24b35c6154b4ee0da5ae51cd5688e5e67 shows the BIC adding the missing Cygwin conversion route and the expanding _cygexpath helper.
+- `squash_member_decomposition` — **PASS**: git cat-file commit e6e23ed24b35c6154b4ee0da5ae51cd5688e5e67 records one parent and a normal atomic commit object; no squash aggregate or finer public member is present to decompose.
+- `affected_release_membership` — **PASS**: The published CVE.org record declares versions from 0 up to, but excluding, 3.1.55 affected; the vendor advisory lists <=3.1.53 affected and >=3.1.55 patched. Repository evidence resolves the intervening 3.1.54 tag directly: git merge-base --is-ancestor e6e23ed24b35c6154b4ee0da5ae51cd5688e5e67 3.1.54 succeeds, git merge-base --is-ancestor 863417457a0633db7ea5aed4fd01e0b291a41162 3.1.54 fails, and tag 3.1.54 tree e59d9bab02b095a97e179f47019afee95f4e3c18 still calls Git.polish_url(url) at both affected callers.
+- `fixed_release_membership` — **PASS**: git merge-base --is-ancestor 863417457a0633db7ea5aed4fd01e0b291a41162 3.1.55 succeeds; tag 3.1.55 resolves to 681c82c9c296f934635c81fa8294d4b6b6791b7e and both affected callers use Git.polish_url(url, expand_vars=False). The vendor release https://github.com/gitpython-developers/GitPython/releases/tag/3.1.55 is titled '3.1.55 - Security', and both the vendor advisory and CVE record identify 3.1.55 as patched/unaffected.
+- `direct_fix_or_unpatched` — **PASS**: Commit 863417457a0633db7ea5aed4fd01e0b291a41162 directly changes git/remote.py and git/objects/submodule/base.py from Git.polish_url(url) to Git.polish_url(url, expand_vars=False) and adds regression tests that preserve variable tokens in remote and submodule URLs. git cat-file -e 863417457a0633db7ea5aed4fd01e0b291a41162^{commit} succeeds in the assigned clone.
+- `bic_only_ai_attribution` — **PASS**: The BIC commit object alone names Kostis Anagnostopoulos <ankostis@gmail.com> as both author and committer in October 2016 and contains no AI author, AI co-author, generator marker, or AI-attribution trailer. The first-party commit object/page for e6e23ed24b35c6154b4ee0da5ae51cd5688e5e67 describes a human-authored Cygwin compatibility change; later AI-authored commits 8ac5a30519b6f4af85398b9b9d7064ff4d452da2 and 863417457a0633db7ea5aed4fd01e0b291a41162 are respectively a carrier/incomplete fix and the direct fix, so they are excluded from BIC-only attribution.
+
+Primary/Git evidence:
+
+- CVE.org API https://cveawg.mitre.org/api/cve/CVE-2026-73622: state PUBLISHED; title 'GitPython before 3.1.55 Environment Variable Exfiltration via Remote.add()'; affected lessThan 3.1.55; reference to vendor GHSA-94p4-4cq8-9g67.
+- Vendor advisory https://github.com/gitpython-developers/GitPython/security/advisories/GHSA-94p4-4cq8-9g67: source-to-sink description, <=3.1.53 affected, >=3.1.55 patched, and direct-fix guidance for the two callers.
+- Assigned clone HEAD is d160fb4124a56bd463a542a7bbff623354fb3397; git cat-file verifies BIC e6e23ed24b35c6154b4ee0da5ae51cd5688e5e67, parent ba7c2a0f81f83c358ae256963da86f907ca7f13c, and fix 863417457a0633db7ea5aed4fd01e0b291a41162 as commit objects.
+- BIC diff: git/cmd.py begins routing Cygwin polish_url through cygpath; git/util.py adds _cygexpath with osp.expandvars(os.path.expanduser(path)); parent tree has neither behavior.
+- Later native broadening 43564d2e8f3b95f33e10a5c8cc2d75c0252d659a replaces a $HOME-only special case with os.path.expandvars(url), confirming that 8ac5a30519b6f4af85398b9b9d7064ff4d452da2 merely carried the already-existing behavior.
+- Direct fix 863417457a0633db7ea5aed4fd01e0b291a41162 passes expand_vars=False at both sinks and adds targeted regression tests; 3.1.54 lacks it and 3.1.55 contains it.
+- BIC-only commit metadata: named human author and committer Kostis Anagnostopoulos, one parent, no AI marker.
+
+### w012 — GHSA-mj42-9vh2-f8v3 — `NOT_AI`
+
+- class: `alias-e417b414cae3394aa802b9b6`
+- repository: `lin-snow/ech0`
+- review context: `round12-clean-w012`
+- bundle sha256: `31537e0071c3a7d74d0f95299eb2da9b3380049eaa5352e3d9213ce9687b1d39`
+- clone HEAD at freeze: `5ce1dd0a3d7092be537fb309a8685d024e8986de`
+- introducer: `896116abca946cdec9c09208b30a0eda82717f43`
+- immediate parent: `null`
+- direct fix: `ca0387a895c71ebcb1aef3ca5fbe7cb66eb5f4b5`
+- fix/carrier: `ca0387a895c71ebcb1aef3ca5fbe7cb66eb5f4b5`
+
+**Mechanism.** An authenticated uploader supplies a multipart Content-Type that the server compares directly with an allowlist without inspecting bytes or constraining the filename extension. The server saves the unchanged dangerous extension and exposes the upload directory through an unauthenticated same-origin static route, so SVG is executable under its allowed image/svg+xml type and HTML can be smuggled under an allowed image type, then rendered as active same-origin content when a victim visits its URL.
+
+**Origin.** The zero-parent public root commit 896116abca946cdec9c09208b30a0eda82717f43 is the smallest surviving first-writer: it added header-only allowlist validation in pkg/upload.go, preserved the original extension when saving, and publicly mounted the saved directory. Later architectural commits rewrote or moved this same source-to-sink mechanism and are not atomic introducers.
+
+**AI marker.** `ABSENT` — git cat-file -p 896116abca946cdec9c09208b30a0eda82717f43: author and committer are L1nSn0w <l1nsn0w@qq.com>; message is 'first commit'; no AI, bot, co-author, Made-with, or Generated-by marker is present. https://api.github.com/repos/lin-snow/Ech0/commits/896116abca946cdec9c09208b30a0eda82717f43 maps both BIC author and committer to login lin-snow and reports no parents.
+
+**Reasoning.** The advisory is live and its mechanism, affected boundary, atomic first-writer, root-parent boundary, and direct fixed-release transition are all independently closed from official records and the assigned clone. The atomic BIC is the named maintainer's root commit and contains no causal AI marker, bot identity, or AI/co-author trailer. Because AI attribution is restricted to that BIC object, the supported verdict is NOT_AI.
+
+Protocol checks:
+
+- `vulnerability_mechanism` — **PASS**: CVE.org record https://cveawg.mitre.org/api/cve/CVE-2026-79670 is PUBLISHED and describes stored XSS from client-controlled Content-Type validation, with affected semver >=0 and <4.4.3 and 4.4.3 unaffected. Maintainer advisory https://github.com/lin-snow/Ech0/security/advisories/GHSA-69hx-63pv-f8f4 documents the source-to-sink chain: multipart Content-Type is trusted, the original .svg/.html extension survives storage, and the unauthenticated static route serves executable content in the Ech0 origin. At v4.4.2, git grep finds internal/service/file/file.go:89 reading file.Header.Get("Content-Type"), internal/config/config.go:241 allowing image/svg+xml, and internal/router/modules.go:51 registering ctx.Engine.Static("api/files", root).
+- `atomic_bic` — **PASS**: git log --all --reverse -S 'file.Header.Get("Content-Type")' identifies 896116abca946cdec9c09208b30a0eda82717f43 as the earliest public writer; later hits include rewrites and moves, while ca0387a895c71ebcb1aef3ca5fbe7cb66eb5f4b5 removes the trust decision. In 896116abca946cdec9c09208b30a0eda82717f43, pkg/upload.go:26 accepts the client multipart Content-Type, lines 40-49 preserve the attacker filename extension and save the body, and internal/routers/routers.go:20 publishes the upload directory at /api/images.
+- `immediate_parent_absence` — **PASS**: git rev-list --parents -n 1 896116abca946cdec9c09208b30a0eda82717f43 prints only that SHA, and git cat-file -p shows a tree with no parent header: it is the repository root, so no pre-BIC parent tree exists and the vulnerable source-to-sink chain first appears in the root tree.
+- `squash_member_decomposition` — **PASS**: git cat-file -p 896116abca946cdec9c09208b30a0eda82717f43 shows a zero-parent ordinary root commit, not a merge carrier; the public DAG has no earlier member to decompose, so this root object is the smallest surviving public first-write object.
+- `affected_release_membership` — **PASS**: The official CVE.org record sets versions >=0 and <4.4.3 to affected, and the maintainer advisory API at https://api.github.com/advisories/GHSA-69hx-63pv-f8f4 reports vulnerable_version_range < 4.4.3. Annotated tag v4.4.2 peels to 7b7890cbe294659df39c36feb51fcfbe9ec9bdb2; git merge-base --is-ancestor confirms the BIC is an ancestor, and the tag tree contains the vulnerable header-only validation, SVG allowlist entry, and public static route.
+- `fixed_release_membership` — **PASS**: The official CVE.org record marks 4.4.3 unaffected, the maintainer advisory lists first_patched_version 4.4.3, and the first-party release https://github.com/lin-snow/Ech0/releases/tag/v4.4.3 is published and not a draft or prerelease. Annotated tag v4.4.3 peels to b934467d26b91c96dc7c937b6a4e47d8d01484eb; git merge-base --is-ancestor confirms ca0387a895c71ebcb1aef3ca5fbe7cb66eb5f4b5 is absent from v4.4.2 and present in v4.4.3.
+- `direct_fix_or_unpatched` — **PASS**: Direct fix ca0387a895c71ebcb1aef3ca5fbe7cb66eb5f4b5 replaces file.Header.Get("Content-Type") with body sniffing via detectContentType, rejects dangerous extensions including .html/.svg and executable MIME types including text/html and image/svg+xml, validates presigned filenames, and wraps public static serving with nosniff/attachment middleware.
+- `bic_only_ai_attribution` — **PASS**: The raw BIC object 896116abca946cdec9c09208b30a0eda82717f43 names author and committer L1nSn0w <l1nsn0w@qq.com>, has message 'first commit', and contains no AI/bot author, Co-authored-by, Made-with, Generated-by, or other AI marker; GitHub's BIC commit API maps both author and committer to the maintainer login lin-snow.
+
+Primary/Git evidence:
+
+- Bundle SHA-256: 31537e0071c3a7d74d0f95299eb2da9b3380049eaa5352e3d9213ce9687b1d39; assigned clone HEAD: 5ce1dd0a3d7092be537fb309a8685d024e8986de.
+- Official CVE record: https://cveawg.mitre.org/api/cve/CVE-2026-79670 (PUBLISHED; affected >=0,<4.4.3; 4.4.3 unaffected).
+- Maintainer advisory: https://github.com/lin-snow/Ech0/security/advisories/GHSA-69hx-63pv-f8f4; GitHub advisory API reports withdrawn_at null, vulnerable range <4.4.3, and first patched version 4.4.3.
+- BIC 896116abca946cdec9c09208b30a0eda82717f43 is a zero-parent commit object and first public pickaxe hit for the vulnerable header trust; its tree contains the complete upload-to-public-static source-to-sink chain.
+- Direct fix ca0387a895c71ebcb1aef3ca5fbe7cb66eb5f4b5 is a commit object with parent 1b2adc9b5d2e0694c35c9f7a2f63c1df6c0c2796 and directly replaces the vulnerable validation and hardens static delivery.
+- Annotated v4.4.2 target 7b7890cbe294659df39c36feb51fcfbe9ec9bdb2 contains the vulnerable mechanism; annotated v4.4.3 target b934467d26b91c96dc7c937b6a4e47d8d01484eb contains ca0387a895c71ebcb1aef3ca5fbe7cb66eb5f4b5 and the remediation.
+
+### w013 — CVE-2026-78675 — `NOT_AI`
+
+- class: `alias-e7db5ad028340b4793d174fd`
+- repository: `gitpython-developers/gitpython`
+- review context: `round12-clean-w013`
+- bundle sha256: `518fcb958208a461f317e55f621f70ae3b29809bccdab22dc36af0573ad0edf5`
+- clone HEAD at freeze: `d160fb4124a56bd463a542a7bbff623354fb3397`
+- introducer: `619c989915b568e4737951fafcbae14cd06d6ea6`
+- immediate parent: `be074c655ad53927541fc6443eed8b0c2550e415`
+- direct fix: `ef7568e3b317ce617eacda39b8b54dcdff8c3b5c`
+- fix/carrier: `ef7568e3b317ce617eacda39b8b54dcdff8c3b5c`
+
+**Mechanism.** An attacker-controlled .gitmodules file is passed by Submodule._config_parser() to GitConfigParser. Because that parser defaults merge_includes to true, an [include] path is resolved without repository containment and a readable local file is opened. Parsing a normal non-config target raises MissingSectionHeaderError with its first non-header line embedded, and Submodule.iter_items() does not catch configparser errors, so repo.submodules exposes that local content through the exception.
+
+**Origin.** The .gitmodules parser construction predates the vulnerability, but immediate parent be074c655ad53927541fc6443eed8b0c2550e415 reads only explicitly supplied files. Commit 619c989915b568e4737951fafcbae14cd06d6ea6 is the smallest public first-writer that adds default-on include merging and arbitrary readable include-path opening to the shared parser, thereby activating the vulnerable source-to-sink path at the existing submodule call site.
+
+**AI marker.** `ABSENT` — BIC 619c989915b568e4737951fafcbae14cd06d6ea6 has named author and committer Sebastian Thiel <byronimo@gmail.com>, dated 2015-01-14, and its complete commit message contains no AI-assistance marker or AI co-author trailer.
+
+**Reasoning.** The advisory is published and the vendor's source-to-sink mechanism is present in primary source. The smallest first-writer is the 2015 single-parent commit that introduced default-on include merging; its immediate parent cannot follow include paths, affected and fixed release membership is directly verified, and the direct fix disables merging at the .gitmodules construction site. The BIC commit object has explicit named-human author/committer provenance and no BIC-local AI marker. Later AI assistance on the fix is non-causal under the protocol, so all eight closure gates imply NOT_AI.
+
+Protocol checks:
+
+- `vulnerability_mechanism` — **PASS**: CVE.org record API https://cveawg.mitre.org/api/cve/CVE-2026-78675 returned state=PUBLISHED and says GitPython before 3.1.59 follows attacker-controlled [include] paths in .gitmodules and exposes the target file's first line through MissingSectionHeaderError. Vendor advisory https://github.com/gitpython-developers/GitPython/security/advisories/GHSA-7833-fr7j-v32q identifies Submodule._config_parser() as the source, merge_includes=True plus unrestricted include-path opening as the propagation path, and the uncaught MissingSectionHeaderError text as the disclosure sink. At 619c989915b568e4737951fafcbae14cd06d6ea6, git/config.py opens readable absolute or normalized relative include paths, then _read() raises cp.MissingSectionHeaderError(fpname, lineno, line) when the included file lacks a section; git/objects/submodule/base.py passes the attacker-controlled .gitmodules path to that parser and iter_items() catches IOError only.
+- `atomic_bic` — **PASS**: GIT_NO_LAZY_FETCH=1 git log --all --reverse -S'merge_includes' -- git/config.py git/objects/submodule/base.py identifies 619c989915b568e4737951fafcbae14cd06d6ea6 as the first commit that adds include merging. git show 619c989915b568e4737951fafcbae14cd06d6ea6 directly adds merge_includes=True to GitConfigParser.__init__, records it in self._merge_includes, and adds the loop that opens readable absolute or normalized relative include paths; this is the smallest first-writer that activates the pre-existing .gitmodules parser call.
+- `immediate_parent_absence` — **PASS**: git cat-file -p 619c989915b568e4737951fafcbae14cd06d6ea6 names immediate parent be074c655ad53927541fc6443eed8b0c2550e415, and both objects exist as commits in the assigned clone. git show be074c655ad53927541fc6443eed8b0c2550e415:git/config.py shows GitConfigParser.read() reads only the caller-supplied file_or_files and has no merge_includes parameter, include-section traversal, or include-path open; therefore the parent cannot route a .gitmodules [include] path to a local file.
+- `squash_member_decomposition` — **PASS**: The raw 619c989915b568e4737951fafcbae14cd06d6ea6 commit object has exactly one parent, be074c655ad53927541fc6443eed8b0c2550e415, and its own patch directly implements the include-merging feature; it is not a merge, revert, carrier, or squash aggregate requiring finer-member decomposition.
+- `affected_release_membership` — **PASS**: GIT_NO_LAZY_FETCH=1 git merge-base --is-ancestor 619c989915b568e4737951fafcbae14cd06d6ea6 0.3.6 exits 0, while the same check against 0.3.5 exits 1; 0.3.6 is the first repository tag containing the introducer. The introducer is an ancestor of tag 3.1.58, while direct fix ef7568e3b317ce617eacda39b8b54dcdff8c3b5c is not; git show 3.1.58:git/objects/submodule/base.py shows SubmoduleConfigParser(fp_module, read_only=read_only) without merge_includes=False. The vendor advisory declares affected versions <=3.1.58, and the published CVE record declares versions below 3.1.59 affected.
+- `fixed_release_membership` — **PASS**: GIT_NO_LAZY_FETCH=1 git tag --contains ef7568e3b317ce617eacda39b8b54dcdff8c3b5c returns 3.1.59, and git merge-base --is-ancestor ef7568e3b317ce617eacda39b8b54dcdff8c3b5c 3.1.59 exits 0. git show 3.1.59:git/objects/submodule/base.py shows SubmoduleConfigParser(fp_module, read_only=read_only, merge_includes=False); both the vendor advisory and CVE record identify 3.1.59 as fixed/unaffected.
+- `direct_fix_or_unpatched` — **PASS**: git show ef7568e3b317ce617eacda39b8b54dcdff8c3b5c changes the vulnerable construction site from SubmoduleConfigParser(fp_module, read_only=read_only) to the same call with merge_includes=False and adds a regression test whose .gitmodules points at a non-config file. ef7568e3b317ce617eacda39b8b54dcdff8c3b5c exists as a commit object in the assigned clone and its message explicitly states that it addresses vendor advisory GHSA-7833-fr7j-v32q.
+- `bic_only_ai_attribution` — **PASS**: The raw BIC commit object attributes both author and committer to Sebastian Thiel <byronimo@gmail.com> at 2015-01-14T12:46:51+01:00; its message describes the hand-implemented include feature, cites Stack Overflow, and closes issue #201, with no AI, assistant, Copilot, generated-by, assisted-by, or co-author marker. The GPT markers on the 2026 fix ef7568e3b317ce617eacda39b8b54dcdff8c3b5c are later-fix metadata and are excluded by the BIC-only attribution rule.
+
+Primary/Git evidence:
+
+- CVE.org CVE Services record https://cveawg.mitre.org/api/cve/CVE-2026-78675: PUBLISHED; GitPython before 3.1.59 affected; 3.1.59 unaffected; vendor-advisory reference GHSA-7833-fr7j-v32q.
+- Vendor first-party advisory https://github.com/gitpython-developers/GitPython/security/advisories/GHSA-7833-fr7j-v32q: confirmed arbitrary local first-line disclosure through [include] in untrusted .gitmodules; affected <=3.1.58; patched >=3.1.59.
+- Assigned clone HEAD verified as d160fb4124a56bd463a542a7bbff623354fb3397 with GIT_NO_LAZY_FETCH=1.
+- git show 619c989915b568e4737951fafcbae14cd06d6ea6 and its raw commit object establish the default-on include implementation, single parent be074c655ad53927541fc6443eed8b0c2550e415, and named-human authorship.
+- git show be074c655ad53927541fc6443eed8b0c2550e415:git/config.py establishes that the immediate parent has no include traversal; tag ancestry places the BIC in 0.3.6 but not 0.3.5.
+- git show ef7568e3b317ce617eacda39b8b54dcdff8c3b5c establishes the one-line construction-site fix plus regression test; tag ancestry places it in 3.1.59 and not 3.1.58.
+
+### w014 — CVE-2026-79660 — `NOT_AI`
+
+- class: `alias-ea2b0d5f6c39ca5ebc14c82f`
+- repository: `lin-snow/ech0`
+- review context: `round12-clean-w014`
+- bundle sha256: `34e363c08cbcd2bc2d95286aadafb2adb03efc80a49b5b401cacb06003db466c`
+- clone HEAD at freeze: `5ce1dd0a3d7092be537fb309a8685d024e8986de`
+- introducer: `975b98016352c8135fa8a787db6061a74991935c`
+- immediate parent: `5819e01d0090f30194e076dc2360984f0fb33c6f`
+- direct fix: `cb8d7a997dd8f573ef0e22e4e6b23b2b8ee92ebd`
+- fix/carrier: `cb8d7a997dd8f573ef0e22e4e6b23b2b8ee92ebd`
+
+**Mechanism.** A guest submits an email that CreateComment stores in Comment.Email. The public repository query loads approved comments as full Comment structs; the public service and handler originally returned those structs unchanged, and Gin serialized Email because the model tagged it json:"email". PublicRouterGroup had no JWT middleware, so an unauthenticated GET /api/comments disclosed guest emails; 3cc6bf5bf26a1a3bfbd78a96d398f6016b8793cd later added /api/comments/public, which exposed the same raw objects across comments.
+
+**Origin.** 975b98016352c8135fa8a787db6061a74991935c is the smallest surviving public first-writer: it creates the Comment model with the serializable Email field and, in the same commit, the guest-email source, database path, raw public return, unauthenticated route, and JSON sink. Its immediate parent 5819e01d0090f30194e076dc2360984f0fb33c6f contains none of the four comment implementation files, and no finer public PR member exists.
+
+**AI marker.** `ABSENT` — BIC 975b98016352c8135fa8a787db6061a74991935c has named human author and committer L1nSn0w <l1nsn0w@qq.com>, mapped by GitHub to User account lin-snow. The BIC message has no AI/bot identity, AI-generation declaration, or Co-Authored-By trailer.
+
+**Reasoning.** The published CVE and vendor advisory match a locally reproducible source-to-sink lifecycle. The first vulnerable writer and its immediate-parent absence are closed, the direct fix is present in the first fixed boundary, and no squash/member identity gap remains. AI attribution is restricted to the atomic BIC: it is authored and committed by the named GitHub user lin-snow and has no BIC-local AI marker. Any AI marker on a later remediation is non-causal and excluded. Therefore this real vulnerability is NOT_AI, not FALSE_POSITIVE or an evidence-gap verdict.
+
+Protocol checks:
+
+- `vulnerability_mechanism` — **PASS**: CVE.org record https://www.cve.org/CVERecord?id=CVE-2026-79660 is PUBLISHED and identifies unauthenticated guest-commenter email disclosure through /api/comments and /api/comments/public in versions before 4.7.3. Vendor advisory https://github.com/lin-snow/Ech0/security/advisories/GHSA-rj4g-rqgh-rx9h is published, not withdrawn, and describes the raw Comment JSON serialization path and the two public endpoints. At 975b98016352c8135fa8a787db6061a74991935c, CreateComment copies required guest dto.Email into Comment.Email, the repository persists and reloads []model.Comment, ListPublicByEchoID returns that raw slice, the unauthenticated PublicRouterGroup exposes GET /api/comments, and response.Execute passes the data to ctx.JSON while Comment.Email has json:"email".
+- `atomic_bic` — **PASS**: git log --all --reverse -S 'type Comment struct' -- '*.go' identifies 975b98016352c8135fa8a787db6061a74991935c as the first commit that writes the Comment model. git show 975b98016352c8135fa8a787db6061a74991935c adds in one commit the vulnerable Email json tag, guest-email assignment and persistence, raw []model.Comment public service return, unauthenticated GET /comments route, and JSON response sink. The later 3cc6bf5bf26a1a3bfbd78a96d398f6016b8793cd adds /comments/public but is not the origin: the same disclosure was already reachable through /comments from 975b98016352c8135fa8a787db6061a74991935c.
+- `immediate_parent_absence` — **PASS**: git cat-file -p 975b98016352c8135fa8a787db6061a74991935c gives immediate parent 5819e01d0090f30194e076dc2360984f0fb33c6f. git cat-file -e against 5819e01d0090f30194e076dc2360984f0fb33c6f confirms internal/model/comment/comment.go, internal/handler/comment/comment.go, internal/router/comment.go, and internal/service/comment/comment.go are all absent, so the vulnerable integrated comment source-to-sink does not exist in the parent tree.
+- `squash_member_decomposition` — **PASS**: git cat-file -p and git rev-list --all --parents show 975b98016352c8135fa8a787db6061a74991935c is a one-parent public commit, not a merge or carrier. GitHub's first-party commit API maps the commit directly to user lin-snow and the associated-pulls endpoint returns an empty list; no finer public PR members are available to reconstruct. The immediate parent lacks the complete comment implementation and the commit itself is the smallest surviving public object that first creates the vulnerable endpoint lifecycle; no decomposition is warranted.
+- `affected_release_membership` — **PASS**: CVE.org marks semver versions from 0 up to but excluding 4.7.3 affected; the vendor advisory records <=4.5.6 vulnerable and 4.7.3 patched. git merge-base --is-ancestor confirms 975b98016352c8135fa8a787db6061a74991935c is in v4.5.6 (commit 60e39455f8720bb50797f4fd2052e8e6c12db448) and v4.7.2 (commit 88a564fcdd1ca0fbeecd75ed5f522df95372d308), while cb8d7a997dd8f573ef0e22e4e6b23b2b8ee92ebd is in neither release.
+- `fixed_release_membership` — **PASS**: git merge-base --is-ancestor confirms both 975b98016352c8135fa8a787db6061a74991935c and cb8d7a997dd8f573ef0e22e4e6b23b2b8ee92ebd are ancestors of v4.7.3 commit 6ad621d8d461c58f1a1d179c4dfbb741803f8aa5. git grep at v4.7.3 shows PublicComment, ToPublicComments, and both ListPublicByEchoID and ListPublicComments returning []model.PublicComment.
+- `direct_fix_or_unpatched` — **PASS**: git show cb8d7a997dd8f573ef0e22e4e6b23b2b8ee92ebd adds a PublicComment DTO with no Email/UserID/IPHash/UserAgent and changes both public listing services to convert repository Comment rows through ToPublicComments. The fix parent still has Comment.Email json:"email", unauthenticated /comments and /comments/public routes, and both public service methods returning []model.Comment; the fix hunk removes the sensitive field at the serialization boundary while retaining full Comment objects for authenticated panel moderation.
+- `bic_only_ai_attribution` — **PASS**: The 975b98016352c8135fa8a787db6061a74991935c commit object names L1nSn0w <l1nsn0w@qq.com> as both author and committer and contains no bot identity, AI trailer, Co-Authored-By trailer, or AI-generation declaration. GitHub's first-party commit API maps both author and committer of 975b98016352c8135fa8a787db6061a74991935c to the named User account lin-snow; attribution is based only on the BIC, not on repository-wide activity or the later fix.
+
+Primary/Git evidence:
+
+- CVE.org API record https://cveawg.mitre.org/api/cve/CVE-2026-79660: state PUBLISHED; affected semver <4.7.3; 4.7.3 unaffected; description identifies unauthenticated email disclosure through both public comment endpoints.
+- Vendor advisory https://github.com/lin-snow/Ech0/security/advisories/GHSA-rj4g-rqgh-rx9h: state published, withdrawn_at null, guest Comment.Email returned by unauthenticated public APIs, patched version 4.7.3.
+- Assigned clone HEAD is 5ce1dd0a3d7092be537fb309a8685d024e8986de; clone is non-shallow and promisor blob:none, and every referenced SHA resolves as a local commit object with GIT_NO_LAZY_FETCH=1.
+- git show 975b98016352c8135fa8a787db6061a74991935c traces dto.Email to Comment.Email to GORM storage/load to raw []model.Comment to public handler response to ctx.JSON.
+- git show cb8d7a997dd8f573ef0e22e4e6b23b2b8ee92ebd directly replaces raw public Comment serialization with a sensitive-field-free PublicComment projection.
+- Local tag ancestry confirms v4.5.6 and v4.7.2 contain the BIC but not the fix, while v4.7.3 contains both.
+
+### w015 — GHSA-mv93-w799-cj2w — `NOT_AI`
+
+- class: `alias-1644a7fa17113aab101f75fa`
+- repository: `gitpython-developers/gitpython`
+- review context: `round12-clean-w015`
+- bundle sha256: `c2bd4360beddde0529f263a6c43c626332c95087468cca27f9928002839d7be5`
+- clone HEAD at freeze: `d160fb4124a56bd463a542a7bbff623354fb3397`
+- introducer: `3fd37230e76a014cf5c45d55daf0be2caa6948b7`
+- immediate parent: `9513aa01fab73f53e4fe18644c7d5b530a66c6a1`
+- direct fix: `54538428f79b0c91ba52cda5229856a6edf7ac06`
+- fix/carrier: `54538428f79b0c91ba52cda5229856a6edf7ac06`
+
+**Mechanism.** Repo.config_writer() returns a writable GitConfigParser. Its public mutation paths accepted caller-controlled section names without rejecting CR, LF, or NUL, while _write() interpolated each name verbatim between '[' and ']\n'. A section value such as user]\n[core therefore changes the serialized .git/config grammar, allowing an injected core.hooksPath directive to select attacker-controlled hooks that execute when a Git hook is triggered.
+
+**Origin.** Commit 3fd37230e76a014cf5c45d55daf0be2caa6948b7 is the smallest public first writer: it turned the preceding GitConfigParser skeleton into a writable parser by exposing inherited set as mutating and added the raw section-header serializer. Its immediate parent lacks both the functional mutation route and _write sink. Later set_value and 2026 value-only validation commits carried or exposed the same pre-existing section-name flaw but did not originate it.
+
+**AI marker.** `ABSENT` — The raw BIC commit object names Sebastian Thiel <byronimo@gmail.com> as both author and committer and has no AI-related trailer or message marker.
+
+**Reasoning.** The advisory describes a real, active vendor-confirmed injection mechanism. Full history closes the lifecycle: 3fd37230e76a014cf5c45d55daf0be2caa6948b7 first made unchecked section names reach a raw structural serializer; its parent lacks that mechanism; 3.1.49 contains the BIC but not the fix; and 3.1.50 contains the direct validation fix. The BIC itself is a 2009 named-human commit with no AI marker. AI authorship on later incomplete remediation or the final fix cannot change BIC-only attribution, so the closed verdict is NOT_AI.
+
+Protocol checks:
+
+- `vulnerability_mechanism` — **PASS**: The repository-scoped vendor advisory https://github.com/gitpython-developers/GitPython/security/advisories/GHSA-mv93-w799-cj2w is published and describes newline-bearing section input reaching GitPython's raw section-header writer; the GitHub advisory API returned withdrawn_at=null, cve_id=null, vulnerable range <=3.1.49, and first patched version 3.1.50. Because no CVE identifier is assigned, there is no CVE.org CVE record to supply a separate disposition. At tag 3.1.49, git/repo/base.py:691-706 returns a writable GitConfigParser from Repo.config_writer(); git/config.py:905-926 accepts caller-controlled section in set_value(), adds it without validation, and git/config.py:683-688 serializes the name as ('[%s]\n' % name). A name such as user]\n[core therefore creates a second [core] header whose hooksPath value Git consumes.
+- `atomic_bic` — **PASS**: git log -L over the 3.1.49 writer history reaches 3fd37230e76a014cf5c45d55daf0be2caa6948b7 as the first implementation of the vulnerable writable path: it enables inherited set as a mutating method and adds _write()/write_section() with fp.write('[%s]\n' % name). This is the smallest first-write commit; later 6a417f4cf2df39704aa4c869e88d14e9806894a7 merely adds the convenience set_value() entry point to an already vulnerable writable parser.
+- `immediate_parent_absence` — **PASS**: git show 9513aa01fab73f53e4fe18644c7d5b530a66c6a1:lib/git/config.py shows _mutating_methods_=tuple(), no _write implementation, and only a nonfunctional write skeleton; git diff 9513aa01fab73f53e4fe18644c7d5b530a66c6a1..3fd37230e76a014cf5c45d55daf0be2caa6948b7 shows the BIC adding the mutable set route and raw section serializer. Both objects were verified with GIT_NO_LAZY_FETCH=1 git cat-file -e.
+- `squash_member_decomposition` — **PASS**: GIT_NO_LAZY_FETCH=1 git cat-file -p 3fd37230e76a014cf5c45d55daf0be2caa6948b7 shows exactly one parent, 9513aa01fab73f53e4fe18644c7d5b530a66c6a1; the commit directly contains the first-write hunk and is neither a merge, revert, move, nor squash aggregate requiring decomposition.
+- `affected_release_membership` — **PASS**: GIT_NO_LAZY_FETCH=1 git rev-parse 3.1.49^{} resolved aee2fd5c13770954469e650f1df8f92f0183bc70; git merge-base --is-ancestor confirms BIC 3fd37230e76a014cf5c45d55daf0be2caa6948b7 is in 3.1.49, while direct fix 54538428f79b0c91ba52cda5229856a6edf7ac06 is not. This matches the vendor advisory's <=3.1.49 boundary.
+- `fixed_release_membership` — **PASS**: A bounded fetch of refs/tags/3.1.50 resolved its peeled commit to 5a294a6fc7ed5dc0946d4b576257bf926178f269. GIT_NO_LAZY_FETCH=1 git merge-base --is-ancestor confirms 54538428f79b0c91ba52cda5229856a6edf7ac06 is in 3.1.50, and the vendor release page https://github.com/gitpython-developers/GitPython/releases/tag/3.1.50 lists 'Validate config key names before writing' in PR #2142.
+- `direct_fix_or_unpatched` — **PASS**: git show 54538428f79b0c91ba52cda5229856a6edf7ac06 adds UNSAFE_CONFIG_CHARS_RE for CR/LF/NUL and calls _assure_config_name_safe() from add_section(), set(), set_value(), add_value(), and rename_section(); its regression test exercises user]\n[core and related section/option inputs. git diff --exit-code 54538428f79b0c91ba52cda5229856a6edf7ac06..3.1.50 -- git/config.py test/test_config.py exits 0, so the direct fix is exactly present in the fixed tag.
+- `bic_only_ai_attribution` — **PASS**: GIT_NO_LAZY_FETCH=1 git cat-file -p 3fd37230e76a014cf5c45d55daf0be2caa6948b7 records author and committer Sebastian Thiel <byronimo@gmail.com> and contains no AI author, co-author, assistant, agent, or generated-code marker. Later AI-authored security work, including direct fix 54538428f79b0c91ba52cda5229856a6edf7ac06, is excluded from BIC-only attribution.
+
+Primary/Git evidence:
+
+- Vendor advisory: https://github.com/gitpython-developers/GitPython/security/advisories/GHSA-mv93-w799-cj2w; GitHub advisory API identity GHSA-mv93-w799-cj2w has cve_id=null, withdrawn_at=null, affected <=3.1.49, fixed 3.1.50.
+- BIC object: https://github.com/gitpython-developers/GitPython/commit/3fd37230e76a014cf5c45d55daf0be2caa6948b7; raw object has parent 9513aa01fab73f53e4fe18644c7d5b530a66c6a1 and named-human author/committer Sebastian Thiel.
+- BIC hunk in lib/git/config.py enables inherited set mutation and writes section headers with fp.write('[%s]\n' % name); the immediate parent has _mutating_methods_=tuple() and no _write implementation.
+- At tag 3.1.49 (aee2fd5c13770954469e650f1df8f92f0183bc70), Repo.config_writer() returns GitConfigParser(..., read_only=False), set_value() passes an unchecked section to add_section(), and _write() interpolates that section verbatim.
+- Direct fix: https://github.com/gitpython-developers/GitPython/commit/54538428f79b0c91ba52cda5229856a6edf7ac06; it rejects CR/LF/NUL in section and option names at every writer entry point and adds the newline-section regression.
+- Fixed release: https://github.com/gitpython-developers/GitPython/releases/tag/3.1.50; peeled tag commit 5a294a6fc7ed5dc0946d4b576257bf926178f269 contains direct fix 54538428f79b0c91ba52cda5229856a6edf7ac06.
+
+### w016 — GHSA-jm78-9fvv-mhgr — `NOT_AI`
+
+- class: `alias-775173b22f8159a217307738`
+- repository: `gitpython-developers/gitpython`
+- review context: `round12-clean-w016`
+- bundle sha256: `24227e3d97e0a14cf2fbb883906059c5329ed95bdbd9663fdec25d76799d6615`
+- clone HEAD at freeze: `d160fb4124a56bd463a542a7bbff623354fb3397`
+- introducer: `3fd37230e76a014cf5c45d55daf0be2caa6948b7`
+- immediate parent: `9513aa01fab73f53e4fe18644c7d5b530a66c6a1`
+- direct fix: `a495ccd3b547ccd60b2187215823b72a9c0188bf`
+- fix/carrier: `a495ccd3b547ccd60b2187215823b72a9c0188bf`
+
+**Mechanism.** An embedding application can pass an attacker-controlled option name to GitConfigParser.set, set_value, or add_value. In 3.1.57, the option-name guard rejects only CR, LF, and NUL, so syntax characters such as spaces, '=', and '#' survive. The custom writer inserts that key verbatim before ' = value'; for 'sshCommand = touch /tmp/RCE #' the resulting core-section line is parsed by Git as core.sshCommand = touch /tmp/RCE because '#' comments out the intended suffix. A later SSH Git operation executes the forged command; the same primitive can forge core.hooksPath.
+
+**Origin.** The smallest public first-writer is 3fd37230e76a014cf5c45d55daf0be2caa6948b7: it implemented the writable config path and first wrote arbitrary option keys verbatim as '\t%s = %s\n'. Its immediate parent had only a parser scaffold and no serialization sink. Later moves and formatting changes merely carried the sink, and the 2026 partial name validator did not introduce the already-existing injection.
+
+**AI marker.** `ABSENT` — git cat-file commit 3fd37230e76a014cf5c45d55daf0be2caa6948b7: author Sebastian Thiel <byronimo@gmail.com>; committer Sebastian Thiel <byronimo@gmail.com>; no AI-related message text or trailers.
+
+**Reasoning.** The advisory is a current published vulnerability, and both first-party source and Git parsing establish the complete option-name-to-command-directive mechanism. The earliest surviving public commit that made the flaw possible is the 2009 human-authored config-writer implementation, whose parent lacks the sink. Affected and fixed tags and the direct repair are verified. Because every lifecycle gate passes and the BIC alone has named-human authorship with no AI marker, the correct verdict is NOT_AI; later AI-assisted validation and repair commits do not change causal attribution.
+
+Protocol checks:
+
+- `vulnerability_mechanism` — **PASS**: The current vendor advisory https://github.com/gitpython-developers/GitPython/security/advisories/GHSA-jm78-9fvv-mhgr is published, identifies CVE-2026-76221, describes option-name config injection through equals, hash, and whitespace, and lists affected <=3.1.57 and patched >=3.1.58. CVE Services GET https://cveawg.mitre.org/api/cve/CVE-2026-76221 returned state PUBLISHED and describes attacker-controlled option names forging directives such as core.sshCommand or core.hooksPath; it identifies versions below 3.1.58 as affected and 3.1.58 as unaffected. At tag 3.1.57, git/config.py:897-915 rejects only CR, LF, and NUL for label option, while the delimiter state machine is gated on label == section; git/config.py:925-956 routes set and set_value option names through that incomplete check. At tag 3.1.57, git/config.py:692-702 serializes each option key verbatim as a tab followed by key = value. Feeding the resulting line '[core]\n\tsshCommand = touch /tmp/RCE # = x' to 'git config --file /dev/stdin --get core.sshCommand' returned 'touch /tmp/RCE'.
+- `atomic_bic` — **PASS**: GIT_NO_LAZY_FETCH=1 git log --all --reverse -S'def write_section' and -S'%s = %s' identify 3fd37230e76a014cf5c45d55daf0be2caa6948b7 as the earliest public commit that added the config writer and verbatim option-key sink in lib/git/config.py:258-271. Commit 3fd37230e76a014cf5c45d55daf0be2caa6948b7 is a normal one-parent implementation commit; later cb68eef0865df6aedbc11cd81888625a70da6777 is a 100% path rename, and later f573b6840509bf41be822ab7ed79e0a776005133 and e530544546b2a4e5f00e8d9458bf1b895573ec41 are formatting carriers rather than first writers.
+- `immediate_parent_absence` — **PASS**: The immediate parent is 9513aa01fab73f53e4fe18644c7d5b530a66c6a1. Direct inspection of parent:lib/git/config.py shows a parser scaffold and stub write method but no _write, write_section, or '%s = %s' option serialization sink.
+- `squash_member_decomposition` — **PASS**: git cat-file commit 3fd37230e76a014cf5c45d55daf0be2caa6948b7 shows exactly one parent, 9513aa01fab73f53e4fe18644c7d5b530a66c6a1, and an ordinary config-class implementation message; the all-history pickaxe finds no finer public first-writer before it. No merge, squash carrier, or decomposable public member is present.
+- `affected_release_membership` — **PASS**: Local annotated tag 3.1.57 peels to ccbd573ac4ab52ccdcf395c400e600d5809bcc88. 'git merge-base --is-ancestor 3fd37230... 3.1.57^{}' succeeds, while the same check for a495ccd3... fails; direct tag source inspection shows the vulnerable validator and sink. The vendor advisory lists <=3.1.57 as affected.
+- `fixed_release_membership` — **PASS**: Local annotated tag 3.1.58 peels to 30be45d786e95023e23c616fec5cbabca861b44c. 'git merge-base --is-ancestor a495ccd3b547ccd60b2187215823b72a9c0188bf 3.1.58^{}' succeeds. The vendor release page https://github.com/gitpython-developers/GitPython/releases/tag/3.1.58 exists and the vendor advisory lists >=3.1.58 as patched.
+- `direct_fix_or_unpatched` — **PASS**: Commit a495ccd3b547ccd60b2187215823b72a9c0188bf directly adds VALID_CONFIG_OPTION_NAME_RE = ^[A-Za-z0-9_.-]+$ and rejects option names that do not fullmatch it inside _assure_config_name_safe; its regression test covers delimiter, comment, bracket, whitespace, colon, quote, and backslash option names.
+- `bic_only_ai_attribution` — **PASS**: The raw BIC commit object names Sebastian Thiel <byronimo@gmail.com> as both author and committer and contains only the two-line config implementation message, with no AI author, assistant marker, generation marker, or AI trailer. AI markers on the 2026 fix are later lifecycle evidence and were excluded from BIC attribution.
+
+Primary/Git evidence:
+
+- Vendor advisory: https://github.com/gitpython-developers/GitPython/security/advisories/GHSA-jm78-9fvv-mhgr is published as GHSA-jm78-9fvv-mhgr, now maps to CVE-2026-76221, and lists affected <=3.1.57 / patched >=3.1.58.
+- CVE.org/CVE Services record: https://cveawg.mitre.org/api/cve/CVE-2026-76221 has cveMetadata.state=PUBLISHED and the same option-name-to-core.sshCommand/core.hooksPath mechanism.
+- BIC: 3fd37230e76a014cf5c45d55daf0be2caa6948b7 first adds lib/git/config.py write_section and verbatim option serialization; parent 9513aa01fab73f53e4fe18644c7d5b530a66c6a1 lacks those lines.
+- Release boundary: 3.1.57 (ccbd573ac4ab52ccdcf395c400e600d5809bcc88) contains the BIC and not the fix; 3.1.58 (30be45d786e95023e23c616fec5cbabca861b44c) contains direct fix a495ccd3b547ccd60b2187215823b72a9c0188bf.
+- Downstream parser proof: the serialized payload line yields 'touch /tmp/RCE' from 'git config --file /dev/stdin --get core.sshCommand'.
+- BIC-local attribution: raw commit object names Sebastian Thiel as author and committer and has no AI marker.
+
+### w017 — CVE-2026-76208 — `NOT_AI`
+
+- class: `alias-ac5710cdb88c4b5d1db55ccf`
+- repository: `thorsten/phpmyfaq`
+- review context: `round12-clean-w017`
+- bundle sha256: `c3f639ab84f32da82c7cfa280eabbdb044e9a3dbd5e6bb9db0eb3b2607668325`
+- clone HEAD at freeze: `2da26942172d87b3f0624bccfbfd0e356b1b1187`
+- introducer: `e3b2e72aa0c7a1a7dea3c0b680fb0f5af76d24cc`
+- immediate parent: `f0d7a24dcdf89b5657e6222362795376e3369ecb`
+- direct fix: `4c5eec9adf6133b4765453d0af37da6959187cba`
+- fix/carrier: `4c5eec9adf6133b4765453d0af37da6959187cba`
+
+**Mechanism.** After a valid LDAP bind, AuthLdap invokes its local-user creation path. For an already-existing blocked account, the duplicate lookup loads that account's database ID/status and creation fails, but control continues to an unconditional setStatus('active'). That UPDATE targets the loaded existing row, persists blocked-to-active, and allows the LDAP login to complete without a security-status log entry.
+
+**Origin.** e3b2e72aa0c7a1a7dea3c0b680fb0f5af76d24cc is the smallest public first-writer: it adds only the unconditional $user->setStatus('active') immediately after createUser() in LDAP add(). The direct parent has the same flow without that call. Later file moves and baa3a39ced454bbeafcc929488c04dc90cf76619's add()-to-create() rename preserve rather than introduce the flaw.
+
+**AI marker.** `ABSENT` — The BIC commit object names Thorsten Rinne <thorsten@rinne.info> as author and committer and contains only the human-authored message 'Fixed issue with LDAP users without any status', with no AI marker or co-author trailer.
+
+**Reasoning.** The vulnerability and full lifecycle are closed by the published CVE record, vendor advisory, exact local source, release ancestry, and direct fix. History reconstruction rejects a later refactor falsely presented as the introducer and identifies the atomic 2012 first-write whose parent lacks the state change. Because that BIC is a non-aggregate commit explicitly authored and committed by a named human and contains no BIC-local AI marker, the protocol requires NOT_AI.
+
+Protocol checks:
+
+- `vulnerability_mechanism` — **PASS**: The published CVE record at https://cveawg.mitre.org/api/cve/CVE-2026-76208 is state PUBLISHED and identifies the LDAP authentication bypass: after a successful bind, AuthLdap::create() unconditionally changes an existing local account from blocked to active; it names 3.1.0 through 4.1.6 and 4.1.7 as fixed. The vendor advisory https://github.com/thorsten/phpMyFAQ/security/advisories/GHSA-8pr3-q3cw-q234 traces the live flow: checkCredentials() succeeds at the LDAP bind and calls create(); createUser() loads the pre-existing row before rejecting the duplicate login; the unconditional setStatus('active') then updates that loaded user_id and checkCredentials() returns true without a security-status log entry.
+- `atomic_bic` — **PASS**: git show --find-renames --find-copies e3b2e72aa0c7a1a7dea3c0b680fb0f5af76d24cc -- phpmyfaq/inc/PMF_Auth/AuthLdap.php shows the single causal addition immediately after createUser(): $user->setStatus('active'). git log -S"setStatus('active')" plus --follow blame traces the surviving call through later moves and method-renaming refactors to e3b2e72aa0c7a1a7dea3c0b680fb0f5af76d24cc; the vendor-cited baa3a39ced454bbeafcc929488c04dc90cf76619 only moves the pre-existing add() body into renamed create().
+- `immediate_parent_absence` — **PASS**: git rev-parse e3b2e72aa0c7a1a7dea3c0b680fb0f5af76d24cc^ resolves to f0d7a24dcdf89b5657e6222362795376e3369ecb, and both are present commit objects. git grep at f0d7a24dcdf89b5657e6222362795376e3369ecb shows AuthLdap::add() calling createUser() with no setStatus('active'); the child diff adds exactly that unconditional state change.
+- `squash_member_decomposition` — **PASS**: git cat-file commit e3b2e72aa0c7a1a7dea3c0b680fb0f5af76d24cc shows exactly one parent, and its scoped diff is a one-line functional addition rather than a merge, move, revert, carrier, or squash aggregate; no finer public member exists or is needed.
+- `affected_release_membership` — **PASS**: The CVE record and vendor advisory identify affected releases >=3.1.0 and <=4.1.6. git merge-base --is-ancestor e3b2e72aa0c7a1a7dea3c0b680fb0f5af76d24cc 3.1.0 and the same command against 4.1.6 both exit 0; tag commits are 7fae72e2abb54b2d39c2f07051f9c07cf897af80 and 58c1d7f2fa36f7074664fc6d862afee0ca8bcc89, and git grep shows the unconditional setStatus('active') in both tags.
+- `fixed_release_membership` — **PASS**: The vendor advisory names 4.1.7 as patched, and git merge-base --is-ancestor 4c5eec9adf6133b4765453d0af37da6959187cba 4.1.7 exits 0; 4.1.7 resolves to commit 28d6f641c16e3015d51d0a01d14841b845251f35. The same ancestry test against 4.1.6 exits 1, while git grep at 4.1.7 shows the blocked/protected guard before setStatus('active').
+- `direct_fix_or_unpatched` — **PASS**: git show 4c5eec9adf6133b4765453d0af37da6959187cba shows the direct fix in AuthLdap::create(): when duplicate creation failed and the loaded local status is blocked or protected, log a warning and throw AuthException before the unconditional activation; added tests assert both statuses remain protected from LDAP activation. The fix is a present commit object with immediate parent 5013376cdc7986575f91f5804880ef9e80ca6498.
+- `bic_only_ai_attribution` — **PASS**: git cat-file commit e3b2e72aa0c7a1a7dea3c0b680fb0f5af76d24cc records named human Thorsten Rinne <thorsten@rinne.info> as both author and committer and message 'Fixed issue with LDAP users without any status'; the BIC object has no AI/Copilot attribution, prompt reference, Co-authored-by trailer, or aggregate-history ambiguity.
+
+Primary/Git evidence:
+
+- CVE Project record: https://cveawg.mitre.org/api/cve/CVE-2026-76208 (PUBLISHED; authentication bypass in AuthLdap::create(); 3.1.0 through 4.1.6; fixed in 4.1.7).
+- Vendor advisory: https://github.com/thorsten/phpMyFAQ/security/advisories/GHSA-8pr3-q3cw-q234 (source-to-sink, affected/patched ranges, and PoC).
+- Atomic BIC: https://github.com/thorsten/phpMyFAQ/commit/e3b2e72aa0c7a1a7dea3c0b680fb0f5af76d24cc; local Git verifies its one-line functional diff and immediate parent f0d7a24dcdf89b5657e6222362795376e3369ecb.
+- Direct fix: https://github.com/thorsten/phpMyFAQ/commit/4c5eec9adf6133b4765453d0af37da6959187cba; local Git verifies the pre-activation guard, regression tests, and inclusion in tag 4.1.7 but not 4.1.6.
+- At BIC-era source, User::getUserByLogin() stores the matching user_id and account_status; createUser() returns false for the duplicate; User::setStatus() executes UPDATE faquser SET account_status = status WHERE user_id = the loaded ID, closing the original source-to-sink mechanism.
+
+### w018 — CVE-2026-76213 — `NOT_AI`
+
+- class: `alias-b1b4b377b091ef1953915732`
+- repository: `thorsten/phpmyfaq`
+- review context: `round12-clean-w018`
+- bundle sha256: `bf5ba1c75d59540e4e75cff8ea3bdbde59b707cb743b0fb99f14beb73c5df135`
+- clone HEAD at freeze: `2da26942172d87b3f0624bccfbfd0e356b1b1187`
+- introducer: `410208b90f1d01534812ac5203d3e8d9c7bd591f`
+- immediate parent: `06d644e5871f132ff50020490eb817be52076429`
+- direct fix: `59593a013862094724e68b3ace5c9dd0a2b516cb`
+- fix/carrier: `59593a013862094724e68b3ace5c9dd0a2b516cb`
+
+**Mechanism.** A correct password reaches the frontend 2FA pending state and resets 2fa_failed_attempts to zero in the current session. Wrong TOTP submissions increment only that session value and clear the pending state at the five-guess cap. An attacker who knows the password can re-authenticate, or use a fresh cookie jar, to recreate the pending state with a zero counter; correct-password requests do not consume the separate failed-password budget. Repeating this cycle makes TOTP guessing unbounded at the application layer.
+
+**Origin.** Commit 410208b90f1d01534812ac5203d3e8d9c7bd591f is the smallest public first-writer for the advisory's frontend mechanism: its single-file phpmyfaq/index.php diff introduced the session-only five-attempt counter, its increment and cap, and the unconditional counter reset after each successful password authentication. Its immediate parent lacks both 2FA session keys.
+
+**AI marker.** `ABSENT` — The complete BIC commit object has named-human author and committer headers and a single subject line, with no AI-assistance, agent, bot, generated-by, or co-author trailer.
+
+**Reasoning.** The authoritative records and exact Git history close the vulnerability lifecycle. The frontend reset-on-reauth mechanism first appears atomically in 410208b90f1d01534812ac5203d3e8d9c7bd591f, is absent from its verified immediate parent, ships in 4.1.6, and is directly replaced by persistent per-account throttling in 59593a013862094724e68b3ace5c9dd0a2b516cb, which ships in 4.1.7. The BIC is a one-parent named-human commit with no BIC-local AI marker. Later AI assistance used to navigate or draft the advisory cannot be projected backward onto the BIC. Therefore the real vulnerability is closed as NOT_AI.
+
+Protocol checks:
+
+- `vulnerability_mechanism` — **PASS**: The official CVE Services record for CVE-2026-76213 is PUBLISHED and describes the session-scoped 2FA failure counter being reset by successful password re-authentication: https://cveawg.mitre.org/api/cve/CVE-2026-76213 The vendor advisory GHSA-f98m-hcjv-7rp9 is published, lists affected versions <=4.1.6 and patched version 4.1.7, and traces POST /authenticate setting 2fa_pending_user_id plus 2fa_failed_attempts=0, followed by POST /check accepting five guesses and incrementing only that session counter: https://github.com/thorsten/phpMyFAQ/security/advisories/GHSA-f98m-hcjv-7rp9
+- `atomic_bic` — **PASS**: GIT_NO_LAZY_FETCH=1 git log --all --reverse -S'2fa_failed_attempts' -- phpmyfaq/index.php returns 410208b90f1d01534812ac5203d3e8d9c7bd591f as the first writer and 59593a013862094724e68b3ace5c9dd0a2b516cb as the remover/replacement. git show 410208b90f1d01534812ac5203d3e8d9c7bd591f -- phpmyfaq/index.php shows one atomic file change adding the pending-user binding, five-guess session throttle, per-failure increment, and unconditional reset to zero after correct password authentication.
+- `immediate_parent_absence` — **PASS**: The BIC commit object names immediate parent 06d644e5871f132ff50020490eb817be52076429, which exists as a commit object. git show 06d644e5871f132ff50020490eb817be52076429:phpmyfaq/index.php contains neither 2fa_failed_attempts nor 2fa_pending_user_id; the vulnerable reset-on-reauth state machine first appears in the child diff.
+- `squash_member_decomposition` — **PASS**: 410208b90f1d01534812ac5203d3e8d9c7bd591f is a non-merge commit with exactly one parent and changes only phpmyfaq/index.php; the exact -S history exposes no finer public member for the vulnerable lines, so no squash decomposition is applicable.
+- `affected_release_membership` — **PASS**: git rev-list -n 1 4.1.6 resolves to 58c1d7f2fa36f7074664fc6d862afee0ca8bcc89; git merge-base --is-ancestor confirms the BIC is an ancestor of 4.1.6 and the fix is not. git merge-base --is-ancestor confirms 410208b90f1d01534812ac5203d3e8d9c7bd591f is not in 4.1.5. Thus the exact session-reset mechanism is present in release 4.1.6; older releases had the predecessor unbound-token flaw rather than these vulnerable lines.
+- `fixed_release_membership` — **PASS**: git rev-list -n 1 4.1.7 resolves to 28d6f641c16e3015d51d0a01d14841b845251f35; git merge-base --is-ancestor confirms 59593a013862094724e68b3ace5c9dd0a2b516cb is an ancestor of that tag. The vendor advisory independently identifies 4.1.7 as the patched release.
+- `direct_fix_or_unpatched` — **PASS**: git show 59593a013862094724e68b3ace5c9dd0a2b516cb -- phpmyfaq/index.php directly removes the session counter checks, increments, clears, and password-success reset, replacing them with CurrentUser::isTwoFactorLockedOut(), twoFactorFailure(), and twoFactorSuccess(). The same fix adds the per-account database-backed twoFactorFailure/isTwoFactorLockedOut implementation in phpmyfaq/src/phpMyFAQ/User/CurrentUser.php, so a new session or successful password re-authentication no longer restores a fresh token-guess budget.
+- `bic_only_ai_attribution` — **PASS**: git cat-file commit 410208b90f1d01534812ac5203d3e8d9c7bd591f records named human Thorsten Rinne <thorsten@phpmyfaq.de> as both author and committer and contains only the subject 'fix: bind frontend 2FA token step to a verified password'; it has no AI, agent, bot, Copilot, Claude, ChatGPT, or co-author marker. The vendor advisory's later statement that AI assisted advisory navigation and drafting is not evidence about the earlier BIC commit object and is excluded from causal attribution.
+
+Primary/Git evidence:
+
+- CVE.org/CVE Services record CVE-2026-76213 is PUBLISHED and identifies the reset-on-reauth session throttle, CWE-307, affected versions before 4.1.7, and vendor advisory GHSA-f98m-hcjv-7rp9: https://cveawg.mitre.org/api/cve/CVE-2026-76213
+- Vendor advisory GHSA-f98m-hcjv-7rp9 gives the exact POST /authenticate -> session reset -> POST /check -> five guesses -> re-authentication loop and marks 4.1.7 patched: https://github.com/thorsten/phpMyFAQ/security/advisories/GHSA-f98m-hcjv-7rp9
+- Local full non-promisor clone HEAD is 2da26942172d87b3f0624bccfbfd0e356b1b1187; BIC, parent, and direct-fix SHAs all resolve as commit objects.
+- BIC 410208b90f1d01534812ac5203d3e8d9c7bd591f changes only phpmyfaq/index.php and directly adds 2fa_failed_attempts session reset, cap, and increments; parent 06d644e5871f132ff50020490eb817be52076429 lacks those keys.
+- Direct fix 59593a013862094724e68b3ace5c9dd0a2b516cb removes the session throttle/reset and routes failures and lockout through persistent per-account CurrentUser methods; tag ancestry places the BIC in 4.1.6 without the fix and both in 4.1.7.
+- The BIC commit object identifies Thorsten Rinne as author and committer and contains no BIC-local AI marker.
+
+### w019 — CVE-2026-76206 — `NOT_AI`
+
+- class: `alias-d9a7e4a47cab0d0f5c776542`
+- repository: `thorsten/phpmyfaq`
+- review context: `round12-clean-w019`
+- bundle sha256: `9942cba174d0516f71822152b18880d965ea84da73b8eebe9a6a7a6c48d806d5`
+- clone HEAD at freeze: `2da26942172d87b3f0624bccfbfd0e356b1b1187`
+- introducer: `4639bf25d8b4b7026527c012e9b9f94767247bf6`
+- immediate parent: `7e06d6df29d235f5d9905683fbdee57598d19187`
+- direct fix: `b0daab0c2dedb880b2a9296082b7f1ba7a146cf8`
+- fix/carrier: `b0daab0c2dedb880b2a9296082b7f1ba7a146cf8`
+
+**Mechanism.** The public PDF endpoint accepts an unauthenticated numeric FAQ id and, after the BIC, loads the record through PMF_Faq::getRecord() without filtering active status. That loader replaces only the inactive answer body with err_inactiveArticle while retaining title, solution_id, author, and date. pdf.php then writes those retained fields into a generated PDF, so enumerating FAQ ids exposes unpublished metadata.
+
+**Origin.** Commit 4639bf25d8b4b7026527c012e9b9f94767247bf6 is the smallest first-writer: its sole file change removes the endpoint's SQL active = 'yes' predicate and routes the same id into the non-filtering getRecord() result before rendering metadata. Parent 7e06d6df29d235f5d9905683fbdee57598d19187 has the active predicate. The 2026 controller migration 4182bee11c852210f34bbfd5c849817ee81ccc10 merely carries the already-vulnerable behavior and is not the BIC.
+
+**AI marker.** `ABSENT` — BIC 4639bf25d8b4b7026527c012e9b9f94767247bf6 has named human author/committer thorstenr, mapped in the changed file's BIC-local author header to Thorsten Rinne; its raw commit object contains only the one-line message 'Removed query' and no AI/bot/co-author marker.
+
+**Reasoning.** The authoritative records describe a real, published vulnerability, and the Git lifecycle closes it: the parent endpoint rejected inactive rows; the atomic BIC removed that predicate and exposed metadata through a loader that redacted only content; 4.1.6 contains the BIC without the fix; and 4.1.7 contains the direct visibility-gate fix. Attribution is limited to the BIC, whose raw object and changed-file header identify Thorsten Rinne and contain no AI or bot marker. Therefore the real vulnerability was introduced by named-human work and the required closed verdict is NOT_AI.
+
+Protocol checks:
+
+- `vulnerability_mechanism` — **PASS**: The PUBLISHED CVE.org record at https://cveawg.mitre.org/api/cve/CVE-2026-76206 identifies CVE-2026-76206 as unauthenticated draft-FAQ metadata disclosure through PDF export, with versions below 4.1.7 affected and 4.1.7 unaffected. The vendor advisory at https://github.com/thorsten/phpmyfaq/security/advisories/GHSA-f8pr-32pp-mp7h is published and not withdrawn; it identifies the public PDF route, the missing active-state gate, and disclosure of title, solution ID, author, and last-update date while the body is redacted. At BIC 4639bf25d8b4b7026527c012e9b9f94767247bf6, phpmyfaq/pdf.php passes the unauthenticated numeric id to PMF_Faq::getRecord(), then writes faqRecord title, solution_id, author, and date to a PDF. phpmyfaq/inc/Faq.php:getRecord() selects by id and language without an active predicate, masks only content when active is not yes, and retains those metadata fields.
+- `atomic_bic` — **PASS**: GIT_NO_LAZY_FETCH=1 git show 4639bf25d8b4b7026527c012e9b9f94767247bf6 shows the exact transition from a PDF-local SELECT ending in active = 'yes' to PMF_Faq::getRecord($id), whose returned metadata is rendered without a publication gate. GIT_NO_LAZY_FETCH=1 git diff-tree --no-commit-id --name-status -r 4639bf25d8b4b7026527c012e9b9f94767247bf6 reports only M phpmyfaq/pdf.php; the commit has exactly one parent and is the smallest public commit that introduced this source-to-sink behavior.
+- `immediate_parent_absence` — **PASS**: The verified immediate parent is 7e06d6df29d235f5d9905683fbdee57598d19187. Its phpmyfaq/pdf.php directly selects the FAQ row with AND active = 'yes', errors when no row is returned, and therefore does not pass inactive FAQ metadata to the PDF sink.
+- `squash_member_decomposition` — **PASS**: git cat-file -p 4639bf25d8b4b7026527c012e9b9f94767247bf6 shows one parent and the single message 'Removed query'; diff-tree shows a one-file focused change, not a merge, import, carrier, or squash aggregate. No finer public member exists to decompose.
+- `affected_release_membership` — **PASS**: The CVE.org affected record specifies semver >=0 and <4.1.7 as affected, and the vendor advisory specifies <=4.1.6. Tag 4.1.6 peels to 58c1d7f2fa36f7074664fc6d862afee0ca8bcc89; git merge-base --is-ancestor confirms BIC 4639bf25d8b4b7026527c012e9b9f94767247bf6 is present, while direct fix b0daab0c2dedb880b2a9296082b7f1ba7a146cf8 is absent.
+- `fixed_release_membership` — **PASS**: The CVE.org and vendor records identify 4.1.7 as unaffected/patched. Tag 4.1.7 peels to 28d6f641c16e3015d51d0a01d14841b845251f35, and git merge-base --is-ancestor confirms direct fix b0daab0c2dedb880b2a9296082b7f1ba7a146cf8 is present.
+- `direct_fix_or_unpatched` — **PASS**: Direct fix b0daab0c2dedb880b2a9296082b7f1ba7a146cf8 adds an immediate isFaqRecordVisible() check after getFaq($faqId) in phpmyfaq/pdf.php, returns HTTP 404 for a non-visible record, and exits before category assignment, attachment lookup, and Pdf::generateFile().
+- `bic_only_ai_attribution` — **PASS**: The raw BIC commit object names author and committer thorstenr <thorstenr@838f1ae0-46ae-11dd-8317-05e2edd5b3f7>; the BIC-local phpmyfaq/pdf.php header identifies Thorsten Rinne, and the commit message is 'Removed query'. The commit object contains no AI attribution, assistant trailer, bot identity, or co-author trailer.
+
+Primary/Git evidence:
+
+- CVE.org primary record: https://cveawg.mitre.org/api/cve/CVE-2026-76206 (state PUBLISHED; affected <4.1.7; 4.1.7 unaffected).
+- Vendor primary advisory: https://github.com/thorsten/phpmyfaq/security/advisories/GHSA-f8pr-32pp-mp7h (state published; withdrawn_at null; vulnerable <=4.1.6; patched 4.1.7).
+- GIT_NO_LAZY_FETCH=1 git show 7e06d6df29d235f5d9905683fbdee57598d19187:phpmyfaq/pdf.php shows the parent SQL source constrained by active = 'yes'.
+- GIT_NO_LAZY_FETCH=1 git show 4639bf25d8b4b7026527c012e9b9f94767247bf6 and git show 4639bf25d8b4b7026527c012e9b9f94767247bf6:phpmyfaq/inc/Faq.php show the BIC removes that constraint, loads all status values, masks only content, and sends retained metadata to PDF output.
+- GIT_NO_LAZY_FETCH=1 git show b0daab0c2dedb880b2a9296082b7f1ba7a146cf8 -- phpmyfaq/pdf.php shows the direct pre-sink visibility gate.
+- All recorded SHAs resolve as commit objects in clone /home/hanqing/agents/ai-slop/.ai-slop/state/repos/phpmyfaq at bound HEAD 2da26942172d87b3f0624bccfbfd0e356b1b1187.
+
+### w020 — CVE-2026-76207 — `NOT_AI`
+
+- class: `alias-e0b7976b285a29bb27b508f9`
+- repository: `thorsten/phpmyfaq`
+- review context: `round12-clean-w020`
+- bundle sha256: `fd3c9102467a2d6f2f1226516a91508f55a5f210172bc8329a93aa10521e13d9`
+- clone HEAD at freeze: `2da26942172d87b3f0624bccfbfd0e356b1b1187`
+- introducer: `d60a0f52368b491e401b4cf00f59f45d34d39403`
+- immediate parent: `5fb7b76fc2b12fd7bf77d5067aa3e8d5767d9a72`
+- direct fix: `eceecd3185823d225bbe0af40bc733d73cb771cf`
+- fix/carrier: `eceecd3185823d225bbe0af40bc733d73cb771cf`
+
+**Mechanism.** After a correct password for a 2FA-enabled account, CurrentUser::login() deliberately withholds the normal authenticated session, but the adjacent remember-me path still stores a token and sends its cookie before the second factor is verified. Replaying that cookie reaches getFromCookie(), which treats any matching token as fully authenticated, refreshes the session, sets loggedIn=true, and never checks twofactor_enabled; thus possession of the password alone yields a reusable credential that bypasses the required second factor.
+
+**Origin.** Mainline commit 5097dff341fb01e93e8561e7261b3ae657df715a is a squash and is not atomic. The retained 34-member PR history decomposes it: member d60a0f52368b491e401b4cf00f59f45d34d39403 is the smallest first-writer because it first wrapped session authentication in a twofactor_enabled gate and added twofactorSuccess(), yet left the following remember-me token issuance outside that gate. Its immediate parent 5fb7b76fc2b12fd7bf77d5067aa3e8d5767d9a72 has no 2FA condition in CurrentUser, so it does not contain this missing-second-step mechanism.
+
+**AI marker.** `ABSENT` — git cat-file -p d60a0f52368b491e401b4cf00f59f45d34d39403: named author modelrailroader <96944229+modelrailroader@users.noreply.github.com>; GitHub committer; message Update CurrentUser.php / Added support for 2fa.; no AI-related marker or trailer.
+
+**Reasoning.** The authoritative records and repository code establish a real, fixed authentication vulnerability. The public PR history allows the mainline squash to be decomposed to the atomic member d60a0f52368b491e401b4cf00f59f45d34d39403, whose parent lacks the 2FA authentication gate and whose patch first creates the flawed ordering. Release ancestry and the direct fix close the lifecycle. The BIC object is authored by the named user modelrailroader and contains no AI marker, so under BIC-only attribution the closed verdict is NOT_AI.
+
+Protocol checks:
+
+- `vulnerability_mechanism` — **PASS**: The official CVE Services record at https://cveawg.mitre.org/api/cve/CVE-2026-76207 has cveMetadata.state=PUBLISHED and describes remember-me tokens issued before 2FA completion and replayed for a fully authenticated session; it lists versions below 4.1.7 as affected and 4.1.7 as unaffected. The vendor advisory https://github.com/thorsten/phpMyFAQ/security/advisories/GHSA-hvj7-4fmg-53cr identifies the two linked paths: CurrentUser::login() issues and stores the remember-me token before 2FA, while getFromCookie() accepts that token and marks the user logged in without a 2FA check. At d60a0f52368b491e401b4cf00f59f45d34d39403, CurrentUser.php gates session creation on twofactor_enabled at lines 191-196, but independently issues and stores the remember-me cookie at lines 199-207; getFromCookie() at lines 564-584 loads that cookie, updates the session, sets loggedIn=true, and saves the session without testing twofactor_enabled.
+- `atomic_bic` — **PASS**: git show d60a0f52368b491e401b4cf00f59f45d34d39403 -- phpmyfaq/src/phpMyFAQ/User/CurrentUser.php shows a one-file member commit that first added the twofactor_enabled session gate and twofactorSuccess() while leaving the immediately following remember-me issuance unconditional. git cat-file -p d60a0f52368b491e401b4cf00f59f45d34d39403 records the single immediate parent 5fb7b76fc2b12fd7bf77d5067aa3e8d5767d9a72.
+- `immediate_parent_absence` — **PASS**: git grep -n -i 'twofactor\|two.factor' 5fb7b76fc2b12fd7bf77d5067aa3e8d5767d9a72 -- phpmyfaq/src/phpMyFAQ/User/CurrentUser.php exits 1 with no match. The parent still has ordinary remember-me issuance and cookie login, but it unconditionally creates a password-authenticated session and has no second-factor requirement in CurrentUser; therefore the missing-critical-2FA-step mechanism is absent from that parent tree.
+- `squash_member_decomposition` — **PASS**: GitHub's first-party PR page https://github.com/thorsten/phpmyfaq/pull/2362 records 34 member commits, identifies d60a0f5 as Update CurrentUser.php, and records that maintainer thorsten merged squash commit 5097dff into main. A bounded fetch of refs/pull/2362/head produced e144f3c31243c161df89c86561e3e87c49ef48e4; git diff --exit-code 5097dff341fb01e93e8561e7261b3ae657df715a refs/audit/w020-pr2362 exits 0, proving the public member head and landing squash have identical trees. The first-party GitHub PR commits API with per_page=100 returns 34 members and identifies d60a0f52368b491e401b4cf00f59f45d34d39403, parent 5fb7b76fc2b12fd7bf77d5067aa3e8d5767d9a72, as the member titled Update CurrentUser.php / Added support for 2fa.
+- `affected_release_membership` — **PASS**: The vendor advisory states that affected releases start at 3.2.0, where 2FA was introduced, and extend through 4.1.6. git rev-list -n 1 3.2.0 resolves to 860c494b287d217c4b9b74856834ab5050cc8a39; git merge-base --is-ancestor 5097dff341fb01e93e8561e7261b3ae657df715a 3.2.0 exits 0. git rev-list -n 1 4.1.6 resolves to 58c1d7f2fa36f7074664fc6d862afee0ca8bcc89; git merge-base --is-ancestor 5097dff341fb01e93e8561e7261b3ae657df715a 4.1.6 exits 0, and the landing squash tree is identical to the decomposed PR head.
+- `fixed_release_membership` — **PASS**: git rev-list -n 1 4.1.7 resolves to 28d6f641c16e3015d51d0a01d14841b845251f35. git merge-base --is-ancestor eceecd3185823d225bbe0af40bc733d73cb771cf 4.1.7 exits 0, whereas the same command against 4.1.6 exits 1; this matches the vendor patched-version boundary of 4.1.7.
+- `direct_fix_or_unpatched` — **PASS**: Commit eceecd3185823d225bbe0af40bc733d73cb771cf is titled fix: prevented 2FA bypass via prematurely issued remember-me cookie and has parent 4c5eec9adf6133b4765453d0af37da6959187cba. Its direct hunk guards password-phase issuance with twofactor_enabled != 1, extracts issuance into issueRememberMeCookie(), carries the remember-me choice through pending 2FA state, and invokes issuance only after twoFactorSuccess() in both frontend and administration flows.
+- `bic_only_ai_attribution` — **PASS**: The BIC object d60a0f52368b491e401b4cf00f59f45d34d39403 names author modelrailroader <96944229+modelrailroader@users.noreply.github.com> and committer GitHub <noreply@github.com>. The complete BIC message is Update CurrentUser.php / Added support for 2fa.; the commit object has no AI, Copilot, generated-by, co-authored-by, or other AI-attribution marker or trailer. No repository-level or later-commit signal is used for this attribution.
+
+Primary/Git evidence:
+
+- Official CVE record: https://cveawg.mitre.org/api/cve/CVE-2026-76207 (PUBLISHED; affected below 4.1.7; 4.1.7 unaffected).
+- Vendor advisory: https://github.com/thorsten/phpMyFAQ/security/advisories/GHSA-hvj7-4fmg-53cr (remember-me issuance before 2FA plus unconditional cookie login; affected 3.2.0 through 4.1.6; patched 4.1.7).
+- First-party PR history: https://github.com/thorsten/phpmyfaq/pull/2362 (34 commits; d60a0f5 member; squash landing 5097dff).
+- GIT_NO_LAZY_FETCH=1 git show d60a0f52368b491e401b4cf00f59f45d34d39403 -- phpmyfaq/src/phpMyFAQ/User/CurrentUser.php: introduces the 2FA session gate without guarding the adjacent remember-me issuance.
+- GIT_NO_LAZY_FETCH=1 git show d60a0f52368b491e401b4cf00f59f45d34d39403:phpmyfaq/src/phpMyFAQ/User/CurrentUser.php: getFromCookie() accepts the issued token and establishes a fully authenticated session without a second-factor check.
+- GIT_NO_LAZY_FETCH=1 git grep -n -i 'twofactor\|two.factor' 5fb7b76fc2b12fd7bf77d5067aa3e8d5767d9a72 -- phpmyfaq/src/phpMyFAQ/User/CurrentUser.php: no match, exit 1.
+- GIT_NO_LAZY_FETCH=1 git diff --exit-code 5097dff341fb01e93e8561e7261b3ae657df715a refs/audit/w020-pr2362: exit 0 after bounded fetch of the public PR head.
+- GIT_NO_LAZY_FETCH=1 git show eceecd3185823d225bbe0af40bc733d73cb771cf: direct fix defers remember-me issuance until after successful 2FA.
+- Tag commit identities: 3.2.0=860c494b287d217c4b9b74856834ab5050cc8a39, 4.1.6=58c1d7f2fa36f7074664fc6d862afee0ca8bcc89, 4.1.7=28d6f641c16e3015d51d0a01d14841b845251f35; ancestry checks place the vulnerable landing in 3.2.0 and 4.1.6, exclude the fix from 4.1.6, and include it in 4.1.7.
+
+### w021 — CVE-2026-75919 — `NOT_AI`
+
+- class: `alias-ff78c956d01983a087c2cc46`
+- repository: `thorsten/phpmyfaq`
+- review context: `round12-clean-w021`
+- bundle sha256: `96148bca33b0b122e0f3c9bfbcc31cda559478ad28cdf561528bd41f9a51a71c`
+- clone HEAD at freeze: `2da26942172d87b3f0624bccfbfd0e356b1b1187`
+- introducer: `a32a00a37faa6e5919d18ec72b79e150656ee1ab`
+- immediate parent: `414eb183793bd702bac8cea61280cf8d624795c5`
+- direct fix: `d6a6a033ee788727c0e6ceaaeee16b9b537c67e7`
+- fix/carrier: `d6a6a033ee788727c0e6ceaaeee16b9b537c67e7`
+
+**Mechanism.** An unauthenticated network request reached the public setup update controller without a credential or authorization check. The original route invoked Update::applyUpdates() directly; its surviving descendants exposed POST /api/setup/update-database, which ran database migrations and disabled maintenance mode, and POST /api/setup/backup, which recursively archived the configuration directory containing database credentials. Maintenance mode was only an operational-state gate, not caller authentication.
+
+**Origin.** a32a00a37faa6e5919d18ec72b79e150656ee1ab is the smallest surviving public first-writer: it created SetupController and the public POST setup/update route whose controller called Update::applyUpdates() without authentication. Its immediate parent lacks both the controller and route. 75062f0d186369d4de0294775dad3c019c03ebb1 later preserved that unauthenticated migration flow under setup/update-database and added the unauthenticated configuration-backup sink; subsequent moves/refactors and b8d628d65bf7aaff94069d18306d6b0bbf41817c's explicit no-op isSecured() are descendants, not the BIC.
+
+**AI marker.** `ABSENT` — BIC raw object author and committer are Thorsten Rinne <thorsten@phpmyfaq.de>. BIC message contains no AI-generation, bot, or co-author marker/trailer, and the GitHub commit API maps both identities to maintainer account thorsten.
+
+**Reasoning.** The authoritative records confirm a real, non-withdrawn vulnerability. Exact Git history closes the source-to-sink lifecycle, immediate-parent absence, affected/fixed tag membership, and direct repair. The earliest surviving public BIC is a named-human, single-parent commit with no AI-local marker, so the closed result is NOT_AI rather than EVIDENCE_GAP or FALSE_POSITIVE.
+
+Protocol checks:
+
+- `vulnerability_mechanism` — **PASS**: CVE.org record https://cveawg.mitre.org/api/cve/CVE-2026-75919 is PUBLISHED and identifies unauthenticated SetupController database migration/config-backup operations before 4.1.7; it is not rejected or withdrawn. The vendor advisory https://github.com/thorsten/phpMyFAQ/security/advisories/GHSA-f96w-7fx2-79c8 is published, withdrawn_at=null, and documents unauthenticated POST /api/setup/backup and POST /api/setup/update-database while maintenance mode is true. At tag 4.1.6, SetupController::isSecured() is an empty override; backup() calls Update::createConfigBackup() on content/core/config, and updateDatabase() calls Update::applyUpdates() then sets main.maintenanceMode=false.
+- `atomic_bic` — **PASS**: git show a32a00a37faa6e5919d18ec72b79e150656ee1ab shows the first public SetupController file and setup/update POST route, with the unauthenticated controller calling Update::applyUpdates(); the commit has exactly one parent. The later 75062f0d186369d4de0294775dad3c019c03ebb1 rewrote the same setup-update flow into setup/update-database and added setup/backup, so it is a scope-expanding descendant rather than the first source-to-migration-sink writer.
+- `immediate_parent_absence` — **PASS**: git ls-tree -r --name-only 414eb183793bd702bac8cea61280cf8d624795c5 contains no phpmyfaq/src/phpMyFAQ/Controller/SetupController.php. git grep on 414eb183793bd702bac8cea61280cf8d624795c5 finds zero public setup/update route hits, while a32a00a37faa6e5919d18ec72b79e150656ee1ab has the route and applyUpdates call.
+- `squash_member_decomposition` — **PASS**: git cat-file -p a32a00a37faa6e5919d18ec72b79e150656ee1ab records one parent, 414eb183793bd702bac8cea61280cf8d624795c5; the setup controller is a new file and the matching public route is added in that same surviving public commit. The repository records the #2492 work as a sequence of ordinary commits; a32a00a37faa6e5919d18ec72b79e150656ee1ab itself is the member that first adds the public setup controller/route, not a merge carrier or later squash aggregate.
+- `affected_release_membership` — **PASS**: git merge-base --is-ancestor a32a00a37faa6e5919d18ec72b79e150656ee1ab 4.0.0, 4.1.1, and 4.1.6 returns success for each; tag 4.1.6 resolves to 58c1d7f2fa36f7074664fc6d862afee0ca8bcc89. The vendor advisory gives vulnerable_version_range <= v4.1.6, and CVE.org gives affected semver <4.1.7.
+- `fixed_release_membership` — **PASS**: git merge-base --is-ancestor d6a6a033ee788727c0e6ceaaeee16b9b537c67e7 4.1.6 returns failure and the same command against 4.1.7 returns success; tag 4.1.7 resolves to 28d6f641c16e3015d51d0a01d14841b845251f35. Both the vendor advisory and CVE.org identify 4.1.7 as the patched/unaffected boundary.
+- `direct_fix_or_unpatched` — **PASS**: git diff d6a6a033ee788727c0e6ceaaeee16b9b537c67e7^ d6a6a033ee788727c0e6ceaaeee16b9b537c67e7 -- phpmyfaq/src/phpMyFAQ/Controller/Api/SetupController.php adds denyUnauthorizedRequest() at the start of check(), backup(), and updateDatabase(). The same direct fix permits only an authenticated administrator/configuration editor or a valid filesystem-backed update token, and changes the backup response from a full path to basename().
+- `bic_only_ai_attribution` — **PASS**: The raw commit object for a32a00a37faa6e5919d18ec72b79e150656ee1ab names Thorsten Rinne <thorsten@phpmyfaq.de> as both author and committer and contains only the subject 'feat: added API for classic update script (#2492)' with no AI/bot/co-author trailer. GitHub's first-party commit API maps both the BIC author and committer to the named maintainer account thorsten; no repository-level or later-commit signal is used for attribution.
+
+Primary/Git evidence:
+
+- CVE.org primary record: https://cveawg.mitre.org/api/cve/CVE-2026-75919 (PUBLISHED; affected <4.1.7; 4.1.7 unaffected).
+- Vendor primary advisory: https://github.com/thorsten/phpMyFAQ/security/advisories/GHSA-f96w-7fx2-79c8 (published; <=v4.1.6; patched 4.1.7; withdrawn_at null).
+- GIT_NO_LAZY_FETCH=1 git show a32a00a37faa6e5919d18ec72b79e150656ee1ab: first public setup/update route plus new SetupController calling applyUpdates().
+- GIT_NO_LAZY_FETCH=1 git show 414eb183793bd702bac8cea61280cf8d624795c5 and git ls-tree: no SetupController and no public setup/update route in the immediate parent.
+- GIT_NO_LAZY_FETCH=1 ancestry chain: a32a00a37faa6e5919d18ec72b79e150656ee1ab -> 75062f0d186369d4de0294775dad3c019c03ebb1 -> 5034dc2b3026581cd318aa63fb886a30860cccb0 -> b8d628d65bf7aaff94069d18306d6b0bbf41817c -> d6a6a033ee788727c0e6ceaaeee16b9b537c67e7.
+- GIT_NO_LAZY_FETCH=1 tag ancestry: BIC is in 4.0.0/4.1.1/4.1.6; direct fix is absent from 4.1.6 and present in 4.1.7.
+- GitHub first-party commit API for a32a00a37faa6e5919d18ec72b79e150656ee1ab identifies thorsten/Thorsten Rinne as both author and committer and returns the same single parent.
+
+### w022 — GHSA-pc8g-78pf-4xrp — `NOT_AI`
+
+- class: `alias-fe39cd7b56d2f10a8740d77b`
+- repository: `olivetin/olivetin`
+- review context: `round12-clean-w022-r2`
+- bundle sha256: `fa791fceba6afc594f50bfc92f910dcff2c3a88e206506d0abe750c38b1c5b69`
+- clone HEAD at freeze: `dc64d53e26a653fb4ee06cc74d7fde8ba8157e02`
+- introducer: `1af2e921323ee0ba3bf3d922c8861652d3913222`
+- immediate parent: `71ad5d2e3a14fae7755b2e856981f50887745558`
+- direct fix: `a7be68b35917682b3af022191d72f8af8af0dee9`
+- fix/carrier: `2eb5f0ba79d4bbef3c802bf8b4666a7e18dcfd90`
+
+**Mechanism.** An unauthenticated POST to the generated PasswordHash RPC reaches oliveTinAPI.PasswordHash, which passes attacker-controlled password text to createHash and then argon2id.CreateHash configured for 64 * 1024 memory units. Before the fix there is no authentication, throttling, or concurrency guard on this path, so parallel remote requests perform many memory-intensive Argon2 computations concurrently and can exhaust service or container memory.
+
+**Origin.** Commit 1af2e921323ee0ba3bf3d922c8861652d3913222 is the smallest surviving public first-writer: it directly adds the PasswordHash request and POST route, the unauthenticated handler, and the unbounded Argon2 helper. Its immediate parent has none of those objects. Commits ff31abe66cfd46f8cccca00ad708529e4d920144 and a62d58f11955fe192f45da13e23ba996a2759404 only carry the handler across directory/API refactors and are not introducers.
+
+**AI marker.** `ABSENT` — git cat-file -p 1af2e921323ee0ba3bf3d922c8861652d3913222: named author and committer jamesread <contact@jread.com>; message feature: Local user login!; no trailers or AI marker.
+
+**Reasoning.** The authoritative CVE and vendor Git history establish a real, fixed vulnerability. Exact pickaxe history and parent-tree inspection close the lifecycle at one direct first-writer rather than a later refactor or advisory merge. The vulnerable release excludes the direct fix and the fixed release includes it. Because the atomic BIC itself is a named-human authored and committed object with no AI marker, the closed verdict is NOT_AI.
+
+Protocol checks:
+
+- `vulnerability_mechanism` — **PASS**: CVE.org record https://cveawg.mitre.org/api/cve/CVE-2026-28342 is PUBLISHED and states that versions before 3000.10.2 expose an unauthenticated PasswordHash API whose concurrent memory-intensive requests can exhaust container memory. At BIC 1af2e921323ee0ba3bf3d922c8861652d3913222, OliveTin.proto maps POST /api/PasswordHash to PasswordHash; internal/grpcapi/grpcApi.go calls createHash(req.Password) without an authentication or concurrency check; internal/grpcapi/local_user_login.go calls argon2id.CreateHash with Memory 64 * 1024.
+- `atomic_bic` — **PASS**: git log -S over the historical handler paths identifies 1af2e921323ee0ba3bf3d922c8861652d3913222 as the first writer; ff31abe66cfd46f8cccca00ad708529e4d920144 and a62d58f11955fe192f45da13e23ba996a2759404 are later path carriers. git diff 71ad5d2e3a14fae7755b2e856981f50887745558..1af2e921323ee0ba3bf3d922c8861652d3913222 shows the route, handler, and unbounded Argon2 sink added together by the one-parent commit feature: Local user login!.
+- `immediate_parent_absence` — **PASS**: git cat-file -p 1af2e921323ee0ba3bf3d922c8861652d3913222 gives immediate parent 71ad5d2e3a14fae7755b2e856981f50887745558. git grep -n 'PasswordHash|argon2id.CreateHash' 71ad5d2e3a14fae7755b2e856981f50887745558 -- '*.go' '*.proto' returns no matches, while the BIC diff adds both the reachable PasswordHash handler and argon2id.CreateHash sink.
+- `squash_member_decomposition` — **PASS**: git cat-file -p 1af2e921323ee0ba3bf3d922c8861652d3913222 shows exactly one parent and the plain commit message feature: Local user login!, with no merge parents, PR aggregate marker, or embedded member list to decompose. The vulnerable route, handler, and sink are direct additions in this surviving public commit, so no finer public member is represented in the assigned clone.
+- `affected_release_membership` — **PASS**: CVE.org records the affected boundary as versions < 3000.10.2. Vendor tag 3000.10.1 resolves to 60176b6078ed32aa664329c50aa5a42604dc3f96; git merge-base --is-ancestor confirms BIC 1af2e921323ee0ba3bf3d922c8861652d3913222 is present and direct fix a7be68b35917682b3af022191d72f8af8af0dee9 is absent.
+- `fixed_release_membership` — **PASS**: CVE.org states the issue is patched in 3000.10.2, and GitHub advisory https://api.github.com/advisories/GHSA-pc8g-78pf-4xrp names first patched pseudo-version 0.0.0-20260227002407-2eb5f0ba79d4. Vendor tag 3000.10.2 resolves to 2eb5f0ba79d4bbef3c802bf8b4666a7e18dcfd90; git merge-base --is-ancestor confirms direct fix a7be68b35917682b3af022191d72f8af8af0dee9 is included.
+- `direct_fix_or_unpatched` — **PASS**: Direct fix a7be68b35917682b3af022191d72f8af8af0dee9 adds a shared 10-slot argon2Sem, rejects excess CreateHash and ComparePasswordAndHash calls with ErrArgon2Busy, and maps that condition to Connect CodeResourceExhausted. The advisory commit 2eb5f0ba79d4bbef3c802bf8b4666a7e18dcfd90 is a merge; its first-parent-to-merge diff carries the same semaphore fix, while a7be68b35917682b3af022191d72f8af8af0dee9 is the finer direct member.
+- `bic_only_ai_attribution` — **PASS**: BIC commit object 1af2e921323ee0ba3bf3d922c8861652d3913222 names jamesread <contact@jread.com> as both author and committer and contains only the message feature: Local user login!. The BIC object has no AI, assistant, bot, generated-by, or co-author marker; no repository-level or later-commit signal is used for attribution.
+
+Primary/Git evidence:
+
+- CVE.org primary record https://cveawg.mitre.org/api/cve/CVE-2026-28342: state PUBLISHED, affected versions < 3000.10.2, patched in 3000.10.2.
+- GitHub advisory record https://api.github.com/advisories/GHSA-pc8g-78pf-4xrp: GHSA-pc8g-78pf-4xrp / CVE-2026-28342, withdrawn_at null, fix reference 2eb5f0ba79d4bbef3c802bf8b4666a7e18dcfd90.
+- Assigned clone HEAD dc64d53e26a653fb4ee06cc74d7fde8ba8157e02; all recorded Git objects were inspected with GIT_NO_LAZY_FETCH=1.
+- BIC diff 71ad5d2e3a14fae7755b2e856981f50887745558..1af2e921323ee0ba3bf3d922c8861652d3913222 directly adds POST /api/PasswordHash, its handler, and the 64 * 1024 Argon2 CreateHash sink.
+- History search across internal/grpcapi/grpcApi.go, service/internal/grpcapi/grpcApi.go, and service/internal/api/api.go distinguishes BIC 1af2e921323ee0ba3bf3d922c8861652d3913222 from later carriers ff31abe66cfd46f8cccca00ad708529e4d920144 and a62d58f11955fe192f45da13e23ba996a2759404.
+- Vendor tags: 3000.10.1 = 60176b6078ed32aa664329c50aa5a42604dc3f96 lacks a7be68b35917682b3af022191d72f8af8af0dee9; 3000.10.2 = 2eb5f0ba79d4bbef3c802bf8b4666a7e18dcfd90 contains it.
+- Direct fix diff a7be68b35917682b3af022191d72f8af8af0dee9 adds a nonblocking 10-slot semaphore around both Argon2 hash and compare operations and returns ResourceExhausted when full.
+- BIC-local commit object attributes the atomic first-writer to named human jamesread <contact@jread.com> with no AI marker.
+
+### w023 — CVE-2025-49175 — `NOT_AI`
+
+- class: `alias-8c83dc120eaf92067419d51e`
+- repository: `gitlab.freedesktop.org/xorg/xserver`
+- review context: `round12-clean-w023-r2`
+- bundle sha256: `c312542917cef911e4b60a9f84b198ef2c2bfa0d3289da95c76b1f3e474f0798`
+- clone HEAD at freeze: `ddf3edc3682150ba1cc4c575bc17bc4baee47a1d`
+- introducer: `9508a382f8a9f241dab097d921b6d290c1c3a776`
+- immediate parent: `ded6147bfb5d75ff1e67c858040a628b61bc17d1`
+- direct fix: `0885e0b26225c90534642fe911632ec0779eebee`
+- fix/carrier: `0885e0b26225c90534642fe911632ec0779eebee`
+
+**Mechanism.** A minimum-size X Render CreateAnimCursor request carries zero cursor elements. ProcRenderCreateAnimCursor accepts that size, computes ncursor as zero, allocates a zero-length cursors/deltas buffer, skips the population loop, and passes it to AnimCursorCreate. AnimCursorCreate assumes element zero exists and reads cursors[0] to copy foreground and background colors, producing an out-of-bounds read and potentially crashing the X server.
+
+**Origin.** Commit 9508a382f8a9f241dab097d921b6d290c1c3a776 is the smallest surviving public Git object that first adds both the zero-permitting request handler and the cursors[0] sink. It is a broad Initial revision import corresponding to code X.Org says originated in XFree86 4.3.0, but its verified immediate parent lacks both files and the assigned repository's all-ref history provides no finer member commit.
+
+**AI marker.** `ABSENT` — git cat-file commit 9508a382f8a9f241dab097d921b6d290c1c3a776: author and committer Kaleb Keithley <kaleb@freedesktop.org>, timestamp 2003-11-14, message Initial revision, no AI marker or co-author trailer.
+
+**Reasoning.** The authoritative CVE and X.Org sources establish a real, non-withdrawn vulnerability, and the source-to-sink path, first surviving writer, parent absence, affected/fixed release membership, and direct fix all close from primary sources and exact Git objects. Attribution is then restricted to the BIC: the relevant surviving object is a named-human 2003 commit with no AI marker. Therefore the real vulnerability is NOT_AI, not FALSE_POSITIVE or an evidence-gap verdict.
+
+Protocol checks:
+
+- `vulnerability_mechanism` — **PASS**: CVE.org record https://cveawg.mitre.org/api/cve/CVE-2025-49175 is PUBLISHED and describes a zero-cursor animated-cursor request causing an out-of-bounds read and crash. X.Org's first-party 2025-06-17 advisory https://lists.x.org/archives/xorg/2025-June/062055.html states that the client may provide no cursors while the server assumes at least one, causing an out-of-bounds read during animated-cursor creation. At xwayland-24.1.6, ProcRenderCreateAnimCursor derives ncursor=0 from a minimum-size request, allocates a zero-length cursors/deltas area, and calls AnimCursorCreate; AnimCursorCreate then reads cursors[0] for foreground and background colors.
+- `atomic_bic` — **PASS**: GitLab blame at parent-of-fix 3bdb541e042124e418d5ae4eac6bd47e2ffd2cc0 attributes both the zero-permitting request path in render/render.c and the cursors[0] reads in render/animcur.c to 9508a382f8a9f241dab097d921b6d290c1c3a776. git log --all --diff-filter=A for each of render/animcur.c and render/render.c returns only 9508a382f8a9f241dab097d921b6d290c1c3a776 as the file-add commit; the X.Org advisory identifies the original vulnerable release as XFree86 4.3.0, imported into X11R6.7.
+- `immediate_parent_absence` — **PASS**: git cat-file commit 9508a382f8a9f241dab097d921b6d290c1c3a776 records immediate parent ded6147bfb5d75ff1e67c858040a628b61bc17d1. git ls-tree ded6147bfb5d75ff1e67c858040a628b61bc17d1 -- render/animcur.c render/render.c returns no entries, while git ls-tree 9508a382f8a9f241dab097d921b6d290c1c3a776 contains both files and their vulnerable functions.
+- `squash_member_decomposition` — **PASS**: 9508a382f8a9f241dab097d921b6d290c1c3a776 is a 982-file Initial revision import, but all-ref file-add history and GitLab blame expose no finer public Git member for either vulnerable file; the verifiable immediate parent lacks both files. Under the protocol's surviving-public-object rule, 9508a382f8a9f241dab097d921b6d290c1c3a776 is the smallest reconstructable public Git object; there are no member SHAs to substitute.
+- `affected_release_membership` — **PASS**: X.Org's first-party advisory states affected boundaries of xorg-server before 21.1.17 and Xwayland before 24.1.7. git merge-base --is-ancestor confirms BIC 9508a382f8a9f241dab097d921b6d290c1c3a776 is in xorg-server-21.1.16 (b7f84e6d509c004a7abb514af75b94cb907d451b) and xwayland-24.1.6, while their trees lack the ncursor<=0 guards; xwayland-24.1.6 directly contains the cursors[0] sink. The CVE.org CNA affected entry currently says Xwayland lessThan 24.1.8, but X.Org's signed release announcement and Git tags show CVE-2025-49175 fixed in 24.1.7; this audit follows the primary upstream release evidence and records the discrepancy.
+- `fixed_release_membership` — **PASS**: X.Org's first-party advisory fixes CVE-2025-49175 in xorg-server-21.1.17 and xwayland-24.1.7; https://lists.x.org/archives/xorg-announce/2025-June/003610.html explicitly lists the animated-cursor fix in 24.1.7. xorg-server-21.1.17 tag 97f79ca01b6182e0ee987748fcdcbe276c84e0c9 contains cherry-pick ea7b770952dbcf6c769db7538b55b4f92e1f95c5; xwayland-24.1.7 tag 2c5e87e3dfecbd60bcad5b74cad2cdcf0a992b57 contains cherry-pick fa6b40037a1965c20d68976198aba1c12829989d. Both commit messages identify source commit 0885e0b26225c90534642fe911632ec0779eebee.
+- `direct_fix_or_unpatched` — **PASS**: Direct fix 0885e0b26225c90534642fe911632ec0779eebee adds if (ncursor <= 0) return BadValue in both ProcRenderCreateAnimCursor and the public AnimCursorCreate function, directly blocking the zero-element source before cursors[0] is read. git diff xwayland-24.1.6 xwayland-24.1.7 -- render/animcur.c render/render.c shows exactly the same two guards and no other changes in those files.
+- `bic_only_ai_attribution` — **PASS**: The exact BIC commit object 9508a382f8a9f241dab097d921b6d290c1c3a776 is authored and committed by Kaleb Keithley <kaleb@freedesktop.org> on 2003-11-14, has subject Initial revision, and has no AI attribution marker or co-author trailer. Only the 2003 BIC object is used for attribution; the 2025 fix, merge requests, repository activity, and advisory metadata are not treated as BIC AI evidence.
+
+Primary/Git evidence:
+
+- CVE Program primary record: https://cveawg.mitre.org/api/cve/CVE-2025-49175 (state PUBLISHED; zero-cursor animated-cursor out-of-bounds read).
+- X.Org first-party security advisory: https://lists.x.org/archives/xorg/2025-June/062055.html (introduced in X11R6.7 from XFree86 4.3.0; fixed in xorg-server-21.1.17 and xwayland-24.1.7).
+- X.Org first-party Xwayland 24.1.7 announcement: https://lists.x.org/archives/xorg-announce/2025-June/003610.html (lists CVE-2025-49175 and render: Avoid 0 or less animated cursors).
+- Assigned-clone fix commit 0885e0b26225c90534642fe911632ec0779eebee has parent 3bdb541e042124e418d5ae4eac6bd47e2ffd2cc0 and adds the two ncursor<=0 guards.
+- Assigned-clone BIC 9508a382f8a9f241dab097d921b6d290c1c3a776 has parent ded6147bfb5d75ff1e67c858040a628b61bc17d1; parent tree lacks render/animcur.c and render/render.c, while the BIC adds both vulnerable paths.
+- Assigned clone HEAD and bundle binding were rechecked immediately before write: ddf3edc3682150ba1cc4c575bc17bc4baee47a1d and c312542917cef911e4b60a9f84b198ef2c2bfa0d3289da95c76b1f3e474f0798.
+
+### w024 — GHSA-q547-25x8-mx66 — `NOT_AI`
+
+- class: `alias-df0575deabcdbe3381b64705`
+- repository: `gitlab.freedesktop.org/xorg/xserver`
+- review context: `round12-clean-w024`
+- bundle sha256: `3420a00410549a1e8b86e9c610fc949d0e5cf5ef694e8ee4f61f8ebfd0c2cda6`
+- clone HEAD at freeze: `ddf3edc3682150ba1cc4c575bc17bc4baee47a1d`
+- introducer: `ded6147bfb5d75ff1e67c858040a628b61bc17d1`
+- immediate parent: `cb6ef07bf01e72d1a6e6e83ceb7f76d6534da941`
+- direct fix: `2bde9ca49a8fd9a1e6697d5e7ef837870d66f5d4`
+- fix/carrier: `2bde9ca49a8fd9a1e6697d5e7ef837870d66f5d4`
+
+**Mechanism.** An authorized client controls the 32-bit nClients and nRanges fields of an X Record RegisterClients/CreateContext request. The server checked that the request payload length equaled 4*nClients + sizeof(xRecordRange)*nRanges, but the unchecked integer arithmetic could wrap and make a short request pass. The server then used those counts for pointer derivation and repeated xRecordRange reads/conversion, so the bypass reaches out-of-request memory access and can disclose or corrupt data or crash the server.
+
+**Origin.** ded6147bfb5d75ff1e67c858040a628b61bc17d1 is the smallest surviving public Git object that first adds record/record.c with the unbounded payload-length sum. Its immediate parent cb6ef07bf01e72d1a6e6e83ceb7f76d6534da941 contains no record.c path, so this is a first write in the assigned public history rather than a move, refactor, revert, or later carrier.
+
+**AI marker.** `ABSENT` — The BIC commit object is dated 2003-11-14, names Kaleb Keithley <kaleb@freedesktop.org> as author and committer, and contains only the message 'R6.6 is the Xorg base-line'. No AI attribution, generated-by marker, assistant trailer, or AI co-author appears in the BIC object.
+
+**Reasoning.** Authoritative records and the direct patch establish a real, fixed integer-overflow vulnerability, so FALSE_POSITIVE does not apply. The vulnerable expression first enters the assigned public history in ded6147bfb5d75ff1e67c858040a628b61bc17d1, whose parent lacks the file. All lifecycle and release gates close, while the BIC itself has named-human 2003 authorship and no AI marker. Because AI attribution is judged only on that BIC, the closed verdict is NOT_AI.
+
+Protocol checks:
+
+- `vulnerability_mechanism` — **PASS**: The CVE Program record at https://cveawg.mitre.org/api/cve/CVE-2025-49179 is PUBLISHED and states that RecordSanityCheckRegisterClients lacks an integer-overflow check when computing request length, allowing the length check to be bypassed; the Red Hat first-party record at https://access.redhat.com/hydra/rest/securitydata/cve/CVE-2025-49179.json independently records the same CWE-190 mechanism. In d55c54cecb5e83eaa2d56bed5cc4461f9ba318c2:record/record.c, ProcRecordRegisterClients accepts an at-least-header-sized request and RecordSanityCheckRegisterClients compares the actual request payload length with 4 * nClients + SIZEOF(xRecordRange) * nRanges without first bounding either attacker-controlled count. If that arithmetic wraps, the equality can accept a shorter request; the same function then derives pRange from &stuff[1] plus nClients and loops nRanges times dereferencing xRecordRange entries, and RecordRegisterClients subsequently passes those entries to RecordConvertRangesToIntervals, establishing the request-count source to out-of-request memory-access sink.
+- `atomic_bic` — **PASS**: GIT_NO_LAZY_FETCH=1 git log --all --reverse -S '4 * stuff->nClients + SIZEOF(xRecordRange) * stuff->nRanges' -- record/record.c identifies ded6147bfb5d75ff1e67c858040a628b61bc17d1 as the first surviving commit containing the vulnerable length expression. GIT_NO_LAZY_FETCH=1 git diff --name-status cb6ef07bf01e72d1a6e6e83ceb7f76d6534da941 ded6147bfb5d75ff1e67c858040a628b61bc17d1 -- record/record.c reports A record/record.c; blob bcc019f27fec9e629ee00b0ab680506eb1866fd4 contains the vulnerable expression at lines 1436-1438.
+- `immediate_parent_absence` — **PASS**: The BIC commit object names immediate parent cb6ef07bf01e72d1a6e6e83ceb7f76d6534da941, which exists as a commit object. GIT_NO_LAZY_FETCH=1 git ls-tree -r cb6ef07bf01e72d1a6e6e83ceb7f76d6534da941 -- record/record.c returns no entry, and a full parent-tree filename check for paths ending in record.c also returns no entry; the vulnerable file is therefore absent from the immediate parent rather than moved from another parent path.
+- `squash_member_decomposition` — **PASS**: ded6147bfb5d75ff1e67c858040a628b61bc17d1 is a single-parent public baseline commit titled 'R6.6 is the Xorg base-line'; its verifiable immediate parent lacks record/record.c and any other record.c path, and no finer public member object for this first write is present in the assigned repository history. The BIC is the smallest surviving public Git object that can be verified for this first write; it is not a merge, revert, later move, fix, or carrier of a finer in-repository member.
+- `affected_release_membership` — **PASS**: The CVE Program record marks X.Org xwayland versions from 0 through less than 24.1.7 affected. xwayland-24.1.6 resolves to 5b1d9da00f217d3b52bfd3cc862dff79a9433e63, contains BIC ded6147bfb5d75ff1e67c858040a628b61bc17d1, does not contain release-branch fix 9d205323894af62b9726fcbaeb5fc69b3c9f61ba, and its record/record.c retains the unbounded length expression.
+- `fixed_release_membership` — **PASS**: xwayland-24.1.7 resolves to 2c5e87e3dfecbd60bcad5b74cad2cdcf0a992b57 and contains 9d205323894af62b9726fcbaeb5fc69b3c9f61ba as an ancestor. Commit 9d205323894af62b9726fcbaeb5fc69b3c9f61ba states that it was cherry-picked from published direct fix 2bde9ca49a8fd9a1e6697d5e7ef837870d66f5d4, and xwayland-24.1.7:record/record.c contains both new count bounds before the original length comparison.
+- `direct_fix_or_unpatched` — **PASS**: The first-party commit https://gitlab.freedesktop.org/xorg/xserver/-/commit/2bde9ca49a8fd9a1e6697d5e7ef837870d66f5d4 directly changes record/record.c: it rejects nClients above LimitClients and rejects nRanges above (MAXINT - 4 * nClients) / SIZEOF(xRecordRange) before evaluating the formerly overflowable payload-length sum. The fix commit message explicitly names CVE-2025-49179 and explains that these bounds keep the final request-length computation below the maximum integer limit.
+- `bic_only_ai_attribution` — **PASS**: The raw BIC object is dated 2003-11-14 and names Kaleb Keithley <kaleb@freedesktop.org> as both author and committer; its complete message is 'R6.6 is the Xorg base-line'. That BIC-local object contains no AI attribution, generated-by marker, assistant trailer, or AI co-author, and its named-human 2003 provenance predates generative coding assistants; no repository-level or later-commit signal was used.
+
+Primary/Git evidence:
+
+- CVE Program primary record: https://cveawg.mitre.org/api/cve/CVE-2025-49179 (state PUBLISHED; X.Org xwayland 0 through <24.1.7 affected; integer-overflow length-check bypass).
+- Red Hat Product Security primary record: https://access.redhat.com/hydra/rest/securitydata/cve/CVE-2025-49179.json (CWE-190 and the same RecordSanityCheckRegisterClients mechanism).
+- Published X.Org fix: https://gitlab.freedesktop.org/xorg/xserver/-/commit/2bde9ca49a8fd9a1e6697d5e7ef837870d66f5d4; direct pre-checks bound both client and range counts before the request-length sum.
+- BIC ded6147bfb5d75ff1e67c858040a628b61bc17d1 adds record/record.c blob bcc019f27fec9e629ee00b0ab680506eb1866fd4; immediate parent cb6ef07bf01e72d1a6e6e83ceb7f76d6534da941 lacks that path and any other record.c path.
+- Affected tag xwayland-24.1.6 is 5b1d9da00f217d3b52bfd3cc862dff79a9433e63 and retains the vulnerable expression without 9d205323894af62b9726fcbaeb5fc69b3c9f61ba; fixed tag xwayland-24.1.7 is 2c5e87e3dfecbd60bcad5b74cad2cdcf0a992b57 and contains that explicit cherry-pick of 2bde9ca49a8fd9a1e6697d5e7ef837870d66f5d4.
+
+### w025 — GHSA-p3qf-84rg-jxfc — `NOT_AI`
+
+- class: `alias-446f437241ca2c269c6f5bfd`
+- repository: `olivetin/olivetin`
+- review context: `round12-clean-w025-r2`
+- bundle sha256: `60e715642b8b60ccead44362d5c53bd65306e78fe787a9810c5ea766e1e42035`
+- clone HEAD at freeze: `dc64d53e26a653fb4ee06cc74d7fde8ba8157e02`
+- introducer: `08a1ac2591cf1ed90762583b829d4a44279f2650`
+- immediate parent: `fb70cf7dfee58e37a20d3f94e0607a6a090d2c90`
+- direct fix: `c917d1b1e7a2a90acec79760cb1ff18ffae82409`
+- fix/carrier: `c917d1b1e7a2a90acec79760cb1ff18ffae82409`
+
+**Mechanism.** An action argument declared as type url is validated only as URI syntax. The accepted user value is then inserted verbatim into the administrator-defined Shell template and executed through sh -c. URI validation does not quote or neutralize shell syntax, so shell metacharacters within an otherwise valid URI cross the source-to-sink path and can alter the command.
+
+**Origin.** Commit 08a1ac2591cf1ed90762583b829d4a44279f2650 is the smallest public first-writer: it introduced the url argument dispatch and the url.ParseRequestURI-only validator in a focused feature commit. Its immediate parent has no URL validator path. Later e950a00a1e6ea547260320d6afd49ee48e975b33 and ff31abe66cfd46f8cccca00ad708529e4d920144 are carriers/moves, not introducers.
+
+**AI marker.** `ABSENT` — Exact commit object 08a1ac2591cf1ed90762583b829d4a44279f2650 names human author and committer jamesread <contact@jread.com> and contains only the subject 'feature: #71 URL argument type!' with no AI-related marker.
+
+**Reasoning.** The official record is published, the vendor tracked the URL argument RCE as a bug, the affected source has a complete user-URL to sh -c path, and direct fixes close that path in both release lines. Exact history makes the focused 2022 URL-type feature commit the atomic BIC and proves absence in its immediate parent. That BIC is a named-human commit with no BIC-local AI marker, so the closed verdict is NOT_AI.
+
+Protocol checks:
+
+- `vulnerability_mechanism` — **PASS**: The official CVE record at https://cveawg.mitre.org/api/cve/CVE-2025-50946 is PUBLISHED and identifies OS command injection through url.ParseRequestURI in service/internal/executor/arguments.go; the vendor's https://github.com/OliveTin/OliveTin/issues/639 is closed and titled 'url argument unsafe and allows remote code execution - CVE-2025-50946'. At tag 2025.4.22, service/internal/executor/arguments.go:211-214 accepts the url type when url.ParseRequestURI returns no error, lines 28-43 substitute the resulting user string directly into action.Shell, service/internal/executor/executor.go:395-415 carries it to finalParsedCommand, and executor_unix.go:17-18 executes that string as sh -c. URI syntax validation is not shell escaping, so shell metacharacters admitted inside a syntactically valid URI reach the command interpreter.
+- `atomic_bic` — **PASS**: GIT_NO_LAZY_FETCH=1 git log --all --reverse -SParseRequestURI -- '*.go' finds 08a1ac2591cf1ed90762583b829d4a44279f2650 as the first writer; its focused two-file diff adds the url argument branch, typeSafetyCheckUrl using url.ParseRequestURI, and URL tests.
+- `immediate_parent_absence` — **PASS**: The BIC commit object names immediate parent fb70cf7dfee58e37a20d3f94e0607a6a090d2c90; GIT_NO_LAZY_FETCH=1 git grep on that exact parent finds none of ParseRequestURI, typeSafetyCheckUrl, or the argumentType == "url" branch.
+- `squash_member_decomposition` — **PASS**: 08a1ac2591cf1ed90762583b829d4a44279f2650 is a one-parent, focused feature commit with its own test hunk, not a merge or aggregate. The later e950a00a1e6ea547260320d6afd49ee48e975b33 'fmt: fmt' split/moved the already-present code and was rejected as a carrier.
+- `affected_release_membership` — **PASS**: Tag 2025.4.22 resolves to commit 633e51369731903d566349e3cb548f5576821069; git merge-base --is-ancestor confirms BIC 08a1ac2591cf1ed90762583b829d4a44279f2650 is an ancestor, and that tag's tree contains the vulnerable ParseRequestURI -> direct substitution -> sh -c path without checkShellArgumentSafety.
+- `fixed_release_membership` — **PASS**: For the 3k line, version-sorted git tag --contains shows 3000.2.0 as the first tag containing direct fix c917d1b1e7a2a90acec79760cb1ff18ffae82409; tag 3000.2.0 resolves to d54f2307c7ee690e9a1d7ef853ca53a617c8867f and the ancestry check passes. For release/2k, backport d020eb06fef037565a8ebdd468b8f7b1321aad61 is first contained in tag 2025.10.27, which resolves to 899949b018f8e977e88ee532563a9f896afc10f6, and that ancestry check also passes.
+- `direct_fix_or_unpatched` — **PASS**: Direct fix c917d1b1e7a2a90acec79760cb1ff18ffae82409, whose subject references vendor issue #639, adds checkShellArgumentSafety, classifies url as unsafe with Shell, invokes the check before parseActionArguments, and provides direct argv Exec as the safe alternative; d020eb06fef037565a8ebdd468b8f7b1321aad61 applies the same rejection to release/2k.
+- `bic_only_ai_attribution` — **PASS**: The exact BIC object has author and committer 'jamesread <contact@jread.com>', timestamp 2022-10-19, subject 'feature: #71 URL argument type!', and no AI, assistant, generated-by, co-author, or bot marker. The linked first-party issue #71 is a human feature request and the commit is neither anonymous nor aggregate.
+
+Primary/Git evidence:
+
+- Official CVE Services record https://cveawg.mitre.org/api/cve/CVE-2025-50946: state PUBLISHED, MITRE CNA description identifies OliveTin OS command injection through ParseRequestURI.
+- Vendor first-party issue https://github.com/OliveTin/OliveTin/issues/639: closed issue titled 'SECURITY: url argument unsafe and allows remote code execution - CVE-2025-50946'.
+- Vendor first-party feature issue https://github.com/OliveTin/OliveTin/issues/71 requested a URL argument type; BIC 08a1ac2591cf1ed90762583b829d4a44279f2650 implements it and links that issue.
+- Local exact Git evidence under GIT_NO_LAZY_FETCH=1: first-writer 08a1ac2591cf1ed90762583b829d4a44279f2650; parent fb70cf7dfee58e37a20d3f94e0607a6a090d2c90 lacks the path; affected tag 2025.4.22 is 633e51369731903d566349e3cb548f5576821069.
+- Local exact Git evidence: c917d1b1e7a2a90acec79760cb1ff18ffae82409 directly blocks unsafe URL arguments with Shell on 3k and is in 3000.2.0; d020eb06fef037565a8ebdd468b8f7b1321aad61 is the release/2k backport and is in 2025.10.27.
+- All recorded non-null SHAs were verified with git cat-file -t as commit objects in assigned clone /home/hanqing/agents/ai-slop/.ai-slop/state/repos/olivetin_olivetin at bound HEAD dc64d53e26a653fb4ee06cc74d7fde8ba8157e02.
+
+### w026 — GHSA-f73j-pm2c-rxvr — `NOT_AI`
+
+- class: `alias-210750ec0e2ac99116c05189`
+- repository: `concretecms/concretecms`
+- review context: `round12-clean-w026-r2`
+- bundle sha256: `5dede58bc2ad7b1c180f4a551843633f46a5ca65359ddbda19f911e729360f78`
+- clone HEAD at freeze: `ad6dc621cef1e12d0bc84a8c898b6460f48b91e4`
+- introducer: `10236caea734eeb055cd0aa18f3178bf1c6f7c0b`
+- immediate parent: `null`
+- direct fix: `f22b9dff59454391a50a255a39995bf635deea9e`
+- fix/carrier: `f22b9dff59454391a50a255a39995bf635deea9e`
+
+**Mechanism.** On /dashboard/reports/forms/legacy, attacker-controlled request parameter sortBy is concatenated into the pagination base URL. Legacy Pagination substitutes the page number but does not encode the resulting URL for an HTML attribute before emitting it in href, so a quote in the crafted value terminates the attribute and injects executable markup that fires when an authorized viewer opens the crafted URL.
+
+**Origin.** The public-history root commit 10236caea734eeb055cd0aa18f3178bf1c6f7c0b first contains the surviving pagination implementation, including all three unescaped linkURL-to-href sinks. Later restructuring commits move or restyle the same implementation; they do not first introduce the root-cause behavior.
+
+**AI marker.** `ABSENT` — BIC 10236caea734eeb055cd0aa18f3178bf1c6f7c0b names Andrew Embler as author and committer, and the BIC-local source names Tony Trupp as author. The 2008 BIC message and trailers contain no AI attribution, generated-by marker, assistant name, or AI co-author.
+
+**Reasoning.** The advisory is authoritative and the assigned source independently reproduces the exact request-to-href path. The vulnerable sinks are present in the earliest surviving public commit and absent from no parent because that commit is the repository root; later commits are carriers until the direct 9.5.1 fix. The BIC-local commit object and source carry named-human provenance and no AI marker, so a real vulnerability closes as NOT_AI rather than FALSE_POSITIVE or an evidence-gap verdict.
+
+Protocol checks:
+
+- `vulnerability_mechanism` — **PASS**: CVE.org record https://cveawg.mitre.org/api/cve/CVE-2026-8245 is PUBLISHED, assigned by ConcreteCMS, and identifies reflected XSS from raw $URL interpolation in Concrete\Core\Legacy\Pagination for versions 5.0 through 9.5.0. Concrete CMS 9.5.1 release notes https://documentation.concretecms.org/9-x/developers/introduction/version-history/951-release-notes state that CVE-2026-8245 was fixed and describe the same /dashboard/reports/forms/legacy HTML-attribute-injection mechanism. At tag 9.5.0, concrete/controllers/single_page/dashboard/reports/forms/legacy.php:195-200 reads request sortBy and concatenates it into the URL passed to Pagination::init; concrete/src/Legacy/Pagination.php:196-198,223-225,303-308 then interpolates the resulting linkURL into href attributes without HTML attribute escaping, and the legacy form view emits getPrevious(), getPages('li'), and getNext().
+- `atomic_bic` — **PASS**: With GIT_NO_LAZY_FETCH=1, git log --all --reverse -- trunk/web/concrete/helpers/pagination.php starts at root commit 10236caea734eeb055cd0aa18f3178bf1c6f7c0b (initial import, 2008-08-04). git ls-tree 10236caea734eeb055cd0aa18f3178bf1c6f7c0b -- trunk/web/concrete/helpers/pagination.php returns blob 58596a46b122ddb349403baa0d8849d68f8ba80a; that blob already raw-interpolates $linkURL into href in getNext, getPrevious, and getPages. The path-history audit followed the file through trunk/web/concrete/helpers/pagination.php, web/concrete/helpers/pagination.php, web/concrete/core/helpers/pagination.php, web/concrete/lib/Helper/Pagination.php, web/concrete/core/Html/Service/Pagination.php, web/concrete/core/Legacy/Pagination.php, web/concrete/src/Legacy/Pagination.php, and concrete/src/Legacy/Pagination.php; intervening path moves are carriers rather than first writers.
+- `immediate_parent_absence` — **PASS**: git rev-list --parents -n1 10236caea734eeb055cd0aa18f3178bf1c6f7c0b prints only the commit SHA, and git cat-file commit shows no parent header; this is the public-history root, so no immediate parent tree exists.
+- `squash_member_decomposition` — **PASS**: The BIC is a parentless initial-import root, not a squash commit with reconstructable public members. Its Former-commit-id f65e81cd0d6e920df0ec228211e9f4208f10fdbd is itself an unreachable parentless root object and contains the identical pagination blob 58596a46b122ddb349403baa0d8849d68f8ba80a, not a finer member commit.
+- `affected_release_membership` — **PASS**: CVE.org records Concrete CMS versions 5.0 through 9.5.0 as affected and defaults other versions to unaffected. git rev-parse 9.5.0^{commit} returns c747e425266ac50c12b5f2f74fa895ecec5cd777; git merge-base --is-ancestor confirms BIC 10236caea734eeb055cd0aa18f3178bf1c6f7c0b is an ancestor and fix f22b9dff59454391a50a255a39995bf635deea9e is not, while the tag tree contains vulnerable blob fbd8244f73aaa8389e88cca30397b0c71d9d452f.
+- `fixed_release_membership` — **PASS**: Concrete CMS's first-party 9.5.1 release notes list CVE-2026-8245 under Security Fixes. git rev-parse 9.5.1^{commit} returns 92bae566b9ec573cfb3017fcbb6db454a6586997; git merge-base --is-ancestor confirms fix f22b9dff59454391a50a255a39995bf635deea9e is included, and the tag tree contains fixed blob 47c857e9955d4ae3c50f85cfacc7628c34cb4dec.
+- `direct_fix_or_unpatched` — **PASS**: git show f22b9dff59454391a50a255a39995bf635deea9e -- concrete/src/Legacy/Pagination.php adds $linkURL = htmlspecialchars($linkURL, ENT_QUOTES, 'UTF-8'); immediately before each of the three vulnerable href renderings in getNext, getPrevious, and getPages.
+- `bic_only_ai_attribution` — **PASS**: The BIC commit object names Andrew Embler <andrew@concrete5.org> as both author and committer on 2008-08-04; its message contains only initial-import, git-svn-id, and Former-commit-id metadata, with no AI marker or co-author trailer. The pagination source embedded in the BIC identifies Tony Trupp <tony@concrete5.org> as its author and carries a 2003-2008 Concrete5 copyright; these are BIC-local named-human provenance signals.
+
+Primary/Git evidence:
+
+- CVE.org primary record: https://cveawg.mitre.org/api/cve/CVE-2026-8245 (PUBLISHED; ConcreteCMS CNA; affected 5.0 through 9.5.0).
+- Vendor release notes: https://documentation.concretecms.org/9-x/developers/introduction/version-history/951-release-notes (9.5.1 Security Fixes entry for CVE-2026-8245).
+- Assigned clone HEAD is ad6dc621cef1e12d0bc84a8c898b6460f48b91e4 and bundle SHA-256 is 5dede58bc2ad7b1c180f4a551843633f46a5ca65359ddbda19f911e729360f78.
+- BIC commit object: https://github.com/concretecms/concretecms/commit/10236caea734eeb055cd0aa18f3178bf1c6f7c0b; local cat-file type is commit, it has no parent, and its pagination tree entry is blob 58596a46b122ddb349403baa0d8849d68f8ba80a.
+- Affected tag 9.5.0 resolves to c747e425266ac50c12b5f2f74fa895ecec5cd777 and contains vulnerable pagination blob fbd8244f73aaa8389e88cca30397b0c71d9d452f.
+- Direct fix commit: https://github.com/concretecms/concretecms/commit/f22b9dff59454391a50a255a39995bf635deea9e adds ENT_QUOTES UTF-8 htmlspecialchars calls at all three HTML-attribute sinks.
+- Fixed tag 9.5.1 resolves to 92bae566b9ec573cfb3017fcbb6db454a6586997 and contains fixed pagination blob 47c857e9955d4ae3c50f85cfacc7628c34cb4dec.
+
+### w027 — CVE-2026-3242 — `NOT_AI`
+
+- class: `alias-217f611ea810767274c38286`
+- repository: `concretecms/concretecms`
+- review context: `round12-clean-w027`
+- bundle sha256: `8427c5bdfd20062cc07cc8b07a1766a7210ee06cefa18ea3eb9f77a7586d5e76`
+- clone HEAD at freeze: `ad6dc621cef1e12d0bc84a8c898b6460f48b91e4`
+- introducer: `57fad9e0a284f1d3519c588b504a69fe417a3581`
+- immediate parent: `094dfe7e532b6d7a64edd7e61c2933f4b51c9ae0`
+- direct fix: `59bac5a412f4062570c5ac56527f556b5c46af58`
+- fix/carrier: `2b7557793f04647c2bbd35105d706d02bd4e673d`
+
+**Mechanism.** A privileged administrator controls the Switch Language block's label form field. The inherited block save path copies that value into btSwitchLanguage.label, and the block record exposes it as label to the front-end view. Before 9.4.8, the default, flags, and flags_set_default templates inserted label directly into HTML, so a stored script payload executed when another user rendered the block. The direct fix applies h() at every label sink.
+
+**Origin.** Original public commit 57fad9e0a284f1d3519c588b504a69fe417a3581 first added the Switch Language block's persisted administrator-controlled label and its raw HTML sinks; its immediate parent has no such block. The current release lineage carries an identical rewritten form as e3d1b2e3e0d86ee7b28cf5b9eed6359f9896559a, which explicitly maps back to 57fad9e0a284f1d3519c588b504a69fe417a3581.
+
+**AI marker.** `ABSENT` — The BIC object names Andrew Embler <andrew@concrete5.org> as both author and committer on 2014-12-03. The full BIC message is moving single pages, blocks, src, controllers into core and contains no AI attribution, co-author, generator, assistant, or bot marker.
+
+**Reasoning.** Authoritative CVE and vendor sources confirm a real stored XSS, and the local source closes the administrator-input-to-raw-HTML path. The smallest surviving original public first-writer and its immediate parent are both verifiable; the active-history rewrite maps exactly to that object and release ancestry proves the affected and fixed boundaries. The direct fix is decomposed from the multi-commit PR merge. BIC-local metadata identifies a named human author/committer in 2014 and contains no AI marker, so the closed verdict is NOT_AI.
+
+Protocol checks:
+
+- `vulnerability_mechanism` — **PASS**: CVE.org CNA record https://cveawg.mitre.org/api/cve/CVE-2026-3242 is PUBLISHED, names ConcreteCMS as CNA, and says a rogue administrator can add stored XSS through the Switch Language block below 9.4.8. Vendor release notes https://documentation.concretecms.org/9-x/developers/introduction/version-history/948-release-notes identify CVE-2026-3242 and H1 3451125 and say 9.4.8 prevents administrators from adding stored XSS through this block. At 1dcefaada02c7013a4b9774f2899f00994fb36a4, form.php accepts label, db.xml defines btSwitchLanguage.label, BlockController::performSave copies matching args into database columns, and all three front-end templates echo the loaded label without HTML encoding.
+- `atomic_bic` — **PASS**: git diff-tree 094dfe7e532b6d7a64edd7e61c2933f4b51c9ae0 57fad9e0a284f1d3519c588b504a69fe417a3581 adds the complete web/concrete/blocks/switch_language directory, including the configurable label field and raw label outputs; this is the smallest surviving original public commit object that first writes the mechanism. The primary GitHub commit page https://github.com/concretecms/concretecms/commit/57fad9e0a284f1d3519c588b504a69fe417a3581 shows one parent, 32 changed files, and the newly added form.php, db.xml, view.php, and template sinks. The reachable rewritten commit e3d1b2e3e0d86ee7b28cf5b9eed6359f9896559a records Former-commit-id 57fad9e0a284f1d3519c588b504a69fe417a3581; both commits have identical switch_language subtree 19e5f0d4221458af237f0f6d6879efed6d0360be.
+- `immediate_parent_absence` — **PASS**: git cat-file -p 57fad9e0a284f1d3519c588b504a69fe417a3581 identifies immediate parent 094dfe7e532b6d7a64edd7e61c2933f4b51c9ae0. git cat-file -e 094dfe7e532b6d7a64edd7e61c2933f4b51c9ae0:web/concrete/blocks/switch_language fails because the path does not exist, while diff-tree marks every switch_language path A in 57fad9e0a284f1d3519c588b504a69fe417a3581.
+- `squash_member_decomposition` — **PASS**: 57fad9e0a284f1d3519c588b504a69fe417a3581 is a single-parent original commit, not a merge or squash carrier; its verifiable parent lacks the block and no finer public member writes the vulnerable block. e3d1b2e3e0d86ee7b28cf5b9eed6359f9896559a is only a hash-rewritten reachable equivalent: its commit message names 57fad9e0a284f1d3519c588b504a69fe417a3581 as Former-commit-id and the relevant subtree hashes are identical.
+- `affected_release_membership` — **PASS**: CVE.org records affected version 5 through versions less than 9.4.8. The reachable equivalent e3d1b2e3e0d86ee7b28cf5b9eed6359f9896559a is not an ancestor of tag 5.7.2.1 (9e827a35c3ab194d5751e26b0ddc2553c890c98b), whose tree lacks the block, but is an ancestor of tag 5.7.3 (8fd82848d51c6c77ab4f207c6bba8320bd4b80a4), whose view.php directly echoes label. Tag 9.4.7 peels to f2a9fc77537f412c3e5a30e46924c07987020dd7, contains the BIC-equivalent reachable commit, does not contain direct fix 59bac5a412f4062570c5ac56527f556b5c46af58, and still renders <?= $label ?>.
+- `fixed_release_membership` — **PASS**: Tag 9.4.8 peels to 455229307c0cb421fa6ef7e9aa9f74f0863c4788 and contains both merge 2b7557793f04647c2bbd35105d706d02bd4e673d and direct member 59bac5a412f4062570c5ac56527f556b5c46af58. git show 9.4.8:concrete/blocks/switch_language/view.php renders h($label), matching the vendor's 9.4.8 fixed release notes.
+- `direct_fix_or_unpatched` — **PASS**: git show 59bac5a412f4062570c5ac56527f556b5c46af58 changes the three vulnerable sinks in view.php, templates/flags/view.php, and templates/flags_set_default/view.php from raw label output to h($label). Merge 2b7557793f04647c2bbd35105d706d02bd4e673d has PR branch parent 5b9deadb391bf95d514ee44799d642cc0a0c5c73; git log of its second-parent range identifies 59bac5a412f4062570c5ac56527f556b5c46af58 as the dedicated Fix h1 3451125 member, so the merge carrier was not mistaken for the direct fix.
+- `bic_only_ai_attribution` — **PASS**: git cat-file -p 57fad9e0a284f1d3519c588b504a69fe417a3581 shows author and committer Andrew Embler <andrew@concrete5.org>, timestamp 2014-12-03, one parent, and message moving single pages, blocks, src, controllers into core. The complete BIC commit object contains no Co-authored-by, Copilot, ChatGPT, OpenAI, Claude, generated-by, or other AI marker; attribution uses no repository-level or later-commit signal.
+
+Primary/Git evidence:
+
+- CVE.org CNA record: https://cveawg.mitre.org/api/cve/CVE-2026-3242
+- Concrete CMS 9.4.8 release notes: https://documentation.concretecms.org/9-x/developers/introduction/version-history/948-release-notes
+- Vendor PR #12826: https://github.com/concretecms/concretecms/pull/12826
+- Original BIC commit: https://github.com/concretecms/concretecms/commit/57fad9e0a284f1d3519c588b504a69fe417a3581
+- Reachable BIC rewrite: https://github.com/concretecms/concretecms/commit/e3d1b2e3e0d86ee7b28cf5b9eed6359f9896559a
+- Direct fix commit: https://github.com/concretecms/concretecms/commit/59bac5a412f4062570c5ac56527f556b5c46af58
+- Local Git verified all recorded commits as commit objects under GIT_NO_LAZY_FETCH=1, verified both immediate parent trees, verified the BIC rewrite's identical subtree, and verified tag 5.7.2.1/5.7.3/9.4.7/9.4.8 ancestry and file contents.
+
+### w028 — CVE-2026-8421 — `NOT_AI`
+
+- class: `alias-2946afa238c8db4a4719e22c`
+- repository: `concretecms/concretecms`
+- review context: `round12-clean-w028-herdr-r2`
+- bundle sha256: `db3557ce7e6fcc68ddcc31607821afd25356ec9aaf3850199b368d951394c1fd`
+- clone HEAD at freeze: `ad6dc621cef1e12d0bc84a8c898b6460f48b91e4`
+- introducer: `10236caea734eeb055cd0aa18f3178bf1c6f7c0b`
+- immediate parent: `null`
+- direct fix: `f22b9dff59454391a50a255a39995bf635deea9e`
+- fix/carrier: `f22b9dff59454391a50a255a39995bf635deea9e`
+
+**Mechanism.** A routed install_package action accepted an attacker-selected package handle without requiring POST or validating a CSRF token. For an authenticated victim passing canInstallPackages, the controller resolved a package already present under DIR_PACKAGES/<handle>/ and reached the package installation sink, which invokes package installation code as the web server user. In 9.5.0, the install_options_selected token protected only the options-submission branch; packages with no options reached PackageService::install without any token.
+
+**Origin.** Repository root commit 10236caea734eeb055cd0aa18f3178bf1c6f7c0b first wrote install_package($package) in trunk/web/concrete/controllers/dashboard/install.php. It called Loader::package($package) and then $p->install() without request-method or CSRF validation. The commit has no parent; subsequent controller splits, class renames, and path moves preserved the mechanism and are carriers rather than introducers.
+
+**AI marker.** `ABSENT` — The BIC commit object names Andrew Embler <andrew@concrete5.org> as both author and committer on 2008-08-04 and contains only initial-import, git-svn-id, and Former-commit-id metadata; it contains no AI, assistant, generator, or co-author marker.
+
+**Reasoning.** The authoritative CVE and vendor release record establish a real, fixed vulnerability. Git history closes the mechanism from a parentless root first-write through affected tag 9.5.0 to the direct fix in 9.5.1. The atomic BIC is a named-human 2008 commit with no AI marker and is neither anonymous nor a later aggregate/carrier. With every lifecycle and attribution gate passing, the supported verdict is NOT_AI.
+
+Protocol checks:
+
+- `vulnerability_mechanism` — **PASS**: CVE.org record API https://cveawg.mitre.org/api/cve/CVE-2026-8421 reports state PUBLISHED, ConcreteCMS as the CNA, affected versions 5.0 through 9.5.0, and the install_package CSRF-to-package-install/RCE mechanism. Concrete CMS 9.5.1 release notes at https://documentation.concretecms.org/9-x/developers/introduction/version-history/951-release-notes state that a crafted page could make an authenticated administrator passing canInstallPackages install a package already under DIR_PACKAGES/<handle>/; the package controller install() then runs as the web server user. At tag 9.5.0, concrete/controllers/single_page/dashboard/extend/install.php:166-206 accepts the package handle, checks canInstallPackages, resolves the package, and calls PackageService::install without restricting the request to POST; the only token check is install_options_selected and is bypassed when showInstallOptionsScreen() is false.
+- `atomic_bic` — **PASS**: GIT_NO_LAZY_FETCH=1 git show 10236caea734eeb055cd0aa18f3178bf1c6f7c0b:trunk/web/concrete/controllers/dashboard/install.php shows the root commit already contains install_package($package), Loader::package($package), and $p->install() with no request-method or CSRF-token validation. History was followed across the old dashboard/install.php controller and later extend/install.php paths. 7c6ab167ca0388181a63ccf50148238af4df170a moves the identical blob 514ec9e8976608ff0a7150bb2a8db154f21b9fd0, f0d6a2f9cc31c5bf8e544ca0bfec7866ce981f5d changes only the class name for this mechanism, and b59e5daa7c4a2d5ccf33f2058124ad417367b9cd is an R100 path move; none is the first writer. 10236caea734eeb055cd0aa18f3178bf1c6f7c0b is therefore the smallest surviving public commit object that first wrote the vulnerable source-to-sink path.
+- `immediate_parent_absence` — **PASS**: GIT_NO_LAZY_FETCH=1 git rev-list --parents -n 1 10236caea734eeb055cd0aa18f3178bf1c6f7c0b returns only 10236caea734eeb055cd0aa18f3178bf1c6f7c0b, and git cat-file -p shows no parent header; it is the repository root commit, so an immediate parent tree does not exist.
+- `squash_member_decomposition` — **PASS**: The BIC is the parentless public root commit, not a merge or later squash carrier. Its commit object identifies the import as SVN revision 1, and the assigned repository contains no earlier public parent/member object to decompose; later path moves were separately rejected as carriers.
+- `affected_release_membership` — **PASS**: Tag 9.5.0 resolves to c747e425266ac50c12b5f2f74fa895ecec5cd777. git merge-base --is-ancestor confirms BIC 10236caea734eeb055cd0aa18f3178bf1c6f7c0b is an ancestor, while direct fix f22b9dff59454391a50a255a39995bf635deea9e is not. The 9.5.0 tagged file directly shows the vulnerable no-POST/no-install_package-token path, matching the ConcreteCMS CNA affected boundary through 9.5.0.
+- `fixed_release_membership` — **PASS**: Tag 9.5.1 resolves to 92bae566b9ec573cfb3017fcbb6db454a6586997, and git merge-base --is-ancestor confirms f22b9dff59454391a50a255a39995bf635deea9e is an ancestor of that tag. The 9.5.1 tagged file contains the POST-only guard and validates install_package or install_options_selected before the install sink, matching the vendor release notes.
+- `direct_fix_or_unpatched` — **PASS**: GIT_NO_LAZY_FETCH=1 git show f22b9dff59454391a50a255a39995bf635deea9e -- concrete/controllers/single_page/dashboard/extend/install.php directly adds request->isMethod('POST'), validates install_package and install_options_selected tokens, rejects invalid tokens, and gates PackageService::install; this is the direct fix hunk.
+- `bic_only_ai_attribution` — **PASS**: git cat-file -p 10236caea734eeb055cd0aa18f3178bf1c6f7c0b records named author and committer Andrew Embler <andrew@concrete5.org> at 2008-08-04, with message 'initial import', git-svn-id revision 1, and no AI, assistant, generator, or co-author marker. The BIC is a non-anonymous root commit, so the attribution does not rely on missing trailers alone.
+
+Primary/Git evidence:
+
+- Bundle SHA-256 is db3557ce7e6fcc68ddcc31607821afd25356ec9aaf3850199b368d951394c1fd; assigned clone HEAD is ad6dc621cef1e12d0bc84a8c898b6460f48b91e4.
+- CVE.org API record CVE-2026-8421 is PUBLISHED and the ConcreteCMS CNA identifies versions 5.0 through 9.5.0 as affected.
+- Concrete CMS 9.5.1 release notes describe the install_package CSRF path, its DIR_PACKAGES prerequisite, canInstallPackages victim permission, and package-controller code execution impact.
+- Root commit 10236caea734eeb055cd0aa18f3178bf1c6f7c0b contains the unguarded install_package source-to-sink and has no parent.
+- Tag 9.5.0 at c747e425266ac50c12b5f2f74fa895ecec5cd777 contains the vulnerable path and excludes fix f22b9dff59454391a50a255a39995bf635deea9e.
+- Direct fix f22b9dff59454391a50a255a39995bf635deea9e is a commit object, is included in tag 9.5.1 at 92bae566b9ec573cfb3017fcbb6db454a6586997, and adds both POST enforcement and CSRF-token validation before installation.
+
+### w029 — CVE-2026-8239 — `NOT_AI`
+
+- class: `alias-2b2a1776f667dc9ea34dfdf2`
+- repository: `concretecms/concretecms`
+- review context: `round12-clean-w029-herdr`
+- bundle sha256: `508204db096084f21c608757182d4b8243887bdd1c3f2c7932ea401bb1460978`
+- clone HEAD at freeze: `ad6dc621cef1e12d0bc84a8c898b6460f48b91e4`
+- introducer: `50a7913e82c5fc28c910b276e5aa1cfb2433fd71`
+- immediate parent: `1e3c62c640446036ae00fdf3f59edc921e3937e9`
+- direct fix: `f22b9dff59454391a50a255a39995bf635deea9e`
+- fix/carrier: `f22b9dff59454391a50a255a39995bf635deea9e`
+
+**Mechanism.** The frontend rating endpoint accepts an attacker-controlled positive cnvMessageID, resolves that global message directly, and emits its rating. Before the fix it did not bind the resolved message to the conversation represented by the current block, so a requester with any usable conversation context could enumerate IDs belonging to other or restricted conversations, distinguish existing messages, and obtain their rating scores.
+
+**Origin.** Commit 50a7913e82c5fc28c910b276e5aa1cfb2433fd71 first added web/concrete/tools/conversations/get_rating.php. Its immediate parent has no such path, and the new endpoint performs the vulnerable direct global message lookup and rating output without checking conversation ownership. Later commits change score aggregation, move paths, and refactor controllers but preserve that authorization omission until the 9.5.1 security fix.
+
+**AI marker.** `ABSENT` — BIC 50a7913e82c5fc28c910b276e5aa1cfb2433fd71 names Matt Waters <matt@concretecms.com> as both author and committer. Its commit message and trailers contain no AI-generation or AI co-author marker.
+
+**Reasoning.** Authoritative CVE and vendor sources confirm a real, fixed IDOR. Exact Git history establishes an atomic 2013 first-writer whose parent lacks the endpoint, affected and fixed release membership, and a direct authorization fix. The atomic BIC is authored and committed by the named human Matt Waters and carries no AI marker. Because all lifecycle gates pass and AI attribution is absent on the BIC itself, the required closed verdict is NOT_AI.
+
+Protocol checks:
+
+- `vulnerability_mechanism` — **PASS**: CVE.org JSON record https://cveawg.mitre.org/api/cve/CVE-2026-8239 is PUBLISHED and identifies versions 5.0 through 9.5.0 as affected by IDOR in /ccm/frontend/conversations/get_rating, which confirms existence and returns a rating score for any message ID. Vendor release notes https://documentation.concretecms.org/9-x/developers/introduction/version-history/951-release-notes identify CVE-2026-8239 as fixed in 9.5.1 and describe the same endpoint, attacker-controlled message ID, existence oracle, and rating-score disclosure. At tag 9.5.0, GetRating::getMessage reads request parameter cnvMessageID, calls Message::getByID, and returns the Message to a view without comparing its conversation to the current block conversation; the view outputs getConversationMessageTotalRatingScore().
+- `atomic_bic` — **PASS**: git diff 1e3c62c640446036ae00fdf3f59edc921e3937e9 50a7913e82c5fc28c910b276e5aa1cfb2433fd71 -- web/concrete/tools/conversations/get_rating.php shows a new nine-line endpoint that accepts cnvMessageID, loads that message directly, and echoes its rating without a conversation authorization check. Commit 50a7913e82c5fc28c910b276e5aa1cfb2433fd71 is the smallest surviving public first-writer of this vulnerable endpoint, not a later move, refactor, revert, or fix.
+- `immediate_parent_absence` — **PASS**: git cat-file -p 50a7913e82c5fc28c910b276e5aa1cfb2433fd71 records the single immediate parent 1e3c62c640446036ae00fdf3f59edc921e3937e9. git ls-tree -r 1e3c62c640446036ae00fdf3f59edc921e3937e9 -- web/concrete/tools/conversations/get_rating.php returns no entry, while the BIC tree contains blob c25f95563c918f283c73163cff9ea5b22bed6b70 at that path.
+- `squash_member_decomposition` — **PASS**: The BIC commit object has exactly one parent and the direct parent-to-BIC diff itself adds the vulnerable endpoint; it is an atomic feature commit rather than a squash carrier requiring member decomposition. The commit message is 'getting ajax updates on message ratings to work' and the added endpoint is the direct implementation of that purpose.
+- `affected_release_membership` — **PASS**: git rev-list -n1 9.5.0 resolves tag 9.5.0 to c747e425266ac50c12b5f2f74fa895ecec5cd777, and git merge-base --is-ancestor 50a7913e82c5fc28c910b276e5aa1cfb2433fd71 9.5.0 succeeds. git show 9.5.0:concrete/controllers/frontend/conversations/get_rating.php shows direct Message::getByID(cnvMessageID) lookup with no current-conversation equality check, matching the CVE.org affected boundary through 9.5.0.
+- `fixed_release_membership` — **PASS**: git rev-list -n1 9.5.1 resolves tag 9.5.1 to 92bae566b9ec573cfb3017fcbb6db454a6586997, and git merge-base --is-ancestor f22b9dff59454391a50a255a39995bf635deea9e 9.5.1 succeeds. git show 9.5.1:concrete/controllers/frontend/conversations/get_rating.php contains the conversation-ID equality check; the vendor 9.5.1 release notes list CVE-2026-8239 as fixed.
+- `direct_fix_or_unpatched` — **PASS**: git show f22b9dff59454391a50a255a39995bf635deea9e -- concrete/controllers/frontend/conversations/get_rating.php adds a three-line guard comparing getBlockConversation()->getConversationID() with the loaded message's conversation ID and rejects mismatches. The parent 534841df7efff24065f17c9debb6d91c24430b61 lacks this guard, so f22b9dff59454391a50a255a39995bf635deea9e is the direct fix rather than a release carrier.
+- `bic_only_ai_attribution` — **PASS**: The BIC commit object names Matt Waters <matt@concretecms.com> as both author and committer at 2013-03-27T14:09:27-07:00. The BIC message and trailers contain no AI, model, assistant, generated-by, or AI co-author marker; attribution is based only on this atomic BIC object, not repository-level activity or the later fix.
+
+Primary/Git evidence:
+
+- CVE.org record: https://cveawg.mitre.org/api/cve/CVE-2026-8239 (state PUBLISHED; affected 5.0 through 9.5.0; IDOR mechanism and impact).
+- Concrete CMS 9.5.1 release notes: https://documentation.concretecms.org/9-x/developers/introduction/version-history/951-release-notes (vendor says CVE-2026-8239 is fixed and describes the endpoint disclosure).
+- BIC 50a7913e82c5fc28c910b276e5aa1cfb2433fd71 and parent 1e3c62c640446036ae00fdf3f59edc921e3937e9 exist as commit objects in the assigned clone; the parent lacks the endpoint path and the BIC adds it.
+- Tag 9.5.0 resolves to c747e425266ac50c12b5f2f74fa895ecec5cd777 and contains the vulnerable controller without a conversation equality check.
+- Direct fix f22b9dff59454391a50a255a39995bf635deea9e exists as a commit object and is an ancestor of tag 9.5.1 at 92bae566b9ec573cfb3017fcbb6db454a6586997.
+- The fix hunk rejects a loaded message whose conversation ID differs from the current block conversation ID, closing the exact source-to-sink authorization gap.
+
+### w030 — GHSA-jr5g-qv3g-rxxx — `NOT_AI`
+
+- class: `alias-2b31cd3b609ba24209b8832a`
+- repository: `concretecms/concretecms`
+- review context: `round12-clean-w030-grok-r3`
+- bundle sha256: `5a0c95442d469cfb4515f7b58c003a68ed38c8c3745076c168b6cb1da6603b9c`
+- clone HEAD at freeze: `ad6dc621cef1e12d0bc84a8c898b6460f48b91e4`
+- introducer: `f0d6a2f9cc31c5bf8e544ca0bfec7866ce981f5d`
+- immediate parent: `151f8448a9ac03e4b3a5dcaeef919f974c646f3e`
+- direct fix: `f22b9dff59454391a50a255a39995bf635deea9e`
+- fix/carrier: `f22b9dff59454391a50a255a39995bf635deea9e`
+
+**Mechanism.** Source: CSRF via crafted link to /dashboard/extend/update/do_update/<pkgHandle> targeting logged-in admin satisfying canInstallPackages(). Sink: unconditional packageController->testForUpgrade(), upgradeCoreData(), upgrade() with no CSRF token enforcement or HTTP method restriction before the 9.5.1 fix.
+
+**Origin.** f0d6a2f9cc31c5bf8e544ca0bfec7866ce981f5d (Override restructuring for core classes, 2012) first wrote the unprotected do_update logic in what became the dashboard extend update controller; all subsequent moves/refactors preserved the missing CSRF check until the security patch.
+
+**AI marker.** `ABSENT` — Sole author Andrew Embler <andrew@concrete5.org> in 2012 commit object; predates AI assistants; no co-authored-by, Signed-off-by AI, or similar markers
+
+**Reasoning.** Vulnerability mechanism, atomic BIC (2012 human first-write), parent absence, release bounds, direct fix, and BIC-only AI attribution (none present) all PASS per AUDIT-PROTOCOL.md and CASE-AUDIT-INSTRUCTIONS.md. No AI signals in the introducer commit object. Verdict NOT_AI. No evidence gap.
+
+Protocol checks:
+
+- `vulnerability_mechanism` — **PASS**: Pre-fix do_update() performed package upgradeCoreData()/upgrade() after sole canInstallPackages() check; no token->validate or POST guard (git show 534841df7efff24065f17c9debb6d91c24430b61:concrete/controllers/single_page/dashboard/extend/update.php)
+- `atomic_bic` — **PASS**: git blame -w on vulnerable lines in fix parent traces core logic to f0d6a2f9cc31c5bf8e544ca0bfec7866ce981f5d (2012 first-write); later 2023 refactor and 2026 fix not introducers; verified no finer public member; git log -S do_update
+- `immediate_parent_absence` — **PASS**: git ls-tree -r --name-only 151f8448a9ac03e4b3a5dcaeef919f974c646f3e shows no update.php; BIC introduced the vulnerable controller (immediate parent tree lacks the code)
+- `squash_member_decomposition` — **PASS**: No squash detected in git history for these lines; decomposed_shas remains empty array
+- `affected_release_membership` — **PASS**: 2012 BIC predates all affected releases <9.5.1 per advisory vulnerable_version_range in bundle
+- `fixed_release_membership` — **PASS**: Fix commit f22b9dff59454391a50a255a39995bf635deea9e titled 'Sec fixes 9.5.1' lands the token+POST guards
+- `direct_fix_or_unpatched` — **PASS**: git show f22b9dff59454391a50a255a39995bf635deea9e directly adds if (! $this->request->isMethod('POST')) and token validate('update_addon') around the updatePackage call
+- `bic_only_ai_attribution` — **PASS**: BIC commit object shows sole human author Andrew Embler 2012; no AI markers, co-authors, or generated-by trailers
+
+Primary/Git evidence:
+
+- Assigned bundle research/round12-top50-20260830-e6371483-bb5e-46b4-8dbd-5385b370881a/bundles/w030.json (advisory, clone_head)
+- git show f22b9dff59454391a50a255a39995bf635deea9e -- concrete/controllers/single_page/dashboard/extend/update.php
+- git blame -L 45,65 -w 534841df7efff24065f17c9debb6d91c24430b61 -- concrete/controllers/single_page/dashboard/extend/update.php
+- git rev-parse f0d6a2f9cc31c5bf8e544ca0bfec7866ce981f5d^ (immediate parent)
+- git ls-tree 151f8448a9ac03e4b3a5dcaeef919f974c646f3e (parent tree)
+- All operations under GIT_NO_LAZY_FETCH=1 with precise fetch for missing objects; only bundle-specified repo used
+
+### w031 — CVE-2025-43585 — `NOT_AI`
+
+- class: `alias-85a7d82f47d7e2053da3ef2b`
+- repository: `magento/magento2`
+- review context: `round12-clean-w031-r2`
+- bundle sha256: `98294072167b3f6b290321f0d461c0299d1fc1869e4a837ad8cabc29d0a4cc5c`
+- clone HEAD at freeze: `3a6b9667113729b21b48623687fc01b3f2d8a026`
+- introducer: `7f25fa6a5ec0639cbb2ac63d82fc73f4cd397b59`
+- immediate parent: `1d941ba7a09a964569f5a14c4590c219b16b7f3c`
+- direct fix: `9bf2c06ea8c9fc52698f4e9994b5334a436649ad`
+- fix/carrier: `9bf2c06ea8c9fc52698f4e9994b5334a436649ad`
+
+**Mechanism.** An anonymous REST/SOAP guest payment-information request reaches GuestPaymentInformationManagement and then GuestCartManagementInterface::placeOrder(). Guest-check policy is evaluated through Checkout Helper's checkout_allow_guest event, but the Downloadable observer that rejects downloadable carts when guest checkout is disabled or a selected link is non-shareable was registered only for the frontend area. Consequently API-area order placement skipped the authorization veto and could create a guest order despite the store's downloadable-product access policy. The fix attaches guest-check plugins to API services and registers that observer in REST, SOAP, and GraphQL areas.
+
+**Origin.** 7f25fa6a5ec0639cbb2ac63d82fc73f4cd397b59 is the smallest public first-writer of the complete anonymous order-placement path: it added the anonymous payment-information route and a new GuestPaymentInformationManagement implementation that directly invokes placeOrder, while its immediate parent lacks both the interface/model and that route. The pre-existing frontend-only Downloadable observer therefore did not run in this newly introduced API area.
+
+**AI marker.** `ABSENT` — BIC-local commit headers name Iryna Lagno <ilagno@ebay.com> as author and committer in 2015. BIC-local message contains only MAGETWO-38133 implementation text and no AI, assistant, generated-by, co-author, model, or bot marker.
+
+**Reasoning.** The authoritative CVE and Adobe records establish a real, published improper-authorization security bypass. Exact source and tag trees close the mechanism from an anonymous API route to order placement, the area-scoped missing veto, and the direct multi-area fix. The focused single-parent BIC and its immediate parent establish atomic first-write and parent absence, and all affected/fixed release gates are closed. Attribution is restricted to that BIC: its named 2015 human author/committer and marker-free commit object establish human, not AI, authorship. Therefore the closed verdict is NOT_AI.
+
+Protocol checks:
+
+- `vulnerability_mechanism` — **PASS**: CVE.org record https://cveawg.mitre.org/api/cve/CVE-2025-43585 is PUBLISHED and identifies Adobe's CWE-285 improper-authorization security-feature bypass; it is not rejected or withdrawn. Adobe APSB25-50 https://helpx.adobe.com/security/products/magento/apsb25-50.html lists CVE-2025-43585, affected Magento Open Source releases 2.4.8/2.4.7-p5/2.4.6-p10/2.4.5-p12 and earlier, and fixed releases 2.4.8-p1/2.4.7-p6/2.4.6-p11/2.4.5-p13. At 7f25fa6a5ec0639cbb2ac63d82fc73f4cd397b59, app/code/Magento/Checkout/etc/webapi.xml exposes the payment-information route to resource anonymous and Magento\Checkout\Model\GuestPaymentInformationManagement::savePaymentInformation calls GuestCartManagementInterface::placeOrder(). In affected tag 2.4.5-p12, Checkout\Helper\Data::isAllowedGuestCheckout dispatches checkout_allow_guest, while Magento_Downloadable's IsAllowedGuestCheckoutObserver vetoes downloadable guest checkout when catalog/downloadable/disable_guest_checkout is set or selected links are not shareable; that observer is registered only in app/code/Magento/Downloadable/etc/frontend/events.xml, so REST/SOAP/GraphQL areas omit the veto.
+- `atomic_bic` — **PASS**: GIT_NO_LAZY_FETCH=1 git diff --name-status 1d941ba7a09a964569f5a14c4590c219b16b7f3c..7f25fa6a5ec0639cbb2ac63d82fc73f4cd397b59 shows the focused first addition of GuestPaymentInformationManagementInterface.php and GuestPaymentInformationManagement.php plus the anonymous payment-information route in Checkout/etc/webapi.xml. The BIC model directly assigns billing/payment data and calls cartManagement->placeOrder(cartId); this is the smallest public commit that completes the anonymous source-to-order sink, rather than a later route rename, refactor, release carrier, or fix.
+- `immediate_parent_absence` — **PASS**: BIC commit object names immediate parent 1d941ba7a09a964569f5a14c4590c219b16b7f3c. GIT_NO_LAZY_FETCH=1 git ls-tree -r --name-only 1d941ba7a09a964569f5a14c4590c219b16b7f3c contains Checkout/etc/webapi.xml but no GuestPaymentInformationManagement interface or model, and the parent webapi.xml has no anonymous payment-information route; the BIC tree contains all three.
+- `squash_member_decomposition` — **PASS**: GIT_NO_LAZY_FETCH=1 git cat-file -p 7f25fa6a5ec0639cbb2ac63d82fc73f4cd397b59 shows one parent and the focused message 'MAGETWO-38133: Provide ability to place order: -create integration api to set payment information'; it is an ordinary atomic source commit, not a merge, release snapshot, or squash aggregate requiring member decomposition.
+- `affected_release_membership` — **PASS**: GIT_NO_LAZY_FETCH=1 git merge-base --is-ancestor 7f25fa6a5ec0639cbb2ac63d82fc73f4cd397b59 2.4.5-p12, 2.4.6-p10, 2.4.7-p5, and 2.4.8 succeeds for every affected tag. Affected tag 2.4.5-p12 resolves to ea0b9a63fdc1409f74988f813046c1daa92fd320 and lacks Checkout guest-check plugins and Downloadable graphql/webapi_rest/webapi_soap checkout_allow_guest registrations.
+- `fixed_release_membership` — **PASS**: Tag 2.4.5-p13 resolves to fix commit 9bf2c06ea8c9fc52698f4e9994b5334a436649ad; tags 2.4.6-p11, 2.4.7-p6, and 2.4.8-p1 resolve to e2907757d44416816eae809adec35b0a32052745, b69acb3d4cb3720665c7829fd6390d3036a07b13, and 10fdaddfd21f922d0c1b4f9f889dba8cfd4be8d6 respectively. GIT_NO_LAZY_FETCH=1 git ls-tree confirms each fixed tag has Magento/Downloadable/etc/graphql/events.xml, webapi_rest/events.xml, and webapi_soap/events.xml registering IsAllowedGuestCheckoutObserver.
+- `direct_fix_or_unpatched` — **PASS**: Relative to immediate parent 750f3c8f6dad82927f968a480b44f7c6e5c6d0fb, 9bf2c06ea8c9fc52698f4e9994b5334a436649ad adds VerifyIsGuestCheckoutEnabledBeforePlaceOrder.php, REST/SOAP DI bindings, and Downloadable REST/SOAP/GraphQL event registrations; the parent tree has none of those paths. The added beforePlaceOrder plugin loads the masked quote, calls Checkout\Helper\Data::isAllowedGuestCheckout, and throws CouldNotSaveException when false; the new area event files make the Downloadable observer's configured/not-shareable veto execute in non-frontend API areas.
+- `bic_only_ai_attribution` — **PASS**: The BIC commit object itself records author and committer Iryna Lagno <ilagno@ebay.com> on 2015-06-12 and contains only the MAGETWO-38133 message; it has no AI assistant, generated-by, co-author, model, or bot marker. No repository-level or later-commit signal was used.
+
+Primary/Git evidence:
+
+- CVE.org primary record: https://cveawg.mitre.org/api/cve/CVE-2025-43585 (state PUBLISHED; Adobe CNA; CWE-285; vendor-advisory reference).
+- Adobe vendor bulletin: https://helpx.adobe.com/security/products/magento/apsb25-50.html (CVE identity, affected releases, fixed releases, and security-feature-bypass impact).
+- Assigned clone binding: origin https://github.com/magento/magento2.git, HEAD 3a6b9667113729b21b48623687fc01b3f2d8a026, promisor=true, partialclonefilter=blob:none; all Git inspection began with GIT_NO_LAZY_FETCH=1 under node-1 binding.
+- BIC primary source: https://github.com/magento/magento2/commit/7f25fa6a5ec0639cbb2ac63d82fc73f4cd397b59; local cat-file confirms it and parent 1d941ba7a09a964569f5a14c4590c219b16b7f3c are commit objects.
+- BIC hunk: Checkout/etc/webapi.xml adds an anonymous payment-information route and Checkout/Model/GuestPaymentInformationManagement.php ends savePaymentInformation by calling cartManagement->placeOrder(cartId); the immediate parent lacks the new interface/model and route.
+- Affected 2.4.5-p12 tree lacks Checkout API guest-check plugins and Downloadable graphql/webapi_rest/webapi_soap event files; fixed 2.4.5-p13 tree at 9bf2c06ea8c9fc52698f4e9994b5334a436649ad adds them.
+- Direct fix primary source: https://github.com/magento/magento2/commit/9bf2c06ea8c9fc52698f4e9994b5334a436649ad; local raw tree diff against 750f3c8f6dad82927f968a480b44f7c6e5c6d0fb records the six decisive additions with full blob OIDs.
+- Cross-branch tree comparison shows the Downloadable REST/SOAP/GraphQL observer registrations in fixed tags 2.4.5-p13, 2.4.6-p11, 2.4.7-p6, and 2.4.8-p1 and their absence in affected tags 2.4.5-p12, 2.4.6-p10, 2.4.7-p5, and 2.4.8.
+
+### w032 — CVE-2025-54267 — `NOT_AI`
+
+- class: `alias-98d2a68f6895059418ba234d`
+- repository: `magento/magento2`
+- review context: `round12-clean-w032`
+- bundle sha256: `97b49e8498ae5a026ee2d886343fe29a8d922291399f9bd56b96ae75fe9f2f9b`
+- clone HEAD at freeze: `3a6b9667113729b21b48623687fc01b3f2d8a026`
+- introducer: `dd15e184efe63d3fa5ebdf6d7906ef5874b5fdf2`
+- immediate parent: `2c4dbba9111184299cba2935b26b23011566ee65`
+- direct fix: `485febbd60a1eb28da779024c6c27f856e28ed39`
+- fix/carrier: `214647d2e907da880a37e2d37c162921fecdf68e`
+
+**Mechanism.** An admin with Magento_LoginAsCustomer::login can create a login_as_customer row keyed to the admin and customer, then enter a customer session via its secret. Storefront requests keep that impersonated session valid as long as that row remains. Before the fix, logout could delete the row, but revoking the Login-as-Customer ACL, unassigning the admin from the role, or moving the admin to a role without the ACL did not; the low-privileged/demoted admin's already active impersonation therefore retained customer-account write authority. The fix deletes the row on those permission transitions, causing the existing storefront invalidation plugin to clear the customer session on the next request.
+
+**Origin.** dd15e184efe63d3fa5ebdf6d7906ef5874b5fdf2 is the smallest surviving public first-writer: it introduced the ACL-gated admin secret source, the persistent admin/customer/secret row, and the storefront loginById sink without any role-permission revocation path. Its verified immediate parent has no LoginAsCustomer code. The 2020 subdirectory import, moves, and refactors are carriers; they do not replace this first-write boundary.
+
+**AI marker.** `ABSENT` — The BIC raw object names Ihor Vansach <ihoronesuch@gmail.com> as author and committer. The BIC message is 'Initial commit' and the commit object has no AI-, bot-, assistant-, model-, generator-, or co-author marker.
+
+**Reasoning.** Authoritative CVE and Adobe records establish a real, non-withdrawn incorrect-authorization privilege escalation. The affected source has a complete authorization-to-impersonation chain but does not revoke the row that authorizes an active impersonated session when the admin loses the relevant ACL. The direct fix adds precisely those role/user transition hooks, and exact blob equality places it in every vendor-designated fixed line. Public history reaches past the later import and refactors to the single-parent 2015 first-write whose parent lacks the module. Because that BIC is a named-human commit with no AI marker, all eight closure gates support NOT_AI.
+
+Protocol checks:
+
+- `vulnerability_mechanism` — **PASS**: The CVE.org CNA record at https://cveawg.mitre.org/api/cve/CVE-2025-54267 is state PUBLISHED and describes CWE-863, low privileges, no user interaction, and high integrity impact; it is not rejected or withdrawn. Adobe APSB25-94 at https://helpx.adobe.com/security/products/magento/apsb25-94.html identifies CVE-2025-54267 as Incorrect Authorization with privilege-escalation impact and CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:N/I:H/A:N. At 2.4.8-p2, LoginAsCustomerAdminUi Controller Adminhtml Login Login.php:211-228 stores an admin/customer authentication row and issues its secret; AuthenticateCustomerBySecret.php:58-75 consumes that row to call customerSession->loginById and records the admin id; IsLoginAsCustomerSessionActive.php:35-47 and InvalidateExpiredSessionPlugin.php:66-79 keep the impersonated customer session alive while the row exists. At 2.4.8-p2, AdminLogoutPlugin.php:57-64 deletes authentication data on an admin logout, but app/code/Magento/LoginAsCustomer/etc/adminhtml/di.xml is absent and there is no role-save or user-role-change hook, so removing Magento_LoginAsCustomer::login or reassigning the admin leaves the authentication row and impersonated session active.
+- `atomic_bic` — **PASS**: git diff-tree --no-commit-id --name-status -r dd15e184efe63d3fa5ebdf6d7906ef5874b5fdf2 shows the single-parent commit adds the original Adminhtml login controller, storefront login controller, Model/Login.php, and InstallSchema.php together; these create the ACL-gated secret, persist admin_id/customer_id/secret, load the secret, and call loginById without a permission-revocation invalidation path. The later 57b8afd0826576bd0e086d1c00628f2d606afb47 'Merge module as subdirectory', namespace/path moves, and later refactors preserve this source-to-sink behavior and were rejected as carriers rather than first-writers.
+- `immediate_parent_absence` — **PASS**: git cat-file -t 2c4dbba9111184299cba2935b26b23011566ee65 returns commit, and git ls-tree -r --name-only 2c4dbba9111184299cba2935b26b23011566ee65 contains zero LoginAsCustomer paths. git cat-file commit dd15e184efe63d3fa5ebdf6d7906ef5874b5fdf2 records exactly one parent, 2c4dbba9111184299cba2935b26b23011566ee65; therefore the vulnerable feature is absent from the directly verified parent tree.
+- `squash_member_decomposition` — **PASS**: The import merge 57b8afd0826576bd0e086d1c00628f2d606afb47 has parents 90012f2920a784a2f814a6e820dfc12ac96ebb19 and 2df369e47a048dacb146c25cbba02db47534ee6b; preserved second-parent history exposes the finer original first-writer dd15e184efe63d3fa5ebdf6d7906ef5874b5fdf2, so the merge was not used as BIC. Release commit 214647d2e907da880a37e2d37c162921fecdf68e is a packaging snapshot ('Magento Release 2.4.8-p3'); the public finer direct-fix member is 485febbd60a1eb28da779024c6c27f856e28ed39, identified by exact fixed blob identity across release lines.
+- `affected_release_membership` — **PASS**: Adobe APSB25-94 lists Magento Open Source 2.4.9-alpha2, 2.4.8-p2 and earlier, 2.4.7-p7 and earlier, and 2.4.6-p12 and earlier as affected. git merge-base --is-ancestor dd15e184efe63d3fa5ebdf6d7906ef5874b5fdf2 returns success for tags 2.4.9-alpha2, 2.4.8-p2, 2.4.7-p7, and 2.4.6-p12. git ls-tree on each of 2.4.9-alpha2, 2.4.8-p2, 2.4.7-p7, and 2.4.6-p12 confirms all six core revocation-fix paths introduced by 485febbd60a1eb28da779024c6c27f856e28ed39 are absent.
+- `fixed_release_membership` — **PASS**: Adobe APSB25-94 lists 2.4.9-alpha3, 2.4.8-p3, 2.4.7-p8, and 2.4.6-p13 as the corresponding updated Magento Open Source versions. git ls-tree on each fixed tag shows exact blob ids 2c686bf5e4d22ff6e0b88e99f2064ddc0d816e4b, d0d88b39b8974bd426f6d22d15c033d19bc360fa, 98db3da004ed4674b7bf5496eb254884cc27ee89, cf7f04529a5f3db2f412d2ee599ad76ab123cf80, 740cd08c9b3bd58aebce16813c4f9b8ae818451c, and 0c19d41d20fb81da7edba3a0184a5d8f01878300 for the six core files, identical to direct fix 485febbd60a1eb28da779024c6c27f856e28ed39.
+- `direct_fix_or_unpatched` — **PASS**: git show 485febbd60a1eb28da779024c6c27f856e28ed39 adds UserRolePermission validation, RulesPlugin and User plugin hooks, and DeleteAuthenticationDataForListOfUser; RulesPlugin deletes rows for users whose role loses Magento_LoginAsCustomer::login or who are unassigned, and User deletes the row after a role change to a role without that resource. The same direct fix changes User Role SaveRole.php to pass role_assigned_users and role_unassigned_users to saveRel; the fixed release 2.4.8-p3 is commit 214647d2e907da880a37e2d37c162921fecdf68e and contains the exact direct-fix core blobs.
+- `bic_only_ai_attribution` — **PASS**: git cat-file commit dd15e184efe63d3fa5ebdf6d7906ef5874b5fdf2 names Ihor Vansach <ihoronesuch@gmail.com> as both author and committer and contains only the message 'Initial commit'. The raw BIC commit object has no Co-authored-by, AI, bot, generator, model, or assistant marker; no repository-level, fix-commit, or later-commit signal was used for attribution.
+
+Primary/Git evidence:
+
+- CVE.org primary CNA record: https://cveawg.mitre.org/api/cve/CVE-2025-54267 (PUBLISHED; CWE-863; low privileges; high integrity impact).
+- Adobe vendor bulletin: https://helpx.adobe.com/security/products/magento/apsb25-94.html (CVE-2025-54267 disposition, impact, affected versions, and updated versions).
+- BIC-local Git evidence: git cat-file commit dd15e184efe63d3fa5ebdf6d7906ef5874b5fdf2; git diff-tree --no-commit-id --name-status -r dd15e184efe63d3fa5ebdf6d7906ef5874b5fdf2; parent 2c4dbba9111184299cba2935b26b23011566ee65 exists and its tree has no LoginAsCustomer path.
+- Original first-party repository snapshots at https://raw.githubusercontent.com/magento/magento2/dd15e184efe63d3fa5ebdf6d7906ef5874b5fdf2/app/code/Magefan/LoginAsCustomer/Controller/Adminhtml/Login/Login.php, Controller/Login/Index.php, Model/Login.php, and Setup/InstallSchema.php show secret generation/persistence and loginById in the BIC.
+- Affected-tree evidence at tag 2.4.8-p2: Admin Login.php:211-228 creates the authentication row; AuthenticateCustomerBySecret.php:58-75 logs in the customer; IsLoginAsCustomerSessionActive.php:35-47 and InvalidateExpiredSessionPlugin.php:66-79 make row presence the session authority; adminhtml/di.xml is absent.
+- Direct fix 485febbd60a1eb28da779024c6c27f856e28ed39 ('AC-15021: login as customer feature improvement') adds revocation hooks and row deletion; six core fix blobs are byte-identical in tags 2.4.9-alpha3, 2.4.8-p3, 2.4.7-p8, and 2.4.6-p13 and absent in their affected predecessors.
+- All non-null SHAs were verified with GIT_NO_LAZY_FETCH=1 using git cat-file -t in /home/hanqing/agents/ai-slop/.ai-slop/state/repos/magento_magento2.
+
+### w033 — GHSA-69x9-xp2j-w8g8 — `EVIDENCE_GAP`
+
+- class: `alias-ab2476a869a067d3b034b0f1`
+- repository: `magento/magento2`
+- review context: `round12-clean-w033-grok-r3`
+- bundle sha256: `e0d2854cdf7ccd1bf0d957f57bc447bd3e9f804a8dab06779c34c6ebfb8cb037`
+- clone HEAD at freeze: `3a6b9667113729b21b48623687fc01b3f2d8a026`
+- introducer: `null`
+- immediate parent: `null`
+- direct fix: `null`
+- fix/carrier: `null`
+
+**Mechanism.** Low-privileged authenticated attacker can leverage missing or bypassed authorization check to maintain unauthorized access/persistence; no user interaction needed. Matches CWE-863 Incorrect Authorization leading to security feature bypass.
+
+**Origin.** Not isolatable to a specific smallest first-writer commit from first-hand evidence in the magento/magento2 clone at head 3a6b9667... ; no vulnerable hunk or file identified without external patch references prohibited by clean-context rules.
+
+**AI marker.** `UNKNOWN` — No BIC commit object inspected; protocol forbids repository-level AI signals, PR labels, or later fixes as causal proof
+
+**Reasoning.** Vulnerability is real and confirmed (not withdrawn, active high-severity auth bypass). However, the exact mechanism, vulnerable code, atomic BIC, and direct fix could not be established from bundle + clone first-party evidence only. All protocol checks requiring the vulnerable lines or BIC cannot PASS. Per AUDIT-PROTOCOL.md and CASE-AUDIT-INSTRUCTIONS.md this yields EVIDENCE_GAP with concrete remaining_gap. No delegation, no task, no ledger changes, no other outputs written.
+
+**Remaining gap.** Specific vulnerable source file(s), sink function, vulnerable_version code hunk, and corresponding smallest BIC commit SHA. Bounded fetch of history objects around 2.4.8/2.4.9 tags did not surface identifiable auth bypass changes without prohibited external references.
+
+Protocol checks:
+
+- `vulnerability_mechanism` — **GAP**: Adobe APSB25-94 and NVD confirm real Incorrect Authorization (CWE-863) allowing low-priv bypass of security measures to maintain unauthorized access; no specific source file, sink, or vulnerable code path isolated from clone or bundle alone
+- `atomic_bic` — **GAP**: Unable to identify vulnerable lines for git blame -L or smallest first-writer commit search per protocol; no matching security fix hunk in 2.4.9-alpha2..alpha3
+- `immediate_parent_absence` — **GAP**: No BIC commit object available
+- `squash_member_decomposition` — **GAP**: No candidate squash commits
+- `affected_release_membership` — **PASS**: Clone tags confirm vulnerable ranges match advisory (2.4.9-alpha2, 2.4.8-p2 etc.); git tag -l used with GIT_NO_LAZY_FETCH=1
+- `fixed_release_membership` — **PASS**: Patched versions 2.4.9-alpha3, 2.4.8-p3 etc. present as tags in clone
+- `direct_fix_or_unpatched` — **GAP**: No obvious direct fix commit with auth-related changes isolated in allowed clone inspection
+- `bic_only_ai_attribution` — **GAP**: No BIC examined for AI markers per protocol (only BIC-local facts allowed)
+
+Primary/Git evidence:
+
+- https://helpx.adobe.com/security/products/magento/apsb25-94.html (vendor advisory confirming CVE and fixes)
+- https://nvd.nist.gov/vuln/detail/CVE-2025-54263 (NVD analyzed record)
+- bundle w033.json advisory data and clone tags for 2.4.9-alpha2/alpha3
+- git commands under numactl --cpunodebind=1 --membind=1 GIT_NO_LAZY_FETCH=1 on clone_dir from bundle; no forbidden files read
+
+### w034 — CVE-2025-49550 — `EVIDENCE_GAP`
+
+- class: `alias-afadfa5db1062c4a84413492`
+- repository: `magento/magento2`
+- review context: `round12-clean-w034-herdr`
+- bundle sha256: `f23454a0a50947fc17e50f6aa9fa08f1147aa8245047c5ccc1c000f20bfec82a`
+- clone HEAD at freeze: `3a6b9667113729b21b48623687fc01b3f2d8a026`
+- introducer: `null`
+- immediate parent: `null`
+- direct fix: `null`
+- fix/carrier: `null`
+
+**Mechanism.** The authoritative sources establish a real incorrect-authorization issue reachable over the network without attacker privileges, requiring victim interaction and exposing limited confidentiality. They do not disclose the protected resource, request source, authorization decision, or data sink. The public fixed release contains multiple plausible authorization/cache changes, so an exact source-to-sink mechanism cannot be assigned to CVE-2025-49550 without inference.
+
+**Origin.** Not established: the CVE-to-component and CVE-to-hunk binding needed before selecting the smallest first-writer is absent from the available primary evidence.
+
+**AI marker.** `UNKNOWN` — AI attribution cannot be judged until an atomic BIC is identified; release-packaging authorship and repository-level activity are not BIC-local proof.
+
+**Reasoning.** The vulnerability's existence, disposition, and release boundary are closed by CVE Program and Adobe evidence. Causal closure is not: the vendor's aggregate fixed commits contain multiple plausible security hunks and neither authoritative source identifies the CVE's component or direct fix. Without that binding, choosing a hunk, BIC, parent boundary, or BIC-local AI marker would be inference. The required outcome is therefore EVIDENCE_GAP, not NOT_AI.
+
+**Remaining gap.** Obtain a primary first-party Adobe/Magento disclosure, patch manifest, issue reference, or commit-to-CVE mapping that identifies the exact CVE-2025-49550 component and direct-fix hunk. Then trace that hunk to the smallest public first-writer, verify its immediate parent tree and any squash members, and inspect only that BIC object for AI evidence.
+
+Protocol checks:
+
+- `vulnerability_mechanism` — **GAP**: The official CVE JSON record at https://raw.githubusercontent.com/CVEProject/cvelistV5/main/cves/2025/49xxx/CVE-2025-49550.json is PUBLISHED and identifies CWE-863, AV:N/AC:L/PR:N/UI:R/S:U/C:L/I:N/A:N, and a generic security-feature bypass with limited unauthorized access, but it names no component, endpoint, symbol, or source-to-sink path. Adobe APSB25-50 at https://helpx.adobe.com/security/products/magento/apsb25-50.html confirms CVE-2025-49550 as Incorrect Authorization and credits Damien Retzinger, but likewise provides no component or code-level mechanism. GIT_NO_LAZY_FETCH=1 git diff --name-status 2.4.7-p5 2.4.7-p6 shows several distinct access-control or data-exposure candidates in the same security release, including Magento/Cms/Ui/Component/DataProvider.php, Magento/Email/Model/Template/Filter.php, Magento/Quote/Plugin/ValidateQuoteOrigOrder.php, Magento/Downloadable guest-checkout observers, and Magento/WebapiAsync InputParamsResolver.php; neither first-party advisory maps CVE-2025-49550 to one of them.
+- `atomic_bic` — **GAP**: No exact vulnerable hunk can be selected without first binding CVE-2025-49550 to a component; consequently Git blame candidates cannot be promoted to the atomic first-writer without reversing the protocol from an AI- or patch-shaped lead.
+- `immediate_parent_absence` — **GAP**: Because no atomic BIC is established, there is no BIC immediate-parent tree against which absence of the vulnerable lines can be verified.
+- `squash_member_decomposition` — **GAP**: The fixed 2.4.7-p6 tag peels to aggregate release commit b69acb3d4cb3720665c7829fd6390d3036a07b13 with parent 017ec8bee97824ff6704d101d9feeb98d56e1bf6 and subject 'Magento Release 2.4.7-p6'; public history exposes multiple unrelated/security hunks in this single release object, but the first-party sources do not identify which hunk belongs to this CVE.
+- `affected_release_membership` — **PASS**: Adobe APSB25-50 lists Magento Open Source 2.4.8, 2.4.7-p5 and earlier, 2.4.6-p10 and earlier, and 2.4.5-p12 and earlier as affected. Assigned-clone tag checks resolve 2.4.7-p5 to dc87600a0ab002bb2b7ef573fe78cfc951edb36c and 2.4.8 to 94b8544e82fd84d1443060cddb5481b7fd462de2; merge-base checks confirm their corresponding fixed release commits are absent from these vulnerable tags.
+- `fixed_release_membership` — **PASS**: Adobe APSB25-50 lists Magento Open Source 2.4.8-p1, 2.4.7-p6, 2.4.6-p11, and 2.4.5-p13 as updated versions. Assigned-clone tag checks peel 2.4.7-p6 to b69acb3d4cb3720665c7829fd6390d3036a07b13, 2.4.6-p11 to e2907757d44416816eae809adec35b0a32052745, 2.4.5-p13 to 9bf2c06ea8c9fc52698f4e9994b5334a436649ad, and 2.4.8-p1 to 10fdaddfd21f922d0c1b4f9f889dba8cfd4be8d6.
+- `direct_fix_or_unpatched` — **GAP**: The release boundary is patched, but the public fixed tags aggregate several security changes and no primary first-party source binds CVE-2025-49550 to an exact direct-fix hunk; recording any candidate release hunk as the direct fix would be inference.
+- `bic_only_ai_attribution` — **GAP**: No atomic BIC was established, so no BIC-local author, committer, message, trailer, or patch evidence can be used for AI attribution.
+
+Primary/Git evidence:
+
+- Official CVE List record: https://raw.githubusercontent.com/CVEProject/cvelistV5/main/cves/2025/49xxx/CVE-2025-49550.json; state PUBLISHED, Adobe CNA, CVE-2025-49550, CWE-863, CVSS 4.3, PR:N, UI:R, C:L/I:N/A:N.
+- Adobe vendor bulletin: https://helpx.adobe.com/security/products/magento/apsb25-50.html; CVE-2025-49550 is a non-withdrawn Incorrect Authorization security-feature bypass and the bulletin supplies affected and updated Magento Open Source versions.
+- Bundle integrity: numactl --cpunodebind=1 --membind=1 sha256sum bundles/w034.json returned f23454a0a50947fc17e50f6aa9fa08f1147aa8245047c5ccc1c000f20bfec82a.
+- Assigned clone identity: GIT_NO_LAZY_FETCH=1 git show-ref --head returned HEAD 3a6b9667113729b21b48623687fc01b3f2d8a026 on 2.4-develop.
+- Release comparison: GIT_NO_LAZY_FETCH=1 git diff --name-status 2.4.7-p5 2.4.7-p6 and exact per-file diffs show multiple independent candidate security changes in the aggregate release, with no CVE label in the commit or hunks.
+- Release commit boundary: 2.4.7-p5^{commit}=dc87600a0ab002bb2b7ef573fe78cfc951edb36c; 2.4.7-p6^{commit}=b69acb3d4cb3720665c7829fd6390d3036a07b13; merge-base --is-ancestor confirms the latter is not in the former and is the fixed tag's peeled commit.
+- Additional boundary: 2.4.8^{commit}=94b8544e82fd84d1443060cddb5481b7fd462de2 and 2.4.8-p1^{commit}=10fdaddfd21f922d0c1b4f9f889dba8cfd4be8d6; the fixed commit is absent from 2.4.8 and present in 2.4.8-p1.
+
+### w035 — CVE-2025-54266 — `EVIDENCE_GAP`
+
+- class: `alias-b76c6bd37b851b3adcc7d1c4`
+- repository: `magento/magento2`
+- review context: `round12-clean-w035-herdr`
+- bundle sha256: `91b3e2a95b0b1039525b7cf9520bff4cee90059522f884a8cbcbda805231df62`
+- clone HEAD at freeze: `3a6b9667113729b21b48623687fc01b3f2d8a026`
+- introducer: `null`
+- immediate parent: `null`
+- direct fix: `null`
+- fix/carrier: `null`
+
+**Mechanism.** Adobe establishes only the coarse lifecycle: an authenticated high-privilege attacker stores script through an unspecified vulnerable form field, and a victim triggers execution by browsing the page containing that field. The public first-party record does not identify the concrete input, persistence model, rendering sink, or missing neutralization operation, so exact source-to-sink semantics remain unclosed.
+
+**Origin.** Unknown. The vendor did not map CVE-2025-54266 to an exact fixed line, and the public fixed releases aggregate multiple unrelated and plausibly XSS-relevant changes; choosing a line first and tracing it would be inference rather than a vulnerability-first BIC determination.
+
+**AI marker.** `UNKNOWN` — The BIC is unknown; AI attribution cannot be inferred from repository-level activity, release packaging authors, or absence of trailers on unrelated candidate commits.
+
+**Reasoning.** The authoritative sources establish a real, non-withdrawn vulnerability and the affected/fixed release boundaries, but they do not close the exact mechanism or identify a direct fix. Because the security release aggregates multiple plausible XSS-related changes, selecting one would be speculation; without a direct fix there is no defensible first-writer search, parent-absence proof, or BIC-only AI judgment. The required result is therefore EVIDENCE_GAP, not NOT_AI.
+
+**Remaining gap.** Obtain a first-party Adobe mapping of CVE-2025-54266 to the exact vulnerable form field and direct fix hunk (or a finer public security-patch member). Then verify that hunk across an affected/fixed tag pair, trace the vulnerable lines to the smallest first-writing commit, inspect its immediate parent tree, and judge AI only from that BIC object.
+
+Protocol checks:
+
+- `vulnerability_mechanism` — **GAP**: The official CVE JSON at https://cveawg.mitre.org/api/cve/CVE-2025-54266 is PUBLISHED and Adobe's CNA description identifies stored XSS: a high-privileged attacker can inject script into vulnerable form fields and execution occurs when a victim browses the page, but it does not name the field, persistence path, renderer, or source file. Adobe bulletin APSB25-94 at https://helpx.adobe.com/security/products/magento/apsb25-94.html identifies CVE-2025-54266 as stored XSS, CVSS 4.8, authentication and admin privileges required, but likewise provides no source-to-sink mapping.
+- `atomic_bic` — **GAP**: With GIT_NO_LAZY_FETCH=1, git log --all --grep for CVE-2025-54266, GHSA-pcrx-r49h-x2w5, or APSB25-94 returned no commit. Without an authoritative mapping from this CVE to one exact vulnerable field or fix hunk, selecting and blaming any one of the multiple security-release changes would invert the required BIC search.
+- `immediate_parent_absence` — **GAP**: No introducer was identified, so its immediate parent tree and absence of the vulnerable lines cannot be tested.
+- `squash_member_decomposition` — **GAP**: The public fixed release objects are packaging snapshots containing many unrelated changes; no first-party source maps CVE-2025-54266 to a finer public member or to one surviving hunk that can be decomposed.
+- `affected_release_membership` — **PASS**: Adobe APSB25-94 lists Magento Open Source 2.4.9-alpha2, 2.4.8-p2 and earlier, 2.4.7-p7 and earlier, and 2.4.6-p12 and earlier as affected. Assigned-clone tag objects resolve to affected commits 852c80d4b94feb0a1043812e849b31dc77178935 (2.4.9-alpha2), e2e14f0b1f040550ee78f884210442f2fd0f9444 (2.4.8-p2), 9e7a903d41ca5368eeeb0561a74d8b7cfa5e58a0 (2.4.7-p7), and 6be37436d56fc561f58013780988af75e030ad54 (2.4.6-p12).
+- `fixed_release_membership` — **PASS**: Adobe APSB25-94 lists Magento Open Source 2.4.9-alpha3, 2.4.8-p3, 2.4.7-p8, and 2.4.6-p13 as updated versions. Assigned-clone tag objects resolve to fixed commits fa801495083bdfd07d54775566fd85c0394e2ce1 (2.4.9-alpha3), 214647d2e907da880a37e2d37c162921fecdf68e (2.4.8-p3), d3e60d4cf41d50f0a910b7f7fd64d98f5c2af6dd (2.4.7-p8), and 158edfce8ff85238d8791fa9256bea8edc513015 (2.4.6-p13).
+- `direct_fix_or_unpatched` — **GAP**: The 2.4.6-p12 and 2.4.6-p13 release commits are sibling packaging snapshots with the same parent fc35000d1dc61dbf65b0f8f49b802074073686a7, permitting a direct tree comparison, but that comparison contains numerous unrelated changes and several plausible output-escaping hardenings. For example, first-party raw tag comparisons show added escapeJs(escapeHtml(...)) handling in app/code/Magento/Review/Block/Adminhtml/Edit.php, app/code/Magento/Sales/Block/Adminhtml/Order/View.php, app/code/Magento/User/Block/Buttons.php, and other admin form/button blocks; Adobe does not attribute any of these hunks to CVE-2025-54266.
+- `bic_only_ai_attribution` — **GAP**: No atomic BIC was established, so no BIC-local author, message, trailer, patch, or AI marker can be evaluated.
+
+Primary/Git evidence:
+
+- Official CVE record: https://cveawg.mitre.org/api/cve/CVE-2025-54266; state PUBLISHED, Adobe CNA, stored XSS in unspecified vulnerable form fields, PR:H/UI:R/S:C, published 2025-10-14.
+- Adobe vendor bulletin: https://helpx.adobe.com/security/products/magento/apsb25-94.html; CVE-2025-54266 is a stored-XSS issue and the bulletin supplies affected and updated release boundaries.
+- GIT_NO_LAZY_FETCH=1 git -C /home/hanqing/agents/ai-slop/.ai-slop/state/repos/magento_magento2 rev-parse HEAD returned 3a6b9667113729b21b48623687fc01b3f2d8a026.
+- In the assigned clone, annotated release tags directly resolve to the affected and fixed commit objects recorded in the release-membership checks.
+- GIT_NO_LAZY_FETCH=1 git log --all --grep='CVE-2025-54266|GHSA-pcrx-r49h-x2w5|APSB25-94' returned no matching commit.
+- First-party raw GitHub tag content for 2.4.6-p12 and 2.4.6-p13 confirms multiple distinct admin output-escaping changes, but neither the commit objects nor Adobe's bulletin bind one to CVE-2025-54266.
+
+### w036 — CVE-2026-77639 — `NOT_AI`
+
+- class: `alias-d54007086debbb3e50282cf1`
+- repository: `gitlab.torproject.org/tpo/core/tor`
+- review context: `round12-clean-w036-r2`
+- bundle sha256: `26453708898d58812a8231f9855e26cbf9d29cac9531c52a5a44c1623d18c553`
+- clone HEAD at freeze: `3bfb49864a715119bf09e84785e9978884c2fd4b`
+- introducer: `880fb3e3a9aba21c0b36aa4aa5659432e90eb827`
+- immediate parent: `91dd4a00f7d4891e24187a849933547128aeeb9f`
+- direct fix: `b105d4007927a68b6f3dcf80e55c60ce37fdedf4`
+- fix/carrier: `b105d4007927a68b6f3dcf80e55c60ce37fdedf4`
+
+**Mechanism.** A malicious relay can supply concatenated gzip or zlib members to Tor's directory decompression path. tor_compress_impl() retains the cumulative output buffer but frees and recreates the backend state whenever one member returns TOR_COMPRESS_DONE with input remaining. The backend's compression-bomb input/output counters therefore restart for every member, so members individually below the 5 MiB check threshold evade detection while cumulative output and allocation continue growing, producing a network-triggerable client availability impact.
+
+**Origin.** Commit 880fb3e3a9aba21c0b36aa4aa5659432e90eb827 is the smallest surviving public first writer: it replaced method-specific one-shot decompression with common tor_compress_impl() and introduced backend recreation between concatenated members. Its immediate parent 91dd4a00f7d4891e24187a849933547128aeeb9f still used tor_zlib_uncompress() with a total-input/cumulative-output bomb check. The later merge 49868340f7346a7c30603b21d580a3bb54701b0a is only a carrier of this finer member.
+
+**AI marker.** `ABSENT` — BIC commit object 880fb3e3a9aba21c0b36aa4aa5659432e90eb827 names Nick Mathewson <nickm@torproject.org> as both author and committer and contains no AI-local trailer or message marker.
+
+**Reasoning.** The authoritative CVE and Tor sources confirm a real, published availability vulnerability and its affected/fixed boundaries. Direct parent comparison identifies 880fb3e3a9aba21c0b36aa4aa5659432e90eb827 as the atomic first writer of the counter-reset path, while graph inspection rejects the later merge carrier. The direct fix checks cumulative ratios before backend replacement. Because the BIC itself is a named-human commit with no BIC-local AI evidence, all eight closure checks pass and the correct verdict is NOT_AI; the AI trailer on the later fix is non-causal for origin attribution.
+
+Protocol checks:
+
+- `vulnerability_mechanism` — **PASS**: CVE Services record https://cveawg.mitre.org/api/cve/CVE-2026-77639 is PUBLISHED and describes concatenated gzip/zlib sub-streams bypassing the per-stream compression-bomb threshold; its CNA affected range is 0.3.1.1-alpha through versions before 0.4.9.9. Tor work item https://gitlab.torproject.org/tpo/core/tor/-/work_items/41275 states that tor_compress_impl() frees and recreates the backend at each TOR_COMPRESS_DONE boundary, resetting input_so_far/output_so_far; it estimates that a malicious relay can make a 16 MB request drive about 400 MB of client allocation.
+- `atomic_bic` — **PASS**: git diff 91dd4a00f7d4891e24187a849933547128aeeb9f 880fb3e3a9aba21c0b36aa4aa5659432e90eb827 -- src/common/compress.c src/common/compress_zlib.c shows that 880fb3e3a9aba21c0b36aa4aa5659432e90eb827 first added common tor_compress_impl(), routed tor_uncompress() through it, and freed/recreated the stream when compressed input remained after TOR_COMPRESS_DONE. git rev-list --parents -n 1 880fb3e3a9aba21c0b36aa4aa5659432e90eb827 shows exactly one parent, 91dd4a00f7d4891e24187a849933547128aeeb9f; the commit is the fine-grained first writer, not a move, fix, revert, carrier, or merge aggregate.
+- `immediate_parent_absence` — **PASS**: In parent 91dd4a00f7d4891e24187a849933547128aeeb9f, src/common/compress.c dispatches gzip/zlib to tor_zlib_uncompress(); that implementation checks tor_compress_is_compression_bomb(in_len, out_size) using the total original input and cumulative output allocation and does not replace it with the vulnerable common per-member state lifecycle. The parent-to-BIC diff directly establishes absence in the immediate parent and introduction in 880fb3e3a9aba21c0b36aa4aa5659432e90eb827.
+- `squash_member_decomposition` — **PASS**: git log --graph --ancestry-path 91dd4a00f7d4891e24187a849933547128aeeb9f..49868340f7346a7c30603b21d580a3bb54701b0a shows 880fb3e3a9aba21c0b36aa4aa5659432e90eb827 as a fine-grained member on the second-parent branch later merged by 49868340f7346a7c30603b21d580a3bb54701b0a ('Merge branch unified_compress_squashed'). git merge-base --is-ancestor 880fb3e3a9aba21c0b36aa4aa5659432e90eb827 49a5b50b31b8305e63dea5db0cc0de1cb093ff4f exits 0, so the later two-parent merge was rejected as the BIC in favor of its surviving public member.
+- `affected_release_membership` — **PASS**: CVE-2026-77639 CNA data marks Tor versions from 0.3.1.1-alpha inclusive to before 0.4.9.9 as affected. git merge-base --is-ancestor 880fb3e3a9aba21c0b36aa4aa5659432e90eb827 tor-0.3.1.1-alpha exits 0, while the same command against tor-0.3.0.13 exits 1.
+- `fixed_release_membership` — **PASS**: Tor's tor-0.4.9.9 ChangeLog identifies TROVE-2026-022 as fixed in 0.4.9.9 and as a bugfix on 0.3.1.1-alpha: https://gitlab.torproject.org/tpo/core/tor/-/raw/tor-0.4.9.9/ChangeLog. git merge-base --is-ancestor b105d4007927a68b6f3dcf80e55c60ce37fdedf4 tor-0.4.9.8 exits 1 and the same command against tor-0.4.9.9 exits 0; git tag --contains lists tor-0.4.9.9 and later 0.4.9 tags.
+- `direct_fix_or_unpatched` — **PASS**: git show b105d4007927a68b6f3dcf80e55c60ce37fdedf4 adds cumulative out_so_far = outptr - *out and in_so_far = in_len_orig - in_len checks before tor_compress_free()/tor_compress_new() at the concatenated-substream boundary, directly closing the counter-reset bypass. The same fix adds gzip and zlib regression tests built from three concatenated 3 MB zero streams and requires decompression to fail with the cross-stream bomb warning.
+- `bic_only_ai_attribution` — **PASS**: git cat-file commit 880fb3e3a9aba21c0b36aa4aa5659432e90eb827 attributes both author and committer to named human Nick Mathewson <nickm@torproject.org>; its message contains only the common compression API rationale and no AI co-author, generator, assistant, or bot marker. The Claude Co-Authored-By trailer belongs to the 2026 fix b105d4007927a68b6f3dcf80e55c60ce37fdedf4 and is excluded from BIC-only attribution.
+
+Primary/Git evidence:
+
+- CVE Services primary record https://cveawg.mitre.org/api/cve/CVE-2026-77639: state PUBLISHED, affected 0.3.1.1-alpha to before 0.4.9.9, compression-bomb bypass via concatenated gzip/zlib sub-streams.
+- Tor work item https://gitlab.torproject.org/tpo/core/tor/-/work_items/41275: fresh backend state resets the inner counters and permits large cumulative client allocation.
+- Tor release source https://gitlab.torproject.org/tpo/core/tor/-/raw/tor-0.4.9.9/ChangeLog: 0.4.9.9 security fix for TROVE-2026-022, bugfix on 0.3.1.1-alpha.
+- BIC 880fb3e3a9aba21c0b36aa4aa5659432e90eb827 and parent 91dd4a00f7d4891e24187a849933547128aeeb9f exist as commit objects in the assigned clone; their direct diff introduces the vulnerable common state-reinitialization flow.
+- Fix b105d4007927a68b6f3dcf80e55c60ce37fdedf4 exists as a commit object in the assigned clone and directly adds the cross-substream cumulative ratio check plus regression tests.
+- Tag ancestry: BIC absent from tor-0.3.0.13 and present in tor-0.3.1.1-alpha; fix absent from tor-0.4.9.8 and present in tor-0.4.9.9.
+
+### w037 — CVE-2026-77640 — `NOT_AI`
+
+- class: `alias-f3457fab58f9a4866fb96999`
+- repository: `gitlab.torproject.org/tpo/core/tor`
+- review context: `round12-clean-w037`
+- bundle sha256: `734551871ff42e4bee5cc84ccc1274b7955ed9a3f9d8ae3458d295fb5e607e9a`
+- clone HEAD at freeze: `3bfb49864a715119bf09e84785e9978884c2fd4b`
+- introducer: `7573e66b9961cdb571c3c7af688fd01912e66455`
+- immediate parent: `ad8977e39461807dd04e34dc7fa3c12ccef0b62d`
+- direct fix: `a10ff1e283efa1e64dfa604e0d7f8b2ef4290ad7`
+- fix/carrier: `a10ff1e283efa1e64dfa604e0d7f8b2ef4290ad7`
+
+**Mechanism.** When Tor decompresses a truncated zlib/gzip stream and finalizes it with done/finish=1, zlib consumes the available input but cannot reach Z_STREAM_END and repeatedly returns Z_BUF_ERROR with avail_in==0. The vulnerable backend maps that no-progress error to TOR_COMPRESS_BUFFER_FULL. buf_add_compress() interprets BUFFER_FULL as a request for more output space, allocates another chunk, and loops without any input or state progress, producing an infinite allocation/retry denial of service instead of rejecting the corrupt stream.
+
+**Origin.** Commit 7573e66b9961cdb571c3c7af688fd01912e66455 is the smallest first-writer: its single causal source-line edit added `&& !finish`, so the already-existing Z_BUF_ERROR branch changed finalization with no input from TOR_ZLIB_OK to TOR_ZLIB_BUF_FULL. The immediate parent ad8977e39461807dd04e34dc7fa3c12ccef0b62d lacks that behavior, while the contemporaneous write_to_buf_zlib() caller already loops on BUF_FULL and allocates another chunk when space remains.
+
+**AI marker.** `ABSENT` — The complete 7573e66b9961cdb571c3c7af688fd01912e66455 commit object has named human author and committer Nick Mathewson <nickm@torproject.org> and no AI-related trailer or model marker. The BIC message itself explains the intended 2014 Z_BUF_ERROR behavior and references bug 11824; no anonymous or aggregate history prevents BIC-local attribution.
+
+**Reasoning.** The advisory is an authoritative published vulnerability, and source inspection closes the complete no-progress retry mechanism. The atomic one-line 2014 commit 7573e66b9961cdb571c3c7af688fd01912e66455 first introduced the erroneous BUFFER_FULL classification; its immediate parent lacks it, release ancestry matches the authoritative affected/fixed boundary, and a10ff1e283efa1e64dfa604e0d7f8b2ef4290ad7 directly fixes it. Because the BIC is a non-aggregate commit with a named human author/committer and no BIC-local AI marker, the required BIC-only attribution is NOT_AI; AI evidence on the later fix does not alter that result.
+
+Protocol checks:
+
+- `vulnerability_mechanism` — **PASS**: The published CVE.org record at https://cveawg.mitre.org/api/cve/CVE-2026-77640 states that a truncated zlib/gzip stream finalized with done=1 never reaches Z_STREAM_END; zlib instead returns Z_BUF_ERROR with no input remaining, and Tor retried forever after mistaking that state for a full output buffer. In pre-fix src/lib/compress/compress_zlib.c, Z_BUF_ERROR with avail_in==0 and finish==1 falls through to TOR_COMPRESS_BUFFER_FULL; src/lib/compress/compress_buf.c handles that result by adding a chunk when output space remains and repeats do...while until over, while neither DONE, ERROR, nor OK is reached.
+- `atomic_bic` — **PASS**: git show 7573e66b9961cdb571c3c7af688fd01912e66455 -- src/common/torgzip.c shows the causal one-line change from `avail_in == 0` to `avail_in == 0 && !finish`, making finalization-time Z_BUF_ERROR return TOR_ZLIB_BUF_FULL. git show --stat 7573e66b9961cdb571c3c7af688fd01912e66455 shows only that one functional line plus changes/bug11824; the commit has exactly one parent and is neither a move, refactor, revert, nor merge carrier.
+- `immediate_parent_absence` — **PASS**: git show ad8977e39461807dd04e34dc7fa3c12ccef0b62d:src/common/torgzip.c shows `if (state->stream.avail_in == 0) return TOR_ZLIB_OK;`, so the immediate parent does not classify no-input finalization as buffer-full. git cat-file -t confirms both 7573e66b9961cdb571c3c7af688fd01912e66455 and its immediate parent ad8977e39461807dd04e34dc7fa3c12ccef0b62d are commit objects.
+- `squash_member_decomposition` — **PASS**: The raw BIC object has one parent, and its two-file diff consists of a changes entry and one causal source-line edit; there is no aggregate, merge, or finer public member to decompose.
+- `affected_release_membership` — **PASS**: The CVE.org record declares Tor versions from 0.2.6.1-alpha up to but excluding 0.4.9.9 affected; Tor's official tor-0.4.9.9 ChangeLog independently says bugfix on 0.2.6.1-alpha. git merge-base --is-ancestor 7573e66b9961cdb571c3c7af688fd01912e66455 tor-0.2.6.1-alpha and the same check against tor-0.4.9.8 both exit 0; those tags resolve to commits 5a601dd2901644a537621f407f072d634ece2cfe and e170cdcfebd45f6d098e3d811e2b1e1d120df184.
+- `fixed_release_membership` — **PASS**: git merge-base --is-ancestor a10ff1e283efa1e64dfa604e0d7f8b2ef4290ad7 tor-0.4.9.8 exits 1 and the check against tor-0.4.9.9 exits 0; tor-0.4.9.9 resolves to 74b53bd1992da4eca7a89668d9a1a040faff7a73. Tor's official https://gitlab.torproject.org/tpo/core/tor/-/raw/tor-0.4.9.9/ChangeLog identifies version 0.4.9.9 as the security release fixing TROVE-2026-021.
+- `direct_fix_or_unpatched` — **PASS**: git show a10ff1e283efa1e64dfa604e0d7f8b2ef4290ad7 shows the direct fix in src/lib/compress/compress_zlib.c: after preserving the non-finalizing no-input OK case, a second avail_in==0 check returns TOR_COMPRESS_ERROR before TOR_COMPRESS_BUFFER_FULL. The same fix commit message identifies the no-progress truncated-stream condition, buf_add_compress() retry loop, TROVE-2026-021, and bug 41274.
+- `bic_only_ai_attribution` — **PASS**: The complete raw BIC object names Nick Mathewson <nickm@torproject.org> as both author and committer, dates the authored change to 2014-06-03, describes the intentional Z_BUF_ERROR semantic change, and contains no Co-Authored-By, Generated-By, model, Claude, ChatGPT, Copilot, Gemini, Anthropic, or OpenAI marker. AI attribution is based only on 7573e66b9961cdb571c3c7af688fd01912e66455; the later fix commit's Claude trailer is not causal evidence for the 2014 first-writer.
+
+Primary/Git evidence:
+
+- CVE.org primary record https://cveawg.mitre.org/api/cve/CVE-2026-77640 is PUBLISHED and specifies the affected range 0.2.6.1-alpha to before 0.4.9.9 and the exact truncated-stream infinite-loop mechanism.
+- Tor primary ChangeLog https://gitlab.torproject.org/tpo/core/tor/-/raw/tor-0.4.9.9/ChangeLog identifies TROVE-2026-021, bug 41274, bugfix on 0.2.6.1-alpha, and the direct error-return remediation in 0.4.9.9.
+- Local Git diff 7573e66b9961cdb571c3c7af688fd01912e66455^..7573e66b9961cdb571c3c7af688fd01912e66455 proves the first vulnerable one-line classification change; direct parent source proves absence.
+- Local Git source at the BIC shows write_to_buf_zlib() repeatedly calls tor_zlib_process(), treats TOR_ZLIB_BUF_FULL as a reason to add a chunk when avail remains, and terminates only when over becomes true.
+- Local Git diff a10ff1e283efa1e64dfa604e0d7f8b2ef4290ad7^..a10ff1e283efa1e64dfa604e0d7f8b2ef4290ad7 proves the direct fix returns TOR_COMPRESS_ERROR for the no-input finalization error.
+- Git ancestry checks prove BIC membership in tor-0.2.6.1-alpha and tor-0.4.9.8, fix absence from tor-0.4.9.8, and fix membership in tor-0.4.9.9.
+
+### w038 — GHSA-9qgj-r9fj-454p — `NOT_AI`
+
+- class: `alias-e5ef4dfd1b3b807ad155b55d`
+- repository: `krayin/laravel-crm`
+- review context: `round12-clean-w038-r2`
+- bundle sha256: `5278ced7af8cdaa41be91c5b65946f079cf0b2272aa62035514596b0fbc9300a`
+- clone HEAD at freeze: `59eef05606f42cb661ff73bc98a0779cce4c584a`
+- introducer: `dc012873261e9c5cac3693c3f8098b4dcc808bd8`
+- immediate parent: `de14da37d1583af11d320e215c52ecd0044f2562`
+- direct fix: `cccc12df2c405f6c00633bff13d7befd8dd0ee4f`
+- fix/carrier: `e1eb78586fc1bba0204de12222a7f10b53986cc9`
+
+**Mechanism.** An authenticated agent can pass the route-name ACL and supply another owner's record ID. List/view paths limit records to bouncer()->getAuthorizedUserIds(), but the vulnerable edit, update, stage/attribute update, destroy, and mass-operation paths fetch or mutate directly by that ID without checking record ownership. This allows cross-owner disclosure, modification, reassignment, or deletion.
+
+**Origin.** dc012873261e9c5cac3693c3f8098b4dcc808bd8 is the smallest surviving public commit that first creates the security-relevant asymmetry: it enforces individual ownership in the lead grid while retaining the pre-existing unscoped direct-ID mutation endpoints. Later commits extend/refactor the same owner-scope mechanism to other CRM entities; they are not the first introducer.
+
+**AI marker.** `ABSENT` — BIC-local raw commit metadata names jitendra <jitendra@webkul.com> as both author and committer. The BIC message and trailers contain no AI, generated-by, assistant, bot, or co-author marker.
+
+**Reasoning.** The authoritative CVE record is published, the vendor issue and source tree confirm a real cross-owner authorization bypass, and the direct fix closes the exact source-to-sink path. The atomic BIC is the first public commit that enforces individual ownership on record discovery while leaving request-ID mutation paths outside that scope; its immediate parent lacks that asymmetry. The complete BIC object attributes the focused change to a named Webkul human and contains no causal AI marker. With all lifecycle and attribution gates closed, the correct verdict is NOT_AI.
+
+Protocol checks:
+
+- `vulnerability_mechanism` — **PASS**: The CVE Program record at https://cveawg.mitre.org/api/cve/CVE-2026-61460 is PUBLISHED and describes authenticated cross-owner edit, update, and delete through the five named controllers; it marks semver 0 through 2.2.3 affected. At v2.2.3, packages/Webkul/Admin/src/Http/Middleware/Bouncer.php authorizes only the current route name, while packages/Webkul/Admin/src/Bouncer.php returns owner user IDs for group/individual scope. LeadController::edit/update/updateAttributes/updateStage/destroy and mass operations resolve request-controlled IDs and mutate records without comparing those IDs to the allowed owner IDs.
+- `atomic_bic` — **PASS**: git show dc012873261e9c5cac3693c3f8098b4dcc808bd8 is the first concrete enforcement of individual record scope: it adds LeadDataGrid where leads.user_id equals the current user but leaves the already-existing direct-ID controller mutations unscoped. git cat-file -p dc012873261e9c5cac3693c3f8098b4dcc808bd8 shows one parent and a focused public commit; no move, revert, merge, or later carrier is being treated as the introducer.
+- `immediate_parent_absence` — **PASS**: Direct inspection of de14da37d1583af11d320e215c52ecd0044f2562:packages/Webkul/Admin/src/DataGrids/Lead/LeadDataGrid.php finds no lead_view_permission or leads.user_id filter; dc012873261e9c5cac3693c3f8098b4dcc808bd8 adds those exact lines. The disclosed list-scoped/direct-ID-unscoped asymmetry is therefore absent from the immediate parent tree.
+- `squash_member_decomposition` — **PASS**: dc012873261e9c5cac3693c3f8098b4dcc808bd8 is a one-parent, five-file focused permission patch with the subject 'Added check in lead data grid for permission'; its public object exposes no aggregate members requiring decomposition.
+- `affected_release_membership` — **PASS**: git merge-base --is-ancestor confirms dc012873261e9c5cac3693c3f8098b4dcc808bd8 is in v1.0.0 and v2.2.3, while cccc12df2c405f6c00633bff13d7befd8dd0ee4f is not in v2.2.3; this matches the CVE Program affected boundary through 2.2.3.
+- `fixed_release_membership` — **PASS**: git merge-base --is-ancestor confirms both direct fix cccc12df2c405f6c00633bff13d7befd8dd0ee4f and PR merge e1eb78586fc1bba0204de12222a7f10b53986cc9 are ancestors of v2.2.4; neither is an ancestor of v2.2.3.
+- `direct_fix_or_unpatched` — **PASS**: git show cccc12df2c405f6c00633bff13d7befd8dd0ee4f adds preventUnauthorizedAccess/filterAuthorizedRecords and invokes them before single-record and mass mutations in Lead, Person, Organization, Quote, and Activity controllers. GitHub PR https://github.com/krayin/laravel-crm/pull/2567 identifies that commit and the merged result e1eb78586fc1bba0204de12222a7f10b53986cc9.
+- `bic_only_ai_attribution` — **PASS**: The complete BIC object from git cat-file -p dc012873261e9c5cac3693c3f8098b4dcc808bd8 names author and committer jitendra <jitendra@webkul.com>, has subject 'Added check in lead data grid for permission', and contains no AI attribution, generated-by text, or co-author trailer.
+
+Primary/Git evidence:
+
+- CVE Program record https://cveawg.mitre.org/api/cve/CVE-2026-61460: state PUBLISHED, affected <=2.2.3, CWE-639, cross-owner controller operations.
+- Vendor repository report https://github.com/krayin/laravel-crm/issues/2559 documents the Bouncer route ACL, owner-ID helper, affected methods, and authenticated cross-owner PoC.
+- Vendor PR https://github.com/krayin/laravel-crm/pull/2567 is merged and identifies direct fix cccc12df2c405f6c00633bff13d7befd8dd0ee4f and merge e1eb78586fc1bba0204de12222a7f10b53986cc9.
+- GIT_NO_LAZY_FETCH=1 git show v2.2.3:packages/Webkul/Admin/src/Http/Middleware/Bouncer.php and :packages/Webkul/Admin/src/Bouncer.php establishes route-only ACL plus the owner-ID scope source.
+- GIT_NO_LAZY_FETCH=1 git show v2.2.3:packages/Webkul/Admin/src/Http/Controllers/Lead/LeadController.php establishes direct request-ID lookup/update/delete sinks without an ownership comparison.
+- GIT_NO_LAZY_FETCH=1 git show dc012873261e9c5cac3693c3f8098b4dcc808bd8 and direct inspection of parent de14da37d1583af11d320e215c52ecd0044f2562 establish the first list-scope/direct-ID asymmetry and parent absence.
+- GIT_NO_LAZY_FETCH=1 git show cccc12df2c405f6c00633bff13d7befd8dd0ee4f establishes the direct ownership-check fix across all five controllers.
+- GIT_NO_LAZY_FETCH=1 git merge-base --is-ancestor checks establish affected tag v2.2.3 excludes the fix and fixed tag v2.2.4 contains both the direct fix and merge commit.
+
+### w039 — GHSA-wfr3-xj75-pfwh — `NOT_AI`
+
+- class: `alias-a5c496e0928ae65f5951fbbf`
+- repository: `messagepack-csharp/messagepack-csharp`
+- review context: `round12-clean-w039-r2`
+- bundle sha256: `0bb881e02a89cc40f3abc67452a9a576bf251bbdb1b3053a55a2d846300c7b9f`
+- clone HEAD at freeze: `21f6e635d5b5a40ec82a0cd642b1d19b7d1fbe88`
+- introducer: `700058579a35ef8a7efdff598e5daf618a74166f`
+- immediate parent: `786844d909141cd0e48d53f0bc722db1c2e54bb2`
+- direct fix: `b414e6dffc7bd115003e7dd669417ee198cc4da8`
+- fix/carrier: `b414e6dffc7bd115003e7dd669417ee198cc4da8`
+
+**Mechanism.** Untrusted input reaches the runtime-emitted DynamicUnionResolver deserializer for a Union-decorated interface or abstract type. The generated code reads the two-element union array and key, then either recursively invokes the selected subtype formatter or sends an unknown-key value to MessagePackReader.Skip. Before the fix, the union frame never called MessagePackSecurity.DepthStep and never decremented reader.Depth, so union nesting was not charged to MaximumObjectGraphDepth; the unknown-key sink also enters MessagePackReader.TrySkip's recursive array/map traversal outside that accounting scope, permitting configured depth-limit bypass and potential StackOverflowException.
+
+**Origin.** Commit 700058579a35ef8a7efdff598e5daf618a74166f is the smallest public first-writer: it changed the generated DynamicUnionResolver Serialize and Deserialize methods from NotImplemented placeholders into active union code and introduced recursive subtype deserialization plus unknown-value skipping without depth accounting. Its immediate parent 786844d909141cd0e48d53f0bc722db1c2e54bb2 contains only throwing generated methods and a commented, uncalled draft implementation.
+
+**AI marker.** `ABSENT` — BIC 700058579a35ef8a7efdff598e5daf618a74166f is a 2017-02-22 ordinary single-parent commit authored and committed by the named repository user neuecc <ils@neue.cc>. Its complete commit message is 'complete Union' with no Co-Authored-By, generator, assistant, bot, or other AI marker.
+
+**Reasoning.** The authoritative advisory is published and the repository code establishes the complete vulnerable source-to-sink path. Direct parent comparison makes 700058579a35ef8a7efdff598e5daf618a74166f the atomic first operational writer, affected and fixed tag ancestry closes both supported release lines, and the direct fix hunk exactly adds the missing accounting. AI attribution is restricted to that BIC: its raw object and first-party GitHub record identify the same named human repository user as author and committer in 2017 and contain no AI marker. The vulnerability is real, but its BIC is human-authored, so the closed verdict is NOT_AI.
+
+Protocol checks:
+
+- `vulnerability_mechanism` — **PASS**: CVE.org record CVE-2026-48513 is PUBLISHED and states that pre-2.5.301 and 3.0-through-3.1.6 DynamicUnionResolver deserializers omitted DepthStep and Depth decrement around recursive deserialization and attacker-controlled unknown-key Skip paths: https://cveawg.mitre.org/api/cve/CVE-2026-48513 The repository advisory confirms the same source-to-sink mechanism and identifies fixed versions 2.5.301 and 3.1.7: https://github.com/MessagePack-CSharp/MessagePack-CSharp/security/advisories/GHSA-wfr3-xj75-pfwh At affected tag v3.1.6, DynamicUnionResolver.BuildDeserialize emits a switch whose default invokes MessagePackReader.Skip and whose known-key branches invoke subtype Deserialize, but emits no MessagePackSecurity.DepthStep or reader.Depth decrement; MessagePackReader.TrySkip recursively calls itself through TrySkipNextArray/TrySkipNextMap.
+- `atomic_bic` — **PASS**: git diff 786844d909141cd0e48d53f0bc722db1c2e54bb2..700058579a35ef8a7efdff598e5daf618a74166f shows commit 700058579a35ef8a7efdff598e5daf618a74166f replacing EmitThrowNotimplemented in the generated Deserialize method with an active call to BuildDeserialize(type, unionAttrs, method, keyToJumpMap, il). The activated BuildDeserialize in 700058579a35ef8a7efdff598e5daf618a74166f reads the union array and key, recursively calls the selected subtype formatter, and skips an unknown-key value via ReadNext, without any depth accounting.
+- `immediate_parent_absence` — **PASS**: git cat-file -p 700058579a35ef8a7efdff598e5daf618a74166f records the sole immediate parent as 786844d909141cd0e48d53f0bc722db1c2e54bb2. Direct inspection of parent tree 786844d909141cd0e48d53f0bc722db1c2e54bb2 shows generated Serialize and Deserialize bodies calling EmitThrowNotimplemented; the copied BuildDeserialize implementation begins inside a block comment and is not called, so the vulnerable operational path is absent.
+- `squash_member_decomposition` — **PASS**: 700058579a35ef8a7efdff598e5daf618a74166f is an ordinary one-parent public commit, not a merge or carrier; its direct parent-to-child diff itself activates the generated union deserializer, so there is no finer public member to substitute or decompose.
+- `affected_release_membership` — **PASS**: git merge-base --is-ancestor 700058579a35ef8a7efdff598e5daf618a74166f v2.5.205 exits 0 while the v2 fix 940b8508786f8db48f843fee0481f04e71b2a10e ancestry check exits 1. git merge-base --is-ancestor 700058579a35ef8a7efdff598e5daf618a74166f v3.1.6 exits 0 while the v3 fix b414e6dffc7bd115003e7dd669417ee198cc4da8 ancestry check exits 1.
+- `fixed_release_membership` — **PASS**: git merge-base --is-ancestor 940b8508786f8db48f843fee0481f04e71b2a10e v2.5.301 exits 0; tag v2.5.301 contains the v2-line depth fix. git merge-base --is-ancestor b414e6dffc7bd115003e7dd669417ee198cc4da8 v3.1.7 exits 0; tag v3.1.7 contains the main-line depth fix.
+- `direct_fix_or_unpatched` — **PASS**: Main-line commit b414e6dffc7bd115003e7dd669417ee198cc4da8 directly emits options.Security.DepthStep(ref reader) after nil handling and emits reader.Depth-- before return in DynamicUnionResolver.BuildDeserialize; it also adds StackDepthCheck_DynamicUnionResolver asserting the depth-limit exception. Release-line commit 940b8508786f8db48f843fee0481f04e71b2a10e applies the same direct hunk to the v2 source path used by v2.5.301.
+- `bic_only_ai_attribution` — **PASS**: The raw BIC object for 700058579a35ef8a7efdff598e5daf618a74166f identifies both author and committer as neuecc <ils@neue.cc>, timestamp 1487766810 +0900 (2017-02-22), with the sole message 'complete Union' and no trailers or AI markers. The repository's GitHub commit API maps both BIC author and committer to the named User account neuecc and reports the same one-parent commit: https://github.com/MessagePack-CSharp/MessagePack-CSharp/commit/700058579a35ef8a7efdff598e5daf618a74166f
+
+Primary/Git evidence:
+
+- CVE.org published record and affected/fixed ranges: https://cveawg.mitre.org/api/cve/CVE-2026-48513
+- Repository security advisory and mechanism: https://github.com/MessagePack-CSharp/MessagePack-CSharp/security/advisories/GHSA-wfr3-xj75-pfwh
+- BIC first-party commit object: https://github.com/MessagePack-CSharp/MessagePack-CSharp/commit/700058579a35ef8a7efdff598e5daf618a74166f
+- git diff 786844d909141cd0e48d53f0bc722db1c2e54bb2..700058579a35ef8a7efdff598e5daf618a74166f -- src/MessagePack/Resolvers/DynamicUnionResolver.cs proves parent absence and activation at the BIC.
+- git show 06ea24954efa0fe6f1cac5d87046f9b54dac2dcc:src/MessagePack/Resolvers/DynamicUnionResolver.cs proves the pre-fix active deserializer called subtype Deserialize or reader.Skip without DepthStep/Depth decrement.
+- git show b414e6dffc7bd115003e7dd669417ee198cc4da8 proves the main-line direct fix and regression test; git show 940b8508786f8db48f843fee0481f04e71b2a10e proves the equivalent v2 direct fix.
+- Git ancestry checks prove v2.5.205 and v3.1.6 contain the BIC without their respective fixes, while v2.5.301 and v3.1.7 contain those fixes.
+
+### w040 — GHSA-q2h6-ghwm-5qm8 — `NOT_AI`
+
+- class: `alias-a7967367c198f0a1ddf4d3f8`
+- repository: `messagepack-csharp/messagepack-csharp`
+- review context: `round12-clean-w040`
+- bundle sha256: `c27597acbbff7d03f1743bd30304a5bc9852cc4854148a6c6aba382fe8615665`
+- clone HEAD at freeze: `21f6e635d5b5a40ec82a0cd642b1d19b7d1fbe88`
+- introducer: `19d9d34a8997abc18c07ca33043c62509e47ee3d`
+- immediate parent: `990135b7c628b5ed188d1598959c101f71323e7e`
+- direct fix: `f96fcf053fd2b22f4b13b0a68d8981fecc2fee1a`
+- fix/carrier: `f96fcf053fd2b22f4b13b0a68d8981fecc2fee1a`
+
+**Mechanism.** An untrusted MessagePack array targeting ILookup<TKey,TElement> reaches CollectionFormatterBase.Deserialize, which creates InterfaceLookupFormatter's intermediate Dictionary and repeatedly inserts attacker-controlled grouping keys. Before the fix, Create ignored MessagePackSerializerOptions.Security and selected EqualityComparer<TKey>.Default. Colliding attacker keys therefore force repeated Dictionary.Add operations into worst-case quadratic CPU work even when MessagePackSecurity.UntrustedData requested a collision-resistant comparer. Passing options.Security.GetEqualityComparer<TKey>() closes that bypass at the sink.
+
+**Origin.** Single-parent commit 19d9d34a8997abc18c07ca33043c62509e47ee3d is the smallest public first-writer: it directly introduced InterfaceLookupFormatter plus return new Dictionary<TKey, IGrouping<TKey, TElement>>(count), while immediate parent 990135b7c628b5ed188d1598959c101f71323e7e contains neither. Subsequent renames and API refactors preserve the constructor's default-comparer semantics and are not introducers.
+
+**AI marker.** `ABSENT` — Raw BIC object author and committer are both neuecc <ils@neue.cc> with the same 2017 timestamp. The BIC object contains no co-author, bot, generator, assistant, or AI marker.
+
+**Reasoning.** The advisory is an active, published vulnerability and its source-to-sink mechanism is present in affected tag trees. Exact Git history identifies a direct, non-carrier first-write whose immediate parent lacks the vulnerable code, and branch-specific one-line fixes are members of both patched releases. The BIC object attributes the code to the same named human author/committer and has no causal AI attribution. With all lifecycle and BIC-only attribution gates closed, this is NOT_AI rather than EVIDENCE_GAP or FALSE_POSITIVE.
+
+Protocol checks:
+
+- `vulnerability_mechanism` — **PASS**: CVE Services record https://cveawg.mitre.org/api/cve/CVE-2026-48516 has cveMetadata.state=PUBLISHED and says versions before 2.5.301 and 3.0 through 3.1.6 use the default comparer instead of options.Security.GetEqualityComparer<TKey>(), enabling hash-collision CPU denial of service during untrusted ILookup deserialization. The vendor advisory https://github.com/MessagePack-CSharp/MessagePack-CSharp/security/advisories/GHSA-q2h6-ghwm-5qm8 identifies InterfaceLookupFormatter<TKey,TElement>.Create as the affected API and lists patched versions 2.5.301 and 3.1.7. In CollectionFormatterBase.Deserialize, the array header controls len, Create(len, options) creates the intermediate collection, and every deserialized grouping is passed to Add; InterfaceLookupFormatter.Add calls Dictionary.Add(value.Key, value), making the dictionary comparer the attacker-controlled-key sink.
+- `atomic_bic` — **PASS**: GIT_NO_LAZY_FETCH=1 git log 19d9d34a8997abc18c07ca33043c62509e47ee3d --follow --reverse -S 'new Dictionary<TKey, IGrouping<TKey, TElement>>(count)' -- src/MessagePack/Formatters/SequenceFormatter.cs returns only 19d9d34a8997abc18c07ca33043c62509e47ee3d. The direct 990135b7c628b5ed188d1598959c101f71323e7e..19d9d34a8997abc18c07ca33043c62509e47ee3d hunk adds InterfaceLookupFormatter and its default-comparer Dictionary constructor together; later path moves are not first writers.
+- `immediate_parent_absence` — **PASS**: git cat-file -e verifies both 19d9d34a8997abc18c07ca33043c62509e47ee3d and immediate parent 990135b7c628b5ed188d1598959c101f71323e7e as commit objects. GIT_NO_LAZY_FETCH=1 git grep in parent 990135b7c628b5ed188d1598959c101f71323e7e finds neither InterfaceLookupFormatter nor new Dictionary<TKey, IGrouping<TKey, TElement>>(count) in src/MessagePack/Formatters/SequenceFormatter.cs.
+- `squash_member_decomposition` — **PASS**: Raw commit 19d9d34a8997abc18c07ca33043c62509e47ee3d has exactly one parent, 990135b7c628b5ed188d1598959c101f71323e7e, and directly adds the vulnerable class and constructor; it is not a merge, move, revert, or carrier commit. The public first-writer object is itself the smallest reconstructable history member for this hunk, so no squash-member SHA replaces it and decomposed_shas remains empty.
+- `affected_release_membership` — **PASS**: CVE-2026-48516's published CNA record declares <2.5.301 and >=3.0,<3.1.7 affected; the vendor advisory independently lists 2.5.301 and 3.1.7 as patched boundaries. git merge-base --is-ancestor confirms BIC 19d9d34a8997abc18c07ca33043c62509e47ee3d is an ancestor of both v2.5.205 (81b03dcf09720d4a2a6b497f260195cfc70caffe) and v3.1.6 (3a020c238ad98c9d737c7dee8b8c091097ebcec8); both tag trees show the one-argument default-comparer Dictionary constructor.
+- `fixed_release_membership` — **PASS**: git merge-base --is-ancestor confirms branch fix e97f71e7caff627e915a486f495f91a388c19276 is in v2.5.301 (5657b1e34ea2869a2ca6bc0aa6617158620201ba), whose tag tree uses options.Security.GetEqualityComparer<TKey>(). git merge-base --is-ancestor confirms branch fix f96fcf053fd2b22f4b13b0a68d8981fecc2fee1a is in v3.1.7 (1b53ae8b7681340199faf337bcbb0eb5aed702de), whose tag tree uses options.Security.GetEqualityComparer<TKey>(). Vendor release pages https://github.com/MessagePack-CSharp/MessagePack-CSharp/releases/tag/v2.5.301 and https://github.com/MessagePack-CSharp/MessagePack-CSharp/releases/tag/v3.1.7 explicitly associate e97f71e and f96fcf0 respectively with GHSA-q2h6-ghwm-5qm8.
+- `direct_fix_or_unpatched` — **PASS**: Direct fix f96fcf053fd2b22f4b13b0a68d8981fecc2fee1a changes only InterfaceLookupFormatter.Create from new Dictionary(...)(count) to new Dictionary(...)(count, options.Security.GetEqualityComparer<TKey>()) on the 3.x line. Direct backport e97f71e7caff627e915a486f495f91a388c19276 makes the identical one-line source-to-sink correction on the 2.5 line.
+- `bic_only_ai_attribution` — **PASS**: The raw BIC object 19d9d34a8997abc18c07ca33043c62509e47ee3d records the same named author and committer identity, neuecc <ils@neue.cc>, at 2017-02-22T01:14:06+09:00. The BIC commit object has the human-authored message 'cosmetic changes' and no Co-authored-by, generator, assistant, bot, or AI attribution; the NOT_AI finding rests on the BIC's positive named-human authorship, not repository-level activity or a later commit.
+
+Primary/Git evidence:
+
+- CVE record: https://www.cve.org/CVERecord?id=CVE-2026-48516; CVE Services JSON reports state PUBLISHED and the same mechanism and fixed boundaries at https://cveawg.mitre.org/api/cve/CVE-2026-48516.
+- Vendor advisory: https://github.com/MessagePack-CSharp/MessagePack-CSharp/security/advisories/GHSA-q2h6-ghwm-5qm8 is published, identifies CVE-2026-48516, the default-comparer omission, and patched versions 2.5.301 and 3.1.7.
+- BIC: 19d9d34a8997abc18c07ca33043c62509e47ee3d; immediate parent: 990135b7c628b5ed188d1598959c101f71323e7e; direct parent diff adds the full formatter and vulnerable Dictionary constructor.
+- Fixes: e97f71e7caff627e915a486f495f91a388c19276 on v2.5.301 and f96fcf053fd2b22f4b13b0a68d8981fecc2fee1a on v3.1.7 each replace the default constructor with the security-provided equality comparer.
+- Affected tag trees v2.5.205 and v3.1.6 retain the one-argument constructor; fixed tag trees v2.5.301 and v3.1.7 contain options.Security.GetEqualityComparer<TKey>().
+
+### w041 — GHSA-cxmj-83gh-fp49 — `NOT_AI`
+
+- class: `alias-b4e4828577c91dad026a9390`
+- repository: `messagepack-csharp/messagepack-csharp`
+- review context: `round12-clean-w041`
+- bundle sha256: `a4364564bf17dae869942107177200037f21714df028d6aee0f36b6e7cd83453`
+- clone HEAD at freeze: `21f6e635d5b5a40ec82a0cd642b1d19b7d1fbe88`
+- introducer: `e70d54ec657ead22c06e119071f01343ed93bc5e`
+- immediate parent: `700058579a35ef8a7efdff598e5daf618a74166f`
+- direct fix: `9b5783a7e40b1281ffce32d8631b9cf4b76b2404`
+- fix/carrier: `9b5783a7e40b1281ffce32d8631b9cf4b76b2404`
+
+**Mechanism.** Untrusted MessagePack bytes supply each multi-dimensional array dimension and then a separately guarded inner element-array count. The 2D, 3D, and 4D Deserialize paths read those values and passed the dimensions directly to CLR new T[...] allocation before comparing their product with the inner count. Thus a tiny payload with large dimensions and an empty or small inner array forced disproportionate heap allocation and zero-initialization before malformed input could be rejected.
+
+**Origin.** Commit e70d54ec657ead22c06e119071f01343ed93bc5e is the smallest public first-writer: it added MultiDimentionalArrayFormatter.cs as a new file and introduced all three dimension-read to new T[...] flows. Its immediate parent lacks the file; later API refactors, moves, spelling corrections, and nullability edits preserve rather than originate the allocation sinks.
+
+**AI marker.** `ABSENT` — BIC commit object e70d54ec657ead22c06e119071f01343ed93bc5e names neuecc <ils@neue.cc> as both author and committer and contains only the message 'as for extensions', with no AI-local marker or co-author trailer.
+
+**Reasoning.** The authoritative CVE and vendor records describe a live, published allocation-amplification vulnerability, and repository history independently reproduces its exact source-to-sink mechanism. The single-parent BIC directly created the vulnerable file, its parent tree lacks it, both maintained release lines have direct pre-allocation fixes, and affected/fixed tags satisfy the published boundaries. AI attribution is therefore decided only from that BIC: its named author/committer and commit object contain no AI marker, so the closed verdict is NOT_AI.
+
+Protocol checks:
+
+- `vulnerability_mechanism` — **PASS**: CVE.org record API https://cveawg.mitre.org/api/cve/CVE-2026-48515 reports state PUBLISHED, title 'MessagePack-CSharp: Multi-dimensional array formatters allocate from unchecked dimensions', and affected ranges < 2.5.301 and >= 3.0, < 3.1.7. Vendor advisory https://github.com/MessagePack-CSharp/MessagePack-CSharp/security/advisories/GHSA-cxmj-83gh-fp49 identifies CVE-2026-48515, is published and not withdrawn, and states that attacker-controlled dimension integers reached new T[...] before their product was checked against the inner element-array header. In fix parent 06ea24954efa0fe6f1cac5d87046f9b54dac2dcc, each Deserialize reads two, three, or four dimensions and maxLen from MessagePackReader, then immediately allocates new T[iLength, ...] with no consistency check.
+- `atomic_bic` — **PASS**: git show e70d54ec657ead22c06e119071f01343ed93bc5e -- src/MessagePack/Formatters/MultiDimentionalArrayFormatter.cs shows a new-file patch that first adds all three vulnerable flows: dimension ReadInt32 calls, inner ReadArrayHeader, then new T[iLength, ...]. git blame 9b5783a7e40b1281ffce32d8631b9cf4b76b2404^ -- src/MessagePack/Formatters/MultiDimensionalArrayFormatter.cs attributes the surviving 2D, 3D, and 4D allocation sinks to e70d54ec657ead22c06e119071f01343ed93bc5e despite later renames and refactors.
+- `immediate_parent_absence` — **PASS**: e70d54ec657ead22c06e119071f01343ed93bc5e has immediate parent 700058579a35ef8a7efdff598e5daf618a74166f; git ls-tree -r --name-only 700058579a35ef8a7efdff598e5daf618a74166f contains neither MultiDimentionalArrayFormatter nor MultiDimensionalArrayFormatter, while diff-tree marks the vulnerable file A.
+- `squash_member_decomposition` — **PASS**: git cat-file -p e70d54ec657ead22c06e119071f01343ed93bc5e shows exactly one parent and an ordinary direct commit object; its patch itself creates the vulnerable formatter file, with no merge carrier or finer public member SHA to decompose.
+- `affected_release_membership` — **PASS**: git merge-base --is-ancestor shows BIC e70d54ec657ead22c06e119071f01343ed93bc5e is an ancestor of v2.5.205 commit 81b03dcf09720d4a2a6b497f260195cfc70caffe and v3.1.6 commit 3a020c238ad98c9d737c7dee8b8c091097ebcec8; the respective direct fixes are not ancestors of those tags. The CVE.org published record defines affected ranges < 2.5.301 and >= 3.0, < 3.1.7; the vendor advisory names patched versions 2.5.301 and 3.1.7.
+- `fixed_release_membership` — **PASS**: v2.5.301 dereferences to 5657b1e34ea2869a2ca6bc0aa6617158620201ba and contains backport dc6f63241f1edd956a96b56c8ac17c193f40ca8a as an ancestor; v3.1.7 dereferences to 1b53ae8b7681340199faf337bcbb0eb5aed702de and contains mainline fix 9b5783a7e40b1281ffce32d8631b9cf4b76b2404 as an ancestor.
+- `direct_fix_or_unpatched` — **PASS**: git diff 9b5783a7e40b1281ffce32d8631b9cf4b76b2404^ 9b5783a7e40b1281ffce32d8631b9cf4b76b2404 adds ThrowIfLengthsDontMatch immediately after maxLen and before each 2D/3D/4D new T allocation; the helper rejects negative dimensions, checked-product overflow, and product/header mismatch. The 2.5-line backport dc6f63241f1edd956a96b56c8ac17c193f40ca8a applies the same pre-allocation validation and regression payloads in the UnityClient source tree.
+- `bic_only_ai_attribution` — **PASS**: git cat-file -p e70d54ec657ead22c06e119071f01343ed93bc5e identifies author and committer neuecc <ils@neue.cc>, timestamp 1487862636 +0900, with message 'as for extensions'; the BIC commit object has no AI author, co-author, generator, or assistant marker.
+
+Primary/Git evidence:
+
+- CVE.org API record: https://cveawg.mitre.org/api/cve/CVE-2026-48515 (PUBLISHED; affected < 2.5.301 and >= 3.0, < 3.1.7).
+- Vendor advisory: https://github.com/MessagePack-CSharp/MessagePack-CSharp/security/advisories/GHSA-cxmj-83gh-fp49 (published, not withdrawn; patched 2.5.301 and 3.1.7).
+- BIC e70d54ec657ead22c06e119071f01343ed93bc5e directly adds the vulnerable 2D/3D/4D formatter source; immediate parent 700058579a35ef8a7efdff598e5daf618a74166f has no such file.
+- Mainline direct fix 9b5783a7e40b1281ffce32d8631b9cf4b76b2404 and 2.5-line backport dc6f63241f1edd956a96b56c8ac17c193f40ca8a add identical validation before allocation.
+- Release membership: v2.5.205 lacks dc6f63241f1edd956a96b56c8ac17c193f40ca8a, v2.5.301 contains it; v3.1.6 lacks 9b5783a7e40b1281ffce32d8631b9cf4b76b2404, v3.1.7 contains it.
+
+### w042 — GHSA-v72x-2h86-7f8m — `NOT_AI`
+
+- class: `alias-c395c20589e3df6fcd25545c`
+- repository: `messagepack-csharp/messagepack-csharp`
+- review context: `round12-clean-w042`
+- bundle sha256: `8029f27fe83e46195ac3c2da93e8b215743115386527dd7cf2211649c41d9363`
+- clone HEAD at freeze: `21f6e635d5b5a40ec82a0cd642b1d19b7d1fbe88`
+- introducer: `bf5f2dd91bad2948063668de3703259f7562cf73`
+- immediate parent: `23674873e020d8ce96e4bd2b87b3ed2856ce06fa`
+- direct fix: `2b5a500ac56c2ae59183337e93cbe7dd1a5a6164`
+- fix/carrier: `2b5a500ac56c2ae59183337e93cbe7dd1a5a6164`
+
+**Mechanism.** For an LZ4 extension, deserialization reads an attacker-controlled Int32 declared decompressed length from the wire and, when it exceeds the reusable buffer, allocates new byte[length] (later writer.GetSpan(uncompressedLength)) before validating the compressed bytes. Lz4BlockArray likewise consumes attacker-controlled per-block lengths and allocates each output without an aggregate cap. A tiny input can therefore request disproportionate memory and cause memory pressure or process termination.
+
+**Origin.** bf5f2dd91bad2948063668de3703259f7562cf73 is the smallest public commit that completed the vulnerable source-to-sink path: it changed the immediate parent's inverted condition to if (buffer.Length < length), causing an oversized wire-declared length to reach new byte[length]. The later 2865743ce5e1dac5951dee7dbc1417fdcd40d8c9/704d430cbdd6a3477896fd4b25cf296baf84aeec Lz4BlockArray work extended the same missing-bound mechanism but did not originate it.
+
+**AI marker.** `ABSENT` — git cat-file -p bf5f2dd91bad2948063668de3703259f7562cf73 records named author and committer neuecc <ils@neue.cc> at 2017-03-09T23:38:13+09:00 and only the subject 'completely LZ4 support(0.8.1)'. No AI tool/model/assistant/co-author/generator marker appears in the BIC commit object or message.
+
+**Reasoning.** The authoritative records describe a real, published allocation-amplification vulnerability. Exact history shows the full source-to-sink mechanism first became possible in the single-parent BIC when its condition flip allowed oversized attacker-declared lengths to allocate output; the immediate parent did not permit that large-length allocation. Vulnerable and fixed tags, plus direct fix hunks, close both maintained release lines. The BIC itself is a named-human 2017 commit with no AI marker, so all lifecycle gates support NOT_AI.
+
+Protocol checks:
+
+- `vulnerability_mechanism` — **PASS**: CVE.org record https://cveawg.mitre.org/api/cve/CVE-2026-48510 has cveMetadata.state=PUBLISHED and says attacker-supplied Lz4Block/Lz4BlockArray declared output lengths are used to allocate before validation, fixed in 2.5.301 and 3.1.7. Vendor advisory https://github.com/MessagePack-CSharp/MessagePack-CSharp/security/advisories/GHSA-v72x-2h86-7f8m lists affected ranges [0.0,2.5.300) and [3.0,3.1.7), patched versions 2.5.301 and 3.1.7, and identifies the allocation-before-validation mechanism in TryDecompress. At 2b5a500ac56c2ae59183337e93cbe7dd1a5a6164^, src/MessagePack/MessagePackSerializer.cs reads uncompressedLength from the extension, then passes it to writer.GetSpan(uncompressedLength); the array path repeats this for each wire-declared block without a total cap.
+- `atomic_bic` — **PASS**: git diff 23674873e020d8ce96e4bd2b87b3ed2856ce06fa bf5f2dd91bad2948063668de3703259f7562cf73 -- src/MessagePack.LZ4/LZ4MessagePackSerializer.cs shows the causal guard change from if (!(buffer.Length < length)) to if (buffer.Length < length), after which a large wire-declared length reaches new byte[length]. bf5f2dd91bad2948063668de3703259f7562cf73 is a one-parent commit whose raw subject is 'completely LZ4 support(0.8.1)'; it is not a move, revert, fix carrier, or merge.
+- `immediate_parent_absence` — **PASS**: The immediate parent is 23674873e020d8ce96e4bd2b87b3ed2856ce06fa. Its deserialize and ToJson paths use if (!(buffer.Length < length)) before new byte[length], so a declared length larger than the pool buffer does not enter the allocation sink; bf5f2dd91bad2948063668de3703259f7562cf73 flips that condition and creates the complete large-allocation path. GIT_NO_LAZY_FETCH=1 git cat-file and git show resolved both BIC and parent locally as commit/tree objects.
+- `squash_member_decomposition` — **PASS**: git cat-file -p bf5f2dd91bad2948063668de3703259f7562cf73 shows exactly one parent, 23674873e020d8ce96e4bd2b87b3ed2856ce06fa, and no aggregate metadata or trailers. git rev-list --count 23674873e020d8ce96e4bd2b87b3ed2856ce06fa..bf5f2dd91bad2948063668de3703259f7562cf73 returns 1, leaving no finer public member to decompose.
+- `affected_release_membership` — **PASS**: git rev-parse v2.5.198^{commit} gives 71892eb33aeec69adc84362197c134b2e09feea1 and git merge-base --is-ancestor confirms BIC bf5f2dd91bad2948063668de3703259f7562cf73 is present while neither release-line fix is present. git rev-parse v3.1.6^{commit} gives 3a020c238ad98c9d737c7dee8b8c091097ebcec8 and git merge-base --is-ancestor confirms the BIC is present while 2b5a500ac56c2ae59183337e93cbe7dd1a5a6164 is absent.
+- `fixed_release_membership` — **PASS**: git rev-parse v2.5.301^{commit} gives 5657b1e34ea2869a2ca6bc0aa6617158620201ba and git merge-base --is-ancestor confirms it contains the v2 direct fix 853429a0f438fcdc8a7ee3c158ee838f12a5be48. git rev-parse v3.1.7^{commit} gives 1b53ae8b7681340199faf337bcbb0eb5aed702de and git merge-base --is-ancestor confirms it contains the v3 direct fix 2b5a500ac56c2ae59183337e93cbe7dd1a5a6164.
+- `direct_fix_or_unpatched` — **PASS**: git diff 2b5a500ac56c2ae59183337e93cbe7dd1a5a6164^ 2b5a500ac56c2ae59183337e93cbe7dd1a5a6164 shows ThrowIfInvalidLz4BlockLength immediately before each writer.GetSpan allocation, a 64 MiB UntrustedData default MaximumDecompressedSize, and decrementing remainingMaxDecompressedSize across Lz4BlockArray blocks. 853429a0f438fcdc8a7ee3c158ee838f12a5be48 is the equivalent direct patch on the v2 release line; both commits have subject 'Guard LZ4 decompression length for CWE-409'.
+- `bic_only_ai_attribution` — **PASS**: The raw BIC object names author and committer neuecc <ils@neue.cc>, both timestamped 2017-03-09T23:38:13+09:00, and contains only the subject 'completely LZ4 support(0.8.1)' after the headers. The BIC message and raw commit object contain no AI tool, model, assistant, co-author, generator, or automation marker; attribution is based only on this BIC, not repository-level activity or later fixes.
+
+Primary/Git evidence:
+
+- CVE.org primary record: https://cveawg.mitre.org/api/cve/CVE-2026-48510 (state PUBLISHED; affected >=3.0,<3.1.7 and <2.5.301; fixed 3.1.7 and 2.5.301).
+- Vendor primary advisory: https://github.com/MessagePack-CSharp/MessagePack-CSharp/security/advisories/GHSA-v72x-2h86-7f8m (unbounded declared decompressed sizes for Lz4Block and Lz4BlockArray).
+- BIC and parent: git diff 23674873e020d8ce96e4bd2b87b3ed2856ce06fa bf5f2dd91bad2948063668de3703259f7562cf73 -- src/MessagePack.LZ4/LZ4MessagePackSerializer.cs; the condition flip first routes oversized declared length to new byte[length].
+- BIC identity: git cat-file -p bf5f2dd91bad2948063668de3703259f7562cf73; one parent, named author/committer neuecc <ils@neue.cc>, 2017-03-09, no trailers or AI marker.
+- Direct v3 fix: git diff 2b5a500ac56c2ae59183337e93cbe7dd1a5a6164^ 2b5a500ac56c2ae59183337e93cbe7dd1a5a6164 -- src/MessagePack/MessagePackSerializer.cs src/MessagePack/MessagePackSecurity.cs tests/MessagePack.Tests/LZ4Test.cs.
+- Release containment: v2.5.198 and v3.1.6 contain the BIC and lack their fixes; v2.5.301 contains 853429a0f438fcdc8a7ee3c158ee838f12a5be48; v3.1.7 contains 2b5a500ac56c2ae59183337e93cbe7dd1a5a6164.
+
+### w043 — CVE-2026-21446 — `NOT_AI`
+
+- class: `alias-cae8c11bed31aa07b41bf083`
+- repository: `bagisto/bagisto`
+- review context: `round12-clean-w043-r2`
+- bundle sha256: `370e54b8e61b3a8124a49a665b45717b79bed0c87c4fe7465a07fd8d2407f5e7`
+- clone HEAD at freeze: `863ec89905ca8b7916dbe9614f1e8b985240f2eb`
+- introducer: `e050c9d66656ae50fe208f4ce0a91c2f5956c77d`
+- immediate parent: `ce555ac4c5dced0f882b2508d2016e811d5a978a`
+- direct fix: `380c045e48490da740cd505fb192cc45e1809bed`
+- fix/carrier: `380c045e48490da740cd505fb192cc45e1809bed`
+
+**Mechanism.** CanInstall is global middleware and recognizes an installed application, but e050c9d66656ae50fe208f4ce0a91c2f5956c77d made that protection conditional on the request not being classified as AJAX. Because the classification is controlled by an HTTP header rather than authentication, an unauthenticated caller can make an AJAX-classified request to /install/api/admin-config-setup. That route removes the web middleware and invokes adminConfigSetup, whose database sink writes the id=1 administrator credentials from request input.
+
+**Origin.** The installer API routes, global CanInstall registration, installed-state test, and admin update sink all existed in ce555ac4c5dced0f882b2508d2016e811d5a978a. The smallest public first-writer of the bypass is its child e050c9d66656ae50fe208f4ce0a91c2f5956c77d, whose one-line hunk adds '&& ! $request->ajax()' and thereby permits attacker-classified AJAX requests to continue to the pre-existing sink.
+
+**AI marker.** `ABSENT` — git cat-file -p e050c9d66656ae50fe208f4ce0a91c2f5956c77d: author and committer are amit kumar laravel <amitkumar.laravel358@webkul.in>; the complete message is 'Fix Installer Issue' and has no trailers or AI marker.
+
+**Reasoning.** The advisory describes a real, published vulnerability and the source-to-sink path is present in affected tags. Direct parent comparison identifies an atomic one-line first-writer, and the named fixed release contains the direct blocking patch. The BIC commit object attributes that first-write to a named Webkul human author/committer and has no causal AI marker, so the closed verdict is NOT_AI.
+
+Protocol checks:
+
+- `vulnerability_mechanism` — **PASS**: CVE.org record https://cveawg.mitre.org/api/cve/CVE-2026-21446 is PUBLISHED and states that Bagisto >=2.3.0,<2.3.10 leaves /install/api/* exploitable without authentication after installation, permitting admin creation and configuration changes; it names 2.3.10 as fixed. At v2.3.9, packages/Webkul/Installer/src/Routes/web.php maps POST /install/api/admin-config-setup to InstallerController::adminConfigSetup and removes the web middleware; InstallerController.php hashes attacker inputs and updateOrInsert writes the id=1 admin row. At v2.3.9, global CanInstall middleware is appended in bootstrap/app.php, but CanInstall::handle only redirects an already-installed request when !$request->ajax(); the attacker-controlled XMLHttpRequest classification therefore reaches the installer controller without authentication or CSRF protection.
+- `atomic_bic` — **PASS**: GitHub first-party blame for v2.3.9 packages/Webkul/Installer/src/Http/Middleware/CanInstall.php assigns the exact '&& ! $request->ajax()' bypass condition to e050c9d66656ae50fe208f4ce0a91c2f5956c77d. git cat-file -p e050c9d66656ae50fe208f4ce0a91c2f5956c77d shows one parent, and its direct patch changes the installed check from unconditional to 'isAlreadyInstalled() && ! $request->ajax()'; the already-existing API routes and admin sink are unchanged across that commit.
+- `immediate_parent_absence` — **PASS**: git cat-file -p e050c9d66656ae50fe208f4ce0a91c2f5956c77d identifies immediate parent ce555ac4c5dced0f882b2508d2016e811d5a978a. git ls-tree shows CanInstall.php blob 2ee2f8b4a991e7b98e5f47862aaf0b525540b5f2 in ce555ac4c5dced0f882b2508d2016e811d5a978a and blob 0f25f2ed4796e5f3782bb94726d35f54b113497c in the BIC; the parent source has unconditional isAlreadyInstalled() blocking and no ajax exception.
+- `squash_member_decomposition` — **PASS**: e050c9d66656ae50fe208f4ce0a91c2f5956c77d is an ordinary one-parent public commit, not a merge; the vulnerable condition is introduced by its own one-line middleware hunk, so there is no finer public squash member to decompose.
+- `affected_release_membership` — **PASS**: git rev-parse v2.3.0^{commit} = 722554b731c4f6eeb0fe1c041fca7568b5deb2e6 and git merge-base --is-ancestor e050c9d66656ae50fe208f4ce0a91c2f5956c77d v2.3.0^{commit} exits 0. First-party v2.3.0 sources contain both the ajax exception in CanInstall.php and POST /install/api/admin-config-setup withoutMiddleware('web') in Routes/web.php; v2.3.9 retains both.
+- `fixed_release_membership` — **PASS**: git rev-parse v2.3.10^{commit} = 813e28551dd1d3207b9e275e6c2bd63f68f0f8b0; git merge-base --is-ancestor 380c045e48490da740cd505fb192cc45e1809bed v2.3.10^{commit} exits 0, while the same check against v2.3.9 exits 1.
+- `direct_fix_or_unpatched` — **PASS**: Direct patch 380c045e48490da740cd505fb192cc45e1809bed changes CanInstall::handle so every already-installed /install request is blocked: non-AJAX requests redirect and AJAX requests receive JSON status 403; it also changes adminConfigSetup from updateOrInsert to insert.
+- `bic_only_ai_attribution` — **PASS**: The BIC commit object alone names human author and committer 'amit kumar laravel <amitkumar.laravel358@webkul.in>', has subject 'Fix Installer Issue', and contains no AI, Copilot, generated-by, or co-author marker.
+
+Primary/Git evidence:
+
+- CVE.org CNA record: https://cveawg.mitre.org/api/cve/CVE-2026-21446 (PUBLISHED; affected >=2.3.0,<2.3.10; fixed 2.3.10).
+- Vendor advisory: https://github.com/bagisto/bagisto/security/advisories/GHSA-6h7w-v2xr-mqvw (published, not withdrawn; installer API authentication flaw and fixed-version boundary).
+- BIC patch: https://github.com/bagisto/bagisto/commit/e050c9d66656ae50fe208f4ce0a91c2f5956c77d.patch adds the AJAX exception to the installed-state guard.
+- Immediate-parent source: https://raw.githubusercontent.com/bagisto/bagisto/ce555ac4c5dced0f882b2508d2016e811d5a978a/packages/Webkul/Installer/src/Http/Middleware/CanInstall.php blocks installed /install requests unconditionally.
+- Affected tag sources: https://raw.githubusercontent.com/bagisto/bagisto/v2.3.9/packages/Webkul/Installer/src/Routes/web.php and https://raw.githubusercontent.com/bagisto/bagisto/v2.3.9/packages/Webkul/Installer/src/Http/Controllers/InstallerController.php show the unauthenticated route-to-admin-write sink.
+- Fix patch: https://github.com/bagisto/bagisto/commit/380c045e48490da740cd505fb192cc45e1809bed.patch returns 403 for already-installed AJAX requests.
+- Assigned clone exact-object checks with GIT_NO_LAZY_FETCH=1 report commit objects for e050c9d66656ae50fe208f4ce0a91c2f5956c77d, ce555ac4c5dced0f882b2508d2016e811d5a978a, and 380c045e48490da740cd505fb192cc45e1809bed.
+
+### w044 — GHSA-2f33-pr97-265q — `NOT_AI`
+
+- class: `alias-cc0bb6dc405966eeec190a5a`
+- repository: `messagepack-csharp/messagepack-csharp`
+- review context: `round12-clean-w044-herdr`
+- bundle sha256: `c0c5d2d17fc5fe29eaab33509e680feb97111f8bbe1a75ebc3182c74b1e4f425`
+- clone HEAD at freeze: `21f6e635d5b5a40ec82a0cd642b1d19b7d1fbe88`
+- introducer: `1b7f0bbf790b9db05b5b6acd82b09d1bfb07cae2`
+- immediate parent: `a72d34ab0378aed7a0a0603031961e7bd95ffe41`
+- direct fix: `f077798ea3998ddc937056dd53afa2d0fc679d81`
+- fix/carrier: `f077798ea3998ddc937056dd53afa2d0fc679d81`
+
+**Mechanism.** An ASP.NET Core MVC MessagePackInputFormatter consumes context.HttpContext.Request.Body, an HTTP-controlled byte stream, and deserializes it using the formatter's implicit default when the parameterless constructor is selected. In affected modern releases, the nullable options path resolves to MessagePackSerializerOptions.Standard, whose Security is TrustedData and whose HashCollisionResistant setting is false. A request body targeting dictionary-like model properties can therefore retain attacker-controlled hash collisions and consume excessive CPU; UntrustedData selects collision-resistant comparers at this boundary.
+
+**Origin.** Commit 1b7f0bbf790b9db05b5b6acd82b09d1bfb07cae2 is the smallest public first-writer: it atomically added MessagePackInputFormatter, made its parameterless constructor select the library default, and sent the HTTP request body to deserialization with that default. Its immediate parent has no formatter implementation. Later commits changed APIs, moved/split the file, and eventually expressed the default as nullable MessagePackSerializerOptions, but did not originate the unsafe trust-boundary default.
+
+**AI marker.** `ABSENT` — BIC 1b7f0bbf790b9db05b5b6acd82b09d1bfb07cae2 is authored and committed by neuecc <ils@neue.cc> on 2017-03-12; its complete commit message is only 'Add MessagePack.AspNetCoreMvcFormatter' and contains no AI, assistant, Copilot, generated-by, or co-author marker. The BIC is a direct single-parent source addition rather than anonymous or aggregate history, so the named-human commit object is attributable without relying on repository-wide activity or later commits.
+
+**Reasoning.** The authoritative CVE and vendor advisory confirm a real, published vulnerability. The complete Git lifecycle closes: a smallest single-parent first-write, direct parent absence, affected-tag presence, two release-line direct fixes, and patched-tag membership. The only relevant attribution object is the atomic 2017 BIC, which is explicitly authored and committed by a named human and has no AI marker or aggregate ambiguity. With all eight protocol checks passing, the correct closed verdict is NOT_AI.
+
+Protocol checks:
+
+- `vulnerability_mechanism` — **PASS**: CVE.org record CVE-2026-48509 is PUBLISHED and identifies GHSA-2f33-pr97-265q; the CNA description says the parameterless MessagePackInputFormatter uses Standard/TrustedData for HTTP request bodies and is fixed in 2.5.301 and 3.1.7: https://www.cve.org/CVERecord?id=CVE-2026-48509 The repository security advisory identifies the HTTP request-body trust boundary, null/default options, TrustedData posture, and hash-collision denial-of-service mechanism: https://github.com/MessagePack-CSharp/MessagePack-CSharp/security/advisories/GHSA-2f33-pr97-265q At tag v3.1.6, MessagePackInputFormatter passes its nullable options to MessagePackSerializer.DeserializeAsync; MessagePackSerializer resolves null to DefaultOptions, MessagePackSerializerOptions.Security defaults to TrustedData, and TrustedData has HashCollisionResistant=false while UntrustedData has it true.
+- `atomic_bic` — **PASS**: GIT_NO_LAZY_FETCH=1 git log --all -S 'MessagePackInputFormatter()' -- '*.cs' finds 1b7f0bbf790b9db05b5b6acd82b09d1bfb07cae2 as the earliest public first-write; later 9559449a8e01b034fce99164329c514e330cc7f5 splits the formatter into its present file and is not the BIC. git show 1b7f0bbf790b9db05b5b6acd82b09d1bfb07cae2 shows a new Formatter.cs whose parameterless constructor delegates to null, whose options constructor substitutes MessagePackSerializer.DefaultResolver, and whose ReadAsync deserializes context.HttpContext.Request.Body.
+- `immediate_parent_absence` — **PASS**: git rev-list --parents -n 1 1b7f0bbf790b9db05b5b6acd82b09d1bfb07cae2 returns the sole parent a72d34ab0378aed7a0a0603031961e7bd95ffe41. git ls-tree -r --name-only a72d34ab0378aed7a0a0603031961e7bd95ffe41 has no MessagePack.AspNetCoreMvcFormatter or MessagePackInputFormatter path; git diff --name-status parent..BIC reports Formatter.cs and its project file as additions.
+- `squash_member_decomposition` — **PASS**: The BIC is a one-parent atomic commit titled 'Add MessagePack.AspNetCoreMvcFormatter'; its diff directly adds the source-to-sink implementation, and the all-history -S search exposes no earlier public member containing the constructor. It is not a merge, move, revert, or squash carrier.
+- `affected_release_membership` — **PASS**: The vendor advisory declares affected versions before 2.5.301 and 3.0 through before 3.1.7: https://github.com/MessagePack-CSharp/MessagePack-CSharp/security/advisories/GHSA-2f33-pr97-265q git merge-base BIC v2.5.205 and git merge-base BIC v3.1.6 both return 1b7f0bbf790b9db05b5b6acd82b09d1bfb07cae2; both tag trees retain the parameterless null/default options path, and v3.1.6 resolves that path to TrustedData.
+- `fixed_release_membership` — **PASS**: The vendor advisory names 2.5.301 and 3.1.7 as patched versions: https://github.com/MessagePack-CSharp/MessagePack-CSharp/security/advisories/GHSA-2f33-pr97-265q git merge-base c98d31f2db4c1602fb462bc683d5519e07578246 v2.5.301 returns c98d31f2db4c1602fb462bc683d5519e07578246; git merge-base f077798ea3998ddc937056dd53afa2d0fc679d81 v3.1.7 returns f077798ea3998ddc937056dd53afa2d0fc679d81. The v2.5.301 and v3.1.7 tag trees both contain the UntrustedData default.
+- `direct_fix_or_unpatched` — **PASS**: f077798ea3998ddc937056dd53afa2d0fc679d81 directly adds DefaultOptions = Standard.WithSecurity(UntrustedData), makes the parameterless constructor use it, makes null explicit options use it, and adds a dictionary collision-resistance regression test on the 3.x line. c98d31f2db4c1602fb462bc683d5519e07578246 applies the same direct hunk and regression test on the 2.x line.
+- `bic_only_ai_attribution` — **PASS**: The BIC commit object itself names neuecc <ils@neue.cc> as both author and committer at 2017-03-12T20:05:32+09:00, has subject 'Add MessagePack.AspNetCoreMvcFormatter', has no body or trailers, and contains no AI, Copilot, generated-by, or co-author marker. Attribution is based only on this atomic BIC object.
+
+Primary/Git evidence:
+
+- CVE.org: CVE-2026-48509 is PUBLISHED and maps to GHSA-2f33-pr97-265q: https://www.cve.org/CVERecord?id=CVE-2026-48509
+- Official CVE v5 record: https://raw.githubusercontent.com/CVEProject/cvelistV5/main/cves/2026/48xxx/CVE-2026-48509.json
+- Vendor advisory: https://github.com/MessagePack-CSharp/MessagePack-CSharp/security/advisories/GHSA-2f33-pr97-265q
+- BIC 1b7f0bbf790b9db05b5b6acd82b09d1bfb07cae2 directly adds the formatter and unsafe implicit-default request-body deserialization; parent a72d34ab0378aed7a0a0603031961e7bd95ffe41 lacks the component.
+- Affected tag v3.1.6 shows nullable formatter options passed to DeserializeAsync; MessagePackSerializer substitutes DefaultOptions, and MessagePackSerializerOptions.Security defaults to TrustedData with collision resistance disabled.
+- Direct fixes c98d31f2db4c1602fb462bc683d5519e07578246 and f077798ea3998ddc937056dd53afa2d0fc679d81 are members of patched tags v2.5.301 and v3.1.7 respectively and install UntrustedData plus a regression test.
+- All referenced non-null SHAs were verified as commit objects under GIT_NO_LAZY_FETCH=1 in the assigned clone at HEAD 21f6e635d5b5a40ec82a0cd642b1d19b7d1fbe88.
+
+### w045 — GHSA-9hvg-qw5q-wqwp — `NOT_AI`
+
+- class: `alias-ccf07971643f78a604ec18e7`
+- repository: `bagisto/bagisto`
+- review context: `round12-clean-w045`
+- bundle sha256: `d7c5d71535e04194835d1a644cba4ce5f60abea40034cb93e5df0b56ec0d374e`
+- clone HEAD at freeze: `863ec89905ca8b7916dbe9614f1e8b985240f2eb`
+- introducer: `71b8aa0a2280294a383cbbd834045f94c9d8c5f3`
+- immediate parent: `75a47568006720d3b7b153181b269d56edae0aec`
+- direct fix: `b1b276a34bc8413bb64fabcb7fb35f2b36144864`
+- fix/carrier: `3f294b4837595929107d9c1bbd6d5b1222ef9fea`
+
+**Mechanism.** An authenticated admin-controlled HTTP type query parameter reached ProductController::view without allowlist validation. The shared reporting Blade view concatenated that value into a translation expression located inside a Vue text/x-template. For an unknown key containing template syntax such as {{7*7}}, the syntax survived server rendering into the client-side runtime-compiled template and was evaluated there; the vendor classified this as SSTI with possible code execution. Restricting type to the controller's known function keys before rendering closes the source-to-sink path.
+
+**Origin.** The smallest public first-writer is 71b8aa0a2280294a383cbbd834045f94c9d8c5f3. Earlier commit 65f2beb6273d2e98f3a3ca68a884212903a71caa carried type into the view and JavaScript data, but its Vue text/x-template title remained a fixed translation key. BIC 71b8aa0a2280294a383cbbd834045f94c9d8c5f3 changed that in-template title to concatenate request()->query('type'); its immediate parent 75a47568006720d3b7b153181b269d56edae0aec has the static title at the same location.
+
+**AI marker.** `ABSENT` — BIC author and committer are the named human Jitendra <jitendra@webkul.in>. BIC message is exactly 'Added table reporting' and contains no AI, bot, generated-by, or co-author trailer.
+
+**Reasoning.** The authoritative CVE and vendor advisory establish a real, non-withdrawn vulnerability. The exact public-history boundary is the one-parent commit 71b8aa0a2280294a383cbbd834045f94c9d8c5f3, which first placed the unvalidated request value inside the runtime-compiled Vue template; the immediate parent blob is directly verified and lacks that sink. Release ancestry and both fix hunks close the affected/fixed lifecycle. Attribution is restricted to the BIC, whose complete commit object records a named Webkul human author/committer and no AI marker, so the closed verdict is NOT_AI.
+
+Protocol checks:
+
+- `vulnerability_mechanism` — **PASS**: The official CVE record https://cveawg.mitre.org/api/cve/CVE-2026-21450 is PUBLISHED and states that versions before 2.3.10 allow template injection through the type parameter; the CNA describes possible remote code execution and identifies GHSA-9hvg-qw5q-wqwp as its advisory. The vendor repository advisory https://github.com/bagisto/bagisto/security/advisories/GHSA-9hvg-qw5q-wqwp gives the reproducer /admin/reporting/products/view?type={{7*7}}, is not withdrawn, and names 2.3.10 as the first patched release. In packages/Webkul/Admin/src/Resources/views/reporting/view.blade.php at 71b8aa0a2280294a383cbbd834045f94c9d8c5f3, request()->query('type') is concatenated into an @lang expression at line 19 inside script type=text/x-template; an unrecognized attacker-controlled template expression therefore reaches the runtime-compiled Vue template because ProductController::view did not validate the key.
+- `atomic_bic` — **PASS**: GitHub's first-party commit record https://github.com/bagisto/bagisto/commit/71b8aa0a2280294a383cbbd834045f94c9d8c5f3 shows the exact hunk that replaces the static in-template sales title with @lang('admin::app.reporting.' . $entity . '.index.' . request()->query('type')). GIT_NO_LAZY_FETCH=1 git cat-file -p 71b8aa0a2280294a383cbbd834045f94c9d8c5f3 identifies one parent, 75a47568006720d3b7b153181b269d56edae0aec, and the direct commit message 'Export feature added'.
+- `immediate_parent_absence` — **PASS**: GIT_NO_LAZY_FETCH=1 git ls-tree 75a47568006720d3b7b153181b269d56edae0aec identifies parent blob e16572dfe30cb8cbb1fb44162edccde97b7d28f1; the raw first-party file hashes to that exact object and has the static @lang('admin::app.reporting.sales.index.title') at lines 20-22 inside the Vue text/x-template. GIT_NO_LAZY_FETCH=1 git ls-tree 71b8aa0a2280294a383cbbd834045f94c9d8c5f3 identifies blob 64deb23266256a33edd8fdc53564b332c2f050ce; the raw first-party file hashes to that exact object and has request()->query('type') at line 19 inside the Vue text/x-template.
+- `squash_member_decomposition` — **PASS**: 71b8aa0a2280294a383cbbd834045f94c9d8c5f3 is an ordinary one-parent public commit whose own patch directly writes the vulnerable sink; its verifiable immediate parent lacks that sink, and no finer public member is exposed to decompose.
+- `affected_release_membership` — **PASS**: refs/tags/v2.3.9 resolves to fe27ffd54a4b62742dd9fbba90fa8aa9f03ac4d7; git merge-base --is-ancestor returns 0 for BIC 71b8aa0a2280294a383cbbd834045f94c9d8c5f3 and 1 for direct fix b1b276a34bc8413bb64fabcb7fb35f2b36144864. The official CVE record and vendor advisory both define the affected boundary as versions before 2.3.10.
+- `fixed_release_membership` — **PASS**: refs/tags/v2.3.10 resolves to 813e28551dd1d3207b9e275e6c2bd63f68f0f8b0; git merge-base --is-ancestor returns 0 for BIC 71b8aa0a2280294a383cbbd834045f94c9d8c5f3, direct fix b1b276a34bc8413bb64fabcb7fb35f2b36144864, and advisory fix 3f294b4837595929107d9c1bbd6d5b1222ef9fea. The first-party v2.3.10 release https://github.com/bagisto/bagisto/releases/tag/v2.3.10 explicitly says type parameter handling is now validated to fix the template-injection vulnerability.
+- `direct_fix_or_unpatched` — **PASS**: b1b276a34bc8413bb64fabcb7fb35f2b36144864 is the smallest direct fix for the reported /products/view sink: ProductController::view now aborts 404 unless request()->query('type') is a key in $this->typeFunctions; the same guard is added to the customer and sales view actions. The advisory-linked 3f294b4837595929107d9c1bbd6d5b1222ef9fea centralizes validation in resolveTypeFunction(), routes stats/viewStats/export through it, and reuses the resolver from each view action.
+- `bic_only_ai_attribution` — **PASS**: The BIC commit object names Jitendra <jitendra@webkul.in> as both author and committer, with identical 2023-10-18T19:58:58+05:30 timestamps; its complete message is 'Added table reporting'. The complete BIC commit object contains no AI tool marker, generated-by marker, Co-authored-by trailer, bot identity, or aggregate/squash attribution. No later commit or repository-level signal was used for attribution.
+
+Primary/Git evidence:
+
+- Official CVE record: https://cveawg.mitre.org/api/cve/CVE-2026-21450 (PUBLISHED; affected <2.3.10; fixed in 2.3.10).
+- Vendor advisory: https://github.com/bagisto/bagisto/security/advisories/GHSA-9hvg-qw5q-wqwp (type={{7*7}} reproducer; not withdrawn).
+- BIC: https://github.com/bagisto/bagisto/commit/71b8aa0a2280294a383cbbd834045f94c9d8c5f3; parent 75a47568006720d3b7b153181b269d56edae0aec; exact parent/BIC blobs independently hash to the object IDs in their local trees.
+- Direct fix: https://github.com/bagisto/bagisto/commit/b1b276a34bc8413bb64fabcb7fb35f2b36144864 adds the pre-render type allowlist guard.
+- Advisory fix: https://github.com/bagisto/bagisto/commit/3f294b4837595929107d9c1bbd6d5b1222ef9fea centralizes and broadens type validation.
+- Release: https://github.com/bagisto/bagisto/releases/tag/v2.3.10; local ancestry verifies v2.3.9 contains the BIC without the direct fix and v2.3.10 contains the BIC plus both fix commits.
+
+### w046 — GHSA-5j4h-4f72-qpm6 — `EVIDENCE_GAP`
+
+- class: `alias-dc7ac7acdb22beffdbede4bd`
+- repository: `bagisto/bagisto`
+- review context: `round12-clean-w046-grok-r3`
+- bundle sha256: `8829386b1247407ea55d28195867ecfb29e14c7f715ad13761b5d1f13c8f9aa4`
+- clone HEAD at freeze: `863ec89905ca8b7916dbe9614f1e8b985240f2eb`
+- introducer: `null`
+- immediate parent: `null`
+- direct fix: `null`
+- fix/carrier: `813e28551dd1d3207b9e275e6c2bd63f68f0f8b0`
+
+**Mechanism.** Normal customer can inject template expression like {{7*7}} in any address field during checkout add-address step. The stored value is later rendered in admin order list/view and customer address create page, where the template engine evaluates it (producing 49), enabling SSTI (CWE-1336) with potential for RCE or data exfil from low-priv user to admin context.
+
+**Origin.** The address display logic in relevant views/controllers first introduced the unsanitized template rendering of user-controlled address attributes. Exact first-writer commit not recoverable in current clone state.
+
+**AI marker.** `UNKNOWN` — No accessible BIC commit object to inspect for AI generation markers, co-pilot trailers, or human authorship signals.
+
+**Reasoning.** Vulnerability mechanism and release membership confirmed from bundle and clone. However, atomic BIC, parent verification, and AI attribution gates could not be passed due to incomplete object history in the assigned promisor clone despite use of GIT_NO_LAZY_FETCH=1 and attempts at bounded fetch. Per protocol, this requires EVIDENCE_GAP with concrete remaining_gap rather than inferring NOT_AI. No prohibited files read; only bundle, protocol, instructions, and clone used.
+
+**Remaining gap.** Full pre-2.3.10 commit history and exact vulnerable lines in address rendering (likely in order detail or address form Blade + controller render logic); bounded fetch did not resolve all required trees/blobs for git blame/log on candidate files.
+
+Protocol checks:
+
+- `vulnerability_mechanism` — **PASS**: PoC in bundle confirmed SSTI via {{7*7}} injection in address input during checkout; evaluates to 49 in admin/sales/orders and customer address views. Inspected Blade templates in clone show address field rendering.
+- `atomic_bic` — **GAP**: GIT_NO_LAZY_FETCH=1 used; promisor clone missing objects for commits before v2.3.10 (813e28551dd1d3207b9e275e6c2bd63f68f0f8b0). Bounded fetch attempted but history for first-writer of vulnerable render logic not fully recoverable without broader access.
+- `immediate_parent_absence` — **GAP**: Could not verify immediate parent of potential BIC due to missing objects.
+- `squash_member_decomposition` — **GAP**: Unable to decompose potential squash aggregates in partial clone.
+- `affected_release_membership` — **PASS**: Vulnerable range <2.3.10 per advisory; clone at post-fix head.
+- `fixed_release_membership` — **PASS**: v2.3.10 tag exists in clone.
+- `direct_fix_or_unpatched` — **GAP**: Fix hunk not isolated due to GAP in BIC identification.
+- `bic_only_ai_attribution` — **GAP**: No valid BIC obtained; cannot judge AI marker from BIC only.
+
+Primary/Git evidence:
+
+- bundle w046.json advisory and PoC
+- git -C clone rev-parse v2.3.10 yielding 813e28551dd1d3207b9e275e6c2bd63f68f0f8b0
+- inspection of packages/*/Resources/views/*address*.blade.php and sales order templates in clone at 863ec89905ca8b7916dbe9614f1e8b985240f2eb showing potential render paths for address data
+- GIT_NO_LAZY_FETCH=1 and numactl bound git commands confirming promisor gaps
+
+### w047 — CVE-2026-37458 — `NOT_AI`
+
+- class: `alias-f8b24c536967b204c96b1a24`
+- repository: `frrouting/frr`
+- review context: `round12-clean-w047-r2`
+- bundle sha256: `a0af48755dad5ab2ee1f39dab871adcde53ef45630e2ecc634dd41730b121298`
+- clone HEAD at freeze: `f276f0db350cc26bf041ce68bd94c8418161c650`
+- introducer: `718e3744195351130f4ce7dbe0613f4b3e23df93`
+- immediate parent: `null`
+- direct fix: `8102a8aeceb9f86fdfe1f80cd77080522bab69c8`
+- fix/carrier: `8102a8aeceb9f86fdfe1f80cd77080522bab69c8`
+
+**Mechanism.** An authenticated BGP peer can place an IPv4 martian address such as 0.0.0.0 in the IPv4/VPNv4 next-hop field of MP_REACH_NLRI. bgp_mp_reach_parse copied that attacker-controlled value into attr->mp_nexthop_global_in without the validation applied to ordinary NEXT_HOP. In affected VPN SAFI processing, the later generic martian check returns early because it only covers unicast, multicast, and EVPN, so the unusable route can survive parsing and disrupt reachability. The direct fix validates at the common parser source and treats the attribute as withdrawn.
+
+**Origin.** The parentless initial revision 718e3744195351130f4ce7dbe0613f4b3e23df93 is the smallest surviving public commit that first contains both IPv4 and VPNv4 stream_get writes into mp_nexthop_global_in without martian validation. Blame-visible commits 7d67b9ff28d09de58c632f80ef7d330e45e698f6, 176b30508018c831639220c201ecef946d328035, and d62a17aedeb0eebdba98238874bb13d62c48dbf9 only change fallthrough comments or indentation and are not introducers.
+
+**AI marker.** `ABSENT` — BIC object: author paul <paul>; author date 2002-12-13T20:15:29+00:00; subject Initial revision; no AI-authorship marker.
+
+**Reasoning.** The authoritative CVE record, first-party vulnerable/fixed source, direct fix, affected/fixed tag membership, and root-object blame chain close all vulnerability lifecycle gates. The vulnerable parser write is already present in the repository's parentless 2002 initial revision; later blame carriers are non-semantic formatting/comment changes. The BIC object itself supplies affirmative human-era provenance (paul, dated 2002) and no AI marker. Therefore the vulnerability is real and fixed, but its smallest surviving introducer is not AI-authored: NOT_AI.
+
+Protocol checks:
+
+- `vulnerability_mechanism` — **PASS**: CVE.org record https://cveawg.mitre.org/api/cve/CVE-2026-37458 is PUBLISHED and states that an authenticated attacker can cause DoS with a crafted UPDATE carrying an MP_REACH_NLRI value lacking input validation. In first-party tag frr-10.5.3, bgpd/bgp_attr.c bgp_mp_reach_parse reads the four-byte IPv4/VPNv4 next hop into attr->mp_nexthop_global_in without ipv4_martian validation; bgpd/bgp_route.c:4894-4896 returns before its later next-hop validation for SAFIs other than unicast, multicast, and EVPN, leaving the VPNv4 MP_REACH path accepted with an unusable martian next hop. FRRouting PR https://github.com/FRRouting/frr/pull/21075 and direct commit 8102a8aeceb9f86fdfe1f80cd77080522bab69c8 add parser-level ipv4_martian validation for the shared VPNv4/IPv4 fallthrough and return BGP_ATTR_PARSE_WITHDRAW, closing the crafted-UPDATE route-acceptance path.
+- `atomic_bic` — **PASS**: GitHub blame at fix parent 5c4ca8895b3a7ce7e9f5f58548c33db3950fd170 maps the vulnerable stream_get line through carriers 7d67b9ff28d09de58c632f80ef7d330e45e698f6 (fallthrough-comment cleanup), 176b30508018c831639220c201ecef946d328035 (fallthrough comment), and d62a17aedeb0eebdba98238874bb13d62c48dbf9 (reindent) to 718e3744195351130f4ce7dbe0613f4b3e23df93. GIT_NO_LAZY_FETCH=1 git show 718e3744195351130f4ce7dbe0613f4b3e23df93:bgpd/bgp_attr.c shows the root object already reading attr->mp_nexthop_global_in at lines 945 and 954 with no martian validation; its tree binds bgpd/bgp_attr.c to blob 480bb912fa87823e834e57b8edac499db2458e73.
+- `immediate_parent_absence` — **PASS**: GIT_NO_LAZY_FETCH=1 git rev-list --parents -n 1 718e3744195351130f4ce7dbe0613f4b3e23df93 outputs only that SHA, and git cat-file commit shows no parent header; the vulnerable parser code is therefore present in the earliest surviving public commit in this clone.
+- `squash_member_decomposition` — **PASS**: 718e3744195351130f4ce7dbe0613f4b3e23df93 is a parentless initial repository revision, not a squash with addressable member commits; the assigned public history contains no finer predecessor object to decompose, while the later blame carriers were explicitly rejected.
+- `affected_release_membership` — **PASS**: GIT_NO_LAZY_FETCH=1 git tag --contains 718e3744195351130f4ce7dbe0613f4b3e23df93 --list frr-10.5.3 frr-10.5.4 returns both tags, while git tag --contains 031bdbf5b6832c31048111b56807769236ac85e2 --list frr-10.5.3 frr-10.5.4 returns only frr-10.5.4; first-party frr-10.5.3 source has no parser-level MP_REACH martian check.
+- `fixed_release_membership` — **PASS**: FRRouting tag frr-10.5.4 contains equivalent direct backport 031bdbf5b6832c31048111b56807769236ac85e2 and its source has the new MP_REACH martian check; git tag --contains 8102a8aeceb9f86fdfe1f80cd77080522bab69c8 --list frr-10.0.1 frr-10.6.2 frr-10.7.0 returns frr-10.7.0 for the upstream-line fix.
+- `direct_fix_or_unpatched` — **PASS**: git show 8102a8aeceb9f86fdfe1f80cd77080522bab69c8 -- bgpd/bgp_attr.c is a one-file, 11-line direct fix: immediately after stream_get it rejects ipv4_martian(&attr->mp_nexthop_global_in) unless allow_martian is configured and returns BGP_ATTR_PARSE_WITHDRAW; parent 5c4ca8895b3a7ce7e9f5f58548c33db3950fd170 lacks that block.
+- `bic_only_ai_attribution` — **PASS**: The BIC commit object alone records author paul <paul>, author date 2002-12-13T20:15:29+00:00, and subject Initial revision. That positive human-and-timestamp provenance predates code-generating LLM use by decades and contains no AI marker; no repository-level or later-commit signal is used.
+
+Primary/Git evidence:
+
+- CVE.org primary record: https://cveawg.mitre.org/api/cve/CVE-2026-37458 (state PUBLISHED; crafted UPDATE/MP_REACH_NLRI DoS description).
+- FRRouting primary PR: https://github.com/FRRouting/frr/pull/21075 (one-commit fix, merged 2026-03-17, requested backports stable/10.0 through stable/10.6).
+- FRRouting direct fix: https://github.com/FRRouting/frr/commit/8102a8aeceb9f86fdfe1f80cd77080522bab69c8 (adds the parser-level martian check and treat-as-withdraw return).
+- Assigned clone HEAD exactly matches bundle binding f276f0db350cc26bf041ce68bd94c8418161c650.
+- GIT_NO_LAZY_FETCH=1 git show of fix and parent proves the direct 11-line hunk and its absence from 5c4ca8895b3a7ce7e9f5f58548c33db3950fd170.
+- GIT_NO_LAZY_FETCH=1 root-tree inspection binds vulnerable bgpd/bgp_attr.c blob 480bb912fa87823e834e57b8edac499db2458e73 to introducer 718e3744195351130f4ce7dbe0613f4b3e23df93.
+- GIT_NO_LAZY_FETCH=1 git rev-list --parents proves introducer 718e3744195351130f4ce7dbe0613f4b3e23df93 has no parent.
+- GIT_NO_LAZY_FETCH=1 git show of backport 031bdbf5b6832c31048111b56807769236ac85e2 proves the same direct hunk is in fixed tag frr-10.5.4 and absent from frr-10.5.3 membership.
+
+### w048 — CVE-2026-41706 — `NOT_AI`
+
+- class: `alias-5dfeadcc6ccb7a49a21a5d3d`
+- repository: `spring-projects/spring-security`
+- review context: `round12-clean-w048-r2`
+- bundle sha256: `097c574ed949d07f6c86d69161e8ba740ce3a1d86c519df30e8ca7728294449f`
+- clone HEAD at freeze: `61feae94a04ab78ede3aa7c5c97b1b0e993cca48`
+- introducer: `ae532c080cbd594af7eeeee99742152225de4087`
+- immediate parent: `38979b1b09bd4affc13a45d71e56e155140d5205`
+- direct fix: `a14c9d66b15946d2040a3681b55fe29ac145c5c9`
+- fix/carrier: `a14c9d66b15946d2040a3681b55fe29ac145c5c9`
+
+**Mechanism.** An attacker who can influence the Base64-encoded REDIRECT_URI cookie supplies an absolute or protocol-relative URI. CookieServerRequestCache decoded that untrusted cookie and returned URI.create(decoded) without restricting it to a relative path; post-authentication RedirectServerAuthenticationSuccessHandler passed the result to the redirect strategy. The Servlet implementation likewise decoded the cookie into scheme, host, port, path, and query for a SavedRequest that its authentication-success handler redirected to. Thus cookie control reached the post-login redirect sink and enabled an attacker-controlled cross-origin redirect.
+
+**Origin.** ae532c080cbd594af7eeeee99742152225de4087 is the smallest first-writer: it added CookieServerRequestCache and the unvalidated decoded-cookie-to-URI path as a new file, while its immediate parent lacked the path. 9708a2d63fb9a1898bae7971953f21ae8aff9340 later added the Servlet sibling and its full-absolute-URL behavior, but the repository's vulnerable mechanism already existed in the earlier atomic commit.
+
+**AI marker.** `ABSENT` — The BIC commit object names Eleftheria Stein as both author and committer and contains only the issue-closing trailer 'Fixes: gh-8033'; no AI marker or AI co-author appears.
+
+**Reasoning.** Authoritative CVE.org and Spring sources establish a real, published vulnerability, and exact source inspection closes the attacker-controlled cookie-to-post-login redirect flow. The smallest repository first-writer is the single-parent, non-squash commit ae532c080cbd594af7eeeee99742152225de4087; its parent lacks the implementation, affected release tags contain it, and the direct fix is present only in the corresponding fixed OSS tags. The BIC commit object attributes the code to a named human author/committer and contains no AI marker. Because all lifecycle and attribution gates pass, the correct verdict is NOT_AI.
+
+Protocol checks:
+
+- `vulnerability_mechanism` — **PASS**: CVE.org record https://cveawg.mitre.org/api/cve/CVE-2026-41706 has cveMetadata.state=PUBLISHED and the CNA title 'Open Redirect When Using CookieRequestCache'; it identifies unvalidated absolute redirect URLs and the affected Spring Security ranges. Spring's first-party advisory https://spring.io/security/cve-2026-41706/ says an attacker-influenced REDIRECT_URI cookie can redirect an authenticated user to an attacker-controlled URL after login. Source flow: CookieServerRequestCache.getRedirectUri decoded REDIRECT_URI and passed it to URI.create without a relative/same-origin check; RedirectServerAuthenticationSuccessHandler.onAuthenticationSuccess passes that URI to redirectStrategy.sendRedirect. The Servlet sibling built a SavedRequest from cookie-controlled scheme, host, port and path, and SavedRequestAwareAuthenticationSuccessHandler sends savedRequest.getRedirectUrl through sendRedirect.
+- `atomic_bic` — **PASS**: GIT_NO_LAZY_FETCH=1 git show ae532c080cbd594af7eeeee99742152225de4087 shows the single-parent commit added CookieServerRequestCache.java and its tests as new files; getRedirectUri Base64-decoded REDIRECT_URI and immediately mapped it through URI.create with no origin or relative-path validation. ae532c080cbd594af7eeeee99742152225de4087 is the earliest first-writer of the cookie-to-redirect trust flaw. The later single-parent commit 9708a2d63fb9a1898bae7971953f21ae8aff9340 added the Servlet sibling, including full-URL storage and reconstruction of scheme/host/port from the cookie, but is not the first repository-wide writer of the mechanism.
+- `immediate_parent_absence` — **PASS**: GIT_NO_LAZY_FETCH=1 git ls-tree -r 38979b1b09bd4affc13a45d71e56e155140d5205 -- web/src/main/java/org/springframework/security/web/server/savedrequest/CookieServerRequestCache.java returned empty; the BIC adds that path from /dev/null.
+- `squash_member_decomposition` — **PASS**: git cat-file -p ae532c080cbd594af7eeeee99742152225de4087 shows exactly one parent, 38979b1b09bd4affc13a45d71e56e155140d5205; the commit is an atomic two-file implementation plus test addition, not a merge, revert, carrier, or squash aggregate.
+- `affected_release_membership` — **PASS**: Spring's first-party advisory lists affected ranges 5.7.23 and earlier, 5.8.0-5.8.25, 6.3.0-6.3.16, 6.4.0-6.4.16, 6.5.0-6.5.10, and 7.0.0-7.0.5. GIT_NO_LAZY_FETCH=1 git merge-base --is-ancestor confirmed BIC ae532c080cbd594af7eeeee99742152225de4087 is an ancestor of public tags 5.7.0, 5.8.0, 6.3.0, 6.4.0, 6.5.0, 6.5.10, 7.0.0, and 7.0.5.
+- `fixed_release_membership` — **PASS**: Spring's first-party advisory identifies OSS fixes 6.5.11 and 7.0.6 and enterprise fixes 5.7.24, 5.8.26, 6.3.17, 6.4.17, 6.5.10.2, and 7.0.5.1. GIT_NO_LAZY_FETCH=1 git merge-base --is-ancestor confirmed a14c9d66b15946d2040a3681b55fe29ac145c5c9 is absent from 6.5.10 and 7.0.5 but present in fixed tags 6.5.11 and 7.0.6.
+- `direct_fix_or_unpatched` — **PASS**: GIT_NO_LAZY_FETCH=1 git show a14c9d66b15946d2040a3681b55fe29ac145c5c9 shows the direct fix in both cache implementations: Servlet now stores a relative request URL, rejects values not starting with one slash, and derives origin from the current request; WebFlux filters decoded values through the same relative-path rule before URI.create. Added tests reject https://evil.com/phishing and //evil.com/phishing.
+- `bic_only_ai_attribution` — **PASS**: git cat-file -p ae532c080cbd594af7eeeee99742152225de4087 names Eleftheria Stein <eleftheria.kousathana@gmail.com> as both author and committer; the message is 'Add server request cache that uses cookie' with only 'Fixes: gh-8033' and contains no AI attribution, AI co-author, generator, or assistant trailer.
+
+Primary/Git evidence:
+
+- CVE.org CNA record: https://cveawg.mitre.org/api/cve/CVE-2026-41706 (PUBLISHED; vendor Spring; product Spring Security; open-redirect description and affected ranges).
+- Spring first-party advisory: https://spring.io/security/cve-2026-41706/ (attack prerequisites, impact, affected versions, and fixed versions).
+- Assigned clone HEAD is 61feae94a04ab78ede3aa7c5c97b1b0e993cca48 and the bundle SHA-256 is 097c574ed949d07f6c86d69161e8ba740ce3a1d86c519df30e8ca7728294449f.
+- BIC ae532c080cbd594af7eeeee99742152225de4087 has parent 38979b1b09bd4affc13a45d71e56e155140d5205, adds CookieServerRequestCache.java, and its parent tree lacks that file.
+- Servlet sibling origin 9708a2d63fb9a1898bae7971953f21ae8aff9340 has parent d3dc8b055be6fa74dea2e16c4f80d6223cc86ab7 and adds CookieRequestCache.java from /dev/null with full-URL cookie storage and cookie-derived redirect origin.
+- Direct fix a14c9d66b15946d2040a3681b55fe29ac145c5c9 has parent 9d4d9065b48508c9e115f2f894632120787fd1df, is included in public fixed tags 6.5.11 and 7.0.6, and is excluded from affected tags 6.5.10 and 7.0.5.
+
+### w049 — CVE-2026-22754 — `NOT_AI`
+
+- class: `alias-78516bd8381013040a2fafbc`
+- repository: `spring-projects/spring-security`
+- review context: `round12-clean-w049`
+- bundle sha256: `6c93413f8de1bdcfdaf0615ef44d705f566149f65cf3babc458229621281f8a8`
+- clone HEAD at freeze: `61feae94a04ab78ede3aa7c5c97b1b0e993cca48`
+- introducer: `ef50ff29ad3b13c7b9a75f4e0ff9c1b05c6a745e`
+- immediate parent: `75f30d1701267742c7c2c541e3ff0333a15b0135`
+- direct fix: `53bcf0d16b414d9f0436ac178c211ca6b9520d8e`
+- fix/carrier: `53bcf0d16b414d9f0436ac178c211ca6b9520d8e`
+
+**Mechanism.** XML intercept-url parsing reads servlet-path and supplies it as the basePath property of PathPatternRequestMatcherFactoryBean. The factory starts with a default PathPatternRequestMatcher.Builder, but Builder.basePath returns a new immutable builder. The vulnerable factory discards that returned builder, so getObject constructs the request matcher using only the endpoint pattern. A request under the declared servlet path then misses its intended authorization matcher, leaving a later permissive rule or otherwise unexercised rule to permit an authorization bypass.
+
+**Origin.** Public branch member ef50ff29ad3b13c7b9a75f4e0ff9c1b05c6a745e first added PathPatternRequestMatcherFactoryBean.java with the unassigned immutable-builder call; its immediate parent 75f30d1701267742c7c2c541e3ff0333a15b0135 has no such path. The landed aggregate 3e53cc2c4ac1fb88231d415a568e738088a954b0 carries the exact same file blob and range-diff maps it to ef50..., so the finer member, not the landing carrier, is the atomic BIC.
+
+**AI marker.** `ABSENT` — The atomic BIC commit object names Josh Cummings as author and committer, includes a gpgsig block, and contains only the message 'Prgress' with no AI-related or co-author trailer.
+
+**Reasoning.** The authoritative CVE and vendor records confirm a real, published authorization bypass. Source inspection closes the XML servlet-path source, immutable-builder defect, authorization-matcher sink, direct fix, and release boundary. Public branch history decomposes the landed carrier to atomic first-writer ef50ff29ad3b13c7b9a75f4e0ff9c1b05c6a745e, whose immediate parent lacks the file. The BIC itself is authored and committed by the named human Josh Cummings and contains no AI marker; later repository activity is irrelevant under the BIC-only attribution rule. All lifecycle and attribution gates therefore support NOT_AI.
+
+Protocol checks:
+
+- `vulnerability_mechanism` — **PASS**: CVE.org record https://www.cve.org/CVERecord?id=CVE-2026-22754 (API record from https://cveawg.mitre.org/api/cve/CVE-2026-22754) is PUBLISHED and says XML intercept-url servlet-path is omitted from path matching, so authorization rules are not exercised; affected versions are 7.0.0 through 7.0.4. Spring vendor advisory https://spring.io/security/cve-2026-22754 says the omitted servlet path can cause authorization bypass, identifies 7.0.0-7.0.4 as affected and 7.0.5 as the OSS fix, and says 6.x and earlier are unaffected. At tag 7.0.4, AuthorizationFilterParser.java:141-163 reads intercept-url pattern and servlet-path and passes both to MatcherType.createMatcher; MatcherType.java:53-62 sets the servlet path as PathPatternRequestMatcherFactoryBean.basePath; PathPatternRequestMatcherFactoryBean.java:65-74 discards the Builder returned by basePath and getObject at lines 50-53 therefore creates the matcher from the unchanged builder. At tag 7.0.4, PathPatternRequestMatcher.java:214-249 makes Builder.basePath immutable: it returns new Builder(this.parser, basePath), proving that discarding the return value omits the servlet path from the matcher used as the authorization lookup key.
+- `atomic_bic` — **PASS**: GIT_NO_LAZY_FETCH=1 git show ef50ff29ad3b13c7b9a75f4e0ff9c1b05c6a745e:config/src/main/java/org/springframework/security/config/http/PathPatternRequestMatcherFactoryBean.java shows the first public member containing this.builder.basePath(this.basePath) without assignment. GIT_NO_LAZY_FETCH=1 git diff 75f30d1701267742c7c2c541e3ff0333a15b0135 ef50ff29ad3b13c7b9a75f4e0ff9c1b05c6a745e -- config/src/main/java/org/springframework/security/config/http/PathPatternRequestMatcherFactoryBean.java shows the entire vulnerable factory as a new 77-line file in ef50ff29ad3b13c7b9a75f4e0ff9c1b05c6a745e.
+- `immediate_parent_absence` — **PASS**: git rev-list --parents -n 1 ef50ff29ad3b13c7b9a75f4e0ff9c1b05c6a745e gives immediate parent 75f30d1701267742c7c2c541e3ff0333a15b0135. GIT_NO_LAZY_FETCH=1 git cat-file -e 75f30d1701267742c7c2c541e3ff0333a15b0135:config/src/main/java/org/springframework/security/config/http/PathPatternRequestMatcherFactoryBean.java exits 128 with 'path ... not in 75f30d...', while the direct parent-to-BIC diff reports new file mode 100644.
+- `squash_member_decomposition` — **PASS**: origin/gh-16886 preserves finer public members; git range-diff f709a9efef6e82ec480ab4230142670b6d2f9719..3e53cc2c4ac1fb88231d415a568e738088a954b0 75efb17c49d21831cf85886bfaa8b16bd65907a8..531c5cafdc9a70bf63198b4bdadcd13561faf8c7 maps landed commit 3e53cc2c4ac1fb88231d415a568e738088a954b0 to member ef50ff29ad3b13c7b9a75f4e0ff9c1b05c6a745e. git rev-parse of PathPatternRequestMatcherFactoryBean.java at ef50ff29ad3b13c7b9a75f4e0ff9c1b05c6a745e, branch tip 531c5cafdc9a70bf63198b4bdadcd13561faf8c7, and landed 3e53cc2c4ac1fb88231d415a568e738088a954b0 yields the identical blob 7037bd2853d2ea53e654a7773ac7e72b6fb25c81; therefore 3e53... is the carrier and ef50... is the smaller first-writer.
+- `affected_release_membership` — **PASS**: Tags resolve as 7.0.0=1d99a7fb14c62354cac00412cce2071892cdf465 and 7.0.4=9bd793ffe65082f36305f6e285643fbb28f926e3; git merge-base --is-ancestor 3e53cc2c4ac1fb88231d415a568e738088a954b0 7.0.0 and the same check against 7.0.4 both exit 0. git show 7.0.4:config/src/main/java/org/springframework/security/config/http/PathPatternRequestMatcherFactoryBean.java shows the vulnerable unassigned basePath call, matching the vendor's 7.0.0-7.0.4 boundary.
+- `fixed_release_membership` — **PASS**: Tag 7.0.5 resolves to 53bc6a77963209bb2a5f3efdd855b1f4a8051cc3; git merge-base --is-ancestor 53bcf0d16b414d9f0436ac178c211ca6b9520d8e 7.0.5 exits 0, while the same check against 7.0.4 exits 1. git show 7.0.5:config/src/main/java/org/springframework/security/config/http/PathPatternRequestMatcherFactoryBean.java contains this.builder = this.builder.basePath(this.basePath), matching Spring's first fixed version 7.0.5.
+- `direct_fix_or_unpatched` — **PASS**: Commit 53bcf0d16b414d9f0436ac178c211ca6b9520d8e ('Fix Servlet Path Application') directly changes only the production expression from this.builder.basePath(this.basePath) to this.builder = this.builder.basePath(this.basePath) and adds authorization tests for /spring/path versus /path.
+- `bic_only_ai_attribution` — **PASS**: git cat-file -p ef50ff29ad3b13c7b9a75f4e0ff9c1b05c6a745e identifies both author and committer as Josh Cummings <3627351+jzheaux@users.noreply.github.com>, contains a gpgsig block, and has only the message 'Prgress'; the BIC object has no Co-Authored-By, Copilot, ChatGPT, Claude, generated-by, or other AI marker.
+
+Primary/Git evidence:
+
+- CVE.org primary record: https://www.cve.org/CVERecord?id=CVE-2026-22754; state PUBLISHED, affected Spring Security 7.0.0 through 7.0.4, authorization bypass from omitted servlet path.
+- Spring vendor advisory: https://spring.io/security/cve-2026-22754; HIGH severity, affected 7.0.0-7.0.4, fixed 7.0.5, 6.x and earlier unaffected.
+- Atomic BIC: ef50ff29ad3b13c7b9a75f4e0ff9c1b05c6a745e; immediate parent: 75f30d1701267742c7c2c541e3ff0333a15b0135; parent lacks the new factory path.
+- Squash carrier: 3e53cc2c4ac1fb88231d415a568e738088a954b0; range-diff maps it to ef50ff29ad3b13c7b9a75f4e0ff9c1b05c6a745e and all relevant revisions use blob 7037bd2853d2ea53e654a7773ac7e72b6fb25c81.
+- Direct fix: 53bcf0d16b414d9f0436ac178c211ca6b9520d8e; its one-line production hunk retains the builder returned by basePath and its new tests exercise the servlet-path authorization behavior.
+- Release Git evidence: 3e53cc2c4ac1fb88231d415a568e738088a954b0 is an ancestor of 7.0.0 and 7.0.4; 53bcf0d16b414d9f0436ac178c211ca6b9520d8e is not an ancestor of 7.0.4 but is an ancestor of 7.0.5.

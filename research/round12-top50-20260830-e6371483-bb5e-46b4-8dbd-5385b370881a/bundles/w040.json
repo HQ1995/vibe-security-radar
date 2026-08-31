@@ -1,0 +1,68 @@
+{
+ "schema_version": "causal-audit-bundle/1",
+ "class_id": "alias-a7967367c198f0a1ddf4d3f8",
+ "status_at_selection": "UNANALYZED",
+ "repo": "messagepack-csharp/messagepack-csharp",
+ "clone_dir": "/home/hanqing/agents/ai-slop/.ai-slop/state/repos/messagepack-csharp_messagepack-csharp",
+ "clone_url": "https://github.com/messagepack-csharp/messagepack-csharp.git",
+ "clone_head_sha": "21f6e635d5b5a40ec82a0cd642b1d19b7d1fbe88",
+ "clone_shallow": "false",
+ "clone_promisor": true,
+ "clone_partial_filter": "blob:none",
+ "advisory_ids": [
+  "CVE-2026-48516",
+  "GHSA-q2h6-ghwm-5qm8"
+ ],
+ "base_ledger_revision": 1,
+ "ledger_snapshot_sha256": "2a8e0f606d9dbb6a509188d6f4da35598f233dce4b2b205fa1cb14136e75fbe5",
+ "advisory": {
+  "id": "GHSA-q2h6-ghwm-5qm8",
+  "cve_id": "CVE-2026-48516",
+  "summary": "MessagePack-CSharp: InterfaceLookupFormatter bypasses collision-resistant comparer settings",
+  "description": "## Summary\n\n`InterfaceLookupFormatter<TKey,TElement>` constructs an internal `Dictionary<TKey, IGrouping<TKey,TElement>>` with the default equality comparer instead of the security-aware comparer supplied by `options.Security.GetEqualityComparer<TKey>()`.\n\nOther hash-based collection formatters use the security-aware comparer when `MessagePackSecurity.UntrustedData` is configured. This formatter omission allows hash-collision CPU denial of service against `ILookup<TKey,TElement>` even when the application has opted into the untrusted-data security posture.\n\n## Impact\n\nApplications are affected when they deserialize untrusted payloads into schemas containing `ILookup<TKey,TElement>` with a key type for which attacker-controlled hash collisions are feasible.\n\nUnder the default comparer, many colliding keys can degrade dictionary insertion from amortized constant time to quadratic behavior. A payload of colliding keys can consume CPU for a disproportionate amount of time. This bypasses the mitigation that developers intentionally enabled by using `MessagePackSecurity.UntrustedData`.\n\n## Affected components\n\n- Package: `MessagePack`\n- API: `InterfaceLookupFormatter<TKey,TElement>.Create`\n- Data type: `ILookup<TKey,TElement>`\n- Finding ID: `MESSAGEPACKCSHARP-041`\n\n## Patches\n\nFixes are prepared and will be released in coordinated patch versions.\n\nUpgrade guidance:\n\n1. Upgrade `MessagePack` to the patched version for your release line.\n2. Upgrade companion MessagePack packages in the same dependency graph to the coordinated patched versions.\n\nThe fix should create the internal dictionary with `options.Security.GetEqualityComparer<TKey>()`, matching the sibling dictionary and lookup formatter behavior.\n\n## Workarounds\n\nPatching is recommended.\n\nUntil a patched version is available, avoid exposing `ILookup<TKey,TElement>` in DTOs that deserialize untrusted data. Use collection shapes that are already protected by the security-aware comparer path, or validate and cap collection sizes at the transport boundary.\n\n## Resources\n\n- `MESSAGEPACKCSHARP-041`: `InterfaceLookupFormatter` missing security comparer\n- CWE-407: Inefficient Algorithmic Complexity",
+  "severity": "medium",
+  "cvss": {
+   "vector_string": null,
+   "score": null
+  },
+  "cwes": [
+   {
+    "cwe_id": "CWE-407",
+    "name": "Inefficient Algorithmic Complexity"
+   }
+  ],
+  "published_at": "2026-06-25T21:29:39Z",
+  "updated_at": "2026-06-25T21:29:40Z",
+  "withdrawn_at": null,
+  "vulnerabilities": [
+   {
+    "package": {
+     "ecosystem": "nuget",
+     "name": "MessagePack"
+    },
+    "vulnerable_version_range": "< 2.5.301",
+    "first_patched_version": "2.5.301",
+    "vulnerable_functions": []
+   },
+   {
+    "package": {
+     "ecosystem": "nuget",
+     "name": "MessagePack"
+    },
+    "vulnerable_version_range": ">= 3.0, < 3.1.7",
+    "first_patched_version": "3.1.7",
+    "vulnerable_functions": []
+   }
+  ],
+  "references": [
+   "https://github.com/MessagePack-CSharp/MessagePack-CSharp/security/advisories/GHSA-q2h6-ghwm-5qm8",
+   "https://nvd.nist.gov/vuln/detail/CVE-2026-48516",
+   "https://github.com/advisories/GHSA-q2h6-ghwm-5qm8"
+  ],
+  "source": "https://api.github.com/advisories/GHSA-Q2H6-GHWM-5QM8",
+  "fetch_error": null
+ },
+ "same_repository_prior_hits": [],
+ "protocol": "docs/AUDIT-PROTOCOL.md",
+ "context_rule": "One case, one clean context. Do not read the canonical ledger, another case bundle/output, or a prior verdict. Prior hits are leads, never proof."
+}

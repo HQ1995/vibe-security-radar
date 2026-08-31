@@ -1,0 +1,68 @@
+{
+ "schema_version": "causal-audit-bundle/1",
+ "class_id": "alias-b4e4828577c91dad026a9390",
+ "status_at_selection": "UNANALYZED",
+ "repo": "messagepack-csharp/messagepack-csharp",
+ "clone_dir": "/home/hanqing/agents/ai-slop/.ai-slop/state/repos/messagepack-csharp_messagepack-csharp",
+ "clone_url": "https://github.com/messagepack-csharp/messagepack-csharp.git",
+ "clone_head_sha": "21f6e635d5b5a40ec82a0cd642b1d19b7d1fbe88",
+ "clone_shallow": "false",
+ "clone_promisor": true,
+ "clone_partial_filter": "blob:none",
+ "advisory_ids": [
+  "CVE-2026-48515",
+  "GHSA-cxmj-83gh-fp49"
+ ],
+ "base_ledger_revision": 1,
+ "ledger_snapshot_sha256": "2a8e0f606d9dbb6a509188d6f4da35598f233dce4b2b205fa1cb14136e75fbe5",
+ "advisory": {
+  "id": "GHSA-cxmj-83gh-fp49",
+  "cve_id": "CVE-2026-48515",
+  "summary": "MessagePack-CSharp: Multi-dimensional array formatters allocate from unchecked dimensions",
+  "description": "## Summary\n\nMessagePack-CSharp's multi-dimensional array formatters read dimension lengths directly from the payload and allocate `T[,]`, `T[,,]`, or `T[,,,]` before validating that the dimension product matches the encoded element count.\n\nThe formatter reads a guarded element array header, but allocation of the target multi-dimensional array happens before the dimensions are checked against that element count. A small payload can therefore declare large dimensions, provide an empty or tiny inner array, and cause a large heap allocation before element data is validated.\n\n## Impact\n\nApplications are affected when they deserialize untrusted MessagePack payloads into models containing multi-dimensional arrays such as `T[,]`, `T[,,]`, or `T[,,,]`.\n\nAn attacker can encode large dimension integers and a small guarded element array. The formatter allocates the target array from the dimensions before confirming that the product of dimensions is consistent with the element count.\n\nThe result can be out-of-memory exceptions, container termination on memory-constrained hosts, large object heap pressure, or severe CPU cost from zero-initializing oversized arrays. `MessagePackSecurity.UntrustedData` does not provide a general allocation cap for this path.\n\n## Affected components\n\n- Package: `MessagePack`\n- APIs: `TwoDimensionalArrayFormatter<T>.Deserialize`, `ThreeDimensionalArrayFormatter<T>.Deserialize`, `FourDimensionalArrayFormatter<T>.Deserialize`\n- Data shapes: `T[,]`, `T[,,]`, and `T[,,,]`\n- Finding IDs: `MESSAGEPACKCSHARP-040`, duplicate/open variant `MESSAGEPACKCSHARP-OPEN-003`\n\n## Patches\n\nFixes are prepared and will be released in coordinated patch versions.\n\nUpgrade guidance:\n\n1. Upgrade `MessagePack` to the patched version for your release line.\n2. Upgrade companion MessagePack packages in the same dependency graph to the coordinated patched versions.\n\nThe fix should validate dimensions before allocation. Dimension values should be non-negative, their checked product should match the encoded element count, and the product should be bounded by the available payload and any configured security limits before `new T[...]` is executed.\n\n## Workarounds\n\nPatching is recommended.\n\nUntil a patched version is available, avoid deserializing untrusted payloads into schemas containing multi-dimensional arrays. Prefer schema shapes that can be validated before allocation, such as bounded lists, dictionaries with application-level count limits, or jagged arrays with application-level limits.\n\nMessage-size limits reduce the blast radius but do not fully address allocation amplification where a small payload can encode disproportionate array dimensions.\n\n## Resources\n\n- `MESSAGEPACKCSHARP-040`: unchecked multi-dimensional array dimensions\n- `MESSAGEPACKCSHARP-OPEN-003`: duplicate/open finding for the multi-dimensional array issue\n- CWE-770: Allocation of Resources Without Limits or Throttling",
+  "severity": "medium",
+  "cvss": {
+   "vector_string": null,
+   "score": null
+  },
+  "cwes": [
+   {
+    "cwe_id": "CWE-770",
+    "name": "Allocation of Resources Without Limits or Throttling"
+   }
+  ],
+  "published_at": "2026-06-25T21:26:43Z",
+  "updated_at": "2026-06-25T21:26:44Z",
+  "withdrawn_at": null,
+  "vulnerabilities": [
+   {
+    "package": {
+     "ecosystem": "nuget",
+     "name": "MessagePack"
+    },
+    "vulnerable_version_range": "< 2.5.301",
+    "first_patched_version": "2.5.301",
+    "vulnerable_functions": []
+   },
+   {
+    "package": {
+     "ecosystem": "nuget",
+     "name": "MessagePack"
+    },
+    "vulnerable_version_range": ">= 3.0, < 3.1.7",
+    "first_patched_version": "3.1.7",
+    "vulnerable_functions": []
+   }
+  ],
+  "references": [
+   "https://github.com/MessagePack-CSharp/MessagePack-CSharp/security/advisories/GHSA-cxmj-83gh-fp49",
+   "https://nvd.nist.gov/vuln/detail/CVE-2026-48515",
+   "https://github.com/advisories/GHSA-cxmj-83gh-fp49"
+  ],
+  "source": "https://api.github.com/advisories/GHSA-CXMJ-83GH-FP49",
+  "fetch_error": null
+ },
+ "same_repository_prior_hits": [],
+ "protocol": "docs/AUDIT-PROTOCOL.md",
+ "context_rule": "One case, one clean context. Do not read the canonical ledger, another case bundle/output, or a prior verdict. Prior hits are leads, never proof."
+}

@@ -1,0 +1,78 @@
+{
+  "worker": "w007",
+  "review_agent_id": "r12_w007",
+  "class_id": "alias-a5472bde6709c5ed932dd021",
+  "case_id": "GHSA-7qj7-jv8m-rfjw",
+  "repo": "jahlives/openssl_encrypt",
+  "primary_verdict": "AI_ROOT_CAUSE",
+  "review_verdict": "CONFIRMED",
+  "protocol_checks": {
+    "vulnerability_mechanism": {
+      "status": "PASS",
+      "evidence": [
+        "CVE.org https://cveawg.mitre.org/api/cve/CVE-2026-74900 is state=PUBLISHED (not rejected/withdrawn). CNA VulnCheck describes unchecked KEM-failure fallback in pqc.py: SHA-256 over the public encapsulated key plus 16 private-key bytes, no error raised.",
+        "Vendor advisory https://github.com/jahlives/openssl_encrypt/security/advisories/GHSA-p3gq-pcg9-qvfv is state=published, withdrawn_at=null. It quotes public_key_part() returning private_key[:16] and the silent `if shared_secret is None: shared_secret = simulation_secret` assignment.",
+        "Pre-fix tree 65134868c092f1c3f0b75751413acc94031d0535:openssl_encrypt/modules/pqc.py: public_key_part at lines 33-54 returns at most 16 private-key bytes; decrypt lines 1096-1137 precompute simulation_secret = SHA-256(encapsulated_key || public_key_part(private_key)) then assign it whenever kem.decap_secret/decaps_cb leave shared_secret None; lines 1146-1148 hash that secret into the AEAD key. Encapsulated_key is carried with the ciphertext. Source-to-sink is complete."
+      ]
+    },
+    "atomic_bic": {
+      "status": "PASS",
+      "evidence": [
+        "git diff 295bf5f3df60ce08d2d8aed26d4fa0bc03592850 5e3104481d9842d3d6989332ae32bee4b010d2db -- openssl_encrypt/modules/pqc.py first-adds def public_key_part, SIMULATED_PQC_v1, simulation_secret = SHA-256(encapsulated_key || public_key_part(private_key)), and `shared_secret = simulation_secret` plus `FALLING BACK TO SIMULATION MODE FOR DECRYPTION`.",
+        "GIT_NO_LAZY_FETCH=1 git log -S 'shared_secret = simulation_secret' -- openssl_encrypt/modules/pqc.py yields only 5e3104481d9842d3d6989332ae32bee4b010d2db (add) and 472c088be14f5edb3dde1bf819419a8b86c8d72f (remove).",
+        "git blame -L 1085,1140 65134868c092f1c3f0b75751413acc94031d0535 -- openssl_encrypt/modules/pqc.py attributes the semantic fallback (lines 1095-1100, 1133-1135 including `shared_secret = simulation_secret`) to 5e3104481d9842d3d6989332ae32bee4b010d2db. f03ee1a2f042d22a18849132fcff3412d2c61341 only wraps formatting; fe2730c7daaf0580709ef10bda39d87f81bcda58 only gates prints behind quiet."
+      ]
+    },
+    "immediate_parent_absence": {
+      "status": "PASS",
+      "evidence": [
+        "Immediate parent of the BIC is 295bf5f3df60ce08d2d8aed26d4fa0bc03592850 (single parent). That blob openssl_encrypt/modules/pqc.py (213 lines) has no public_key_part, simulation_secret, SIMULATED_PQC, FALLING BACK, or private_key[:16]. decrypt() calls kem.decapsulate(encapsulated_key) and raises on AES-GCM failure with no simulation substitute.",
+        "git grep on 295bf5f3df60ce08d2d8aed26d4fa0bc03592850 -- openssl_encrypt/modules/pqc.py for public_key_part|simulation_secret|SIMULATED_PQC|FALLING BACK|sha256\\(encapsulated returned no matches."
+      ]
+    },
+    "squash_member_decomposition": {
+      "status": "PASS",
+      "evidence": [
+        "git rev-list --parents -n 1 5e3104481d9842d3d6989332ae32bee4b010d2db reports exactly 5e3104481d9842d3d6989332ae32bee4b010d2db 295bf5f3df60ce08d2d8aed26d4fa0bc03592850. Not a merge.",
+        "GitHub /commits/5e3104481d9842d3d6989332ae32bee4b010d2db/pulls returned []. No git replace refs or notes. pqc.py was born earlier in c58b460ea6d9daaa0fd83fb8a924c71a8b8f9202 without this fallback; 5e3104481d9842d3d6989332ae32bee4b010d2db is the smallest surviving public first-write of the vulnerable lines, not a move/revert/import of an already-vulnerable blob."
+      ]
+    },
+    "affected_release_membership": {
+      "status": "PASS",
+      "evidence": [
+        "git merge-base --is-ancestor 5e3104481d9842d3d6989332ae32bee4b010d2db v1.0.0 and v1.3.6 both succeed. git merge-base --is-ancestor 472c088be14f5edb3dde1bf819419a8b86c8d72f v1.3.6 fails. Tag v1.3.6 is e2e13d5cf62f9e0eb992f89cc2fab631ab90761a.",
+        "git grep on v1.3.6:openssl_encrypt/modules/pqc.py finds simulation_secret and FALLING BACK TO SIMULATION MODE FOR DECRYPTION (lines 1047-1050). CVE.org affected range is semver <1.4.0."
+      ]
+    },
+    "fixed_release_membership": {
+      "status": "PASS",
+      "evidence": [
+        "git merge-base --is-ancestor 472c088be14f5edb3dde1bf819419a8b86c8d72f v1.4.0 succeeds. Tag v1.4.0 is 5347915afac5f2974b761375de30fdf8bc10294c.",
+        "git grep on v1.4.0:openssl_encrypt/modules/pqc.py finds `KEM decapsulation failed. Unable to recover shared secret` (line 892) and zero matches for FALLING BACK TO SIMULATION MODE FOR DECRYPTION or simulation_secret. Matches CVE.org unaffected 1.4.0."
+      ]
+    },
+    "direct_fix_or_unpatched": {
+      "status": "PASS",
+      "evidence": [
+        "Vendor GHSA-p3gq-pcg9-qvfv resolution names commit 472c088 on feature/v1.4.x-development, resolved to 472c088be14f5edb3dde1bf819419a8b86c8d72f (parent 65134868c092f1c3f0b75751413acc94031d0535). Message: 'security: Remove simulation mode from PQC encryption path (CRIT-3)' / 'Resolves: GHSA-p3gq-pcg9-qvfv'.",
+        "git diff 65134868c092f1c3f0b75751413acc94031d0535 472c088be14f5edb3dde1bf819419a8b86c8d72f -- openssl_encrypt/modules/pqc.py deletes the simulation_secret precomputation and the `shared_secret = simulation_secret` assignment, replacing it with raise ValueError when shared_secret remains None. Pickaxe shows this as the only public remover of that assignment."
+      ]
+    },
+    "bic_only_ai_attribution": {
+      "status": "PASS",
+      "evidence": [
+        "git cat-file -p 5e3104481d9842d3d6989332ae32bee4b010d2db contains trailers `Generated with [Claude Code](https://claude.ai/code)` and `Co-Authored-By: Claude <noreply@anthropic.com>` on the BIC object itself. Author/committer remain Tobi <tobster@brain-force.ch>.",
+        "Attribution uses only that BIC object. The later fix 472c088be14f5edb3dde1bf819419a8b86c8d72f also has a Claude trailer, which is ignored for introducer identity."
+      ]
+    }
+  },
+  "findings": [
+    "Real, non-withdrawn vulnerability: silent KEM-decapsulation fallback in openssl_encrypt/modules/pqc.py substitutes SHA-256(public encapsulated_key || first 16 private-key bytes) as the AEAD key. CVE-2026-74900 is PUBLISHED; vendor GHSA-p3gq-pcg9-qvfv is published.",
+    "Atomic BIC is 5e3104481d9842d3d6989332ae32bee4b010d2db versus parent 295bf5f3df60ce08d2d8aed26d4fa0bc03592850, which still used kem.decapsulate with no simulation substitute.",
+    "Direct fix is 472c088be14f5edb3dde1bf819419a8b86c8d72f; present in v1.4.0 and absent from v1.3.6. Affected membership is v1.0.0 through v1.3.6 inclusive, matching CVE <1.4.0.",
+    "BIC commit message itself records Claude Code generation and Claude co-authorship, so AI authored the root-cause fallback. Primary verdict AI_ROOT_CAUSE stands.",
+    "Advisory wording that 16 leaked private-key bytes decrypt 'all ciphertext' overstates the successful-KEM path; the code still uses the real shared secret when decap succeeds. That imprecision is already in the primary bug_semantics caveat and does not change the CWE-391 finding or the verdict."
+  ],
+  "corrected_fields": {},
+  "remaining_gap": null
+}

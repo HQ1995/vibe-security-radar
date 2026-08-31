@@ -1,0 +1,102 @@
+{
+  "schema_version": "independent-case-audit/v1",
+  "worker": "w047",
+  "review_agent_id": "round12-clean-w047",
+  "class_id": "alias-f8b24c536967b204c96b1a24",
+  "case_id": "GHSA-m357-6hwr-7w53",
+  "repo": "frrouting/frr",
+  "advisory_ids": [
+    "CVE-2026-37458",
+    "GHSA-m357-6hwr-7w53"
+  ],
+  "input_binding": {
+    "bundle_sha256": "2747371a74e8528348cd4bdeb0166ac1b1e458b928089f13637753a57bafa545",
+    "clone_head_sha": "3bb66ce1119c43dbffbf4b06e8b044c6204104b8"
+  },
+  "verdict": "EVIDENCE_GAP",
+  "protocol_checks": {
+    "vulnerability_mechanism": {
+      "status": "GAP",
+      "evidence": [
+        "CVE.org record API https://cveawg.mitre.org/api/cve/CVE-2026-37458 reports state PUBLISHED and says an authenticated attacker can cause DoS with a crafted MP_REACH_NLRI UPDATE, but it identifies no crash, assertion, resource-exhaustion sink, or reproducer.",
+        "FRRouting direct fix https://github.com/FRRouting/frr/commit/8102a8aeceb9f86fdfe1f80cd77080522bab69c8 adds ipv4_martian(&attr->mp_nexthop_global_in) validation after the IPv4/VPNv4 stream_get and returns BGP_ATTR_PARSE_WITHDRAW; this establishes the missing-validation source path but not the claimed DoS sink.",
+        "The CVE.org record's second reference is https://github.com/mertsatilmaz/vulnerability-research/blob/main/advisories/CVE-2026-36365.md, an unrelated caesium-image-compressor command-execution advisory, so it cannot close the FRR mechanism gap."
+      ]
+    },
+    "atomic_bic": {
+      "status": "GAP",
+      "evidence": [
+        "Remote FRRouting blame of fix parent 5c4ca8895b3a7ce7e9f5f58548c33db3950fd170 traces the vulnerable stream_get line through refactors 801a9bcc7fc9a4f5553f5febcddccd4ae0f5978e, fb982c25aa771b7c7425a3c3cce0a2cda0a715de, and 6e4ab12f1504caa95edc7702a82f118d0de15a0a to root import 718e3744195351130f4ce7dbe0613f4b3e23df93.",
+        "With GIT_NO_LAZY_FETCH=1, assigned clone command git cat-file -e 8102a8aeceb9f86fdfe1f80cd77080522bab69c8^{commit} fails 'Not a valid object name'; the clone remote is https://github.com/HQ1995/vibe-security-radar.git rather than frrouting/frr, so the remote BIC candidate cannot be verified as a commit object in the assigned clone."
+      ]
+    },
+    "immediate_parent_absence": {
+      "status": "GAP",
+      "evidence": [
+        "FRRouting's first-party commit page https://github.com/FRRouting/frr/commit/718e3744195351130f4ce7dbe0613f4b3e23df93 shows 'Initial revision', zero parents, and a 420-file/243853-line import, but the assigned clone lacks this object and therefore cannot directly verify the commit or absence of a parent tree."
+      ]
+    },
+    "squash_member_decomposition": {
+      "status": "GAP",
+      "evidence": [
+        "The remote candidate is a zero-parent bulk initial import rather than a normal atomic change. GitHub public history exposes no parent or finer member for the vulnerable line, but the wrongly bound assigned clone prevents local object-level confirmation of the surviving-history boundary."
+      ]
+    },
+    "affected_release_membership": {
+      "status": "GAP",
+      "evidence": [
+        "CVE.org describes stable/10.0 through stable/10.6 as affected, while first-party FRRouting tag source fetched from https://raw.githubusercontent.com/FRRouting/frr/frr-10.4.4/bgpd/bgp_attr.c and https://raw.githubusercontent.com/FRRouting/frr/frr-10.6.0/bgpd/bgp_attr.c already contains the exact ipv4_martian MP_REACH check; the stated affected boundary is therefore not coherent at tag level.",
+        "First-party tag source for frr-10.5.3 lacks the check, while frr-10.5.4 contains it, establishing one remote transition but not the full advertised stable/10.0-to-10.6 affected set."
+      ]
+    },
+    "fixed_release_membership": {
+      "status": "GAP",
+      "evidence": [
+        "FRRouting PR https://github.com/FRRouting/frr/pull/21075 records a maintainer request to backport to stable/10.0 through stable/10.6, but remote tag inspection finds the check absent even in frr-10.0.5, frr-10.1.5, frr-10.2.6, and frr-10.3.4, present in frr-10.4.4, absent in frr-10.5.3 then present in frr-10.5.4, and present in frr-10.6.0.",
+        "Because the bundle supplies no FRRouting objects or refs, exact fixed-release ancestry and the contradictory per-series boundary cannot be verified in the assigned clone."
+      ]
+    },
+    "direct_fix_or_unpatched": {
+      "status": "GAP",
+      "evidence": [
+        "First-party commit and PR pages show the direct 11-line fix in bgpd/bgp_attr.c: validate the parsed IPv4/VPNv4 MP_REACH next-hop with ipv4_martian unless allow_martian is set, log it, and treat the route as withdrawn.",
+        "The direct fix object 8102a8aeceb9f86fdfe1f80cd77080522bab69c8 does not exist in the assigned clone under GIT_NO_LAZY_FETCH=1, so no non-null fix SHA can satisfy the output contract's clone-object requirement."
+      ]
+    },
+    "bic_only_ai_attribution": {
+      "status": "GAP",
+      "evidence": [
+        "The only remote first-writer candidate is the 243853-line root import 718e3744195351130f4ce7dbe0613f4b3e23df93, whose first-party page labels the committer only as 'paul' and exposes no finer causal member for the vulnerable parser line.",
+        "No BIC commit object is available in the assigned clone. For an aggregate/root import, absence of an AI trailer on a web page is not sufficient BIC-local evidence for named-human NOT_AI."
+      ]
+    }
+  },
+  "bug_semantics": "An authenticated BGP peer can place an IPv4 or VPNv4 next-hop in a crafted MP_REACH_NLRI UPDATE. Before the fix, bgp_attr_parse dispatched the attribute to bgp_mp_reach_parse, which copied the peer-controlled four-byte next-hop into attr->mp_nexthop_global_in without applying the ipv4_martian validation used for the legacy NEXT_HOP attribute, so the route continued instead of receiving RFC 7606 treat-as-withdraw handling. The public first-party record does not identify the later crash, assertion, or resource-exhaustion sink needed to close the claimed DoS mechanism.",
+  "flaw_origin": "Remote first-party blame follows the vulnerable stream_get through multiple mechanical refactors to FRRouting root import 718e3744195351130f4ce7dbe0613f4b3e23df93, which has zero parents and contains the unchecked MP_REACH IPv4 parser. That is only a remote surviving-object candidate: the bundle-bound clone is vibe-security-radar, not FRRouting, and lacks the candidate and fix objects, so no atomic introducer can be recorded under the clone-binding contract.",
+  "introducer_sha": null,
+  "introducer_parent": null,
+  "introducer_parent_absent": true,
+  "squash_decomposed": false,
+  "decomposed_shas": [],
+  "fix_sha": null,
+  "direct_fix_sha": null,
+  "unpatched": null,
+  "ai_marker": {
+    "state": "UNKNOWN",
+    "evidence": [
+      "The remote root-import candidate is not present in the assigned clone and exposes no finer per-line causal member; no BIC-local AI provenance can be verified.",
+      "A missing AI trailer on an aggregate initial import is not evidence of named-human authorship."
+    ]
+  },
+  "evidence": [
+    "Input binding: sha256sum bundles/w047.json = 2747371a74e8528348cd4bdeb0166ac1b1e458b928089f13637753a57bafa545; GIT_NO_LAZY_FETCH=1 git rev-parse HEAD = 3bb66ce1119c43dbffbf4b06e8b044c6204104b8.",
+    "Assigned-clone identity: git remote -v reports origin https://github.com/HQ1995/vibe-security-radar.git with promisor=true and partialclonefilter=blob:none, not https://github.com/FRRouting/frr.git.",
+    "CVE authority: https://cveawg.mitre.org/api/cve/CVE-2026-37458 reports PUBLISHED, datePublished 2026-05-04, and the crafted MP_REACH_NLRI UPDATE DoS claim.",
+    "Vendor direct fix: https://github.com/FRRouting/frr/commit/8102a8aeceb9f86fdfe1f80cd77080522bab69c8 has parent 5c4ca8895b3a7ce7e9f5f58548c33db3950fd170 and adds only the martian next-hop guard and treat-as-withdraw return in bgpd/bgp_attr.c.",
+    "Vendor review and release intent: https://github.com/FRRouting/frr/pull/21075 merged the one direct fix to master and requested backports to stable/10.0, stable/10.1, stable/10.2, stable/10.3, stable/10.4, stable/10.5, and stable/10.6.",
+    "Remote origin boundary: https://github.com/FRRouting/frr/commit/718e3744195351130f4ce7dbe0613f4b3e23df93 is the zero-parent 'Initial revision'; its bgpd/bgp_attr.c lines 944-955 accept IPv4/VPNv4 MP_REACH next-hops without martian validation.",
+    "Clone-object failure: under GIT_NO_LAZY_FETCH=1, git cat-file -e 8102a8aeceb9f86fdfe1f80cd77080522bab69c8^{commit} fails, so the assigned clone cannot verify the fix, BIC candidate, parent tree, or release ancestry."
+  ],
+  "reasoning": "This is not FALSE_POSITIVE because CVE.org still records the vulnerability as PUBLISHED and FRRouting merged a direct input-validation fix. It cannot be closed as NOT_AI or an AI verdict: the bundle is bound to a non-FRRouting clone that lacks every lifecycle object, the remote surviving first-writer is a zero-parent aggregate import with no attributable finer member, the claimed DoS sink is absent from first-party evidence, and the stated affected range conflicts with first-party tag contents. The protocol therefore requires EVIDENCE_GAP rather than inference.",
+  "remaining_gap": "Provide a correctly bound read-only FRRouting clone at the declared input HEAD containing the direct-fix object, root-history candidate, and release refs; then verify the BIC and parent boundary with local Git, identify a first-party crash/resource-exhaustion sink or reproducer linking the martian MP_REACH next-hop to DoS, and reconcile exact affected/fixed tags (especially the CVE claim versus frr-10.4.4 and frr-10.6.0 already containing the guard)."
+}

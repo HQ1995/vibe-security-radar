@@ -473,11 +473,11 @@ function CaseFactsCard({ item }: { readonly item: ResearchCase }) {
       <p className="section-kicker">Case facts</p>
       <dl className="mt-4 space-y-3.5">
         {facts.map(({ label, value }) => (
-          <div key={label} className="flex items-baseline justify-between gap-4">
+          <div key={label} className="flex min-w-0 items-baseline justify-between gap-4">
             <dt className="shrink-0 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
               {label}
             </dt>
-            <dd className="text-right">{value}</dd>
+            <dd className="min-w-0 break-words text-right">{value}</dd>
           </div>
         ))}
       </dl>
@@ -713,10 +713,10 @@ function DiffHunk({
   const removed = lines.filter(
     (line) => line.startsWith("-") && !line.startsWith("---"),
   ).length;
-  // Long hunks start collapsed; short ones honor the caller's default. Once expanded the
-  // full diff is shown — no max-height clipping, no ellipsis.
+  // Curated, hunk-specific explanations open with their code; unannotated long
+  // patches stay collapsed. Expanded diffs are never clipped.
   const collapsible = lines.length > 24;
-  const openDefault = collapsible ? false : open;
+  const openDefault = Boolean(annotation) || (!collapsible && open);
   return (
     <details
       open={openDefault}
@@ -836,53 +836,46 @@ export function CanonicalCaseEvidence({
     item.repository,
     item.minimum_fix_set[0] ?? candidateSource.sha,
   );
-  const codeHunks = comparisonHunks.length
-    ? comparisonHunks.map((hunk) => {
-        const isCandidate =
-          hunk.role === "candidate" ||
-          candidateHunks.some(
-            (candidate) =>
-              candidate.file === hunk.file && candidate.code === hunk.code,
-          );
-        const isFix =
-          hunk.role === "fix" ||
-          fixHunks.some(
-            (fix) => fix.file === hunk.file && fix.code === hunk.code,
-          );
-        const label: DiffRole = isCandidate
-          ? "AI change"
-          : isFix
-            ? "Fix"
-            : "Comparison";
-        return {
-          hunk,
-          label,
-          ...(label === "AI change" ? candidateSource : fixSource),
-          annotation: hunkAnnotation(hunk),
-          readerContext:
-            label === "AI change"
-              ? candidateExplanation
-              : label === "Fix"
-                ? fixExplanation
-                : `${candidateExplanation} ${fixExplanation}`,
-        };
-      })
-    : [
-        ...candidateHunks.map((hunk) => ({
-          hunk,
-          label: "AI change" as const,
-          ...candidateSource,
-          annotation: hunkAnnotation(hunk),
-          readerContext: candidateExplanation,
-        })),
-        ...fixHunks.map((hunk) => ({
-          hunk,
-          label: "Fix" as const,
-          ...fixSource,
-          annotation: hunkAnnotation(hunk),
-          readerContext: fixExplanation,
-        })),
-      ];
+  const sameHunk = (left: ResearchCodeHunk, right: ResearchCodeHunk) =>
+    left.file === right.file && left.code === right.code;
+  const hunkRole = (hunk: ResearchCodeHunk): DiffRole =>
+    hunk.role === "candidate" ||
+    candidateHunks.some((item) => sameHunk(item, hunk))
+      ? "AI change"
+      : hunk.role === "fix" || fixHunks.some((item) => sameHunk(item, hunk))
+        ? "Fix"
+        : "Comparison";
+  const selectedHunks = comparisonHunks.length
+    ? [...comparisonHunks]
+    : [...candidateHunks, ...fixHunks];
+  if (comparisonHunks.length) {
+    for (const [role, hunks] of [
+      ["AI change", candidateHunks],
+      ["Fix", fixHunks],
+    ] as const) {
+      if (selectedHunks.some((hunk) => hunkRole(hunk) === role)) continue;
+      for (const hunk of hunks) {
+        if (!selectedHunks.some((selected) => sameHunk(selected, hunk))) {
+          selectedHunks.push(hunk);
+        }
+      }
+    }
+  }
+  const codeHunks = selectedHunks.map((hunk) => {
+    const label = hunkRole(hunk);
+    return {
+      hunk,
+      label,
+      ...(label === "AI change" ? candidateSource : fixSource),
+      annotation: hunkAnnotation(hunk),
+      readerContext:
+        label === "AI change"
+          ? candidateExplanation
+          : label === "Fix"
+            ? fixExplanation
+            : `${candidateExplanation} ${fixExplanation}`,
+    };
+  });
   const hasCode = codeHunks.length > 0;
   const codeTitle =
     candidateHunks.length && fixHunks.length
@@ -973,26 +966,6 @@ export function CanonicalCaseEvidence({
               added. The badge shows whether a hunk belongs to the AI-linked
               change, the later fix, or a curated comparison of the two.
             </p>
-            <div className="mt-4 grid gap-3 sm:grid-cols-2">
-              <div className="border-l-2 border-amber-400 pl-3">
-                <p className="font-mono text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-                  AI change context
-                </p>
-                <p className="mt-1 text-sm leading-6 text-muted-foreground">
-                  {candidateExplanation}
-                </p>
-              </div>
-              {hasFix ? (
-                <div className="border-l-2 border-emerald-500 pl-3">
-                  <p className="font-mono text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-                    Security fix context
-                  </p>
-                  <p className="mt-1 text-sm leading-6 text-muted-foreground">
-                    {fixExplanation}
-                  </p>
-                </div>
-              ) : null}
-            </div>
           </div>
           {codeHunks.map(
             (

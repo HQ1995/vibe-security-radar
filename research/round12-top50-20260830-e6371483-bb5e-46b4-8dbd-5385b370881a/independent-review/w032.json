@@ -1,0 +1,79 @@
+{
+  "worker": "w032",
+  "review_agent_id": "r12_w032",
+  "class_id": "alias-98d2a68f6895059418ba234d",
+  "case_id": "CVE-2025-54267",
+  "repo": "magento/magento2",
+  "primary_verdict": "NOT_AI",
+  "review_verdict": "CONFIRMED",
+  "protocol_checks": {
+    "vulnerability_mechanism": {
+      "status": "PASS",
+      "evidence": [
+        "CVE.org CNA record https://cveawg.mitre.org/api/cve/CVE-2025-54267 is state PUBLISHED (not rejected/withdrawn). CWE-863 Incorrect Authorization; CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:N/I:H/A:N; Adobe CNA title Adobe Commerce | Incorrect Authorization (CWE-863).",
+        "Adobe APSB25-94 https://helpx.adobe.com/security/products/magento/apsb25-94.html lists CVE-2025-54267 as Incorrect Authorization with impact Privilege escalation, authentication required Yes, exploit requires admin privileges Yes, CVSS 6.5 CVSS:3.1/AV:N/AC:L/PR:L/UI:N/S:U/C:N/I:H/A:N. GHSA-qvwr-p3hj-j6jf withdrawn_at is null.",
+        "At 2.4.8-p2 commit e2e14f0b1f040550ee78f884210442f2fd0f9444, LoginAsCustomerAdminUi Controller Adminhtml Login Login.php:47 gates the action on Magento_LoginAsCustomer::login and :215-227 persists an admin_id/customer_id authentication row then issues a secret. AuthenticateCustomerBySecret.php:70 calls customerSession->loginById. IsLoginAsCustomerSessionActive.php:35-47 treats a login_as_customer row as continuing authority. InvalidateExpiredSessionPlugin.php:66-79 only clears the impersonated customer session when that row is gone.",
+        "At the same 2.4.8-p2 tree, AdminLogoutPlugin.php:57-64 deletes authentication data only on admin logout. git ls-tree of e2e14f0b1f040550ee78f884210442f2fd0f9444 has no app/code/Magento/LoginAsCustomer/etc/adminhtml/di.xml and no role-save/user-role-change plugins, so revoking Magento_LoginAsCustomer::login or reassigning the admin leaves the row and impersonated session active. That is a complete CWE-863 source-to-sink matching APSB25-94 privilege-escalation semantics."
+      ]
+    },
+    "atomic_bic": {
+      "status": "PASS",
+      "evidence": [
+        "git rev-list --parents -n 1 dd15e184efe63d3fa5ebdf6d7906ef5874b5fdf2 returns a single parent 2c4dbba9111184299cba2935b26b23011566ee65. git diff-tree --no-commit-id --name-status -r dd15e184efe63d3fa5ebdf6d7906ef5874b5fdf2 adds the original Magefan Adminhtml Login.php, storefront Controller/Login/Index.php, Model/Login.php, Setup/InstallSchema.php, and etc/acl.xml together: ACL-gated secret generation, persist admin_id/customer_id/secret, loadNotUsed(secret), and authenticateCustomer()->loginById, with no permission-revocation invalidation path.",
+        "Later public objects are carriers, not first-writers: 8c2fb35a0ff87305b72da0b305b85079bd152a4d moves the module to repo root; 57b8afd0826576bd0e086d1c00628f2d606afb47 is a subdirectory import merge; 289c34e8764206fdfa5299854da070216ddb9b29 is a Magefan-to-Magento namespace rewrite; aa1543eda87e7c699a32b5659c470682c8863da6 adds logout-time row deletion plus IsLoginAsCustomerSessionActive/InvalidateExpiredSessionPlugin as a partial control; 1396ad58eef29250030bfab20e2c0bb35bb0394b is an API/module split. None of those first-write the missing ACL-revocation gap."
+      ]
+    },
+    "immediate_parent_absence": {
+      "status": "PASS",
+      "evidence": [
+        "git cat-file -t 2c4dbba9111184299cba2935b26b23011566ee65 returns commit. git ls-tree -r --name-only 2c4dbba9111184299cba2935b26b23011566ee65 is only README.md; a LoginAsCustomer/Magefan path count is 0.",
+        "git cat-file commit dd15e184efe63d3fa5ebdf6d7906ef5874b5fdf2 records exactly one parent, 2c4dbba9111184299cba2935b26b23011566ee65. The vulnerable ACL-gated secret, persistence table, and loginById sink are therefore absent from the directly verified parent tree."
+      ]
+    },
+    "squash_member_decomposition": {
+      "status": "PASS",
+      "evidence": [
+        "Import merge 57b8afd0826576bd0e086d1c00628f2d606afb47 has parents 90012f2920a784a2f814a6e820dfc12ac96ebb19 and 2df369e47a048dacb146c25cbba02db47534ee6b. First parent has no LoginAsCustomer module. Second-parent history is reconstructable and reverse-walks to first-writer dd15e184efe63d3fa5ebdf6d7906ef5874b5fdf2; the merge is not the BIC.",
+        "Release commit 214647d2e907da880a37e2d37c162921fecdf68e is a packaging snapshot (message Magento Release 2.4.8-p3; only child of e2e14f0b1f040550ee78f884210442f2fd0f9444..214647d2e907da880a37e2d37c162921fecdf68e). The public finer direct-fix member is 485febbd60a1eb28da779024c6c27f856e28ed39 (AC-15021: login as customer feature improvement), identified by first-add of the revocation plugins and exact core-blob identity across fixed tags. BIC itself is not a squash; decomposed_shas remain empty."
+      ]
+    },
+    "affected_release_membership": {
+      "status": "PASS",
+      "evidence": [
+        "Adobe APSB25-94 lists Magento Open Source 2.4.9-alpha2, 2.4.8-p2 and earlier, 2.4.7-p7 and earlier, and 2.4.6-p12 and earlier as affected. GHSA-qvwr-p3hj-j6jf matches those community-edition ranges.",
+        "git merge-base --is-ancestor dd15e184efe63d3fa5ebdf6d7906ef5874b5fdf2 succeeds for tags 2.4.9-alpha2, 2.4.8-p2, 2.4.7-p7, 2.4.6-p12, and 2.4.5-p14.",
+        "git ls-tree of 2.4.9-alpha2, 2.4.8-p2, 2.4.7-p7, 2.4.6-p12, and 2.4.5-p14 contains none of the six core revocation-fix paths added by 485febbd60a1eb28da779024c6c27f856e28ed39 (DeleteAuthenticationDataForListOfUser.php, UserRolePermission.php, RulesPlugin.php, Plugin/User/Model/User.php, LoginAsCustomer/etc/adminhtml/di.xml, DeleteAuthenticationDataForListOfUserInterface.php)."
+      ]
+    },
+    "fixed_release_membership": {
+      "status": "PASS",
+      "evidence": [
+        "Adobe APSB25-94 lists Magento Open Source 2.4.9-alpha3, 2.4.8-p3, 2.4.7-p8, and 2.4.6-p13 as the corresponding updated versions. GHSA first_patched_version values are the same four community-edition tags.",
+        "git ls-tree on 2.4.9-alpha3, 2.4.8-p3, 2.4.7-p8, and 2.4.6-p13 shows exact blob ids 2c686bf5e4d22ff6e0b88e99f2064ddc0d816e4b, d0d88b39b8974bd426f6d22d15c033d19bc360fa, 98db3da004ed4674b7bf5496eb254884cc27ee89, cf7f04529a5f3db2f412d2ee599ad76ab123cf80, 740cd08c9b3bd58aebce16813c4f9b8ae818451c, and 0c19d41d20fb81da7edba3a0184a5d8f01878300 for those six core files, identical to 485febbd60a1eb28da779024c6c27f856e28ed39. git merge-base --is-ancestor 485febbd60a1eb28da779024c6c27f856e28ed39 2.4.9-alpha3 succeeds; the p-line tags carry the same blobs via packaging snapshots rather than that commit's ancestry."
+      ]
+    },
+    "direct_fix_or_unpatched": {
+      "status": "PASS",
+      "evidence": [
+        "git cat-file -t 485febbd60a1eb28da779024c6c27f856e28ed39 returns commit; parent is 1c1c47e69dd4d54a1c7c80f68b9ebbfb397c2bee, whose tree lacks the six core revocation files. The commit message is AC-15021: login as customer feature improvement.",
+        "That commit adds UserRolePermission (ACL Magento_LoginAsCustomer::login), RulesPlugin afterSaveRel, Plugin/User/Model/User afterSave, DeleteAuthenticationDataForListOfUser, and adminhtml/di.xml wiring. RulesPlugin deletes login_as_customer rows for users whose role loses that resource or who are unassigned; the User plugin deletes the row after a role change to a role without that resource. SaveRole.php is updated to pass role_assigned_users and role_unassigned_users into saveRel. Packaging snapshot 214647d2e907da880a37e2d37c162921fecdf68e (2.4.8-p3) contains those exact core blobs; unpatched is null."
+      ]
+    },
+    "bic_only_ai_attribution": {
+      "status": "PASS",
+      "evidence": [
+        "git cat-file commit dd15e184efe63d3fa5ebdf6d7906ef5874b5fdf2 names Ihor Vansach <ihoronesuch@gmail.com> as both author and committer (author 1449948373 +0200) and the message is only Initial commit.",
+        "The raw BIC object has no Co-authored-by, Generated-with, AI, bot, generator, model, or assistant marker. Attribution used only this BIC object; later import/refactor/fix commits were not used to decide AI role."
+      ]
+    }
+  },
+  "findings": [
+    "CVE-2025-54267 is a real, still-PUBLISHED CWE-863 privilege-escalation in Magento Login as Customer: an ACL-gated admin can persist a login_as_customer row, log in a customer via secret, and that impersonated session remains authorized by row presence after Magento_LoginAsCustomer::login is revoked or the admin is reassigned.",
+    "The smallest surviving public first-writer is dd15e184efe63d3fa5ebdf6d7906ef5874b5fdf2. Its verified parent 2c4dbba9111184299cba2935b26b23011566ee65 contains only README.md.",
+    "The 2020 subdirectory import 57b8afd0826576bd0e086d1c00628f2d606afb47 and later namespace/module-split/logout-invalidation commits are reconstructable carriers or partial controls, not the BIC.",
+    "Direct fix 485febbd60a1eb28da779024c6c27f856e28ed39 adds the missing role/user revocation hooks. Six core fix blobs are byte-identical in vendor-designated Magento Open Source tags 2.4.9-alpha3, 2.4.8-p3, 2.4.7-p8, and 2.4.6-p13 and absent from the corresponding affected predecessors.",
+    "BIC authorship is a named human (Ihor Vansach <ihoronesuch@gmail.com>) with no AI/bot/generator/co-author marker on the BIC object, supporting NOT_AI."
+  ],
+  "corrected_fields": {},
+  "remaining_gap": null
+}

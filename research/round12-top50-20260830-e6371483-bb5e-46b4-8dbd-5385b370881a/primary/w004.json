@@ -1,0 +1,98 @@
+{
+  "schema_version": "independent-case-audit/v1",
+  "worker": "w004",
+  "review_agent_id": "round12-clean-w004",
+  "class_id": "alias-98b8df0f369c05ce326a9b13",
+  "case_id": "GHSA-4hf6-j482-f379",
+  "repo": "jahlives/openssl_encrypt",
+  "advisory_ids": [
+    "CVE-2026-74884",
+    "GHSA-4hf6-j482-f379"
+  ],
+  "input_binding": {
+    "bundle_sha256": "0a0c1accc4ca19519d74dfa49da030cba5c3b90ecaf28eedafbcdc5ce784dd54",
+    "clone_head_sha": "c2b412f6fd1bc33734de9fbce9bce68318eb3cbd"
+  },
+  "verdict": "AI_ROOT_CAUSE",
+  "protocol_checks": {
+    "vulnerability_mechanism": {
+      "status": "PASS",
+      "evidence": [
+        "The CVE.org record API at https://cveawg.mitre.org/api/cve/CVE-2026-74884 reports state PUBLISHED and describes unsanitized plugin_id path traversal in _is_safe_path; its affected range is <1.4.0 and 1.4.0 is unaffected.",
+        "The vendor advisory API at https://api.github.com/repos/jahlives/openssl_encrypt/security-advisories/GHSA-8jpj-w975-rwv5 reports state published, withdrawn_at null, and explains that _validate_plugin accepted any string up to 50 characters while _is_safe_path interpolated plugin_id into the allowed config directory.",
+        "At 0c7418bab59e80a2b40913d8ad8523e6bbab196b^, plugin_manager.py:815-820 validates plugin_id only for presence, string type, and length; plugin_sandbox.py:754-768 then builds ~/.openssl_encrypt/plugins/<plugin_id> and grants access when abs_path.startswith(config_dir). A deterministic Python evaluation with plugin_id='../../.ssh' produced config_dir=/home/hanqing/.ssh and made /home/hanqing/.ssh/id_ed25519 pass startswith(config_dir)."
+      ]
+    },
+    "atomic_bic": {
+      "status": "PASS",
+      "evidence": [
+        "git blame at 0c7418bab59e80a2b40913d8ad8523e6bbab196b^ attributes the vulnerable plugin-specific config-directory branch, including unsanitized plugin_id assignment, path interpolation, and startswith allow decision, to 35499f201ae2dc531d1194f6810c953d8b9af78b.",
+        "git diff 31d2bc8c8b5b3ee818d4cd7228ed9f42f9683004..35499f201ae2dc531d1194f6810c953d8b9af78b directly adds current_context propagation and the vulnerable per-plugin directory allow rule; later realpath and formatting commits are carriers/hardening changes, not the first writer."
+      ]
+    },
+    "immediate_parent_absence": {
+      "status": "PASS",
+      "evidence": [
+        "git cat-file verifies immediate parent 31d2bc8c8b5b3ee818d4cd7228ed9f42f9683004 as a commit. Its plugin_sandbox.py _is_safe_path accepts only the temp directory and standard-library directory at lines 375-388 and has no plugin_id-derived config-directory allowance."
+      ]
+    },
+    "squash_member_decomposition": {
+      "status": "PASS",
+      "evidence": [
+        "git rev-list --parents -n1 shows 35499f201ae2dc531d1194f6810c953d8b9af78b has exactly one parent, 31d2bc8c8b5b3ee818d4cd7228ed9f42f9683004. The public commit itself directly writes the vulnerable lines and is neither a merge nor a squash aggregate, so no finer member decomposition applies."
+      ]
+    },
+    "affected_release_membership": {
+      "status": "PASS",
+      "evidence": [
+        "PyPI JSON at https://pypi.org/pypi/openssl-encrypt/json records the official openssl_encrypt 1.4.0b3 sdist, uploaded 2026-01-04T19:20:48.382107Z with SHA-256 5a36c06595ddfcdc721231254c02ef6ba16ab2cf6c4ad432529bd24fc98ac6c9.",
+        "Streaming inspection of that exact 1.4.0b3 sdist shows PKG-INFO Version: 1.4.0b3 and plugin_sandbox.py:617-632 interpolating unsanitized context.plugin_id into config_dir and returning true on the prefix test; the artifact contains no _sanitize_plugin_id. git merge-base --is-ancestor also confirms BIC 35499f201ae2dc531d1194f6810c953d8b9af78b is an ancestor of the 1.4.0b3 version-bump commit 62810a2f938ca57e5a408ecf213d5299f6cfb1ac."
+      ]
+    },
+    "fixed_release_membership": {
+      "status": "PASS",
+      "evidence": [
+        "git merge-base --is-ancestor confirms direct fix 0c7418bab59e80a2b40913d8ad8523e6bbab196b is an ancestor of tag v1.4.0 (tag target 768df5cd1910e349509f07a27eeac6951e0003bf).",
+        "PyPI JSON records the 1.4.0 sdist uploaded 2026-03-03T18:22:41.178065Z with SHA-256 77a024c126ec6757703bd5e74da8c3af34683537b6e3f31585d9c3cf4497ca4f; streaming inspection shows PKG-INFO Version: 1.4.0, _sanitize_plugin_id at lines 323-351, and its use before config_dir construction at lines 798-809."
+      ]
+    },
+    "direct_fix_or_unpatched": {
+      "status": "PASS",
+      "evidence": [
+        "git show 0c7418bab59e80a2b40913d8ad8523e6bbab196b directly adds _sanitize_plugin_id, rejects slash, backslash, NUL, '..', and all characters outside [A-Za-z0-9_-], calls it before plugin execution and before _is_safe_path path construction, and removes the impossible nested duplicate prefix check."
+      ]
+    },
+    "bic_only_ai_attribution": {
+      "status": "PASS",
+      "evidence": [
+        "The raw commit object for BIC 35499f201ae2dc531d1194f6810c953d8b9af78b itself contains both 'Generated with [Claude Code]' and 'Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>'. No repository-wide or later-fix marker is used for attribution."
+      ]
+    }
+  },
+  "bug_semantics": "An untrusted plugin class controls plugin.plugin_id. PluginManager instantiated the class and accepted any nonempty string of at most 50 characters, then propagated that value into PluginSecurityContext. For a plugin without READ_FILES, the sandbox intercepted file operations and called _is_safe_path, but _is_safe_path resolved ~/.openssl_encrypt/plugins/<plugin_id> without validating plugin_id and treated every path with that resolved prefix as allowed. Traversal such as '../../.ssh' therefore changes the purported per-plugin config root to a user directory outside ~/.openssl_encrypt/plugins, allowing the sandboxed plugin to read or write paths there despite lacking general file capability.",
+  "flaw_origin": "Single-parent commit 35499f201ae2dc531d1194f6810c953d8b9af78b is the smallest public first writer: it introduced context propagation into the file-operation wrapper and added the unsanitized plugin_id-derived config/code directory allowances. Its immediate parent denied all paths except the temp and standard-library roots.",
+  "introducer_sha": "35499f201ae2dc531d1194f6810c953d8b9af78b",
+  "introducer_parent": "31d2bc8c8b5b3ee818d4cd7228ed9f42f9683004",
+  "introducer_parent_absent": true,
+  "squash_decomposed": false,
+  "decomposed_shas": [],
+  "fix_sha": "0c7418bab59e80a2b40913d8ad8523e6bbab196b",
+  "direct_fix_sha": "0c7418bab59e80a2b40913d8ad8523e6bbab196b",
+  "unpatched": null,
+  "ai_marker": {
+    "state": "PRESENT",
+    "evidence": [
+      "BIC 35499f201ae2dc531d1194f6810c953d8b9af78b commit message: Generated with [Claude Code] (https://claude.com/claude-code).",
+      "BIC 35499f201ae2dc531d1194f6810c953d8b9af78b trailer: Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>."
+    ]
+  },
+  "evidence": [
+    "CVE.org record API https://cveawg.mitre.org/api/cve/CVE-2026-74884: PUBLISHED; affected <1.4.0; 1.4.0 unaffected; vendor advisory reference GHSA-8jpj-w975-rwv5.",
+    "Vendor advisory API https://api.github.com/repos/jahlives/openssl_encrypt/security-advisories/GHSA-8jpj-w975-rwv5: published, not withdrawn; identifies 0c7418b as the fix.",
+    "Git BIC 35499f201ae2dc531d1194f6810c953d8b9af78b and immediate parent 31d2bc8c8b5b3ee818d4cd7228ed9f42f9683004 both exist as commit objects in the assigned clone; their direct diff creates the vulnerable authorization path.",
+    "Git direct fix 0c7418bab59e80a2b40913d8ad8523e6bbab196b exists as a commit object and is contained by v1.4.0.",
+    "Exact PyPI 1.4.0b3 and 1.4.0 source distributions independently demonstrate the vulnerable and fixed shipped code, respectively."
+  ],
+  "reasoning": "The authoritative advisory disposition is live, the source-to-sink mechanism is present in a shipped beta artifact, and Git identifies a smallest non-aggregate first writer whose immediate parent lacks the flawed authorization branch. The direct sanitization fix is present in the stable fixed release. Because the exact BIC itself explicitly records Claude Code generation and Claude Sonnet 4.5 co-authorship, all lifecycle and causal-attribution gates close as AI_ROOT_CAUSE.",
+  "remaining_gap": null
+}

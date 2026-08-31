@@ -1,0 +1,72 @@
+{
+ "schema_version": "causal-audit-bundle/1",
+ "class_id": "alias-c395c20589e3df6fcd25545c",
+ "status_at_selection": "UNANALYZED",
+ "repo": "messagepack-csharp/messagepack-csharp",
+ "clone_dir": "/home/hanqing/agents/ai-slop/.ai-slop/state/repos/messagepack-csharp_messagepack-csharp",
+ "clone_url": "https://github.com/messagepack-csharp/messagepack-csharp.git",
+ "clone_head_sha": "21f6e635d5b5a40ec82a0cd642b1d19b7d1fbe88",
+ "clone_shallow": "false",
+ "clone_promisor": true,
+ "clone_partial_filter": "blob:none",
+ "advisory_ids": [
+  "CVE-2026-48510",
+  "GHSA-v72x-2h86-7f8m"
+ ],
+ "base_ledger_revision": 1,
+ "ledger_snapshot_sha256": "2a8e0f606d9dbb6a509188d6f4da35598f233dce4b2b205fa1cb14136e75fbe5",
+ "advisory": {
+  "id": "GHSA-v72x-2h86-7f8m",
+  "cve_id": "CVE-2026-48510",
+  "summary": "MessagePack-CSharp: LZ4 decompression allocates from unbounded declared output lengths",
+  "description": "## Summary\n\nWhen MessagePack-CSharp decompresses `Lz4Block` or `Lz4BlockArray` payloads, it reads declared uncompressed lengths from the wire and allocates output buffers based on those lengths before validating that the compressed data is valid or that the declared expansion is reasonable.\n\nA small payload can claim a very large uncompressed length and force a large allocation before LZ4 decoding begins.\n\n## Impact\n\nApplications are affected when they deserialize attacker-controlled MessagePack payloads with `MessagePackCompression.Lz4Block` or `MessagePackCompression.Lz4BlockArray` enabled.\n\nIn the `Lz4Block` case, an attacker-controlled integer is used to request the destination span. In the `Lz4BlockArray` case, per-block uncompressed lengths and their aggregate can be attacker-controlled. Without a cap, the declared output size can be disproportionate to the input size, producing out-of-memory exceptions, process termination on constrained hosts, or severe memory pressure.\n\nThis advisory is about unbounded allocation from declared decompressed sizes. It is separate from the LZ4 source-buffer over-read issue, which concerns unsafe decoder reads beyond the compressed input buffer.\n\n## Affected components\n\n- Package: `MessagePack`\n- Feature: LZ4 compressed MessagePack payloads\n- APIs: `MessagePackSerializer` with `WithCompression(MessagePackCompression.Lz4Block)` or `WithCompression(MessagePackCompression.Lz4BlockArray)`\n- Internal routine: `MessagePackSerializer.TryDecompress`\n- Finding ID: `MESSAGEPACKCSHARP-OPEN-004`\n\n## Patches\n\nFixes are prepared and will be released in coordinated patch versions.\n\nUpgrade guidance:\n\n1. Upgrade `MessagePack` to the patched version for your release line.\n2. Upgrade companion MessagePack packages in the same dependency graph to the coordinated patched versions.\n\nThe fix should reject negative and excessive uncompressed lengths before allocation. It should also cap aggregate decompressed size for block arrays and expose or honor an appropriate maximum decompressed length policy.\n\n## Workarounds\n\nPatching is recommended.\n\nUntil a patched version is available, do not enable MessagePack-CSharp's built-in LZ4 compression modes for untrusted inputs. If compression is required, enforce strict compressed and decompressed size limits outside MessagePack-CSharp before deserialization.\n\n## Resources\n\n- `MESSAGEPACKCSHARP-OPEN-004`: LZ4 decompression allocation from unbounded uncompressed length\n- `MESSAGEPACKCSHARP-011`: duplicate decompression-bomb finding\n- CWE-409: Improper Handling of Highly Compressed Data\n- CWE-770: Allocation of Resources Without Limits or Throttling",
+  "severity": "medium",
+  "cvss": {
+   "vector_string": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H",
+   "score": 7.5
+  },
+  "cwes": [
+   {
+    "cwe_id": "CWE-409",
+    "name": "Improper Handling of Highly Compressed Data (Data Amplification)"
+   },
+   {
+    "cwe_id": "CWE-770",
+    "name": "Allocation of Resources Without Limits or Throttling"
+   }
+  ],
+  "published_at": "2026-06-25T18:53:44Z",
+  "updated_at": "2026-06-25T18:53:45Z",
+  "withdrawn_at": null,
+  "vulnerabilities": [
+   {
+    "package": {
+     "ecosystem": "nuget",
+     "name": "MessagePack"
+    },
+    "vulnerable_version_range": "< 2.5.301",
+    "first_patched_version": "2.5.301",
+    "vulnerable_functions": []
+   },
+   {
+    "package": {
+     "ecosystem": "nuget",
+     "name": "MessagePack"
+    },
+    "vulnerable_version_range": ">= 3.0, < 3.1.7",
+    "first_patched_version": "3.1.7",
+    "vulnerable_functions": []
+   }
+  ],
+  "references": [
+   "https://github.com/MessagePack-CSharp/MessagePack-CSharp/security/advisories/GHSA-v72x-2h86-7f8m",
+   "https://nvd.nist.gov/vuln/detail/CVE-2026-48510",
+   "https://github.com/advisories/GHSA-v72x-2h86-7f8m"
+  ],
+  "source": "https://api.github.com/advisories/GHSA-V72X-2H86-7F8M",
+  "fetch_error": null
+ },
+ "same_repository_prior_hits": [],
+ "protocol": "docs/AUDIT-PROTOCOL.md",
+ "context_rule": "One case, one clean context. Do not read the canonical ledger, another case bundle/output, or a prior verdict. Prior hits are leads, never proof."
+}

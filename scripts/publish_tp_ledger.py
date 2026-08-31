@@ -15,6 +15,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from site_preflight import (
+    AUDIT_IDENTIFIER_RE,
     comparison_hunk_role,
     is_pseudo_annotation,
     public_explanation,
@@ -47,7 +48,6 @@ SHA_RE = re.compile(r"^[0-9a-fA-F]{7,40}$")
 COMMIT_URL_RE = re.compile(r"/commit/([0-9a-fA-F]{7,40})")
 REPO_RE = re.compile(r"github\.com/([A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+)", re.I)
 CJK_RE = re.compile(r"[\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff\u3000-\u303f]")
-
 FAMILY_PATTERNS = [
     ("claude_flow", re.compile(r"claude[- ]?flow", re.I)),
     ("copilot", re.compile(r"copilot", re.I)),
@@ -80,7 +80,6 @@ DEFAULT_GATES = {
     "release": "UNKNOWN",
     "uniqueness": "UNKNOWN",
 }
-PASS_GATES = {key: "PASS" for key in DEFAULT_GATES}
 CAUSE_CATEGORIES = {
     "auth_access": {
         "label": "Authentication & access control",
@@ -356,11 +355,7 @@ def first_text(*values: object) -> str | None:
 def strip_cjk_tree(value):
     """Remove Chinese characters from published JSON, including hunks and names."""
     if isinstance(value, str):
-        text = CJK_RE.sub("", value)
-        text = re.sub(r" \(\)", "", text)
-        text = re.sub(r"[ \t]+\n", "\n", text)
-        text = re.sub(r" {2,}", " ", text)
-        return text
+        return CJK_RE.sub("", value)
     if isinstance(value, list):
         return [strip_cjk_tree(item) for item in value]
     if isinstance(value, dict):
@@ -737,6 +732,7 @@ def public_shas(
     rec: dict | None,
     cached: dict | None,
     evidence: dict | None = None,
+    row: dict | None = None,
 ) -> tuple[list[str], list[str]]:
     """One SHA source for listing, diagram, and diffs.
 
@@ -744,11 +740,17 @@ def public_shas(
     over cached evidence so re-generated comparison hunks stay consistent
     with the listing SHAs.
     """
-    candidates = collect_shas(rec, "introducer_sha", "introducer", "introducer_shas")
-    if not candidates and cached:
+    if row is not None and "candidate_set" in row:
+        candidates = list(row.get("candidate_set") or [])
+    else:
+        candidates = collect_shas(rec, "introducer_sha", "introducer", "introducer_shas")
+    if not candidates and cached and not (row is not None and "candidate_set" in row):
         candidates = list(cached.get("candidate_set") or [])
-    fixes = collect_shas(rec, "direct_fix_sha", "fix_sha")
-    if not fixes and cached:
+    if row is not None and "minimum_fix_set" in row:
+        fixes = list(row.get("minimum_fix_set") or [])
+    else:
+        fixes = collect_shas(rec, "direct_fix_sha", "fix_sha")
+    if not fixes and cached and not (row is not None and "minimum_fix_set" in row):
         fixes = list(cached.get("minimum_fix_set") or [])
     chain = (cached or {}).get("ir_chain") or {}
     evidence = evidence or (cached or {}).get("code_evidence") or {}
@@ -758,13 +760,15 @@ def public_shas(
     url_fix = sha_from_url(evidence.get("fix_url"))
     attempted_shas = [str(item) for item in attempted if SHA_RE.match(str(item))]
     final_shas = [str(item) for item in final if SHA_RE.match(str(item))]
-    if attempted_shas:
+    row_candidates = row is not None and "candidate_set" in row
+    row_fixes = row is not None and "minimum_fix_set" in row
+    if attempted_shas and not row_candidates:
         candidates = attempted_shas
-    elif url_candidate and not sha_overlap([url_candidate], candidates):
+    elif url_candidate and not row_candidates and not sha_overlap([url_candidate], candidates):
         candidates = [url_candidate]
-    if final_shas:
+    if final_shas and not row_fixes:
         fixes = final_shas
-    elif url_fix and not sha_overlap([url_fix], fixes):
+    elif url_fix and not row_fixes and not sha_overlap([url_fix], fixes):
         fixes = [url_fix]
     return unique(candidates), unique(fixes)
 
@@ -976,19 +980,57 @@ ANNOTATION_FULLTEXTS = ROOT / "research/gate-campaign-20260830/annotation-fullte
 ROUND_ADJUDICATION = ROOT / "research/round9-top200-20260828/adjudication"
 
 
-def ai_summary_overlay(case: dict) -> None:
-    """Apply the generated one-line finding to a case's evidence summary in place."""
-    summary = AI_SUMMARIES.get(str(case.get("case_id") or "").upper())
-    if not summary:
-        return
+def ai_summary_overlay(case: dict, *, canonical: bool = False) -> bool:
+    # Keep canonical reader copy only when it reads as public prose without audit
+    # identifiers; pseudo-prose (path/SHA noise) falls through to the curated map.
     evidence = case.get("code_evidence")
+    if canonical and isinstance(evidence, dict):
+        canonical = public_text(evidence.get("summary"))
+        if (
+            canonical
+            and public_explanation(canonical)
+            and not AUDIT_IDENTIFIER_RE.search(canonical)
+            and "PR #" not in canonical
+        ):
+            return True
+    keys = [case.get("case_id"), *(case.get("aliases") or []), case.get("class_id")]
+    summary = next(
+        (
+            AI_SUMMARIES.get(str(key or "").upper())
+            for key in keys
+            if AI_SUMMARIES.get(str(key or "").upper())
+        ),
+        None,
+    )
+    if (
+        not summary
+        or not public_explanation(summary)
+        or AUDIT_IDENTIFIER_RE.search(summary)
+        or "PR #" in summary
+    ):
+        return False
     if not isinstance(evidence, dict):
         evidence = {}
         case["code_evidence"] = evidence
     evidence["summary"] = summary
-    mechanism = AI_SUMMARIES_MECHANISM.get(str(case.get("case_id") or "").upper())
-    if mechanism and not CJK_RE.search(mechanism):
+    mechanism = next(
+        (
+            AI_SUMMARIES_MECHANISM.get(str(key or "").upper())
+            for key in keys
+            if AI_SUMMARIES_MECHANISM.get(str(key or "").upper())
+        ),
+        None,
+    )
+    if (
+        mechanism
+        and not CJK_RE.search(mechanism)
+        and public_explanation(mechanism)
+        and not AUDIT_IDENTIFIER_RE.search(mechanism)
+        and "PR #" not in mechanism
+    ):
         evidence["mechanism"] = mechanism
+        case["mechanism"] = mechanism
+    return True
 
 
 def load_generated_evidence() -> dict[str, dict]:
@@ -1228,9 +1270,16 @@ def apply_case_overrides(
             item for item in case["aliases"] if item.upper() != case["case_id"].upper()
         ]
     if spec.get("repository"):
-        case["repository"] = spec["repository"]
+        canonical_repo = str(row.get("repo") or "")
+        override_repo = str(spec["repository"])
+        repository = (
+            override_repo
+            if not canonical_repo or canonical_repo.casefold() == override_repo.casefold()
+            else canonical_repo
+        )
+        case["repository"] = repository
         meta = dict(case.get("repository_metadata") or {})
-        meta["full_name"] = spec["repository"]
+        meta["full_name"] = repository
         if spec.get("language"):
             meta["language"] = spec["language"]
         case["repository_metadata"] = meta
@@ -1253,7 +1302,7 @@ def apply_case_overrides(
         "candidate_sources",
         "candidate_fix_edges",
     ):
-        if field in spec:
+        if field in spec and field not in row:
             case[field] = spec[field]
     if spec.get("aliases_extra"):
         case["aliases"] = unique([*(case.get("aliases") or []), *spec["aliases_extra"]])
@@ -1265,17 +1314,23 @@ def apply_case_overrides(
     class_override = (overrides.get("class_overrides") or {}).get(class_id)
     if class_override:
         case["contribution_class"] = class_override
-    chain = normalize_ir_chain(spec.get("ir_chain")) if spec.get("ir_chain") else None
-    if not chain:
-        chain = normalize_ir_chain(row.get("ir_chain"))
+    chain = (
+        normalize_ir_chain(row.get("ir_chain"))
+        if "ir_chain" in row
+        else normalize_ir_chain(spec.get("ir_chain"))
+    )
     indexed_chain = chains.get(str(case.get("case_id") or "").upper())
-    if indexed_chain and indexed_chain.get("_publication_override"):
+    if (
+        "ir_chain" not in row
+        and indexed_chain
+        and indexed_chain.get("_publication_override")
+    ):
         chain = {
             key: value
             for key, value in indexed_chain.items()
             if key != "_publication_override"
         }
-    elif chain and indexed_chain:
+    elif "ir_chain" not in row and chain and indexed_chain:
         chain = dict(chain)
         for field in (
             "original_author_kind",
@@ -1301,17 +1356,25 @@ def apply_case_overrides(
     ):
         case["ir_chain"] = chain
         case["contribution_class"] = "AI_INCOMPLETE_REMEDIATION"
-    if spec.get("candidate_set"):
+    if spec.get("candidate_set") and "candidate_set" not in row:
         case["candidate_set"] = list(spec["candidate_set"])
-    if "carrier_set" in spec:
+    if "carrier_set" in spec and "carrier_set" not in row:
         case["carrier_set"] = list(spec["carrier_set"])
-    if "minimum_fix_set" in spec:
+    if "minimum_fix_set" in spec and "minimum_fix_set" not in row:
         case["minimum_fix_set"] = list(spec["minimum_fix_set"])
-    if case.get("ir_chain") and not spec.get("candidate_set"):
+    if case.get("ir_chain"):
         aligned_candidates, aligned_fixes = public_shas(rec, case)
-        if aligned_candidates:
+        if (
+            aligned_candidates
+            and "candidate_set" not in row
+            and "candidate_set" not in spec
+        ):
             case["candidate_set"] = aligned_candidates
-        if aligned_fixes and "minimum_fix_set" not in spec:
+        if (
+            aligned_fixes
+            and "minimum_fix_set" not in row
+            and "minimum_fix_set" not in spec
+        ):
             case["minimum_fix_set"] = aligned_fixes
     provenance = dict(case.get("ai_provenance") or {})
     provenance["candidate_count"] = len(case.get("candidate_set") or [])
@@ -1386,20 +1449,33 @@ def build_case(
         cached.get("scope_statement") if cached else None,
     )
     language = ((cached or {}).get("repository_metadata") or {}).get("language") or repo_languages.get((repo or "").lower()) or ""
-    case_evidence = next(
-        (
-            generated_evidence.get(str(key).upper())
-            for key in [case_id, *aliases, row.get("class_id")]
-            if (generated_evidence.get(str(key).upper()) or {}).get("comparison_hunks")
-        ),
-        None,
-    ) or (cached or {}).get("code_evidence")
-    candidates, fixes = public_shas(rec, cached, case_evidence)
-    gates = dict(PASS_GATES) if row.get("site_tier") == "ALL_GATES_PASS" else dict(
-        row.get("gates")
-        or (cached.get("gates") if cached and cached.get("gates") else None)
-        or DEFAULT_GATES
-    )
+    if "code_evidence" in row:
+        case_evidence = row.get("code_evidence")
+        if case_evidence is not None and not isinstance(case_evidence, dict):
+            raise ValueError(f"{case_id}: ledger code_evidence must be an object or null")
+    else:
+        case_evidence = next(
+            (
+                generated_evidence.get(str(key).upper())
+                for key in [case_id, *aliases, row.get("class_id")]
+                if (generated_evidence.get(str(key).upper()) or {}).get(
+                    "comparison_hunks"
+                )
+            ),
+            None,
+        ) or (cached or {}).get("code_evidence")
+    candidates, fixes = public_shas(rec, cached, case_evidence, row)
+    ledger_gates = row.get("gates")
+    if ledger_gates:
+        if (
+            set(ledger_gates) != set(DEFAULT_GATES)
+            or not set(ledger_gates.values()) <= {"PASS", "NARROW", "NA", "UNKNOWN", "FAIL"}
+            or not row.get("gates_source")
+        ):
+            raise ValueError(f"{case_id}: invalid or unsourced ledger gates")
+        gates = dict(ledger_gates)
+    else:
+        gates = dict(DEFAULT_GATES)
     derived_class = contribution_class(row, rec)
     contribution = (
         "AI_INCOMPLETE_REMEDIATION"
@@ -1424,7 +1500,9 @@ def build_case(
         candidate_repo_match.group(1) if candidate_repo_match else repo
     )
     candidate_sources = (
-        [
+        row.get("candidate_sources")
+        if "candidate_sources" in row
+        else [
             {"sha": sha, "repository": candidate_source_repo}
             for sha in candidates
         ]
@@ -1433,8 +1511,8 @@ def build_case(
     )
     candidate_fix_edges = (
         row.get("candidate_fix_edges")
-        or (rec or {}).get("candidate_fix_edges")
-        or None
+        if "candidate_fix_edges" in row
+        else (rec or {}).get("candidate_fix_edges") or None
     )
     case = {
         "case_id": case_id,
@@ -1452,7 +1530,9 @@ def build_case(
         "carrier_set": carriers,
         "minimum_fix_set": fixes,
         "gates": gates,
-        "vulnerable_release": (cached or {}).get("vulnerable_release")
+        "vulnerable_release": row.get("vulnerable_release")
+        if "vulnerable_release" in row
+        else (cached or {}).get("vulnerable_release")
         or release_from_advisory(
             next(
                 (
@@ -1464,7 +1544,9 @@ def build_case(
             ),
             "advisory_range",
         ),
-        "fixed_release": (cached or {}).get("fixed_release")
+        "fixed_release": row.get("fixed_release")
+        if "fixed_release" in row
+        else (cached or {}).get("fixed_release")
         or release_from_advisory(
             next(
                 (
@@ -1485,11 +1567,11 @@ def build_case(
         ),
         "severity": (cached or {}).get("severity"),
         "cwes": list((cached or {}).get("cwes") or []),
-        "description": description,
+        "description": public_text(row.get("description"), description),
         "references": list((cached or {}).get("references") or []),
         "mechanism_key": (cached or {}).get("mechanism_key"),
-        "mechanism": mechanism,
-        "scope_statement": scope_statement,
+        "mechanism": public_text(row.get("mechanism"), mechanism),
+        "scope_statement": public_text(row.get("scope_statement"), scope_statement),
         "cause_category": (cached or {}).get("cause_category")
         or cause_of(
             first_text(
@@ -1513,20 +1595,7 @@ def build_case(
             "note": public_text(marker),
         },
         "fix_authorship": (cached or {}).get("fix_authorship"),
-        "code_evidence": scrub_evidence(
-            next(
-                (
-                    generated_evidence.get(str(key).upper())
-                    for key in [case_id, *aliases, row.get("class_id")]
-                    if (generated_evidence.get(str(key).upper()) or {}).get(
-                        "comparison_hunks"
-                    )
-                ),
-                None,
-            )
-            or (cached or {}).get("code_evidence"),
-            (mechanism, description),
-        ),
+        "code_evidence": scrub_evidence(case_evidence, (mechanism, description)),
         "ir_chain": (cached or {}).get("ir_chain"),
     }
     if candidate_sources:
@@ -1537,7 +1606,9 @@ def build_case(
         str((rec or {}).get(key) or "") for key in ("remaining_gap", "evidence")
     ).strip() or None
     case["unpatched"] = (
-        (rec or {}).get("unpatched")
+        row.get("unpatched")
+        if "unpatched" in row
+        else (rec or {}).get("unpatched")
         or first_unpatched(case_id, aliases, row.get("class_id"), unpatched_fixes)
     )
     case = apply_case_overrides(case, row, rec, overrides, chains)
@@ -1578,6 +1649,7 @@ def main() -> None:
     drop_class_ids = {
         str(item).lower() for item in (overrides.get("drop_class_ids") or [])
     }
+    canonical_evidence_classes: set[str] = set()
     cases: list[dict] = []
     for line in LEDGER.read_text(encoding="utf-8").splitlines():
         if not line.strip():
@@ -1589,6 +1661,8 @@ def main() -> None:
             continue
         if str(row.get("class_id") or "").lower() in drop_class_ids:
             continue
+        if "code_evidence" in row:
+            canonical_evidence_classes.add(str(row.get("class_id") or "").lower())
         case = build_case(
             row,
             cache[0],
@@ -1613,7 +1687,14 @@ def main() -> None:
     ) or {}
     security_fix_contexts = load_json(SECURITY_FIX_CONTEXTS) or {}
     for case in cases:
-        ai_summary_overlay(case)
+        if not ai_summary_overlay(
+            case,
+            canonical=str(case.get("class_id") or "").lower()
+            in canonical_evidence_classes,
+        ):
+            raise SystemExit(
+                f"{case['case_id']}: missing reader summary in {AI_CASE_SUMMARIES}"
+            )
         case["code_evidence"] = scrub_evidence(
             case.get("code_evidence"),
             (case.get("mechanism"), case.get("description")),

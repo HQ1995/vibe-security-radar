@@ -12,8 +12,10 @@ import json
 import os
 import re
 import sys
+import time
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
+from urllib.error import HTTPError
 from urllib.parse import urlparse
 from urllib.request import Request, urlopen
 
@@ -47,6 +49,15 @@ PSEUDO_ANNOTATION_RE = re.compile(
 INTERNAL_PROSE_RE = re.compile(
     r"cand=|fix=|ai=\['|/tmp/|sink=|source=|guard=|class_id|"
     r"\\s\+|decomposed_shas|bug_semantics",
+    re.I,
+)
+HUNK_HEADER_RE = re.compile(
+    r"^@@ -\d+(?:,(?P<old>\d+))? \+\d+(?:,(?P<new>\d+))? @@"
+)
+AUDIT_IDENTIFIER_RE = re.compile(
+    r"\balias-[a-z0-9]+\b|"
+    r"\b(?=[0-9a-f]{7,40}\b)(?=[0-9a-f]*\d)[0-9a-f]{7,40}\b|"
+    r"\b(?:BIC|carrier|(?:AI|CAUSAL|EVIDENCE|PARTIALLY|UNANALYZED|NOT|FALSE)_[A-Z0-9_]+)\b",
     re.I,
 )
 
@@ -106,6 +117,29 @@ def annotation_context(case: dict) -> tuple[str, ...]:
 def is_pseudo_annotation(value: object, context: tuple[str, ...]) -> bool:
     text = str(value or "").strip()
     return bool(text) and (bool(PSEUDO_ANNOTATION_RE.match(text)) or text in context)
+
+
+def valid_unified_hunks(value: object) -> bool:
+    expected: tuple[int, int] | None = None
+    old_count = new_count = 0
+    found = False
+    for line in str(value or "").splitlines():
+        header = HUNK_HEADER_RE.match(line)
+        if header:
+            if expected and expected != (old_count, new_count):
+                return False
+            expected = (int(header.group("old") or 1), int(header.group("new") or 1))
+            old_count = new_count = 0
+            found = True
+        elif expected:
+            if line.startswith(" "):
+                old_count += 1
+                new_count += 1
+            elif line.startswith("-"):
+                old_count += 1
+            elif line.startswith("+"):
+                new_count += 1
+    return found and expected == (old_count, new_count)
 
 
 def _diff_body(value: object) -> str:
@@ -409,10 +443,16 @@ def live_fix_object_witness_errors(witness: dict) -> list[str]:
 
     def verify(target: tuple[str, str]) -> tuple[str, str, str | None]:
         repository, sha = target
-        try:
-            return repository, sha, github_commit_sha(repository, sha)
-        except (OSError, TimeoutError, UnicodeError, ValueError):
-            return repository, sha, None
+        for attempt in range(4):
+            try:
+                return repository, sha, github_commit_sha(repository, sha)
+            except HTTPError as error:
+                if error.code in (429, 502, 503) and attempt < 3:
+                    time.sleep(2.0 * (2**attempt))
+                    continue
+                return repository, sha, None
+            except (OSError, TimeoutError, UnicodeError, ValueError):
+                return repository, sha, None
 
     with ThreadPoolExecutor(max_workers=min(12, len(targets) or 1)) as pool:
         results = list(pool.map(verify, targets))
@@ -681,7 +721,22 @@ def evaluate(
             errors.append(f"{case_id}: invalid publication_status {status!r}")
         else:
             status_counts[status] += 1
+        gates = case.get("gates") or {}
+        failed_gates = sorted(
+            name for name, value in gates.items() if value == "FAIL"
+        )
+        if failed_gates:
+            errors.append(
+                f"{case_id}: published case has FAIL gates: {', '.join(failed_gates)}"
+            )
         evidence = case.get("code_evidence") or {}
+        summary = str(evidence.get("summary") or "").strip()
+        if (
+            not public_explanation(summary)
+            or AUDIT_IDENTIFIER_RE.search(summary)
+            or "PR #" in summary
+        ):
+            errors.append(f"{case_id}: missing public reader summary")
         errors.extend(unpatched_errors(case_id, case))
         errors.extend(ir_chain_errors(case_id, case))
         unpatched = is_unpatched(case)
@@ -864,6 +919,57 @@ def evaluate(
             for role in ("candidate_hunks", "fix_hunks")
             for index, hunk in enumerate(evidence.get(role) or [])
         ]
+        annotation_mode = evidence.get("annotation_mode")
+        if annotation_mode not in {None, "hunk_specific"}:
+            errors.append(f"{case_id}: invalid code evidence annotation_mode")
+        elif annotation_mode == "hunk_specific":
+            annotations = [
+                str(hunk.get("annotation") or "").strip()
+                for _, _, hunk in displayed
+            ]
+            if not displayed or any(not value for value in annotations):
+                errors.append(
+                    f"{case_id}: hunk-specific evidence has an unannotated display hunk"
+                )
+            if any(
+                not valid_unified_hunks(hunk.get("code"))
+                for _, _, hunk in displayed
+            ):
+                errors.append(
+                    f"{case_id}: hunk-specific evidence contains an invalid unified diff"
+                )
+            required_anchors = evidence.get("required_anchors")
+            if not isinstance(required_anchors, dict) or not required_anchors:
+                errors.append(
+                    f"{case_id}: hunk-specific evidence has no required anchors"
+                )
+            else:
+                for anchor_role, anchors in required_anchors.items():
+                    if (
+                        anchor_role not in {"candidate", "fix"}
+                        or not isinstance(anchors, list)
+                        or not anchors
+                        or any(not str(anchor or "").strip() for anchor in anchors)
+                    ):
+                        errors.append(
+                            f"{case_id}: invalid {anchor_role} required anchors"
+                        )
+                        continue
+                    role_code = "\n".join(
+                        str(hunk.get("code") or "")
+                        for _, _, hunk in displayed
+                        if hunk.get("role") == anchor_role
+                    ).casefold()
+                    missing = [
+                        str(anchor)
+                        for anchor in anchors
+                        if str(anchor).casefold() not in role_code
+                    ]
+                    if missing:
+                        errors.append(
+                            f"{case_id}: missing {anchor_role} anchors: "
+                            + ", ".join(missing)
+                        )
         displayed_roles = {
             str(hunk.get("role"))
             for _, _, hunk in displayed
@@ -947,7 +1053,6 @@ def evaluate(
                     "genuine annotation"
                 )
         if status == "confirmed":
-            gates = case.get("gates") or {}
             if not gates or set(gates.values()) != {"PASS"}:
                 errors.append(f"{case_id}: confirmed case does not have all PASS gates")
             if case.get("publication_issues"):
@@ -1002,13 +1107,14 @@ def evaluate(
                 f"{case_id}: no code comparison; add hunks or allowlist a reason"
             )
         ids = official_ids(case)
+        release_gate = (case.get("gates") or {}).get("release")
         if has_release(case) or (unpatched and case.get("vulnerable_release")):
             releases += 1
         elif ids and not unpatched:
             if key in release_allow:
                 unused_release_allow.discard(key)
                 warnings.append(f"{case_id}: no release range ({release_allow[key]})")
-            else:
+            elif release_gate not in {"NARROW", "UNKNOWN"}:
                 errors.append(
                     f"{case_id}: official ID has no vulnerable/fixed release; fetch it or allowlist"
                 )

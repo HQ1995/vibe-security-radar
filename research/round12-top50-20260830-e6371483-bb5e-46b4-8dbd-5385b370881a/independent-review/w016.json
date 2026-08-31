@@ -1,0 +1,73 @@
+{
+  "worker": "w016",
+  "review_agent_id": "r12_w016",
+  "class_id": "alias-775173b22f8159a217307738",
+  "case_id": "GHSA-jm78-9fvv-mhgr",
+  "repo": "gitpython-developers/gitpython",
+  "primary_verdict": "NOT_AI",
+  "review_verdict": "CONFIRMED",
+  "protocol_checks": {
+    "vulnerability_mechanism": {
+      "status": "PASS",
+      "evidence": [
+        "Vendor advisory https://github.com/gitpython-developers/GitPython/security/advisories/GHSA-jm78-9fvv-mhgr is published (withdrawn_at null on https://api.github.com/advisories/GHSA-jm78-9fvv-mhgr). GitHub Advisory Database https://github.com/advisories/GHSA-jm78-9fvv-mhgr lists GitPython (pip) affected <=3.1.57 patched 3.1.58. CVE Services https://cveawg.mitre.org/api/cve/CVE-2026-76221 returns cveMetadata.state=PUBLISHED for CVE-2026-76221 describing option-name injection via '=', '#', and whitespace forging core.sshCommand/core.hooksPath, affected <3.1.58, unaffected 3.1.58.",
+        "At annotated tag 3.1.57 (peel ccbd573ac4ab52ccdcf395c400e600d5809bcc88), git/config.py:75 is UNSAFE_CONFIG_CHARS_RE=[\\r\\n\\x00]; git/config.py:897-915 _assure_config_name_safe rejects only those chars for any label, and the bracket/quote state machine is gated on label=='section'. git/config.py:925-952 routes set/set_value option names through that check. git/config.py:692-702 write_section serializes each option key verbatim as '\\t%s = %s\\n'. optionxform at git/config.py:438-440 returns optionstr unchanged.",
+        "Source-to-sink: caller-controlled option name into GitConfigParser.set/set_value/add_value -> incomplete option-name guard -> write_section emits '\\tsshCommand = touch /tmp/RCE # = x' under [core]. Feeding that payload to 'git config --file /dev/stdin --get core.sshCommand' returned 'touch /tmp/RCE' (rc=0); the hooksPath analog returned '/tmp/evil' (rc=0)."
+      ]
+    },
+    "atomic_bic": {
+      "status": "PASS",
+      "evidence": [
+        "GIT_NO_LAZY_FETCH=1 git log --all --reverse -S'def write_section' and -S'\\t%s = %s' across the whole tree both first hit 3fd37230e76a014cf5c45d55daf0be2caa6948b7 (author/committer Sebastian Thiel <byronimo@gmail.com>, 2009-10-19). That commit added lib/git/config.py write_section writing '\\t%s = %s\\n' % (key, value) at lines 258-265 and listed inherited ConfigParser.set among _mutating_methods_.",
+        "Later path-move/split-reimport commits cb68eef0865df6aedbc11cd81888625a70da6777 (config.py => git/config.py 100% rename), fafe8a77db75083de3e7af92185ecdb7f2d542d3, a80f9af7d3d18a657111061dcc1104d7a8aec64b, and 4177eefd7bdaea96a529b00ba9cf751924ede202 only relocate the same sink. f573b6840509bf41be822ab7ed79e0a776005133 (tabs-to-spaces) and e530544546b2a4e5f00e8d9458bf1b895573ec41 (black reformat) are formatting carriers. 54538428f79b0c91ba52cda5229856a6edf7ac06 later added CR/LF/NUL name checks and did not first-write the =/#/whitespace serialization. set_value 6a417f4cf2df39704aa4c869e88d14e9806894a7 is a later convenience wrapper over the already-present set/write_section path."
+      ]
+    },
+    "immediate_parent_absence": {
+      "status": "PASS",
+      "evidence": [
+        "Immediate parent is 9513aa01fab73f53e4fe18644c7d5b530a66c6a1. git grep write_section / '%s = %s' on that tree returns no matches. Parent lib/git/config.py:81-92 write() is a stub that only clears _is_dirty and never serializes option keys."
+      ]
+    },
+    "squash_member_decomposition": {
+      "status": "PASS",
+      "evidence": [
+        "git cat-file commit 3fd37230e76a014cf5c45d55daf0be2caa6948b7 has exactly one parent 9513aa01fab73f53e4fe18644c7d5b530a66c6a1 (no ^2), ordinary two-line implementation message, no grafts, and git replace -l is empty. Whole-history pickaxe finds no finer public first-writer. Move/reimport later commits are not reconstructable squash members of this object."
+      ]
+    },
+    "affected_release_membership": {
+      "status": "PASS",
+      "evidence": [
+        "Local annotated tag 3.1.57 is afa67003d189967e280329404d6152a32ab2038c and peels to ccbd573ac4ab52ccdcf395c400e600d5809bcc88. git merge-base --is-ancestor 3fd37230e76a014cf5c45d55daf0be2caa6948b7 3.1.57^{} succeeds; git merge-base --is-ancestor a495ccd3b547ccd60b2187215823b72a9c0188bf 3.1.57^{} fails. Tag tree still has the verbatim write_section sink at git/config.py:702 and lacks VALID_CONFIG_OPTION_NAME_RE. Vendor advisory affected range is <=3.1.57."
+      ]
+    },
+    "fixed_release_membership": {
+      "status": "PASS",
+      "evidence": [
+        "Local annotated tag 3.1.58 is f7df4bfa6f40575a7ec3996431a0a06ced2b6ff6 and peels to 30be45d786e95023e23c616fec5cbabca861b44c. git merge-base --is-ancestor a495ccd3b547ccd60b2187215823b72a9c0188bf 3.1.58^{} succeeds. Tag tree contains VALID_CONFIG_OPTION_NAME_RE at git/config.py:78 and the option-label fullmatch reject at git/config.py:906-907. Vendor release https://github.com/gitpython-developers/GitPython/releases/tag/3.1.58 exists and the advisory lists patched >=3.1.58 / first_patched_version 3.1.58."
+      ]
+    },
+    "direct_fix_or_unpatched": {
+      "status": "PASS",
+      "evidence": [
+        "Direct fix is a495ccd3b547ccd60b2187215823b72a9c0188bf (parent f4277fa65158681bd3948d5f47805578db905fab), landed via https://github.com/gitpython-developers/GitPython/pull/2204. It adds VALID_CONFIG_OPTION_NAME_RE = ^[A-Za-z0-9_.-]+$ and, inside _assure_config_name_safe, rejects label=='option' names that do not fullmatch; test/test_config.py covers '=', '#', ';', whitespace, brackets, colon, quote, and backslash option names on set/set_value/add_value."
+      ]
+    },
+    "bic_only_ai_attribution": {
+      "status": "PASS",
+      "evidence": [
+        "Raw BIC object 3fd37230e76a014cf5c45d55daf0be2caa6948b7 names author and committer Sebastian Thiel <byronimo@gmail.com> with identical 1255955230 +0200 timestamps and only the two-line config-class implementation message. grep of the commit object finds no Co-Authored-By, Generated-with, Assisted-by, GPT, Codex, Copilot, or bot trailers. AI markers on later 54538428f79b0c91ba52cda5229856a6edf7ac06 (GPT 5.5 <codex@openai.com>) and on fix a495ccd3b547ccd60b2187215823b72a9c0188bf (Assisted-by/Co-authored-by GPT 5.6) are not BIC-local and were not used for attribution."
+      ]
+    }
+  },
+  "findings": [
+    "GHSA-jm78-9fvv-mhgr is a real published option-name git-config injection (CVE-2026-76221 PUBLISHED); GitHub withdrawn_at is null and is not treated as authoritative.",
+    "Complete source-to-sink: attacker-controlled option name through GitConfigParser.set/set_value/add_value, incomplete CR/LF/NUL option guard, write_section verbatim '\\t%s = %s\\n', git parses forged core.sshCommand/core.hooksPath. Independently reproduced with git config --file /dev/stdin.",
+    "Smallest surviving public BIC is 3fd37230e76a014cf5c45d55daf0be2caa6948b7 (2009-10-19), which first wrote write_section and the verbatim option-key sink; parent 9513aa01fab73f53e4fe18644c7d5b530a66c6a1 has only a write stub.",
+    "BIC is a one-parent ordinary commit with no grafts/replace and no finer public member; later moves, gitdb split/reimport, and formatting commits are carriers, not first-writers.",
+    "2026 AI commit 54538428f79b0c91ba52cda5229856a6edf7ac06 added CR/LF/NUL name checks (section-name / newline family) and did not introduce '='/'#'/whitespace option-name injection; it is not this case's BIC.",
+    "Affected tag 3.1.57 (ccbd573ac4ab52ccdcf395c400e600d5809bcc88) contains the BIC and not the fix; fixed tag 3.1.58 (30be45d786e95023e23c616fec5cbabca861b44c) contains direct fix a495ccd3b547ccd60b2187215823b72a9c0188bf.",
+    "BIC-only authorship is named human Sebastian Thiel with no AI/bot/generator marker; later AI-assisted validator and fix commits do not reassign the introducer. Primary NOT_AI stands."
+  ],
+  "corrected_fields": {},
+  "remaining_gap": null
+}

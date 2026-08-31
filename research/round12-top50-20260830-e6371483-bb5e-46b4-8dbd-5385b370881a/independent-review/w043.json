@@ -1,0 +1,75 @@
+{
+  "worker": "w043",
+  "review_agent_id": "r12_w043",
+  "class_id": "alias-cae8c11bed31aa07b41bf083",
+  "case_id": "CVE-2026-21446",
+  "repo": "bagisto/bagisto",
+  "primary_verdict": "NOT_AI",
+  "review_verdict": "CONFIRMED",
+  "protocol_checks": {
+    "vulnerability_mechanism": {
+      "status": "PASS",
+      "evidence": [
+        "CVE.org CNA record https://cveawg.mitre.org/api/cve/CVE-2026-21446 is state=PUBLISHED (not rejected/withdrawn). Description: 2.3 branch prior to 2.3.10 leaves /install/api/* reachable without authentication after install, enabling unauthenticated admin creation and configuration changes; 2.3.10 is named as the fix. GHSA-6h7w-v2xr-mqvw is published with withdrawn_at=null.",
+        "At tag v2.3.9 (fe27ffd54a4b62742dd9fbba90fa8aa9f03ac4d7) bootstrap/app.php globally appends Webkul\\Installer\\Http\\Middleware\\CanInstall. CanInstall::handle, blob bcd08338ecc0119912239118c81fdbf37fb8f953, only redirects an already-installed /install request when isAlreadyInstalled() && ! $request->ajax(); Laravel Request::ajax() is the attacker-set X-Requested-With: XMLHttpRequest header, so an AJAX-classified POST continues.",
+        "At the same tag, packages/Webkul/Installer/src/Routes/web.php blob 7d5c56d43519a6c23000e034348e429d48ba40e5 maps POST /install/api/admin-config-setup to InstallerController::adminConfigSetup and calls withoutMiddleware('web'), dropping CSRF. adminConfigSetup in blob 750ee29cf914cd279c83d1824c3f699bcf9da750 password_hashes request input and DB::table('admins')->updateOrInsert(['id'=>1], attacker name/email/password, role_id=1, status=1)."
+      ]
+    },
+    "atomic_bic": {
+      "status": "PASS",
+      "evidence": [
+        "GitHub blame of v2.3.9 packages/Webkul/Installer/src/Http/Middleware/CanInstall.php attributes the surviving line `if ($this->isAlreadyInstalled() && ! $request->ajax())` to e050c9d66656ae50fe208f4ce0a91c2f5956c77d (subject 'Fix Installer Issue', 2023-10-20).",
+        "git cat-file -p e050c9d66656ae50fe208f4ce0a91c2f5956c77d is a single-parent commit (parent ce555ac4c5dced0f882b2508d2016e811d5a978a). Its patch is the first write of the ajax exception: `if ($this->isAlreadyInstalled())` becomes `if ($this->isAlreadyInstalled() && ! $request->ajax())`. CanInstall blob changes 2ee2f8b4a991e7b98e5f47862aaf0b525540b5f2 -> 0f25f2ed4796e5f3782bb94726d35f54b113497c; routes blob 3ab538794a82b5e3035a4647a570752c52d60b63 and InstallerController blob 3ea7aa833a1867f90543bb90d95d2bd589485227 are identical across that parent/child pair.",
+        "At e050c9d66656ae50fe208f4ce0a91c2f5956c77d, app/Http/Kernel.php blob 519fd98dd209dce90d837ac337dcbd9cd75906ec already lists CanInstall in the global $middleware stack, and Routes/web.php already registers unauthenticated POST install/api/admin-config-setup whose controller updateOrInserts admins.id=1 from request input. The one-line ajax exception is therefore the first-write of the bypass on a complete source-to-sink."
+      ]
+    },
+    "immediate_parent_absence": {
+      "status": "PASS",
+      "evidence": [
+        "Immediate parent of e050c9d66656ae50fe208f4ce0a91c2f5956c77d is ce555ac4c5dced0f882b2508d2016e811d5a978a (git rev-list --parents -n 1 and git cat-file -p).",
+        "Parent CanInstall.php blob 2ee2f8b4a991e7b98e5f47862aaf0b525540b5f2 (https://raw.githubusercontent.com/bagisto/bagisto/ce555ac4c5dced0f882b2508d2016e811d5a978a/packages/Webkul/Installer/src/Http/Middleware/CanInstall.php) uses unconditional `if ($this->isAlreadyInstalled()) { return redirect()->route('shop.home.index'); }` with no ajax() exception. Parent Kernel.php is the same global-CanInstall blob 519fd98dd209dce90d837ac337dcbd9cd75906ec, so installed /install/api requests were blocked before the BIC."
+      ]
+    },
+    "squash_member_decomposition": {
+      "status": "PASS",
+      "evidence": [
+        "e050c9d66656ae50fe208f4ce0a91c2f5956c77d is an ordinary one-parent commit, not a merge. GitHub PR https://github.com/bagisto/bagisto/pull/8727 lists it as the first of two public member commits; the second member faf260f42cd79e47ed2be9fd31d52f6fff72d12b ('Revert Migration code') keeps CanInstall blob 0f25f2ed4796e5f3782bb94726d35f54b113497c unchanged. Merge commit d9eae44076441bf5e14e3202cab9a265748dc619 (parents 57dd9e1e00d7f58560b51fbe56a490e7d028cffe + faf260f42cd79e47ed2be9fd31d52f6fff72d12b) is a carrier, not a first-write.",
+        "The ajax condition is introduced by the BIC's own one-line hunk; no finer public squash member reconstructs a smaller first-writer of that line."
+      ]
+    },
+    "affected_release_membership": {
+      "status": "PASS",
+      "evidence": [
+        "git rev-parse v2.3.0^{commit} = 722554b731c4f6eeb0fe1c041fca7568b5deb2e6. git merge-base --is-ancestor e050c9d66656ae50fe208f4ce0a91c2f5956c77d v2.3.0^{commit} exits 0.",
+        "v2.3.0 and v2.3.9 share CanInstall blob bcd08338ecc0119912239118c81fdbf37fb8f953 (ajax exception present) and Routes/web.php blob 7d5c56d43519a6c23000e034348e429d48ba40e5 (POST /install/api/admin-config-setup withoutMiddleware('web')). v2.3.0 bootstrap/app.php blob c177d0706da6c03f7da80304b3a40133c6117ab2 still globally appends CanInstall. v2.3.0 InstallerController adminConfigSetup still updateOrInserts admins.id=1 from request input."
+      ]
+    },
+    "fixed_release_membership": {
+      "status": "PASS",
+      "evidence": [
+        "git rev-parse v2.3.10^{commit} = 813e28551dd1d3207b9e275e6c2bd63f68f0f8b0. git merge-base --is-ancestor 380c045e48490da740cd505fb192cc45e1809bed v2.3.10^{commit} exits 0. The same check against v2.3.9^{commit} fe27ffd54a4b62742dd9fbba90fa8aa9f03ac4d7 exits 1.",
+        "v2.3.10 CanInstall blob 406c07e7a68c2909a5250244aa2d29d4eaeddd9c matches the fix commit blob and returns HTTP 403 JSON for already-installed AJAX /install requests."
+      ]
+    },
+    "direct_fix_or_unpatched": {
+      "status": "PASS",
+      "evidence": [
+        "Advisory reference and GitHub commit 380c045e48490da740cd505fb192cc45e1809bed (author Devansh Bawari <devansh.bawari419@webkul.in>, subject 'fix: fixed security issue in installer', parent d642d9a038c3740d0ea0b095b1843521c49012a7) is the direct patch: CanInstall::handle now blocks every already-installed /install request (non-AJAX redirect, AJAX JSON 403) and adminConfigSetup switches from updateOrInsert to insert so a surviving race cannot overwrite admins.id=1."
+      ]
+    },
+    "bic_only_ai_attribution": {
+      "status": "PASS",
+      "evidence": [
+        "git cat-file -p e050c9d66656ae50fe208f4ce0a91c2f5956c77d names author and committer 'amit kumar laravel <amitkumar.laravel358@webkul.in>' with message exactly 'Fix Installer Issue' and no Co-Authored-By, Generated-with, Copilot, or other generator trailer. GitHub maps the object to human user amit-webkul (Amit kumar Kesharwani, Software Engineer at Webkul); type=User, not Bot."
+      ]
+    }
+  },
+  "findings": [
+    "CVE-2026-21446 / GHSA-6h7w-v2xr-mqvw is a real published CWE-306: after install, global CanInstall lets attacker-classified AJAX requests continue to unauthenticated POST /install/api/admin-config-setup, which updateOrInserts the id=1 admin row from request input.",
+    "Smallest surviving public first-writer of the bypass is e050c9d66656ae50fe208f4ce0a91c2f5956c77d, which added `&& ! $request->ajax()`; parent ce555ac4c5dced0f882b2508d2016e811d5a978a blocked installed /install traffic unconditionally while already carrying the route and admin sink.",
+    "Direct fix is 380c045e48490da740cd505fb192cc45e1809bed, present in v2.3.10 (813e28551dd1d3207b9e275e6c2bd63f68f0f8b0) and absent from v2.3.9. Advisory range >=2.3.0,<2.3.10 matches exact-object ancestry.",
+    "BIC-object authorship is a named Webkul human with no AI/bot/generator/co-author marker, so the closed verdict is NOT_AI."
+  ],
+  "corrected_fields": {},
+  "remaining_gap": null
+}

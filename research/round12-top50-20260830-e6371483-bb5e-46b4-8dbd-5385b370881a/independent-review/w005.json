@@ -1,0 +1,77 @@
+{
+  "worker": "w005",
+  "review_agent_id": "r12_w005",
+  "class_id": "alias-a01054677de611cc0331f469",
+  "case_id": "CVE-2026-77069",
+  "repo": "n8n-io/n8n",
+  "primary_verdict": "NOT_AI",
+  "review_verdict": "CONFIRMED",
+  "protocol_checks": {
+    "vulnerability_mechanism": {
+      "status": "PASS",
+      "evidence": [
+        "CVE.org https://cveawg.mitre.org/api/cve/CVE-2026-77069 is state=PUBLISHED (CWE-918). Vendor advisory https://github.com/n8n-io/n8n/security/advisories/GHSA-c4f6-59xq-95ww is published 2026-08-05, state=published, withdrawn_at=null. GHSA-4x7w-pwq5-598q is the unreviewed GitHub Advisory Database CVE mirror, not a withdrawal.",
+        "At n8n@2.34.0, packages/cli/src/controllers/oauth/oauth2-credential.controller.ts convertCredentialToOptions maps credential.accessTokenUrl to ClientOAuth2Options.accessTokenUri and handleCallback constructs `new ClientOAuth2(oAuthOptions)` then `oAuthObj.code.getToken`. packages/@n8n/client-oauth2/src/code-flow.ts POSTs that URL; client-oauth2.ts:97-121 axios.request has no URL/DNS/redirect SSRF check. OauthService.http uses OutboundHttp with SSRF for discovery/DCR (`this.http.request` around oauth.service.ts:1115/1338), so token exchange is a separate unguarded client.",
+        "Impact is bounded SSRF plus response disclosure: ClientOAuth2.ResponseError stores response.data; at n8n@2.34.0 oauth.service.ts:649-651 extractCallbackErrorReason jsonStringifies error.body into oauth-error-callback. Success stores oauthToken.data onto the credential."
+      ]
+    },
+    "atomic_bic": {
+      "status": "PASS",
+      "evidence": [
+        "Independent pickaxe `git log --reverse -S 'getToken('` and `-S 'accessTokenUrl'` both first hit d2ea3ce877b4233e9c1cb20f8e2882e42ad964e0 (2020-01-01, 'Add OAuth2 Authorization and Callback rest endpoints'). git diff 3b450b4372acfa4b56f025a1d55b6fa05f1409f8 d2ea3ce877b4233e9c1cb20f8e2882e42ad964e0 adds client-oauth2 to packages/cli/package.json and 135 lines in packages/cli/src/Server.ts wiring oauthCredentials.accessTokenUrl -> clientOAuth2({accessTokenUri}) -> oAuthObj.code.getToken(req.originalUrl).",
+        "d2ea3ce877b4233e9c1cb20f8e2882e42ad964e0 is a single-parent feature commit (parent 3b450b4372acfa4b56f025a1d55b6fa05f1409f8), 2 files / 137 insertions, not a merge, move, revert, or squash aggregate. git merge-base --is-ancestor d2ea3ce877b4233e9c1cb20f8e2882e42ad964e0 n8n@2.34.0 succeeds. Temporary revert 70e972ff7d90c10011de7771c09e821595f38c57 undid merge 0c5972bb9873c3eccbf116eb26c895dd1518324f; the original first-write remains on the surviving oauth-support ancestry. Later f71737928f6d51d849ca5006f47032934b6eafa0 and acec9bad7106b2ad51800a650be68b3ec5003357 are refactors/moves, not first-writes."
+      ]
+    },
+    "immediate_parent_absence": {
+      "status": "PASS",
+      "evidence": [
+        "git cat-file -t 3b450b4372acfa4b56f025a1d55b6fa05f1409f8 returns commit. git grep -E 'oauth2-credential|accessTokenUri|code.getToken|accessTokenUrl|clientOAuth2|client-oauth2' 3b450b4372acfa4b56f025a1d55b6fa05f1409f8 -- packages/cli/src/Server.ts packages/cli/package.json returns no matches. git grep -i oauth on the same parent paths is also empty.",
+        "The child diff is the first appearance of the attacker-selected accessTokenUrl source and the unguarded token-exchange sink."
+      ]
+    },
+    "squash_member_decomposition": {
+      "status": "PASS",
+      "evidence": [
+        "git cat-file commit d2ea3ce877b4233e9c1cb20f8e2882e42ad964e0 shows exactly one parent 3b450b4372acfa4b56f025a1d55b6fa05f1409f8 and no PR/Co-authored-by/squash metadata. GitHub commit object https://github.com/n8n-io/n8n/commit/d2ea3ce877b4233e9c1cb20f8e2882e42ad964e0 has the same single-author message. No finer public member is reconstructable.",
+        "Direct fix ca3d42d8386515cd9f044377a15a632cd09b62f0 is squash PR #35563 (1 commit, 140 files) cherry-picked from private n8n-io/n8n-private#321; public carrier c4488a956f3d48e53c5aa3cc6a99c5851e8b2009 has identical tree 77033e2954d683a27c8ea0c6e32d3c8566a95907, so no finer public per-vulnerability fix member exists. That aggregate is the fix, not the BIC."
+      ]
+    },
+    "affected_release_membership": {
+      "status": "PASS",
+      "evidence": [
+        "CVE.org and GHSA-c4f6-59xq-95ww list affected <1.123.69, 2.34.0 (<2.34.1), and 2.0.0..<2.33.4. Tags exist: n8n@1.123.68=67e50ebb0689dd587704aa533f35f51839f860f9, n8n@2.33.3=12d3f08599176aeecd04c63f23ae7d4e0f4874e9, n8n@2.34.0=b533ecd6856fef9ba7ca096d14b1f798b9933ff6.",
+        "n8n@2.33.3 and n8n@2.34.0 share vulnerable controller blob 7dceeff43304715616d6a52a00c8f45ebdb28509, client blob b9653aa75c463bdf551d83a1244ebd07331d03c8, and oauth.service blob 231d3382bd471167ce819be7d908174de25da6cc: ClientOAuth2 constructed without ssrfBridge; axios token POST unguarded; extractCallbackErrorReason serializes error.body.",
+        "n8n@1.123.68 controller blob 7e1f6c8bc86c33a62557b511d798f0ccd45f8957 and client blob 5bbbde43552b1de707e2343edb613393164cd00a: `new ClientOAuth2(oAuthOptions)` then getToken, and catch path `'body' in error ? jsonStringify(error.body)` with no ssrfBridge symbol in client-oauth2.ts."
+      ]
+    },
+    "fixed_release_membership": {
+      "status": "PASS",
+      "evidence": [
+        "n8n@2.33.4=14c9aef0552fb4776501ca1c4589451891dd0ef4 (via 0405fc550f55051f6c459252f5860fa78d27ab80) and n8n@2.34.1=e2279d07cdc8d1aeee42607a15365ccfa98f8b27 (via 170cfc787015d352488f6b6403af07a74e95ca1d) share patched controller blob c51eb166905b0d78a25c49cf5d16ecc2d7d6fb5e, client blob 7deb2673a58f1bee33e5aa6c5a46e6da83d483a1, and oauth.service blob e4fccac85bb378777d00e8e98844a532e9cebde9, identical to ca3d42d8386515cd9f044377a15a632cd09b62f0.",
+        "Advertised 1.x fixed tag n8n@1.123.69=430e6e597ab43d2326aa11cd30fcf633766fca31 is not source-fixed: controller/client-oauth2/code-flow/utils blobs are identical to n8n@1.123.68; git diff n8n@1.123.68 n8n@1.123.69 has no oauth/ssrf/client-oauth2 paths; Bundle/1.x 3e4fb19caf73276a68b38d45d96b3da5baf7cab7 (#35561) likewise has no such files. 1.123.69 still constructs unguarded ClientOAuth2 and jsonStringifies error.body. This is an advisory version-boundary defect, not a false vulnerability."
+      ]
+    },
+    "direct_fix_or_unpatched": {
+      "status": "PASS",
+      "evidence": [
+        "git diff a7dec6df87d2eaedffd22e7c8939804e350185a9 ca3d42d8386515cd9f044377a15a632cd09b62f0 is the first public patch of this sink: ClientOAuth2Options.ssrfBridge; accessTokenRequest validateUrl + validateRedirectSync + createSecureLookup; OAuth2CredentialController passes this.oauthService.getSsrfBridge(); refresh createOAuth2ClientForRefresh uses the same bridge; extractCallbackErrorReason no longer serializes arbitrary token-endpoint bodies (OAuth2AuthError code only).",
+        "ca3d42d8386515cd9f044377a15a632cd09b62f0 tree 77033e2954d683a27c8ea0c6e32d3c8566a95907 equals private-source carrier c4488a956f3d48e53c5aa3cc6a99c5851e8b2009. unpatched=null: 2.x lines are source-closed even though 1.123.69 is not."
+      ]
+    },
+    "bic_only_ai_attribution": {
+      "status": "PASS",
+      "evidence": [
+        "BIC object d2ea3ce877b4233e9c1cb20f8e2882e42ad964e0 author=committer Ram Yalamanchili <ramyinc@gmail.com> (GitHub login ramyala). Complete message has no Co-authored-by, Generated-with, bot, Cursor/Claude/GPT/Copilot, or generator trailer. git log --format='%B' has no AI markers.",
+        "Attribution uses only this BIC object. Later AI-marked repository activity, n8n-assistant[bot] security bundles (ca3d42d8386515cd9f044377a15a632cd09b62f0 Co-authored-by: Matsu), and fix authorship are excluded. Named human author/committer with no AI/bot/generator marker supports NOT_AI."
+      ]
+    }
+  },
+  "findings": [
+    "Real CWE-918: credential-controlled accessTokenUrl is posted by @n8n/client-oauth2 axios without the SSRF guard that discovery/DCR already used via OauthService.http; error bodies were reflected into the callback page.",
+    "Atomic public BIC is d2ea3ce877b4233e9c1cb20f8e2882e42ad964e0 (parent 3b450b4372acfa4b56f025a1d55b6fa05f1409f8), first write of the unguarded token-exchange path; parent tree lacks the mechanism.",
+    "Direct 2.x fix is ca3d42d8386515cd9f044377a15a632cd09b62f0; n8n@2.33.4 and n8n@2.34.1 carry identical patched OAuth blobs. n8n@1.123.69 does not, despite the advisory/CVE claim.",
+    "BIC authorship is named human Ram Yalamanchili with no AI/bot/generator marker; verdict NOT_AI stands. Advisory 1.x fixed-version imprecision is a metadata defect, not FALSE_POSITIVE."
+  ],
+  "corrected_fields": {},
+  "remaining_gap": null
+}

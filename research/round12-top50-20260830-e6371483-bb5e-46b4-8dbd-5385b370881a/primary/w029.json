@@ -1,0 +1,103 @@
+{
+  "schema_version": "independent-case-audit/v1",
+  "worker": "w029",
+  "review_agent_id": "round12-clean-w029-herdr",
+  "class_id": "alias-2b2a1776f667dc9ea34dfdf2",
+  "case_id": "CVE-2026-8239",
+  "repo": "concretecms/concretecms",
+  "advisory_ids": [
+    "CVE-2026-8239",
+    "GHSA-2xp7-rpvc-pjwc"
+  ],
+  "input_binding": {
+    "bundle_sha256": "508204db096084f21c608757182d4b8243887bdd1c3f2c7932ea401bb1460978",
+    "clone_head_sha": "ad6dc621cef1e12d0bc84a8c898b6460f48b91e4"
+  },
+  "verdict": "NOT_AI",
+  "protocol_checks": {
+    "vulnerability_mechanism": {
+      "status": "PASS",
+      "evidence": [
+        "CVE.org JSON record https://cveawg.mitre.org/api/cve/CVE-2026-8239 is PUBLISHED and identifies versions 5.0 through 9.5.0 as affected by IDOR in /ccm/frontend/conversations/get_rating, which confirms existence and returns a rating score for any message ID.",
+        "Vendor release notes https://documentation.concretecms.org/9-x/developers/introduction/version-history/951-release-notes identify CVE-2026-8239 as fixed in 9.5.1 and describe the same endpoint, attacker-controlled message ID, existence oracle, and rating-score disclosure.",
+        "At tag 9.5.0, GetRating::getMessage reads request parameter cnvMessageID, calls Message::getByID, and returns the Message to a view without comparing its conversation to the current block conversation; the view outputs getConversationMessageTotalRatingScore()."
+      ]
+    },
+    "atomic_bic": {
+      "status": "PASS",
+      "evidence": [
+        "git diff 1e3c62c640446036ae00fdf3f59edc921e3937e9 50a7913e82c5fc28c910b276e5aa1cfb2433fd71 -- web/concrete/tools/conversations/get_rating.php shows a new nine-line endpoint that accepts cnvMessageID, loads that message directly, and echoes its rating without a conversation authorization check.",
+        "Commit 50a7913e82c5fc28c910b276e5aa1cfb2433fd71 is the smallest surviving public first-writer of this vulnerable endpoint, not a later move, refactor, revert, or fix."
+      ]
+    },
+    "immediate_parent_absence": {
+      "status": "PASS",
+      "evidence": [
+        "git cat-file -p 50a7913e82c5fc28c910b276e5aa1cfb2433fd71 records the single immediate parent 1e3c62c640446036ae00fdf3f59edc921e3937e9.",
+        "git ls-tree -r 1e3c62c640446036ae00fdf3f59edc921e3937e9 -- web/concrete/tools/conversations/get_rating.php returns no entry, while the BIC tree contains blob c25f95563c918f283c73163cff9ea5b22bed6b70 at that path."
+      ]
+    },
+    "squash_member_decomposition": {
+      "status": "PASS",
+      "evidence": [
+        "The BIC commit object has exactly one parent and the direct parent-to-BIC diff itself adds the vulnerable endpoint; it is an atomic feature commit rather than a squash carrier requiring member decomposition.",
+        "The commit message is 'getting ajax updates on message ratings to work' and the added endpoint is the direct implementation of that purpose."
+      ]
+    },
+    "affected_release_membership": {
+      "status": "PASS",
+      "evidence": [
+        "git rev-list -n1 9.5.0 resolves tag 9.5.0 to c747e425266ac50c12b5f2f74fa895ecec5cd777, and git merge-base --is-ancestor 50a7913e82c5fc28c910b276e5aa1cfb2433fd71 9.5.0 succeeds.",
+        "git show 9.5.0:concrete/controllers/frontend/conversations/get_rating.php shows direct Message::getByID(cnvMessageID) lookup with no current-conversation equality check, matching the CVE.org affected boundary through 9.5.0."
+      ]
+    },
+    "fixed_release_membership": {
+      "status": "PASS",
+      "evidence": [
+        "git rev-list -n1 9.5.1 resolves tag 9.5.1 to 92bae566b9ec573cfb3017fcbb6db454a6586997, and git merge-base --is-ancestor f22b9dff59454391a50a255a39995bf635deea9e 9.5.1 succeeds.",
+        "git show 9.5.1:concrete/controllers/frontend/conversations/get_rating.php contains the conversation-ID equality check; the vendor 9.5.1 release notes list CVE-2026-8239 as fixed."
+      ]
+    },
+    "direct_fix_or_unpatched": {
+      "status": "PASS",
+      "evidence": [
+        "git show f22b9dff59454391a50a255a39995bf635deea9e -- concrete/controllers/frontend/conversations/get_rating.php adds a three-line guard comparing getBlockConversation()->getConversationID() with the loaded message's conversation ID and rejects mismatches.",
+        "The parent 534841df7efff24065f17c9debb6d91c24430b61 lacks this guard, so f22b9dff59454391a50a255a39995bf635deea9e is the direct fix rather than a release carrier."
+      ]
+    },
+    "bic_only_ai_attribution": {
+      "status": "PASS",
+      "evidence": [
+        "The BIC commit object names Matt Waters <matt@concretecms.com> as both author and committer at 2013-03-27T14:09:27-07:00.",
+        "The BIC message and trailers contain no AI, model, assistant, generated-by, or AI co-author marker; attribution is based only on this atomic BIC object, not repository-level activity or the later fix."
+      ]
+    }
+  },
+  "bug_semantics": "The frontend rating endpoint accepts an attacker-controlled positive cnvMessageID, resolves that global message directly, and emits its rating. Before the fix it did not bind the resolved message to the conversation represented by the current block, so a requester with any usable conversation context could enumerate IDs belonging to other or restricted conversations, distinguish existing messages, and obtain their rating scores.",
+  "flaw_origin": "Commit 50a7913e82c5fc28c910b276e5aa1cfb2433fd71 first added web/concrete/tools/conversations/get_rating.php. Its immediate parent has no such path, and the new endpoint performs the vulnerable direct global message lookup and rating output without checking conversation ownership. Later commits change score aggregation, move paths, and refactor controllers but preserve that authorization omission until the 9.5.1 security fix.",
+  "introducer_sha": "50a7913e82c5fc28c910b276e5aa1cfb2433fd71",
+  "introducer_parent": "1e3c62c640446036ae00fdf3f59edc921e3937e9",
+  "introducer_parent_absent": true,
+  "squash_decomposed": false,
+  "decomposed_shas": [],
+  "fix_sha": "f22b9dff59454391a50a255a39995bf635deea9e",
+  "direct_fix_sha": "f22b9dff59454391a50a255a39995bf635deea9e",
+  "unpatched": null,
+  "ai_marker": {
+    "state": "ABSENT",
+    "evidence": [
+      "BIC 50a7913e82c5fc28c910b276e5aa1cfb2433fd71 names Matt Waters <matt@concretecms.com> as both author and committer.",
+      "Its commit message and trailers contain no AI-generation or AI co-author marker."
+    ]
+  },
+  "evidence": [
+    "CVE.org record: https://cveawg.mitre.org/api/cve/CVE-2026-8239 (state PUBLISHED; affected 5.0 through 9.5.0; IDOR mechanism and impact).",
+    "Concrete CMS 9.5.1 release notes: https://documentation.concretecms.org/9-x/developers/introduction/version-history/951-release-notes (vendor says CVE-2026-8239 is fixed and describes the endpoint disclosure).",
+    "BIC 50a7913e82c5fc28c910b276e5aa1cfb2433fd71 and parent 1e3c62c640446036ae00fdf3f59edc921e3937e9 exist as commit objects in the assigned clone; the parent lacks the endpoint path and the BIC adds it.",
+    "Tag 9.5.0 resolves to c747e425266ac50c12b5f2f74fa895ecec5cd777 and contains the vulnerable controller without a conversation equality check.",
+    "Direct fix f22b9dff59454391a50a255a39995bf635deea9e exists as a commit object and is an ancestor of tag 9.5.1 at 92bae566b9ec573cfb3017fcbb6db454a6586997.",
+    "The fix hunk rejects a loaded message whose conversation ID differs from the current block conversation ID, closing the exact source-to-sink authorization gap."
+  ],
+  "reasoning": "Authoritative CVE and vendor sources confirm a real, fixed IDOR. Exact Git history establishes an atomic 2013 first-writer whose parent lacks the endpoint, affected and fixed release membership, and a direct authorization fix. The atomic BIC is authored and committed by the named human Matt Waters and carries no AI marker. Because all lifecycle gates pass and AI attribution is absent on the BIC itself, the required closed verdict is NOT_AI.",
+  "remaining_gap": null
+}

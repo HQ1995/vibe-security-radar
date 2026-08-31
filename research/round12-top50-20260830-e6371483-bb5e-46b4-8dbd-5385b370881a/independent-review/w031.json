@@ -1,0 +1,95 @@
+{
+  "worker": "w031",
+  "review_agent_id": "r12_w031",
+  "class_id": "alias-85a7d82f47d7e2053da3ef2b",
+  "case_id": "CVE-2025-43585",
+  "repo": "magento/magento2",
+  "primary_verdict": "NOT_AI",
+  "review_verdict": "CORRECTION_REQUIRED",
+  "protocol_checks": {
+    "vulnerability_mechanism": {
+      "status": "PASS",
+      "evidence": [
+        "CVE.org record https://cveawg.mitre.org/api/cve/CVE-2025-43585 is state PUBLISHED (Adobe CNA; CWE-285 Improper Authorization; not rejected/withdrawn). GitHub GHSA-r487-9vv5-75gg has withdrawn_at null.",
+        "Adobe APSB25-50 https://helpx.adobe.com/security/products/magento/apsb25-50.html lists CVE-2025-43585 as Improper Authorization / security feature bypass, Magento Open Source affected 2.4.8 / 2.4.7-p5 and earlier / 2.4.6-p10 and earlier / 2.4.5-p12 and earlier, fixed 2.4.8-p1 / 2.4.7-p6 / 2.4.6-p11 / 2.4.5-p13. Reporter T.H. Lassche. CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:L/I:H/A:N.",
+        "On affected tag 2.4.8 (94b8544e82fd84d1443060cddb5481b7fd462de2), PUT /V1/guest-carts/:cartId/order and POST /V1/guest-carts/:cartId/payment-information are resource anonymous. GuestPaymentInformationManagement calls GuestCartManagementInterface::placeOrder(). Checkout plugins VerifyIsGuestCheckoutEnabledBeforePlaceOrder/SavePaymentInformation call Checkout\\Helper\\Data::isAllowedGuestCheckout, which dispatches checkout_allow_guest only when checkout/options/guest_checkout is true.",
+        "Magento\\Downloadable\\Observer\\IsAllowedGuestCheckoutObserver vetoes downloadable guest checkout when catalog/downloadable/disable_guest_checkout is set or selected links are not shareable. At 2.4.8 that observer is registered only in app/code/Magento/Downloadable/etc/frontend/events.xml; REST/SOAP/GraphQL areas omit it, so API-area order placement skips the Downloadable authorization veto.",
+        "Unique common 2.4.8 -> 2.4.8-p1 authorization delta is addition of Downloadable etc/graphql/events.xml, etc/webapi_rest/events.xml, and etc/webapi_soap/events.xml registering the same observer. 2.4.5-p12/2.4.6-p10 also lacked the Checkout API guest-check plugins, which 2.4.5-p13/2.4.6-p11 backported together with those event files."
+      ]
+    },
+    "atomic_bic": {
+      "status": "PASS",
+      "evidence": [
+        "Immediate parent 9a0fbce28ec1c4baccb52623d47b992d48ee88ee already exposed GuestCartManagementInterface/Model and other anonymous guest-cart routes, but GIT_NO_LAZY_FETCH=1 git show of parent app/code/Magento/Quote/etc/webapi.xml contains no /V1/guest-carts/:cartId/order route (only ACL-gated /V1/carts/:cartId/order).",
+        "14cdb650cb58ba620baeb3443331194c39b9a845 (author/committer Anup Dugar <anup@x.com>, 2015-04-14, MAGETWO-32686: Added functional tests for guest carts management / Fixes for placing guest orders) is the smallest public single-parent commit that first adds the anonymous PUT /V1/guest-carts/:cartId/order route bound to GuestCartManagementInterface::placeOrder. At that tree, Downloadable frontend/events.xml already registers checkout_allow_guest -> Magento\\Downloadable\\Model\\Observer::isAllowedGuestCheckout, with no webapi/graphql events.xml.",
+        "Primary introducer 7f25fa6a5ec0639cbb2ac63d82fc73f4cd397b59 (2015-06-12) is not the first write: its parent 1d941ba7a09a964569f5a14c4590c219b16b7f3c already has the anonymous guest-carts order route. 7f25fa6a only adds GuestPaymentInformationManagement::savePaymentInformation as a later wrapper that assigns billing/payment and then calls the pre-existing cartManagement->placeOrder($cartId) sink."
+      ]
+    },
+    "immediate_parent_absence": {
+      "status": "PASS",
+      "evidence": [
+        "BIC commit object 14cdb650cb58ba620baeb3443331194c39b9a845 names one parent 9a0fbce28ec1c4baccb52623d47b992d48ee88ee.",
+        "Parent tree has GuestCartManagement.php placeOrder() implementation but parent Quote/etc/webapi.xml has no guest-carts/:cartId/order route. BIC tree adds that anonymous route. Downloadable observer remains frontend-only on both trees."
+      ]
+    },
+    "squash_member_decomposition": {
+      "status": "PASS",
+      "evidence": [
+        "git rev-list --parents -n 1 14cdb650cb58ba620baeb3443331194c39b9a845 shows a single parent. git cat-file -p shows an ordinary MAGETWO-32686 source commit (tests + guest-order route), not a merge, release snapshot, or squash aggregate.",
+        "Reconstructed MAGETWO-32686 members: 3b1786b5843bd6689b30e4410262f8f20082a080 added GuestCartManagementInterface (placeOrder method) and only POST /V1/guest-carts createEmptyCart; b1a16ae0fd026464bcf61e4d50362c13556710ff added GuestCartManagement.php including unguarded placeOrder(); 14cdb650cb58ba620baeb3443331194c39b9a845 is the completing member that first published the anonymous order route. No finer public member of that route write exists."
+      ]
+    },
+    "affected_release_membership": {
+      "status": "PASS",
+      "evidence": [
+        "GIT_NO_LAZY_FETCH=1 git merge-base --is-ancestor 14cdb650cb58ba620baeb3443331194c39b9a845 succeeds for affected tags 2.4.5-p12 (ea0b9a63fdc1409f74988f813046c1daa92fd320), 2.4.6-p10 (cd23f12c2ab26a0339e89d004c63b9f6d794bc57), 2.4.7-p5 (dc87600a0ab002bb2b7ef573fe78cfc951edb36c), and 2.4.8 (94b8544e82fd84d1443060cddb5481b7fd462de2).",
+        "Affected 2.4.8 tree still has anonymous PUT /V1/guest-carts/:cartId/order and frontend-only Downloadable checkout_allow_guest registration. Affected 2.4.5-p12 additionally lacks Checkout Plugin/Api/VerifyIsGuestCheckoutEnabled* (those plugins exist on 2.4.7-p5/2.4.8 from 47c388a093fd5621b19eb2089877db80254a937a ACP2E-1339)."
+      ]
+    },
+    "fixed_release_membership": {
+      "status": "PASS",
+      "evidence": [
+        "Fixed tags resolve to packaging commits 2.4.5-p13=9bf2c06ea8c9fc52698f4e9994b5334a436649ad, 2.4.6-p11=e2907757d44416816eae809adec35b0a32052745, 2.4.7-p6=b69acb3d4cb3720665c7829fd6390d3036a07b13, 2.4.8-p1=10fdaddfd21f922d0c1b4f9f889dba8cfd4be8d6.",
+        "git ls-tree on each fixed tag contains Magento/Downloadable/etc/graphql/events.xml, webapi_rest/events.xml, and webapi_soap/events.xml registering IsAllowedGuestCheckoutObserver. Immediate parent of 2.4.8-p1 (bed72bd4c5c89dd92c21b9bce8b5e01780e1f018) has only Downloadable/etc/frontend/events.xml."
+      ]
+    },
+    "direct_fix_or_unpatched": {
+      "status": "PASS",
+      "evidence": [
+        "Focused develop first-write of the Downloadable API-area observer registrations is e56d704d618385aeb5e6253e2ecd755abb23e1e8 (Manohar Prabhutendolkar <eze25057@adobe.com>, 2025-02-21, AC-13752 - guest checkout enhancement): adds Downloadable/etc/webapi_rest/events.xml, webapi_soap/events.xml, and DownloadableGraphQl/etc/graphql/events.xml. That SHA is not an ancestor of the 2.4.x-p security tags.",
+        "On 2.4.5-p13, packaging commit 9bf2c06ea8c9fc52698f4e9994b5334a436649ad (parent 750f3c8f6dad82927f968a480b44f7c6e5c6d0fb) is the public object that first adds Checkout Plugin/Api/VerifyIsGuestCheckoutEnabled*.php plus Downloadable graphql/webapi_rest/webapi_soap events.xml relative to that parent (parent ls-tree has only frontend/events.xml for Downloadable). 2.4.8-p1 packaging commit 10fdaddfd21f922d0c1b4f9f889dba8cfd4be8d6 adds only the three Downloadable API/GraphQL event files among authorization files, matching the 2.4.8 residual hole."
+      ]
+    },
+    "bic_only_ai_attribution": {
+      "status": "PASS",
+      "evidence": [
+        "BIC object 14cdb650cb58ba620baeb3443331194c39b9a845 records author and committer Anup Dugar <anup@x.com> at unix 1428988043 (2015-04-14). Message is MAGETWO-32686 guest-cart API text only; no Co-Authored-By, Generated-with, Signed-off-by bot, assistant, model, or generator trailer. Attribution restricted to this BIC object; later 7f25fa6a and 47c388a0 were not used as introducer identity."
+      ]
+    }
+  },
+  "findings": [
+    "CVE-2025-43585 is a real published Adobe CWE-285 security-feature bypass: anonymous Web API guest order placement skips Magento_Downloadable's checkout_allow_guest veto because that observer is registered only in the frontend area.",
+    "Primary introducer_sha 7f25fa6a5ec0639cbb2ac63d82fc73f4cd397b59 is not the BIC. Parent 1d941ba7a09a964569f5a14c4590c219b16b7f3c already had anonymous PUT /V1/guest-carts/:cartId/order -> GuestCartManagementInterface::placeOrder. 7f25fa6a is a later payment-information convenience wrapper around that sink.",
+    "Correct BIC is 14cdb650cb58ba620baeb3443331194c39b9a845, which first added the anonymous guest-carts order route while Downloadable isAllowedGuestCheckout was already frontend-only. Immediate parent 9a0fbce28ec1c4baccb52623d47b992d48ee88ee lacks that route.",
+    "ACP2E-1339 47c388a093fd5621b19eb2089877db80254a937a (2022-11-07, soumah <soumah@adobe.com>) later attached isAllowedGuestCheckout plugins to guest API services, so on 2.4.7-p5/2.4.8 general Allow Guest Checkout is enforced over API, but the Downloadable observer still does not run in REST/SOAP/GraphQL. That is incomplete remediation of the same authorization gap, not a new AI introducer.",
+    "Human BIC authorship in 2015 (Anup Dugar, no AI/bot/generator markers) supports NOT_AI. Primary verdict NOT_AI is correct; introducer identity and flaw_origin need correction.",
+    "Direct closing change is registration of IsAllowedGuestCheckoutObserver in webapi_rest, webapi_soap, and graphql areas (develop e56d704d618385aeb5e6253e2ecd755abb23e1e8; release packaging 2.4.8-p1 10fdaddfd21f922d0c1b4f9f889dba8cfd4be8d6 and 2.4.5-p13 9bf2c06ea8c9fc52698f4e9994b5334a436649ad, the latter also backporting Checkout guest-check plugins)."
+  ],
+  "corrected_fields": {
+    "introducer_sha": "14cdb650cb58ba620baeb3443331194c39b9a845",
+    "introducer_parent": "9a0fbce28ec1c4baccb52623d47b992d48ee88ee",
+    "introducer_parent_absent": true,
+    "squash_decomposed": false,
+    "decomposed_shas": [],
+    "bug_semantics": "Anonymous Web API guest order placement (first PUT /V1/guest-carts/:cartId/order, later also POST /V1/guest-carts/:cartId/payment-information) reaches GuestCartManagementInterface::placeOrder without running Magento_Downloadable's checkout_allow_guest observer. That observer vetoes guest checkout when catalog/downloadable/disable_guest_checkout is set or selected links are not shareable, but it is registered only in frontend/events.xml, so REST/SOAP/GraphQL areas omit the authorization veto. After ACP2E-1339, API plugins call isAllowedGuestCheckout (dispatching checkout_allow_guest when general guest checkout is on) yet still miss the Downloadable observer. The APSB25-50 fix registers the observer in webapi_rest, webapi_soap, and graphql areas and backports the guest-check plugins onto 2.4.5/2.4.6.",
+    "flaw_origin": "14cdb650cb58ba620baeb3443331194c39b9a845 is the smallest public first-write of the complete anonymous HTTP order sink: it added the anonymous PUT /V1/guest-carts/:cartId/order route to GuestCartManagementInterface::placeOrder. Immediate parent 9a0fbce28ec1c4baccb52623d47b992d48ee88ee already had the GuestCartManagement implementation but no guest-carts order route, while Downloadable's isAllowedGuestCheckout observer was already registered only in frontend/events.xml. 7f25fa6a5ec0639cbb2ac63d82fc73f4cd397b59 is a later additional payment-information wrapper around the same placeOrder sink, not the BIC.",
+    "ai_marker": {
+      "state": "ABSENT",
+      "evidence": [
+        "BIC-local commit headers name Anup Dugar <anup@x.com> as author and committer on 2015-04-14.",
+        "BIC-local message contains only MAGETWO-32686 guest-cart API text and no AI, assistant, generated-by, co-author, model, or bot marker."
+      ]
+    }
+  },
+  "remaining_gap": null
+}

@@ -1,0 +1,81 @@
+{
+  "worker": "w048",
+  "review_agent_id": "r12_w048",
+  "class_id": "alias-5dfeadcc6ccb7a49a21a5d3d",
+  "case_id": "CVE-2026-41706",
+  "repo": "spring-projects/spring-security",
+  "primary_verdict": "NOT_AI",
+  "review_verdict": "CONFIRMED",
+  "protocol_checks": {
+    "vulnerability_mechanism": {
+      "status": "PASS",
+      "evidence": [
+        "CVE.org https://cveawg.mitre.org/api/cve/CVE-2026-41706 has cveMetadata.state=PUBLISHED (not rejected/withdrawn); CNA title is 'Open Redirect When Using CookieRequestCache'; CWE-601; impact is an attacker-influenced REDIRECT_URI cookie redirecting an authenticated user to an attacker-controlled URL after login.",
+        "Spring first-party advisory https://spring.io/security/cve-2026-41706/ (published 2026-06-09) requires CookieRequestCache or CookieServerRequestCache plus attacker influence over the REDIRECT_URI cookie (subdomain cookie injection, response splitting, or HTTPS-to-HTTP downgrade).",
+        "Source-to-sink (WebFlux): CookieServerRequestCache.getRedirectUri Base64-decodes REDIRECT_URI and maps it through URI.create with no relative/same-origin check. RedirectServerAuthenticationSuccessHandler.onAuthenticationSuccess then passes that URI to DefaultServerRedirectStrategy.sendRedirect, which sets Location to the URI unchanged when it does not start with '/'.",
+        "Source-to-sink (Servlet sibling): CookieRequestCache.saveRequest stored UrlUtils.buildFullRequestUrl (scheme/host/port/path/query) in the same cookie; getRequest decoded it and rebuilt DefaultSavedRequest from cookie-controlled scheme/host/port/path. SavedRequestAwareAuthenticationSuccessHandler then sendRedirects savedRequest.getRedirectUrl()."
+      ]
+    },
+    "atomic_bic": {
+      "status": "PASS",
+      "evidence": [
+        "GIT_NO_LAZY_FETCH=1 git log --follow --diff-filter=A -- web/src/main/java/org/springframework/security/web/server/savedrequest/CookieServerRequestCache.java yields a single first-add: ae532c080cbd594af7eeeee99742152225de4087 (author/committer Eleftheria Stein <eleftheria.kousathana@gmail.com>, subject 'Add server request cache that uses cookie').",
+        "git show ae532c080cbd594af7eeeee99742152225de4087 adds CookieServerRequestCache.java from /dev/null. getRedirectUri decodes REDIRECT_URI then URI.create with no origin or relative-path check; that is the first public write of the cookie-to-redirect trust. Immediate parent 38979b1b09bd4affc13a45d71e56e155140d5205 only has WebSessionServerRequestCache, which stores a relative path in the server session rather than a client cookie.",
+        "Later single-parent 9708a2d63fb9a1898bae7971953f21ae8aff9340 (Zeeshan Adnan / Eleftheria Stein-Kousathana) first-adds CookieRequestCache.java with full-URL cookie storage, but the unvalidated cookie-to-URI mechanism already existed in ae532c080cbd594af7eeeee99742152225de4087."
+      ]
+    },
+    "immediate_parent_absence": {
+      "status": "PASS",
+      "evidence": [
+        "GIT_NO_LAZY_FETCH=1 git ls-tree -r 38979b1b09bd4affc13a45d71e56e155140d5205 -- web/src/main/java/org/springframework/security/web/server/savedrequest/CookieServerRequestCache.java is empty.",
+        "Parent savedrequest/ contains only NoOpServerRequestCache.java, ServerRequestCache.java, ServerRequestCacheWebFilter.java, and WebSessionServerRequestCache.java. No REDIRECT_URI cookie implementation is present before ae532c080cbd594af7eeeee99742152225de4087.",
+        "Servlet sibling parent d3dc8b055be6fa74dea2e16c4f80d6223cc86ab7 likewise lacks CookieRequestCache.java (directory has HttpSessionRequestCache/DefaultSavedRequest/etc. only)."
+      ]
+    },
+    "squash_member_decomposition": {
+      "status": "PASS",
+      "evidence": [
+        "git cat-file -p ae532c080cbd594af7eeeee99742152225de4087 lists exactly one parent 38979b1b09bd4affc13a45d71e56e155140d5205 and is not a merge, revert, or import. git show --stat is two new files (implementation + tests, +276/-0).",
+        "GitHub GET /repos/spring-projects/spring-security/commits/ae532c080cbd594af7eeeee99742152225de4087/pulls returned []. Associated issue https://github.com/spring-projects/spring-security/issues/8033 is an in-repo enhancement opened by the same human author; no finer public PR members exist to reconstruct."
+      ]
+    },
+    "affected_release_membership": {
+      "status": "PASS",
+      "evidence": [
+        "Spring advisory lists affected OSS ranges 5.7.23 and earlier, 5.8.0-5.8.25, 6.3.0-6.3.16, 6.4.0-6.4.16, 6.5.0-6.5.10, 7.0.0-7.0.5. CVE.org affected versions use the same line starts with exclusive upper bounds at the corresponding fixed versions.",
+        "GIT_NO_LAZY_FETCH=1 git merge-base --is-ancestor confirmed ae532c080cbd594af7eeeee99742152225de4087 is an ancestor of public tags 5.7.0, 5.8.0, 6.3.0, 6.4.0, 6.5.0, 6.5.10, 7.0.0, and 7.0.5. git describe --contains places the BIC in 5.4.0-M1 (first containing tag 5.4.0), matching @since 5.4 and the advisory's '5.7.23 and earlier' floor."
+      ]
+    },
+    "fixed_release_membership": {
+      "status": "PASS",
+      "evidence": [
+        "Spring advisory OSS fixes are 6.5.11 and 7.0.6; enterprise-only 5.7.24, 5.8.26, 6.3.17, 6.4.17, 6.5.10.2, 7.0.5.1. Public GitHub tags 6.5.11=73b077790fcb04ac3712033d3e939daf42264545 and 7.0.6=acd131c3d1902c6422ae27fcd319d76fe7cafd3c exist in the clone.",
+        "GIT_NO_LAZY_FETCH=1 git merge-base --is-ancestor: a14c9d66b15946d2040a3681b55fe29ac145c5c9 is NOT an ancestor of 6.5.10 or 7.0.5 and IS an ancestor of 6.5.11 and 7.0.6. git tag --contains a14c9d66b15946d2040a3681b55fe29ac145c5c9 on 6.5/7.0 lines is 6.5.11, 7.0.6, 7.0.7."
+      ]
+    },
+    "direct_fix_or_unpatched": {
+      "status": "PASS",
+      "evidence": [
+        "GIT_NO_LAZY_FETCH=1 git show a14c9d66b15946d2040a3681b55fe29ac145c5c9 (parent 9d4d9065b48508c9e115f2f894632120787fd1df, subject 'Favor Relative URIs in CookieRequestCache') is the direct security fix, not a later polish.",
+        "Servlet: saveRequest now stores buildRelativeRequestUrl; getRequest rejects values that do not start with a single '/' and takes scheme/host/port from the current request. WebFlux: getRedirectUri filters decoded cookie values through isRelativePath (startsWith('/') && !startsWith('//')) before URI.create.",
+        "Added tests encodeCookie('https://evil.com/phishing') and encodeCookie('//evil.com/phishing') and assert those cookies are not used as redirect targets."
+      ]
+    },
+    "bic_only_ai_attribution": {
+      "status": "PASS",
+      "evidence": [
+        "git cat-file -p ae532c080cbd594af7eeeee99742152225de4087: author and committer are both Eleftheria Stein <eleftheria.kousathana@gmail.com>; message is 'Add server request cache that uses cookie' plus 'Fixes: gh-8033' only. No Co-Authored-By, Generated-with, Copilot, Cursor, or other AI/bot/generator trailer.",
+        "GitHub commit API names login eleftherias with type=User (not Bot). Attribution is judged on this BIC object only; 9708a2d63fb9a1898bae7971953f21ae8aff9340 and a14c9d66b15946d2040a3681b55fe29ac145c5c9 were not used as introducers."
+      ]
+    }
+  },
+  "findings": [
+    "CVE-2026-41706 / GHSA-x2r2-rvhq-2mqv is a real published CWE-601: CookieRequestCache and CookieServerRequestCache treat an attacker-influenced Base64 REDIRECT_URI cookie as the post-login redirect target without a relative-path/same-origin check.",
+    "Smallest surviving public first-writer is ae532c080cbd594af7eeeee99742152225de4087, which added CookieServerRequestCache.getRedirectUri as decode-then-URI.create with no validation. Parent 38979b1b09bd4affc13a45d71e56e155140d5205 has no cookie cache.",
+    "Servlet CookieRequestCache 9708a2d63fb9a1898bae7971953f21ae8aff9340 later stored absolute URLs and reconstructed scheme/host/port from the cookie; it is a sibling expansion, not the repository-first BIC.",
+    "Direct fix is a14c9d66b15946d2040a3681b55fe29ac145c5c9, present in public tags 6.5.11 and 7.0.6 and absent from 6.5.10 and 7.0.5, matching the Spring OSS fixed versions.",
+    "BIC commit object attributes both author and committer to named human Eleftheria Stein with no AI/bot/generator marker, so the primary NOT_AI verdict stands."
+  ],
+  "corrected_fields": {},
+  "remaining_gap": null
+}

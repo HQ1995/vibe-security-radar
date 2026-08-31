@@ -1,0 +1,102 @@
+{
+  "schema_version": "independent-case-audit/v1",
+  "worker": "w044",
+  "review_agent_id": "round12-clean-w044-herdr",
+  "class_id": "alias-cc0bb6dc405966eeec190a5a",
+  "case_id": "GHSA-2f33-pr97-265q",
+  "repo": "messagepack-csharp/messagepack-csharp",
+  "advisory_ids": [
+    "CVE-2026-48509",
+    "GHSA-2f33-pr97-265q"
+  ],
+  "input_binding": {
+    "bundle_sha256": "c0c5d2d17fc5fe29eaab33509e680feb97111f8bbe1a75ebc3182c74b1e4f425",
+    "clone_head_sha": "21f6e635d5b5a40ec82a0cd642b1d19b7d1fbe88"
+  },
+  "verdict": "NOT_AI",
+  "protocol_checks": {
+    "vulnerability_mechanism": {
+      "status": "PASS",
+      "evidence": [
+        "CVE.org record CVE-2026-48509 is PUBLISHED and identifies GHSA-2f33-pr97-265q; the CNA description says the parameterless MessagePackInputFormatter uses Standard/TrustedData for HTTP request bodies and is fixed in 2.5.301 and 3.1.7: https://www.cve.org/CVERecord?id=CVE-2026-48509",
+        "The repository security advisory identifies the HTTP request-body trust boundary, null/default options, TrustedData posture, and hash-collision denial-of-service mechanism: https://github.com/MessagePack-CSharp/MessagePack-CSharp/security/advisories/GHSA-2f33-pr97-265q",
+        "At tag v3.1.6, MessagePackInputFormatter passes its nullable options to MessagePackSerializer.DeserializeAsync; MessagePackSerializer resolves null to DefaultOptions, MessagePackSerializerOptions.Security defaults to TrustedData, and TrustedData has HashCollisionResistant=false while UntrustedData has it true."
+      ]
+    },
+    "atomic_bic": {
+      "status": "PASS",
+      "evidence": [
+        "GIT_NO_LAZY_FETCH=1 git log --all -S 'MessagePackInputFormatter()' -- '*.cs' finds 1b7f0bbf790b9db05b5b6acd82b09d1bfb07cae2 as the earliest public first-write; later 9559449a8e01b034fce99164329c514e330cc7f5 splits the formatter into its present file and is not the BIC.",
+        "git show 1b7f0bbf790b9db05b5b6acd82b09d1bfb07cae2 shows a new Formatter.cs whose parameterless constructor delegates to null, whose options constructor substitutes MessagePackSerializer.DefaultResolver, and whose ReadAsync deserializes context.HttpContext.Request.Body."
+      ]
+    },
+    "immediate_parent_absence": {
+      "status": "PASS",
+      "evidence": [
+        "git rev-list --parents -n 1 1b7f0bbf790b9db05b5b6acd82b09d1bfb07cae2 returns the sole parent a72d34ab0378aed7a0a0603031961e7bd95ffe41.",
+        "git ls-tree -r --name-only a72d34ab0378aed7a0a0603031961e7bd95ffe41 has no MessagePack.AspNetCoreMvcFormatter or MessagePackInputFormatter path; git diff --name-status parent..BIC reports Formatter.cs and its project file as additions."
+      ]
+    },
+    "squash_member_decomposition": {
+      "status": "PASS",
+      "evidence": [
+        "The BIC is a one-parent atomic commit titled 'Add MessagePack.AspNetCoreMvcFormatter'; its diff directly adds the source-to-sink implementation, and the all-history -S search exposes no earlier public member containing the constructor. It is not a merge, move, revert, or squash carrier."
+      ]
+    },
+    "affected_release_membership": {
+      "status": "PASS",
+      "evidence": [
+        "The vendor advisory declares affected versions before 2.5.301 and 3.0 through before 3.1.7: https://github.com/MessagePack-CSharp/MessagePack-CSharp/security/advisories/GHSA-2f33-pr97-265q",
+        "git merge-base BIC v2.5.205 and git merge-base BIC v3.1.6 both return 1b7f0bbf790b9db05b5b6acd82b09d1bfb07cae2; both tag trees retain the parameterless null/default options path, and v3.1.6 resolves that path to TrustedData."
+      ]
+    },
+    "fixed_release_membership": {
+      "status": "PASS",
+      "evidence": [
+        "The vendor advisory names 2.5.301 and 3.1.7 as patched versions: https://github.com/MessagePack-CSharp/MessagePack-CSharp/security/advisories/GHSA-2f33-pr97-265q",
+        "git merge-base c98d31f2db4c1602fb462bc683d5519e07578246 v2.5.301 returns c98d31f2db4c1602fb462bc683d5519e07578246; git merge-base f077798ea3998ddc937056dd53afa2d0fc679d81 v3.1.7 returns f077798ea3998ddc937056dd53afa2d0fc679d81. The v2.5.301 and v3.1.7 tag trees both contain the UntrustedData default."
+      ]
+    },
+    "direct_fix_or_unpatched": {
+      "status": "PASS",
+      "evidence": [
+        "f077798ea3998ddc937056dd53afa2d0fc679d81 directly adds DefaultOptions = Standard.WithSecurity(UntrustedData), makes the parameterless constructor use it, makes null explicit options use it, and adds a dictionary collision-resistance regression test on the 3.x line.",
+        "c98d31f2db4c1602fb462bc683d5519e07578246 applies the same direct hunk and regression test on the 2.x line."
+      ]
+    },
+    "bic_only_ai_attribution": {
+      "status": "PASS",
+      "evidence": [
+        "The BIC commit object itself names neuecc <ils@neue.cc> as both author and committer at 2017-03-12T20:05:32+09:00, has subject 'Add MessagePack.AspNetCoreMvcFormatter', has no body or trailers, and contains no AI, Copilot, generated-by, or co-author marker. Attribution is based only on this atomic BIC object."
+      ]
+    }
+  },
+  "bug_semantics": "An ASP.NET Core MVC MessagePackInputFormatter consumes context.HttpContext.Request.Body, an HTTP-controlled byte stream, and deserializes it using the formatter's implicit default when the parameterless constructor is selected. In affected modern releases, the nullable options path resolves to MessagePackSerializerOptions.Standard, whose Security is TrustedData and whose HashCollisionResistant setting is false. A request body targeting dictionary-like model properties can therefore retain attacker-controlled hash collisions and consume excessive CPU; UntrustedData selects collision-resistant comparers at this boundary.",
+  "flaw_origin": "Commit 1b7f0bbf790b9db05b5b6acd82b09d1bfb07cae2 is the smallest public first-writer: it atomically added MessagePackInputFormatter, made its parameterless constructor select the library default, and sent the HTTP request body to deserialization with that default. Its immediate parent has no formatter implementation. Later commits changed APIs, moved/split the file, and eventually expressed the default as nullable MessagePackSerializerOptions, but did not originate the unsafe trust-boundary default.",
+  "introducer_sha": "1b7f0bbf790b9db05b5b6acd82b09d1bfb07cae2",
+  "introducer_parent": "a72d34ab0378aed7a0a0603031961e7bd95ffe41",
+  "introducer_parent_absent": true,
+  "squash_decomposed": false,
+  "decomposed_shas": [],
+  "fix_sha": "f077798ea3998ddc937056dd53afa2d0fc679d81",
+  "direct_fix_sha": "f077798ea3998ddc937056dd53afa2d0fc679d81",
+  "unpatched": null,
+  "ai_marker": {
+    "state": "ABSENT",
+    "evidence": [
+      "BIC 1b7f0bbf790b9db05b5b6acd82b09d1bfb07cae2 is authored and committed by neuecc <ils@neue.cc> on 2017-03-12; its complete commit message is only 'Add MessagePack.AspNetCoreMvcFormatter' and contains no AI, assistant, Copilot, generated-by, or co-author marker.",
+      "The BIC is a direct single-parent source addition rather than anonymous or aggregate history, so the named-human commit object is attributable without relying on repository-wide activity or later commits."
+    ]
+  },
+  "evidence": [
+    "CVE.org: CVE-2026-48509 is PUBLISHED and maps to GHSA-2f33-pr97-265q: https://www.cve.org/CVERecord?id=CVE-2026-48509",
+    "Official CVE v5 record: https://raw.githubusercontent.com/CVEProject/cvelistV5/main/cves/2026/48xxx/CVE-2026-48509.json",
+    "Vendor advisory: https://github.com/MessagePack-CSharp/MessagePack-CSharp/security/advisories/GHSA-2f33-pr97-265q",
+    "BIC 1b7f0bbf790b9db05b5b6acd82b09d1bfb07cae2 directly adds the formatter and unsafe implicit-default request-body deserialization; parent a72d34ab0378aed7a0a0603031961e7bd95ffe41 lacks the component.",
+    "Affected tag v3.1.6 shows nullable formatter options passed to DeserializeAsync; MessagePackSerializer substitutes DefaultOptions, and MessagePackSerializerOptions.Security defaults to TrustedData with collision resistance disabled.",
+    "Direct fixes c98d31f2db4c1602fb462bc683d5519e07578246 and f077798ea3998ddc937056dd53afa2d0fc679d81 are members of patched tags v2.5.301 and v3.1.7 respectively and install UntrustedData plus a regression test.",
+    "All referenced non-null SHAs were verified as commit objects under GIT_NO_LAZY_FETCH=1 in the assigned clone at HEAD 21f6e635d5b5a40ec82a0cd642b1d19b7d1fbe88."
+  ],
+  "reasoning": "The authoritative CVE and vendor advisory confirm a real, published vulnerability. The complete Git lifecycle closes: a smallest single-parent first-write, direct parent absence, affected-tag presence, two release-line direct fixes, and patched-tag membership. The only relevant attribution object is the atomic 2017 BIC, which is explicitly authored and committed by a named human and has no AI marker or aggregate ambiguity. With all eight protocol checks passing, the correct closed verdict is NOT_AI.",
+  "remaining_gap": null
+}

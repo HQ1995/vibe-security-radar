@@ -1,0 +1,103 @@
+{
+  "schema_version": "independent-case-audit/v1",
+  "worker": "w001",
+  "review_agent_id": "round12-clean-w001",
+  "class_id": "alias-8ab8caedd90d63afa7be32b1",
+  "case_id": "CVE-2026-72764",
+  "repo": "n8n-io/n8n",
+  "advisory_ids": [
+    "CVE-2026-72764",
+    "GHSA-6fvf-89gw-r6cx"
+  ],
+  "input_binding": {
+    "bundle_sha256": "66b3e3225552dd34a0d92e4ddf6bf126c6e3f3afc24da39ae36feb38aec68820",
+    "clone_head_sha": "5a0b3f02c7c4a4bbe1b14c7261fa8dca8b59962d"
+  },
+  "verdict": "EVIDENCE_GAP",
+  "protocol_checks": {
+    "vulnerability_mechanism": {
+      "status": "PASS",
+      "evidence": [
+        "CVEProject cvelistV5 record https://raw.githubusercontent.com/CVEProject/cvelistV5/main/cves/2026/72xxx/CVE-2026-72764.json is PUBLISHED and identifies the vendor advisory GHSA-9cmh-xcqm-5hqr, the cross-user shared JavaScript task-runner module cache, and fixed versions 1.123.67, 2.31.5, and 2.32.1.",
+        "Vendor advisory https://github.com/n8n-io/n8n/security/advisories/GHSA-9cmh-xcqm-5hqr states that a Code-node user can mutate a cached allowed module and affect later users on the same runner; the condition is a multi-user instance with built-in or external modules enabled.",
+        "At n8n@1.123.66, packages/@n8n/task-runner/src/js-task-runner/require-resolver.ts returns require(request) directly, while JsTaskRunner creates one resolver on the persistent runner and injects it as require into each VM context."
+      ]
+    },
+    "atomic_bic": {
+      "status": "GAP",
+      "evidence": [
+        "git log --all --follow -S'require,' identifies main-history commit 27d83e0d918f5009101bb27bb09ea8c6374a11d9 as the first mainline writer, but it is the squash of PR #10698 and is therefore not accepted as an atomic BIC.",
+        "The first relevant public PR member is feb31f61bbcf80bec25acf82c440cd97ed09aa54, titled 'move task runner into main repo'; its first-party patch adds code.ts with the raw require binding and a persistent maxConcurrency=5 runner, so it is a carrier whose pre-move origin must be recovered or shown unreconstructible.",
+        "GIT_NO_LAZY_FETCH=1 git cat-file -t feb31f61bbcf80bec25acf82c440cd97ed09aa54 reports the commit object unavailable in the assigned promisor clone."
+      ]
+    },
+    "immediate_parent_absence": {
+      "status": "GAP",
+      "evidence": [
+        "GitHub's first-party commit page records feb31f61bbcf80bec25acf82c440cd97ed09aa54 with immediate parent d0ec54c9bff74d908d36b02c2c08a06ba1762eda and shows the task-runner package as newly added, but the carrier commit object is unavailable in the assigned clone for direct tree verification.",
+        "For the rejected squash 27d83e0d918f5009101bb27bb09ea8c6374a11d9, local git verifies parent bdaadf10e058e2c0b1141289189d6526c030a2ca lacks packages/@n8n/task-runner-node-js/src/code.ts; this does not substitute for the atomic pre-move parent boundary."
+      ]
+    },
+    "squash_member_decomposition": {
+      "status": "GAP",
+      "evidence": [
+        "GitHub PR #10698 exposes 28 public commits; the member list includes feb31f61bbcf80bec25acf82c440cd97ed09aa54 ('move task runner into main repo'), followed by cleanup and review commits, while mainline commit 27d83e0d918f5009101bb27bb09ea8c6374a11d9 is the squash aggregate.",
+        "The relevant PR member is absent from the bound clone and its stated move source has no reconstructible first-writer object in the permitted evidence, so decomposition cannot yet produce a clone-valid atomic BIC."
+      ]
+    },
+    "affected_release_membership": {
+      "status": "PASS",
+      "evidence": [
+        "Local ancestry checks show 27d83e0d918f5009101bb27bb09ea8c6374a11d9 absent from n8n@1.61.0 and present in n8n@1.62.1, the earliest version-sorted n8n@1.x tag containing it.",
+        "Local git verifies n8n@1.123.66 resolves to 205a227df8a488f45fbac2f39ce8b57fb5380e25, contains the introduced runner history, lacks the fix carrier, and has package.json version 1.123.66; corresponding checks also confirm affected endpoints 2.31.4 and 2.32.0."
+      ]
+    },
+    "fixed_release_membership": {
+      "status": "PASS",
+      "evidence": [
+        "Local git ancestry verifies fix carrier 1cd2c5fb22a906058cc083c3af2d561ce7f4332d is in n8n@1.123.67 and not n8n@1.123.66.",
+        "Local git ancestry verifies f6cb6cf3ab177c3740a5ef624b89bae5165405a1 is in n8n@2.31.5 and not n8n@2.31.4, and f69dfc6dd2178a14ea1624d2e1d403c2e755042f is in n8n@2.32.1 and not n8n@2.32.0."
+      ]
+    },
+    "direct_fix_or_unpatched": {
+      "status": "PASS",
+      "evidence": [
+        "git diff 1cd2c5fb22a906058cc083c3af2d561ce7f4332d^..1cd2c5fb22a906058cc083c3af2d561ce7f4332d adds secureModules in JsTaskRunner and replaces raw module exports with a write-blocking recursive proxy membrane in require-resolver.ts.",
+        "The direct tests added by the same carrier verify that one resolution cannot mutate the shared module seen by another, nested writes and reflection writes are blocked, and repeated resolution preserves stable identity."
+      ]
+    },
+    "bic_only_ai_attribution": {
+      "status": "GAP",
+      "evidence": [
+        "The rejected mainline squash 27d83e0d918f5009101bb27bb09ea8c6374a11d9 has human author Val and only human Co-authored-by trailers, but squash metadata cannot decide the BIC's AI role.",
+        "GitHub presents carrier feb31f61bbcf80bec25acf82c440cd97ed09aa54 as authored by Valya Bullions with no displayed AI marker, but the carrier is not yet the accepted atomic BIC and its commit object is unavailable in the assigned clone."
+      ]
+    }
+  },
+  "bug_semantics": "An authenticated Code-node user can call an allowlisted built-in or external module through a persistent JavaScript task runner. The VM receives the host process's require result directly, so Node returns the same mutable cached module export to later tasks. The attacker mutates that export or nested state; a later user's Code-node execution on the same runner observes attacker-controlled state, breaking cross-user confidentiality, integrity, or availability without requiring a sandbox escape.",
+  "flaw_origin": "Mainline squash 27d83e0d918f5009101bb27bb09ea8c6374a11d9 first exposes the vulnerable runner in released history, but public PR decomposition finds finer member feb31f61bbcf80bec25acf82c440cd97ed09aa54 adding the persistent runner and raw require binding as a move into the main repository. Because that carrier is absent from the bound clone and the pre-move first-writer history is not reconstructible from permitted evidence, no atomic introducer is asserted.",
+  "introducer_sha": null,
+  "introducer_parent": null,
+  "introducer_parent_absent": false,
+  "squash_decomposed": false,
+  "decomposed_shas": [],
+  "fix_sha": "1cd2c5fb22a906058cc083c3af2d561ce7f4332d",
+  "direct_fix_sha": "1cd2c5fb22a906058cc083c3af2d561ce7f4332d",
+  "unpatched": null,
+  "ai_marker": {
+    "state": "UNKNOWN",
+    "evidence": [
+      "No AI marker is present on the rejected mainline squash or displayed public carrier, but BIC-only attribution remains unknown until the atomic pre-move first-writer commit object is recovered and inspected."
+    ]
+  },
+  "evidence": [
+    "CVE record: https://raw.githubusercontent.com/CVEProject/cvelistV5/main/cves/2026/72xxx/CVE-2026-72764.json (state PUBLISHED; vendor advisory reference; affected/fixed boundaries).",
+    "Vendor advisory: https://github.com/n8n-io/n8n/security/advisories/GHSA-9cmh-xcqm-5hqr (cross-tenant module-cache poisoning; affected conditions; fixed releases).",
+    "GitHub Advisory Database alias: https://github.com/advisories/GHSA-6fvf-89gw-r6cx maps GHSA-6fvf-89gw-r6cx to CVE-2026-72764 and references the vendor advisory.",
+    "First-party PR commit list: https://github.com/n8n-io/n8n/pull/10698/commits shows 28 members and the squash decomposition trail.",
+    "First-party carrier patch: https://github.com/n8n-io/n8n/commit/feb31f61bbcf80bec25acf82c440cd97ed09aa54.patch adds the persistent task runner and raw require binding; commit page records parent d0ec54c9bff74d908d36b02c2c08a06ba1762eda.",
+    "Bound clone HEAD 5a0b3f02c7c4a4bbe1b14c7261fa8dca8b59962d contains commit objects for released squash 27d83e0d918f5009101bb27bb09ea8c6374a11d9 and fix 1cd2c5fb22a906058cc083c3af2d561ce7f4332d, but not PR member feb31f61bbcf80bec25acf82c440cd97ed09aa54 under GIT_NO_LAZY_FETCH=1."
+  ],
+  "reasoning": "The advisory identity, vulnerable source-to-sink, affected releases, fixed releases, and direct fix are established. A closed AI or human verdict nevertheless requires the smallest first-writer and AI evidence from that commit only. The released mainline commit is a squash aggregate, and its finer public member is explicitly a move/carrier whose object and pre-move origin are unavailable in the bound read-only promisor clone. Treating either aggregate or carrier metadata as the BIC would violate the protocol, so the result remains EVIDENCE_GAP.",
+  "remaining_gap": "In an isolated writable clone, fetch refs/pull/10698/head (or at minimum feb31f61bbcf80bec25acf82c440cd97ed09aa54 and its ancestry), verify the carrier's immediate-parent trees, recover the pre-move source repository/history if public or prove no finer public object survives, then inspect the resulting atomic BIC commit object alone for AI attribution and record clone-valid full SHAs."
+}

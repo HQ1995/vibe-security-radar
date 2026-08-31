@@ -1,0 +1,103 @@
+{
+  "schema_version": "independent-case-audit/v1",
+  "worker": "w022",
+  "review_agent_id": "round12-clean-w022-r2",
+  "class_id": "alias-fe39cd7b56d2f10a8740d77b",
+  "case_id": "GHSA-pc8g-78pf-4xrp",
+  "repo": "olivetin/olivetin",
+  "advisory_ids": [
+    "CVE-2026-28342",
+    "GHSA-pc8g-78pf-4xrp"
+  ],
+  "input_binding": {
+    "bundle_sha256": "fa791fceba6afc594f50bfc92f910dcff2c3a88e206506d0abe750c38b1c5b69",
+    "clone_head_sha": "dc64d53e26a653fb4ee06cc74d7fde8ba8157e02"
+  },
+  "verdict": "NOT_AI",
+  "protocol_checks": {
+    "vulnerability_mechanism": {
+      "status": "PASS",
+      "evidence": [
+        "CVE.org record https://cveawg.mitre.org/api/cve/CVE-2026-28342 is PUBLISHED and states that versions before 3000.10.2 expose an unauthenticated PasswordHash API whose concurrent memory-intensive requests can exhaust container memory.",
+        "At BIC 1af2e921323ee0ba3bf3d922c8861652d3913222, OliveTin.proto maps POST /api/PasswordHash to PasswordHash; internal/grpcapi/grpcApi.go calls createHash(req.Password) without an authentication or concurrency check; internal/grpcapi/local_user_login.go calls argon2id.CreateHash with Memory 64 * 1024."
+      ]
+    },
+    "atomic_bic": {
+      "status": "PASS",
+      "evidence": [
+        "git log -S over the historical handler paths identifies 1af2e921323ee0ba3bf3d922c8861652d3913222 as the first writer; ff31abe66cfd46f8cccca00ad708529e4d920144 and a62d58f11955fe192f45da13e23ba996a2759404 are later path carriers.",
+        "git diff 71ad5d2e3a14fae7755b2e856981f50887745558..1af2e921323ee0ba3bf3d922c8861652d3913222 shows the route, handler, and unbounded Argon2 sink added together by the one-parent commit feature: Local user login!."
+      ]
+    },
+    "immediate_parent_absence": {
+      "status": "PASS",
+      "evidence": [
+        "git cat-file -p 1af2e921323ee0ba3bf3d922c8861652d3913222 gives immediate parent 71ad5d2e3a14fae7755b2e856981f50887745558.",
+        "git grep -n 'PasswordHash|argon2id.CreateHash' 71ad5d2e3a14fae7755b2e856981f50887745558 -- '*.go' '*.proto' returns no matches, while the BIC diff adds both the reachable PasswordHash handler and argon2id.CreateHash sink."
+      ]
+    },
+    "squash_member_decomposition": {
+      "status": "PASS",
+      "evidence": [
+        "git cat-file -p 1af2e921323ee0ba3bf3d922c8861652d3913222 shows exactly one parent and the plain commit message feature: Local user login!, with no merge parents, PR aggregate marker, or embedded member list to decompose.",
+        "The vulnerable route, handler, and sink are direct additions in this surviving public commit, so no finer public member is represented in the assigned clone."
+      ]
+    },
+    "affected_release_membership": {
+      "status": "PASS",
+      "evidence": [
+        "CVE.org records the affected boundary as versions < 3000.10.2.",
+        "Vendor tag 3000.10.1 resolves to 60176b6078ed32aa664329c50aa5a42604dc3f96; git merge-base --is-ancestor confirms BIC 1af2e921323ee0ba3bf3d922c8861652d3913222 is present and direct fix a7be68b35917682b3af022191d72f8af8af0dee9 is absent."
+      ]
+    },
+    "fixed_release_membership": {
+      "status": "PASS",
+      "evidence": [
+        "CVE.org states the issue is patched in 3000.10.2, and GitHub advisory https://api.github.com/advisories/GHSA-pc8g-78pf-4xrp names first patched pseudo-version 0.0.0-20260227002407-2eb5f0ba79d4.",
+        "Vendor tag 3000.10.2 resolves to 2eb5f0ba79d4bbef3c802bf8b4666a7e18dcfd90; git merge-base --is-ancestor confirms direct fix a7be68b35917682b3af022191d72f8af8af0dee9 is included."
+      ]
+    },
+    "direct_fix_or_unpatched": {
+      "status": "PASS",
+      "evidence": [
+        "Direct fix a7be68b35917682b3af022191d72f8af8af0dee9 adds a shared 10-slot argon2Sem, rejects excess CreateHash and ComparePasswordAndHash calls with ErrArgon2Busy, and maps that condition to Connect CodeResourceExhausted.",
+        "The advisory commit 2eb5f0ba79d4bbef3c802bf8b4666a7e18dcfd90 is a merge; its first-parent-to-merge diff carries the same semaphore fix, while a7be68b35917682b3af022191d72f8af8af0dee9 is the finer direct member."
+      ]
+    },
+    "bic_only_ai_attribution": {
+      "status": "PASS",
+      "evidence": [
+        "BIC commit object 1af2e921323ee0ba3bf3d922c8861652d3913222 names jamesread <contact@jread.com> as both author and committer and contains only the message feature: Local user login!.",
+        "The BIC object has no AI, assistant, bot, generated-by, or co-author marker; no repository-level or later-commit signal is used for attribution."
+      ]
+    }
+  },
+  "bug_semantics": "An unauthenticated POST to the generated PasswordHash RPC reaches oliveTinAPI.PasswordHash, which passes attacker-controlled password text to createHash and then argon2id.CreateHash configured for 64 * 1024 memory units. Before the fix there is no authentication, throttling, or concurrency guard on this path, so parallel remote requests perform many memory-intensive Argon2 computations concurrently and can exhaust service or container memory.",
+  "flaw_origin": "Commit 1af2e921323ee0ba3bf3d922c8861652d3913222 is the smallest surviving public first-writer: it directly adds the PasswordHash request and POST route, the unauthenticated handler, and the unbounded Argon2 helper. Its immediate parent has none of those objects. Commits ff31abe66cfd46f8cccca00ad708529e4d920144 and a62d58f11955fe192f45da13e23ba996a2759404 only carry the handler across directory/API refactors and are not introducers.",
+  "introducer_sha": "1af2e921323ee0ba3bf3d922c8861652d3913222",
+  "introducer_parent": "71ad5d2e3a14fae7755b2e856981f50887745558",
+  "introducer_parent_absent": true,
+  "squash_decomposed": false,
+  "decomposed_shas": [],
+  "fix_sha": "2eb5f0ba79d4bbef3c802bf8b4666a7e18dcfd90",
+  "direct_fix_sha": "a7be68b35917682b3af022191d72f8af8af0dee9",
+  "unpatched": null,
+  "ai_marker": {
+    "state": "ABSENT",
+    "evidence": [
+      "git cat-file -p 1af2e921323ee0ba3bf3d922c8861652d3913222: named author and committer jamesread <contact@jread.com>; message feature: Local user login!; no trailers or AI marker."
+    ]
+  },
+  "evidence": [
+    "CVE.org primary record https://cveawg.mitre.org/api/cve/CVE-2026-28342: state PUBLISHED, affected versions < 3000.10.2, patched in 3000.10.2.",
+    "GitHub advisory record https://api.github.com/advisories/GHSA-pc8g-78pf-4xrp: GHSA-pc8g-78pf-4xrp / CVE-2026-28342, withdrawn_at null, fix reference 2eb5f0ba79d4bbef3c802bf8b4666a7e18dcfd90.",
+    "Assigned clone HEAD dc64d53e26a653fb4ee06cc74d7fde8ba8157e02; all recorded Git objects were inspected with GIT_NO_LAZY_FETCH=1.",
+    "BIC diff 71ad5d2e3a14fae7755b2e856981f50887745558..1af2e921323ee0ba3bf3d922c8861652d3913222 directly adds POST /api/PasswordHash, its handler, and the 64 * 1024 Argon2 CreateHash sink.",
+    "History search across internal/grpcapi/grpcApi.go, service/internal/grpcapi/grpcApi.go, and service/internal/api/api.go distinguishes BIC 1af2e921323ee0ba3bf3d922c8861652d3913222 from later carriers ff31abe66cfd46f8cccca00ad708529e4d920144 and a62d58f11955fe192f45da13e23ba996a2759404.",
+    "Vendor tags: 3000.10.1 = 60176b6078ed32aa664329c50aa5a42604dc3f96 lacks a7be68b35917682b3af022191d72f8af8af0dee9; 3000.10.2 = 2eb5f0ba79d4bbef3c802bf8b4666a7e18dcfd90 contains it.",
+    "Direct fix diff a7be68b35917682b3af022191d72f8af8af0dee9 adds a nonblocking 10-slot semaphore around both Argon2 hash and compare operations and returns ResourceExhausted when full.",
+    "BIC-local commit object attributes the atomic first-writer to named human jamesread <contact@jread.com> with no AI marker."
+  ],
+  "reasoning": "The authoritative CVE and vendor Git history establish a real, fixed vulnerability. Exact pickaxe history and parent-tree inspection close the lifecycle at one direct first-writer rather than a later refactor or advisory merge. The vulnerable release excludes the direct fix and the fixed release includes it. Because the atomic BIC itself is a named-human authored and committed object with no AI marker, the closed verdict is NOT_AI.",
+  "remaining_gap": null
+}

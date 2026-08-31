@@ -1,0 +1,101 @@
+{
+  "schema_version": "independent-case-audit/v1",
+  "worker": "w036",
+  "review_agent_id": "round12-clean-w036-r2",
+  "class_id": "alias-d54007086debbb3e50282cf1",
+  "case_id": "CVE-2026-77639",
+  "repo": "gitlab.torproject.org/tpo/core/tor",
+  "advisory_ids": [
+    "CVE-2026-77639",
+    "GHSA-jm5p-g55h-rwhg"
+  ],
+  "input_binding": {
+    "bundle_sha256": "26453708898d58812a8231f9855e26cbf9d29cac9531c52a5a44c1623d18c553",
+    "clone_head_sha": "3bfb49864a715119bf09e84785e9978884c2fd4b"
+  },
+  "verdict": "NOT_AI",
+  "protocol_checks": {
+    "vulnerability_mechanism": {
+      "status": "PASS",
+      "evidence": [
+        "CVE Services record https://cveawg.mitre.org/api/cve/CVE-2026-77639 is PUBLISHED and describes concatenated gzip/zlib sub-streams bypassing the per-stream compression-bomb threshold; its CNA affected range is 0.3.1.1-alpha through versions before 0.4.9.9.",
+        "Tor work item https://gitlab.torproject.org/tpo/core/tor/-/work_items/41275 states that tor_compress_impl() frees and recreates the backend at each TOR_COMPRESS_DONE boundary, resetting input_so_far/output_so_far; it estimates that a malicious relay can make a 16 MB request drive about 400 MB of client allocation."
+      ]
+    },
+    "atomic_bic": {
+      "status": "PASS",
+      "evidence": [
+        "git diff 91dd4a00f7d4891e24187a849933547128aeeb9f 880fb3e3a9aba21c0b36aa4aa5659432e90eb827 -- src/common/compress.c src/common/compress_zlib.c shows that 880fb3e3a9aba21c0b36aa4aa5659432e90eb827 first added common tor_compress_impl(), routed tor_uncompress() through it, and freed/recreated the stream when compressed input remained after TOR_COMPRESS_DONE.",
+        "git rev-list --parents -n 1 880fb3e3a9aba21c0b36aa4aa5659432e90eb827 shows exactly one parent, 91dd4a00f7d4891e24187a849933547128aeeb9f; the commit is the fine-grained first writer, not a move, fix, revert, carrier, or merge aggregate."
+      ]
+    },
+    "immediate_parent_absence": {
+      "status": "PASS",
+      "evidence": [
+        "In parent 91dd4a00f7d4891e24187a849933547128aeeb9f, src/common/compress.c dispatches gzip/zlib to tor_zlib_uncompress(); that implementation checks tor_compress_is_compression_bomb(in_len, out_size) using the total original input and cumulative output allocation and does not replace it with the vulnerable common per-member state lifecycle.",
+        "The parent-to-BIC diff directly establishes absence in the immediate parent and introduction in 880fb3e3a9aba21c0b36aa4aa5659432e90eb827."
+      ]
+    },
+    "squash_member_decomposition": {
+      "status": "PASS",
+      "evidence": [
+        "git log --graph --ancestry-path 91dd4a00f7d4891e24187a849933547128aeeb9f..49868340f7346a7c30603b21d580a3bb54701b0a shows 880fb3e3a9aba21c0b36aa4aa5659432e90eb827 as a fine-grained member on the second-parent branch later merged by 49868340f7346a7c30603b21d580a3bb54701b0a ('Merge branch unified_compress_squashed').",
+        "git merge-base --is-ancestor 880fb3e3a9aba21c0b36aa4aa5659432e90eb827 49a5b50b31b8305e63dea5db0cc0de1cb093ff4f exits 0, so the later two-parent merge was rejected as the BIC in favor of its surviving public member."
+      ]
+    },
+    "affected_release_membership": {
+      "status": "PASS",
+      "evidence": [
+        "CVE-2026-77639 CNA data marks Tor versions from 0.3.1.1-alpha inclusive to before 0.4.9.9 as affected.",
+        "git merge-base --is-ancestor 880fb3e3a9aba21c0b36aa4aa5659432e90eb827 tor-0.3.1.1-alpha exits 0, while the same command against tor-0.3.0.13 exits 1."
+      ]
+    },
+    "fixed_release_membership": {
+      "status": "PASS",
+      "evidence": [
+        "Tor's tor-0.4.9.9 ChangeLog identifies TROVE-2026-022 as fixed in 0.4.9.9 and as a bugfix on 0.3.1.1-alpha: https://gitlab.torproject.org/tpo/core/tor/-/raw/tor-0.4.9.9/ChangeLog.",
+        "git merge-base --is-ancestor b105d4007927a68b6f3dcf80e55c60ce37fdedf4 tor-0.4.9.8 exits 1 and the same command against tor-0.4.9.9 exits 0; git tag --contains lists tor-0.4.9.9 and later 0.4.9 tags."
+      ]
+    },
+    "direct_fix_or_unpatched": {
+      "status": "PASS",
+      "evidence": [
+        "git show b105d4007927a68b6f3dcf80e55c60ce37fdedf4 adds cumulative out_so_far = outptr - *out and in_so_far = in_len_orig - in_len checks before tor_compress_free()/tor_compress_new() at the concatenated-substream boundary, directly closing the counter-reset bypass.",
+        "The same fix adds gzip and zlib regression tests built from three concatenated 3 MB zero streams and requires decompression to fail with the cross-stream bomb warning."
+      ]
+    },
+    "bic_only_ai_attribution": {
+      "status": "PASS",
+      "evidence": [
+        "git cat-file commit 880fb3e3a9aba21c0b36aa4aa5659432e90eb827 attributes both author and committer to named human Nick Mathewson <nickm@torproject.org>; its message contains only the common compression API rationale and no AI co-author, generator, assistant, or bot marker.",
+        "The Claude Co-Authored-By trailer belongs to the 2026 fix b105d4007927a68b6f3dcf80e55c60ce37fdedf4 and is excluded from BIC-only attribution."
+      ]
+    }
+  },
+  "bug_semantics": "A malicious relay can supply concatenated gzip or zlib members to Tor's directory decompression path. tor_compress_impl() retains the cumulative output buffer but frees and recreates the backend state whenever one member returns TOR_COMPRESS_DONE with input remaining. The backend's compression-bomb input/output counters therefore restart for every member, so members individually below the 5 MiB check threshold evade detection while cumulative output and allocation continue growing, producing a network-triggerable client availability impact.",
+  "flaw_origin": "Commit 880fb3e3a9aba21c0b36aa4aa5659432e90eb827 is the smallest surviving public first writer: it replaced method-specific one-shot decompression with common tor_compress_impl() and introduced backend recreation between concatenated members. Its immediate parent 91dd4a00f7d4891e24187a849933547128aeeb9f still used tor_zlib_uncompress() with a total-input/cumulative-output bomb check. The later merge 49868340f7346a7c30603b21d580a3bb54701b0a is only a carrier of this finer member.",
+  "introducer_sha": "880fb3e3a9aba21c0b36aa4aa5659432e90eb827",
+  "introducer_parent": "91dd4a00f7d4891e24187a849933547128aeeb9f",
+  "introducer_parent_absent": false,
+  "squash_decomposed": false,
+  "decomposed_shas": [],
+  "fix_sha": "b105d4007927a68b6f3dcf80e55c60ce37fdedf4",
+  "direct_fix_sha": "b105d4007927a68b6f3dcf80e55c60ce37fdedf4",
+  "unpatched": null,
+  "ai_marker": {
+    "state": "ABSENT",
+    "evidence": [
+      "BIC commit object 880fb3e3a9aba21c0b36aa4aa5659432e90eb827 names Nick Mathewson <nickm@torproject.org> as both author and committer and contains no AI-local trailer or message marker."
+    ]
+  },
+  "evidence": [
+    "CVE Services primary record https://cveawg.mitre.org/api/cve/CVE-2026-77639: state PUBLISHED, affected 0.3.1.1-alpha to before 0.4.9.9, compression-bomb bypass via concatenated gzip/zlib sub-streams.",
+    "Tor work item https://gitlab.torproject.org/tpo/core/tor/-/work_items/41275: fresh backend state resets the inner counters and permits large cumulative client allocation.",
+    "Tor release source https://gitlab.torproject.org/tpo/core/tor/-/raw/tor-0.4.9.9/ChangeLog: 0.4.9.9 security fix for TROVE-2026-022, bugfix on 0.3.1.1-alpha.",
+    "BIC 880fb3e3a9aba21c0b36aa4aa5659432e90eb827 and parent 91dd4a00f7d4891e24187a849933547128aeeb9f exist as commit objects in the assigned clone; their direct diff introduces the vulnerable common state-reinitialization flow.",
+    "Fix b105d4007927a68b6f3dcf80e55c60ce37fdedf4 exists as a commit object in the assigned clone and directly adds the cross-substream cumulative ratio check plus regression tests.",
+    "Tag ancestry: BIC absent from tor-0.3.0.13 and present in tor-0.3.1.1-alpha; fix absent from tor-0.4.9.8 and present in tor-0.4.9.9."
+  ],
+  "reasoning": "The authoritative CVE and Tor sources confirm a real, published availability vulnerability and its affected/fixed boundaries. Direct parent comparison identifies 880fb3e3a9aba21c0b36aa4aa5659432e90eb827 as the atomic first writer of the counter-reset path, while graph inspection rejects the later merge carrier. The direct fix checks cumulative ratios before backend replacement. Because the BIC itself is a named-human commit with no BIC-local AI evidence, all eight closure checks pass and the correct verdict is NOT_AI; the AI trailer on the later fix is non-causal for origin attribution.",
+  "remaining_gap": null
+}

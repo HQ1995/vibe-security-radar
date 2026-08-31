@@ -1,0 +1,93 @@
+{
+  "schema_version": "independent-case-audit/v1",
+  "worker": "w015",
+  "review_agent_id": "round12-clean-w015",
+  "class_id": "alias-1644a7fa17113aab101f75fa",
+  "case_id": "GHSA-mv93-w799-cj2w",
+  "repo": "gitpython-developers/gitpython",
+  "advisory_ids": [
+    "GHSA-mv93-w799-cj2w"
+  ],
+  "input_binding": {
+    "bundle_sha256": "c2bd4360beddde0529f263a6c43c626332c95087468cca27f9928002839d7be5",
+    "clone_head_sha": "d160fb4124a56bd463a542a7bbff623354fb3397"
+  },
+  "verdict": "NOT_AI",
+  "protocol_checks": {
+    "vulnerability_mechanism": {
+      "status": "PASS",
+      "evidence": [
+        "The repository-scoped vendor advisory https://github.com/gitpython-developers/GitPython/security/advisories/GHSA-mv93-w799-cj2w is published and describes newline-bearing section input reaching GitPython's raw section-header writer; the GitHub advisory API returned withdrawn_at=null, cve_id=null, vulnerable range <=3.1.49, and first patched version 3.1.50. Because no CVE identifier is assigned, there is no CVE.org CVE record to supply a separate disposition.",
+        "At tag 3.1.49, git/repo/base.py:691-706 returns a writable GitConfigParser from Repo.config_writer(); git/config.py:905-926 accepts caller-controlled section in set_value(), adds it without validation, and git/config.py:683-688 serializes the name as ('[%s]\\n' % name). A name such as user]\\n[core therefore creates a second [core] header whose hooksPath value Git consumes."
+      ]
+    },
+    "atomic_bic": {
+      "status": "PASS",
+      "evidence": [
+        "git log -L over the 3.1.49 writer history reaches 3fd37230e76a014cf5c45d55daf0be2caa6948b7 as the first implementation of the vulnerable writable path: it enables inherited set as a mutating method and adds _write()/write_section() with fp.write('[%s]\\n' % name). This is the smallest first-write commit; later 6a417f4cf2df39704aa4c869e88d14e9806894a7 merely adds the convenience set_value() entry point to an already vulnerable writable parser."
+      ]
+    },
+    "immediate_parent_absence": {
+      "status": "PASS",
+      "evidence": [
+        "git show 9513aa01fab73f53e4fe18644c7d5b530a66c6a1:lib/git/config.py shows _mutating_methods_=tuple(), no _write implementation, and only a nonfunctional write skeleton; git diff 9513aa01fab73f53e4fe18644c7d5b530a66c6a1..3fd37230e76a014cf5c45d55daf0be2caa6948b7 shows the BIC adding the mutable set route and raw section serializer. Both objects were verified with GIT_NO_LAZY_FETCH=1 git cat-file -e."
+      ]
+    },
+    "squash_member_decomposition": {
+      "status": "PASS",
+      "evidence": [
+        "GIT_NO_LAZY_FETCH=1 git cat-file -p 3fd37230e76a014cf5c45d55daf0be2caa6948b7 shows exactly one parent, 9513aa01fab73f53e4fe18644c7d5b530a66c6a1; the commit directly contains the first-write hunk and is neither a merge, revert, move, nor squash aggregate requiring decomposition."
+      ]
+    },
+    "affected_release_membership": {
+      "status": "PASS",
+      "evidence": [
+        "GIT_NO_LAZY_FETCH=1 git rev-parse 3.1.49^{} resolved aee2fd5c13770954469e650f1df8f92f0183bc70; git merge-base --is-ancestor confirms BIC 3fd37230e76a014cf5c45d55daf0be2caa6948b7 is in 3.1.49, while direct fix 54538428f79b0c91ba52cda5229856a6edf7ac06 is not. This matches the vendor advisory's <=3.1.49 boundary."
+      ]
+    },
+    "fixed_release_membership": {
+      "status": "PASS",
+      "evidence": [
+        "A bounded fetch of refs/tags/3.1.50 resolved its peeled commit to 5a294a6fc7ed5dc0946d4b576257bf926178f269. GIT_NO_LAZY_FETCH=1 git merge-base --is-ancestor confirms 54538428f79b0c91ba52cda5229856a6edf7ac06 is in 3.1.50, and the vendor release page https://github.com/gitpython-developers/GitPython/releases/tag/3.1.50 lists 'Validate config key names before writing' in PR #2142."
+      ]
+    },
+    "direct_fix_or_unpatched": {
+      "status": "PASS",
+      "evidence": [
+        "git show 54538428f79b0c91ba52cda5229856a6edf7ac06 adds UNSAFE_CONFIG_CHARS_RE for CR/LF/NUL and calls _assure_config_name_safe() from add_section(), set(), set_value(), add_value(), and rename_section(); its regression test exercises user]\\n[core and related section/option inputs. git diff --exit-code 54538428f79b0c91ba52cda5229856a6edf7ac06..3.1.50 -- git/config.py test/test_config.py exits 0, so the direct fix is exactly present in the fixed tag."
+      ]
+    },
+    "bic_only_ai_attribution": {
+      "status": "PASS",
+      "evidence": [
+        "GIT_NO_LAZY_FETCH=1 git cat-file -p 3fd37230e76a014cf5c45d55daf0be2caa6948b7 records author and committer Sebastian Thiel <byronimo@gmail.com> and contains no AI author, co-author, assistant, agent, or generated-code marker. Later AI-authored security work, including direct fix 54538428f79b0c91ba52cda5229856a6edf7ac06, is excluded from BIC-only attribution."
+      ]
+    }
+  },
+  "bug_semantics": "Repo.config_writer() returns a writable GitConfigParser. Its public mutation paths accepted caller-controlled section names without rejecting CR, LF, or NUL, while _write() interpolated each name verbatim between '[' and ']\\n'. A section value such as user]\\n[core therefore changes the serialized .git/config grammar, allowing an injected core.hooksPath directive to select attacker-controlled hooks that execute when a Git hook is triggered.",
+  "flaw_origin": "Commit 3fd37230e76a014cf5c45d55daf0be2caa6948b7 is the smallest public first writer: it turned the preceding GitConfigParser skeleton into a writable parser by exposing inherited set as mutating and added the raw section-header serializer. Its immediate parent lacks both the functional mutation route and _write sink. Later set_value and 2026 value-only validation commits carried or exposed the same pre-existing section-name flaw but did not originate it.",
+  "introducer_sha": "3fd37230e76a014cf5c45d55daf0be2caa6948b7",
+  "introducer_parent": "9513aa01fab73f53e4fe18644c7d5b530a66c6a1",
+  "introducer_parent_absent": true,
+  "squash_decomposed": false,
+  "decomposed_shas": [],
+  "fix_sha": "54538428f79b0c91ba52cda5229856a6edf7ac06",
+  "direct_fix_sha": "54538428f79b0c91ba52cda5229856a6edf7ac06",
+  "unpatched": null,
+  "ai_marker": {
+    "state": "ABSENT",
+    "evidence": [
+      "The raw BIC commit object names Sebastian Thiel <byronimo@gmail.com> as both author and committer and has no AI-related trailer or message marker."
+    ]
+  },
+  "evidence": [
+    "Vendor advisory: https://github.com/gitpython-developers/GitPython/security/advisories/GHSA-mv93-w799-cj2w; GitHub advisory API identity GHSA-mv93-w799-cj2w has cve_id=null, withdrawn_at=null, affected <=3.1.49, fixed 3.1.50.",
+    "BIC object: https://github.com/gitpython-developers/GitPython/commit/3fd37230e76a014cf5c45d55daf0be2caa6948b7; raw object has parent 9513aa01fab73f53e4fe18644c7d5b530a66c6a1 and named-human author/committer Sebastian Thiel.",
+    "BIC hunk in lib/git/config.py enables inherited set mutation and writes section headers with fp.write('[%s]\\n' % name); the immediate parent has _mutating_methods_=tuple() and no _write implementation.",
+    "At tag 3.1.49 (aee2fd5c13770954469e650f1df8f92f0183bc70), Repo.config_writer() returns GitConfigParser(..., read_only=False), set_value() passes an unchecked section to add_section(), and _write() interpolates that section verbatim.",
+    "Direct fix: https://github.com/gitpython-developers/GitPython/commit/54538428f79b0c91ba52cda5229856a6edf7ac06; it rejects CR/LF/NUL in section and option names at every writer entry point and adds the newline-section regression.",
+    "Fixed release: https://github.com/gitpython-developers/GitPython/releases/tag/3.1.50; peeled tag commit 5a294a6fc7ed5dc0946d4b576257bf926178f269 contains direct fix 54538428f79b0c91ba52cda5229856a6edf7ac06."
+  ],
+  "reasoning": "The advisory describes a real, active vendor-confirmed injection mechanism. Full history closes the lifecycle: 3fd37230e76a014cf5c45d55daf0be2caa6948b7 first made unchecked section names reach a raw structural serializer; its parent lacks that mechanism; 3.1.49 contains the BIC but not the fix; and 3.1.50 contains the direct validation fix. The BIC itself is a 2009 named-human commit with no AI marker. AI authorship on later incomplete remediation or the final fix cannot change BIC-only attribution, so the closed verdict is NOT_AI.",
+  "remaining_gap": null
+}

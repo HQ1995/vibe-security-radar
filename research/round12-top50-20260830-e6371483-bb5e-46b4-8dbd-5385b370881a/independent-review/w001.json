@@ -1,0 +1,101 @@
+{
+  "worker": "w001",
+  "review_agent_id": "r12_w001",
+  "class_id": "alias-8ab8caedd90d63afa7be32b1",
+  "case_id": "CVE-2026-72764",
+  "repo": "n8n-io/n8n",
+  "primary_verdict": "EVIDENCE_GAP",
+  "review_verdict": "CORRECTION_REQUIRED",
+  "protocol_checks": {
+    "vulnerability_mechanism": {
+      "status": "PASS",
+      "evidence": [
+        "CVEProject cvelistV5 https://raw.githubusercontent.com/CVEProject/cvelistV5/main/cves/2026/72xxx/CVE-2026-72764.json is state PUBLISHED (not rejected/withdrawn). CWE-668. Vendor advisory GHSA-9cmh-xcqm-5hqr. Fixed versions 1.123.67, 2.31.5, 2.32.1.",
+        "Vendor advisory https://github.com/n8n-io/n8n/security/advisories/GHSA-9cmh-xcqm-5hqr (published 2026-07-22, not withdrawn) describes a persistent JS task runner sharing one Node module cache across users' Code-node executions so a Code-node user can poison a cached allowlisted module and alter later users' executions. Scope is a cross-user isolation break, not a sandbox escape/RCE. Condition: multi-user instance with NODE_FUNCTION_ALLOW_BUILTIN or NODE_FUNCTION_ALLOW_EXTERNAL enabled.",
+        "Source-to-sink at n8n@1.123.66 (205a227df8a488f45fbac2f39ce8b57fb5380e25): packages/@n8n/task-runner/src/js-task-runner/require-resolver.ts returns require(request) as unknown after the allowlist check; JsTaskRunner constructs one createRequireResolver on the persistent runner and injects it as require into each VM context via buildContext. Node's module cache is process-wide, so a mutation of the returned export is visible to later tasks on the same runner."
+      ]
+    },
+    "atomic_bic": {
+      "status": "PASS",
+      "evidence": [
+        "Mainline 27d83e0d918f5009101bb27bb09ea8c6374a11d9 (feat: Initial Code Task Runners support (no-changelog) (#10698)) is the first released squash that contains packages/@n8n/task-runner-node-js/src/code.ts with VM context require. It is a 28-member squash aggregate and is not an atomic BIC.",
+        "GitHub PR https://github.com/n8n-io/n8n/pull/10698/commits lists 28 public members. The first member that adds the JS runner package and the require-in-VM sink is feb31f61bbcf80bec25acf82c440cd97ed09aa54 (message: move task runner into main repo). Earlier members (including 7b3d3030b86cb584e756bc7fc23def7e91811fd3, 748654c1586dea14b1c418952bcbe6c8b41c96d4, b20cdb69da8fce90f224b0591fbfe8bfc7b90cd5) only touch cli agents/broker paths and do not add the runner VM.",
+        "After a bounded fetch of feb31f61bbcf80bec25acf82c440cd97ed09aa54, git cat-file -p 8062134cc84004eaaa07c8a84e80beb1fe27e0f1 (packages/@n8n/task-runner-node-js/src/code.ts) contains `const context: Context = { require, module: {}, ...}` plus runInNewContext of user code. start.ts in the same commit constructs `new JsTaskRunner(..., 5)` (maxConcurrency=5 persistent runner). GitHub commit stats are +814/-0, all files status added.",
+        "Commit title says move, but no finer public first-writer is reconstructible: org/commit search found no public n8n-io JS runner repo predating this object (n8n-io/task-runner-launcher is a later Go launcher). Under the surviving-public-object rule, feb31f61bbcf80bec25acf82c440cd97ed09aa54 is the atomic BIC.",
+        "Later 8f630b6c5c0eea066c17515bd723f02479414ae3 / squash eb2d1ca3570c835b941f92b9f215b15b9f10d630 only wraps the existing host require with an allowlist and still `return require(request)`; it is not the first write of the shared-cache sink."
+      ]
+    },
+    "immediate_parent_absence": {
+      "status": "PASS",
+      "evidence": [
+        "Immediate parent of BIC feb31f61bbcf80bec25acf82c440cd97ed09aa54 is d0ec54c9bff74d908d36b02c2c08a06ba1762eda (git log %P and GitHub commit payload parent line).",
+        "GIT_NO_LAZY_FETCH=1 git cat-file -e d0ec54c9bff74d908d36b02c2c08a06ba1762eda:packages/@n8n/task-runner-node-js fails: path does not exist. GitHub get_file_contents of that path at d0ec54c9bff74d908d36b02c2c08a06ba1762eda returns not found.",
+        "For the rejected squash, parent bdaadf10e058e2c0b1141289189d6526c030a2ca also lacks packages/@n8n/task-runner-node-js (git cat-file -e 27d83e0d918f5009101bb27bb09ea8c6374a11d9^:packages/@n8n/task-runner-node-js)."
+      ]
+    },
+    "squash_member_decomposition": {
+      "status": "PASS",
+      "evidence": [
+        "PR #10698 is squash-merged as 27d83e0d918f5009101bb27bb09ea8c6374a11d9 (28 commits, merged 2024-10-02T08:31:56Z). Public member list reconstructs the first-writer as feb31f61bbcf80bec25acf82c440cd97ed09aa54.",
+        "PR #11184 is squash-merged as eb2d1ca3570c835b941f92b9f215b15b9f10d630; its first-writer member 8f630b6c5c0eea066c17515bd723f02479414ae3 replaces context.require with createRequireResolver but keeps the same Node cache return. Decomposition assigns BIC to the earlier PR #10698 member, not this later wrap."
+      ]
+    },
+    "affected_release_membership": {
+      "status": "PASS",
+      "evidence": [
+        "27d83e0d918f5009101bb27bb09ea8c6374a11d9 is absent from n8n@1.61.0 (9e18a31208809ea6e7b91158b91f6052113c85ff) and present in n8n@1.62.1 (3c7556542c9f42a4be4db279404207c66ae9f8db), the earliest 1.62 tag (no n8n@1.62.0). n8n@1.62.1 contains packages/@n8n/task-runner/src/code.ts:129 `require,`.",
+        "n8n@1.123.66 (205a227df8a488f45fbac2f39ce8b57fb5380e25, package.json 1.123.66) contains `return require(request) as unknown` in packages/@n8n/task-runner/src/js-task-runner/require-resolver.ts:40 and does not contain 1cd2c5fb22a906058cc083c3af2d561ce7f4332d.",
+        "n8n@2.31.4 (c7dd6b93e9bae126b7a829b1d667a1740e50c9d0, version 2.31.4) and n8n@2.32.0 (662a23c20278e66fb430c37ea18024dea31f69f3, version 2.32.0) likewise still have `return require(request) as unknown` at require-resolver.ts:40."
+      ]
+    },
+    "fixed_release_membership": {
+      "status": "PASS",
+      "evidence": [
+        "git merge-base --is-ancestor: 1cd2c5fb22a906058cc083c3af2d561ce7f4332d is not in n8n@1.123.66 and is in n8n@1.123.67 (ff05cd3be8c4a8f2ac73f42b54f5213493810313, package.json 1.123.67). Fixed tag has secureModules: this.mode === 'secure' in js-task-runner.ts and return secureModules ? secureModuleExport(resolved) : resolved in require-resolver.ts.",
+        "f6cb6cf3ab177c3740a5ef624b89bae5165405a1 is not in n8n@2.31.4 and is in n8n@2.31.5 (aa3d214338d610300c3c7c70f0ed08e5675bc722).",
+        "f69dfc6dd2178a14ea1624d2e1d403c2e755042f is not in n8n@2.32.0 and is in n8n@2.32.1 (7d43cce19523691ee00d89bcc12786fd511d2329)."
+      ]
+    },
+    "direct_fix_or_unpatched": {
+      "status": "PASS",
+      "evidence": [
+        "Direct 1.x closer is 1cd2c5fb22a906058cc083c3af2d561ce7f4332d (chore: Bundle/1.x (#34679), cherry-pick of n8n-private#281). It adds secureModules to createRequireResolver and a write-blocking recursive proxy membrane (secureModuleExport) so cached module exports cannot be mutated across tasks; JsTaskRunner passes secureModules: this.mode === 'secure'.",
+        "The same commit's packages/@n8n/task-runner/src/js-task-runner/__tests__/require-resolver.test.ts asserts one resolution cannot mutate the shared module seen by another, nested writes and descriptor-reflection writes are blocked, and repeated resolution preserves stable identity.",
+        "Matching public 2.x carriers: 2222fe3a6c886a9059f28e1b6d4bdb10ee420624 (master Bundle/2.x #34680), f6cb6cf3ab177c3740a5ef624b89bae5165405a1 (2.31.x), f69dfc6dd2178a14ea1624d2e1d403c2e755042f (2.32.x)."
+      ]
+    },
+    "bic_only_ai_attribution": {
+      "status": "PASS",
+      "evidence": [
+        "BIC feb31f61bbcf80bec25acf82c440cd97ed09aa54: author Valya Bullions <valya@n8n.io>, committer Valya Bullions <valya@n8n.io>, message is exactly `move task runner into main repo` with no Co-authored-by / Generated-with / Cursor / Claude / bot / generator trailer. GitHub verification payload is a valid SSH signature over that object.",
+        "AI role is judged from that BIC object only. Squash 27d83e0d918f5009101bb27bb09ea8c6374a11d9 (Val + human Co-authored-by Iván Ovejero and Tomi Turtiainen) and later wrap 8f630b6c5c0eea066c17515bd723f02479414ae3 (Tomi Turtiainen, no AI trailer) are not BIC. Fix 1cd2c5fb22a906058cc083c3af2d561ce7f4332d has Co-authored-by: Claude Opus 4.8, which is fix-side and does not reverse BIC attribution."
+      ]
+    }
+  },
+  "findings": [
+    "CVE-2026-72764 / GHSA-9cmh-xcqm-5hqr is a real published (not withdrawn) cross-user JS task-runner module-cache poisoning bug: host require returns Node's process-wide cached exports into a persistent runner VM.",
+    "Primary left atomic_bic / parent / squash / AI gates as GAP because feb31f61bbcf80bec25acf82c440cd97ed09aa54 was missing from the promisor clone. A bounded fetch recovered that object and parent d0ec54c9bff74d908d36b02c2c08a06ba1762eda; parent tree lacks the runner package.",
+    "Smallest surviving public first-write of the sink is PR #10698 member feb31f61bbcf80bec25acf82c440cd97ed09aa54, not squash 27d83e0d918f5009101bb27bb09ea8c6374a11d9. No finer public pre-move n8n-io history reconstructed.",
+    "Named human author/committer Valya Bullions on that BIC, with no AI/bot/generator marker, supports NOT_AI. Primary verdict EVIDENCE_GAP and introducer_sha null are incorrect once the member is in hand.",
+    "Direct public closers match the advisory tags: 1cd2c5fb22a906058cc083c3af2d561ce7f4332d in n8n@1.123.67, f6cb6cf3ab177c3740a5ef624b89bae5165405a1 in n8n@2.31.5, f69dfc6dd2178a14ea1624d2e1d403c2e755042f in n8n@2.32.1."
+  ],
+  "corrected_fields": {
+    "verdict": "NOT_AI",
+    "introducer_sha": "feb31f61bbcf80bec25acf82c440cd97ed09aa54",
+    "introducer_parent": "d0ec54c9bff74d908d36b02c2c08a06ba1762eda",
+    "introducer_parent_absent": true,
+    "squash_decomposed": true,
+    "decomposed_shas": [
+      "feb31f61bbcf80bec25acf82c440cd97ed09aa54"
+    ],
+    "ai_marker": {
+      "state": "ABSENT",
+      "evidence": [
+        "BIC feb31f61bbcf80bec25acf82c440cd97ed09aa54 authored and committed by Valya Bullions <valya@n8n.io> with no AI/bot/generator/co-author trailer."
+      ]
+    },
+    "flaw_origin": "PR #10698 member feb31f61bbcf80bec25acf82c440cd97ed09aa54 is the first public write of a persistent JsTaskRunner that injects host require into the Code-node VM, so Node's process-wide module cache is shared across users. Mainline 27d83e0d918f5009101bb27bb09ea8c6374a11d9 is only the squash aggregate of that PR.",
+    "remaining_gap": null
+  },
+  "remaining_gap": null
+}

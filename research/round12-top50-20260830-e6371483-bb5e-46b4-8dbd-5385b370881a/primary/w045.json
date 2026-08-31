@@ -1,0 +1,102 @@
+{
+  "schema_version": "independent-case-audit/v1",
+  "worker": "w045",
+  "review_agent_id": "round12-clean-w045",
+  "class_id": "alias-ccf07971643f78a604ec18e7",
+  "case_id": "GHSA-9hvg-qw5q-wqwp",
+  "repo": "bagisto/bagisto",
+  "advisory_ids": [
+    "CVE-2026-21450",
+    "GHSA-9hvg-qw5q-wqwp"
+  ],
+  "input_binding": {
+    "bundle_sha256": "d7c5d71535e04194835d1a644cba4ce5f60abea40034cb93e5df0b56ec0d374e",
+    "clone_head_sha": "863ec89905ca8b7916dbe9614f1e8b985240f2eb"
+  },
+  "verdict": "NOT_AI",
+  "protocol_checks": {
+    "vulnerability_mechanism": {
+      "status": "PASS",
+      "evidence": [
+        "The official CVE record https://cveawg.mitre.org/api/cve/CVE-2026-21450 is PUBLISHED and states that versions before 2.3.10 allow template injection through the type parameter; the CNA describes possible remote code execution and identifies GHSA-9hvg-qw5q-wqwp as its advisory.",
+        "The vendor repository advisory https://github.com/bagisto/bagisto/security/advisories/GHSA-9hvg-qw5q-wqwp gives the reproducer /admin/reporting/products/view?type={{7*7}}, is not withdrawn, and names 2.3.10 as the first patched release.",
+        "In packages/Webkul/Admin/src/Resources/views/reporting/view.blade.php at 71b8aa0a2280294a383cbbd834045f94c9d8c5f3, request()->query('type') is concatenated into an @lang expression at line 19 inside script type=text/x-template; an unrecognized attacker-controlled template expression therefore reaches the runtime-compiled Vue template because ProductController::view did not validate the key."
+      ]
+    },
+    "atomic_bic": {
+      "status": "PASS",
+      "evidence": [
+        "GitHub's first-party commit record https://github.com/bagisto/bagisto/commit/71b8aa0a2280294a383cbbd834045f94c9d8c5f3 shows the exact hunk that replaces the static in-template sales title with @lang('admin::app.reporting.' . $entity . '.index.' . request()->query('type')).",
+        "GIT_NO_LAZY_FETCH=1 git cat-file -p 71b8aa0a2280294a383cbbd834045f94c9d8c5f3 identifies one parent, 75a47568006720d3b7b153181b269d56edae0aec, and the direct commit message 'Export feature added'."
+      ]
+    },
+    "immediate_parent_absence": {
+      "status": "PASS",
+      "evidence": [
+        "GIT_NO_LAZY_FETCH=1 git ls-tree 75a47568006720d3b7b153181b269d56edae0aec identifies parent blob e16572dfe30cb8cbb1fb44162edccde97b7d28f1; the raw first-party file hashes to that exact object and has the static @lang('admin::app.reporting.sales.index.title') at lines 20-22 inside the Vue text/x-template.",
+        "GIT_NO_LAZY_FETCH=1 git ls-tree 71b8aa0a2280294a383cbbd834045f94c9d8c5f3 identifies blob 64deb23266256a33edd8fdc53564b332c2f050ce; the raw first-party file hashes to that exact object and has request()->query('type') at line 19 inside the Vue text/x-template."
+      ]
+    },
+    "squash_member_decomposition": {
+      "status": "PASS",
+      "evidence": [
+        "71b8aa0a2280294a383cbbd834045f94c9d8c5f3 is an ordinary one-parent public commit whose own patch directly writes the vulnerable sink; its verifiable immediate parent lacks that sink, and no finer public member is exposed to decompose."
+      ]
+    },
+    "affected_release_membership": {
+      "status": "PASS",
+      "evidence": [
+        "refs/tags/v2.3.9 resolves to fe27ffd54a4b62742dd9fbba90fa8aa9f03ac4d7; git merge-base --is-ancestor returns 0 for BIC 71b8aa0a2280294a383cbbd834045f94c9d8c5f3 and 1 for direct fix b1b276a34bc8413bb64fabcb7fb35f2b36144864.",
+        "The official CVE record and vendor advisory both define the affected boundary as versions before 2.3.10."
+      ]
+    },
+    "fixed_release_membership": {
+      "status": "PASS",
+      "evidence": [
+        "refs/tags/v2.3.10 resolves to 813e28551dd1d3207b9e275e6c2bd63f68f0f8b0; git merge-base --is-ancestor returns 0 for BIC 71b8aa0a2280294a383cbbd834045f94c9d8c5f3, direct fix b1b276a34bc8413bb64fabcb7fb35f2b36144864, and advisory fix 3f294b4837595929107d9c1bbd6d5b1222ef9fea.",
+        "The first-party v2.3.10 release https://github.com/bagisto/bagisto/releases/tag/v2.3.10 explicitly says type parameter handling is now validated to fix the template-injection vulnerability."
+      ]
+    },
+    "direct_fix_or_unpatched": {
+      "status": "PASS",
+      "evidence": [
+        "b1b276a34bc8413bb64fabcb7fb35f2b36144864 is the smallest direct fix for the reported /products/view sink: ProductController::view now aborts 404 unless request()->query('type') is a key in $this->typeFunctions; the same guard is added to the customer and sales view actions.",
+        "The advisory-linked 3f294b4837595929107d9c1bbd6d5b1222ef9fea centralizes validation in resolveTypeFunction(), routes stats/viewStats/export through it, and reuses the resolver from each view action."
+      ]
+    },
+    "bic_only_ai_attribution": {
+      "status": "PASS",
+      "evidence": [
+        "The BIC commit object names Jitendra <jitendra@webkul.in> as both author and committer, with identical 2023-10-18T19:58:58+05:30 timestamps; its complete message is 'Added table reporting'.",
+        "The complete BIC commit object contains no AI tool marker, generated-by marker, Co-authored-by trailer, bot identity, or aggregate/squash attribution. No later commit or repository-level signal was used for attribution."
+      ]
+    }
+  },
+  "bug_semantics": "An authenticated admin-controlled HTTP type query parameter reached ProductController::view without allowlist validation. The shared reporting Blade view concatenated that value into a translation expression located inside a Vue text/x-template. For an unknown key containing template syntax such as {{7*7}}, the syntax survived server rendering into the client-side runtime-compiled template and was evaluated there; the vendor classified this as SSTI with possible code execution. Restricting type to the controller's known function keys before rendering closes the source-to-sink path.",
+  "flaw_origin": "The smallest public first-writer is 71b8aa0a2280294a383cbbd834045f94c9d8c5f3. Earlier commit 65f2beb6273d2e98f3a3ca68a884212903a71caa carried type into the view and JavaScript data, but its Vue text/x-template title remained a fixed translation key. BIC 71b8aa0a2280294a383cbbd834045f94c9d8c5f3 changed that in-template title to concatenate request()->query('type'); its immediate parent 75a47568006720d3b7b153181b269d56edae0aec has the static title at the same location.",
+  "introducer_sha": "71b8aa0a2280294a383cbbd834045f94c9d8c5f3",
+  "introducer_parent": "75a47568006720d3b7b153181b269d56edae0aec",
+  "introducer_parent_absent": true,
+  "squash_decomposed": false,
+  "decomposed_shas": [],
+  "fix_sha": "3f294b4837595929107d9c1bbd6d5b1222ef9fea",
+  "direct_fix_sha": "b1b276a34bc8413bb64fabcb7fb35f2b36144864",
+  "unpatched": null,
+  "ai_marker": {
+    "state": "ABSENT",
+    "evidence": [
+      "BIC author and committer are the named human Jitendra <jitendra@webkul.in>.",
+      "BIC message is exactly 'Added table reporting' and contains no AI, bot, generated-by, or co-author trailer."
+    ]
+  },
+  "evidence": [
+    "Official CVE record: https://cveawg.mitre.org/api/cve/CVE-2026-21450 (PUBLISHED; affected <2.3.10; fixed in 2.3.10).",
+    "Vendor advisory: https://github.com/bagisto/bagisto/security/advisories/GHSA-9hvg-qw5q-wqwp (type={{7*7}} reproducer; not withdrawn).",
+    "BIC: https://github.com/bagisto/bagisto/commit/71b8aa0a2280294a383cbbd834045f94c9d8c5f3; parent 75a47568006720d3b7b153181b269d56edae0aec; exact parent/BIC blobs independently hash to the object IDs in their local trees.",
+    "Direct fix: https://github.com/bagisto/bagisto/commit/b1b276a34bc8413bb64fabcb7fb35f2b36144864 adds the pre-render type allowlist guard.",
+    "Advisory fix: https://github.com/bagisto/bagisto/commit/3f294b4837595929107d9c1bbd6d5b1222ef9fea centralizes and broadens type validation.",
+    "Release: https://github.com/bagisto/bagisto/releases/tag/v2.3.10; local ancestry verifies v2.3.9 contains the BIC without the direct fix and v2.3.10 contains the BIC plus both fix commits."
+  ],
+  "reasoning": "The authoritative CVE and vendor advisory establish a real, non-withdrawn vulnerability. The exact public-history boundary is the one-parent commit 71b8aa0a2280294a383cbbd834045f94c9d8c5f3, which first placed the unvalidated request value inside the runtime-compiled Vue template; the immediate parent blob is directly verified and lacks that sink. Release ancestry and both fix hunks close the affected/fixed lifecycle. Attribution is restricted to the BIC, whose complete commit object records a named Webkul human author/committer and no AI marker, so the closed verdict is NOT_AI.",
+  "remaining_gap": null
+}

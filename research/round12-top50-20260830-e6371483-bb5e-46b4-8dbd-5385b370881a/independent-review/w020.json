@@ -1,0 +1,76 @@
+{
+  "worker": "w020",
+  "review_agent_id": "r12_w020",
+  "class_id": "alias-e0b7976b285a29bb27b508f9",
+  "case_id": "CVE-2026-76207",
+  "repo": "thorsten/phpmyfaq",
+  "primary_verdict": "NOT_AI",
+  "review_verdict": "CONFIRMED",
+  "protocol_checks": {
+    "vulnerability_mechanism": {
+      "status": "PASS",
+      "evidence": [
+        "CVE.org record https://cveawg.mitre.org/api/cve/CVE-2026-76207 has cveMetadata.state=PUBLISHED (not rejected/withdrawn) and describes remember-me tokens issued before 2FA completes, then replayed for a fully authenticated session; CWE-304; affected semver 0 to <4.1.7, 4.1.7 unaffected.",
+        "Vendor advisory https://github.com/thorsten/phpMyFAQ/security/advisories/GHSA-hvj7-4fmg-53cr (linked from GHSA-jvxm-3fc5-8pjr) names the two cooperating paths: CurrentUser::login() issues the remember-me token after password success while deferring the session for twofactor_enabled users, and getFromCookie() treats a matching cookie as loggedIn=true with no 2FA check. GHSA-jvxm-3fc5-8pjr has withdrawn_at=null.",
+        "At BIC d60a0f52368b491e401b4cf00f59f45d34d39403, phpmyfaq/src/phpMyFAQ/User/CurrentUser.php login() wraps session creation in if ($this->getUserData('twofactor_enabled') != 1) at lines 191-196, then issues and stores the remember-me cookie unconditionally at lines 199-207. getFromCookie() at lines 564-584 loads that cookie, calls updateSessionId(true), sets loggedIn=true, and saveToSession() with no twofactor_enabled test. The same unguarded issuance-plus-cookie-login pairing is present at tag 4.1.6 (58c1d7f2fa36f7074664fc6d862afee0ca8bcc89) lines 178-192 and 577-599."
+      ]
+    },
+    "atomic_bic": {
+      "status": "PASS",
+      "evidence": [
+        "git cat-file -p d60a0f52368b491e401b4cf00f59f45d34d39403 is a single-parent object (parent 5fb7b76fc2b12fd7bf77d5067aa3e8d5767d9a72) whose only file is phpmyfaq/src/phpMyFAQ/User/CurrentUser.php. The patch first inserts the twofactor_enabled session gate and twofactorSuccess() while leaving the immediately following remember-me issuance block untouched.",
+        "Mainline 5097dff341fb01e93e8561e7261b3ae657df715a is a squash of PR #2362 and is not atomic. Later PR members only apply PHP-CS/style edits to CurrentUser.php (git diff d60a0f52368b491e401b4cf00f59f45d34d39403 e144f3c31243c161df89c86561e3e87c49ef48e4 -- that file does not change the 2FA/remember-me control flow). cfe852ce1e7e0fd8df40bea37d937b96bd38ad3b later only casts the session-gate comparison to (int); it does not introduce this missing-step mechanism."
+      ]
+    },
+    "immediate_parent_absence": {
+      "status": "PASS",
+      "evidence": [
+        "GIT_NO_LAZY_FETCH=1 git grep -n -i -E 'twofactor|two.factor' 5fb7b76fc2b12fd7bf77d5067aa3e8d5767d9a72 -- phpmyfaq/src/phpMyFAQ/User/CurrentUser.php exits 1 with no match.",
+        "Parent login() at lines 190-203 still sets loggedIn immediately after a password match and then issues remember-me; getFromCookie() at lines 549-570 already grants loggedIn=true from the cookie. There is no second-factor requirement, so CWE-304 missing-critical-step does not exist on that parent tree. The squash parent 888495ac6e8d22060b6188c127c8c84f8947d269 likewise has no twofactor strings in CurrentUser.php."
+      ]
+    },
+    "squash_member_decomposition": {
+      "status": "PASS",
+      "evidence": [
+        "First-party PR https://github.com/thorsten/phpMyFAQ/pull/2362 and GET /repos/thorsten/phpMyFAQ/pulls/2362 record merge_commit_sha=5097dff341fb01e93e8561e7261b3ae657df715a, commits=34, head=e144f3c31243c161df89c86561e3e87c49ef48e4, merged_by=thorsten. GET .../pulls/2362/commits?per_page=100 returns 34 members; member 02 is d60a0f52368b491e401b4cf00f59f45d34d39403 titled Update CurrentUser.php with parent 5fb7b76fc2b12fd7bf77d5067aa3e8d5767d9a72.",
+        "GIT_NO_LAZY_FETCH=1 git rev-parse 5097dff341fb01e93e8561e7261b3ae657df715a^{tree} and e144f3c31243c161df89c86561e3e87c49ef48e4^{tree} both equal ff21c49a0d884055d43d4b2cd7588c7968b52f1d; git diff --exit-code of those commits exits 0, so the public member head and landing squash have identical trees."
+      ]
+    },
+    "affected_release_membership": {
+      "status": "PASS",
+      "evidence": [
+        "Vendor advisory affected range is 3.2.0 (2FA introduction) through 4.1.6. git rev-list -n 1 3.2.0 = 860c494b287d217c4b9b74856834ab5050cc8a39; git rev-list -n 1 4.1.6 = 58c1d7f2fa36f7074664fc6d862afee0ca8bcc89.",
+        "git merge-base --is-ancestor 5097dff341fb01e93e8561e7261b3ae657df715a 3.2.0 exits 0; the same command against 4.1.6 also exits 0. 3.2.0 CurrentUser.php still has the twofactor session gate beside unguarded remember-me issuance (lines 189-198) and cookie login setting loggedIn=true (line 575)."
+      ]
+    },
+    "fixed_release_membership": {
+      "status": "PASS",
+      "evidence": [
+        "git rev-list -n 1 4.1.7 = 28d6f641c16e3015d51d0a01d14841b845251f35. CHANGELOG.md at that tag opens with phpMyFAQ v4.1.7 - 2026-08-04.",
+        "git merge-base --is-ancestor eceecd3185823d225bbe0af40bc733d73cb771cf 4.1.7 exits 0; the same command against 4.1.6 exits 1. 4.1.7 CurrentUser.php login() issues remember-me only when (int) twofactor_enabled !== 1 via issueRememberMeCookie() (lines 202-211)."
+      ]
+    },
+    "direct_fix_or_unpatched": {
+      "status": "PASS",
+      "evidence": [
+        "eceecd3185823d225bbe0af40bc733d73cb771cf (parent 4c5eec9adf6133b4765453d0af37da6959187cba) is titled fix: prevented 2FA bypass via prematurely issued remember-me cookie and is the direct closer.",
+        "The hunk in CurrentUser.php stops password-phase issuance for 2FA accounts, extracts issueRememberMeCookie(), and the hunks in phpmyfaq/index.php and Administration/AuthenticationController.php carry 2fa_pending_remember_me through the token step and call issueRememberMeCookie() only after twoFactorSuccess()."
+      ]
+    },
+    "bic_only_ai_attribution": {
+      "status": "PASS",
+      "evidence": [
+        "git cat-file -p d60a0f52368b491e401b4cf00f59f45d34d39403: author modelrailroader <96944229+modelrailroader@users.noreply.github.com>, committer GitHub <noreply@github.com>, message exactly 'Update CurrentUser.php\\n\\nAdded support for 2fa.'. No Co-Authored-By, Generated-with, Copilot, or other AI/bot/generator trailer.",
+        "GitHub commit API for that object reports author.login=modelrailroader type=User (not Bot) and committer.login=web-flow. Attribution uses only this BIC object; no later-commit or repository-level AI signal is applied."
+      ]
+    }
+  },
+  "findings": [
+    "Real, published CWE-304: password-phase remember-me issuance plus cookie login that never checks twofactor_enabled, so a password-only attacker obtains a reusable credential that skips the second factor.",
+    "Atomic BIC is PR #2362 member d60a0f52368b491e401b4cf00f59f45d34d39403 (parent 5fb7b76fc2b12fd7bf77d5067aa3e8d5767d9a72), not squash 5097dff341fb01e93e8561e7261b3ae657df715a. The 34-member history reconstructs and the squash tree equals PR head e144f3c31243c161df89c86561e3e87c49ef48e4.",
+    "Direct fix eceecd3185823d225bbe0af40bc733d73cb771cf is an ancestor of tag 4.1.7 and not of 4.1.6, matching vendor patched=4.1.7 / affected through 4.1.6.",
+    "BIC-object author is named human GitHub user modelrailroader with no AI marker; closed verdict NOT_AI is independently supported."
+  ],
+  "corrected_fields": {},
+  "remaining_gap": null
+}

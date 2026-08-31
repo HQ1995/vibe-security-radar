@@ -1,0 +1,106 @@
+{
+  "schema_version": "independent-case-audit/v1",
+  "worker": "w027",
+  "review_agent_id": "round12-clean-w027",
+  "class_id": "alias-217f611ea810767274c38286",
+  "case_id": "CVE-2026-3242",
+  "repo": "concretecms/concretecms",
+  "advisory_ids": [
+    "CVE-2026-3242",
+    "GHSA-w9qg-chfh-g3q9"
+  ],
+  "input_binding": {
+    "bundle_sha256": "8427c5bdfd20062cc07cc8b07a1766a7210ee06cefa18ea3eb9f77a7586d5e76",
+    "clone_head_sha": "ad6dc621cef1e12d0bc84a8c898b6460f48b91e4"
+  },
+  "verdict": "NOT_AI",
+  "protocol_checks": {
+    "vulnerability_mechanism": {
+      "status": "PASS",
+      "evidence": [
+        "CVE.org CNA record https://cveawg.mitre.org/api/cve/CVE-2026-3242 is PUBLISHED, names ConcreteCMS as CNA, and says a rogue administrator can add stored XSS through the Switch Language block below 9.4.8.",
+        "Vendor release notes https://documentation.concretecms.org/9-x/developers/introduction/version-history/948-release-notes identify CVE-2026-3242 and H1 3451125 and say 9.4.8 prevents administrators from adding stored XSS through this block.",
+        "At 1dcefaada02c7013a4b9774f2899f00994fb36a4, form.php accepts label, db.xml defines btSwitchLanguage.label, BlockController::performSave copies matching args into database columns, and all three front-end templates echo the loaded label without HTML encoding."
+      ]
+    },
+    "atomic_bic": {
+      "status": "PASS",
+      "evidence": [
+        "git diff-tree 094dfe7e532b6d7a64edd7e61c2933f4b51c9ae0 57fad9e0a284f1d3519c588b504a69fe417a3581 adds the complete web/concrete/blocks/switch_language directory, including the configurable label field and raw label outputs; this is the smallest surviving original public commit object that first writes the mechanism.",
+        "The primary GitHub commit page https://github.com/concretecms/concretecms/commit/57fad9e0a284f1d3519c588b504a69fe417a3581 shows one parent, 32 changed files, and the newly added form.php, db.xml, view.php, and template sinks.",
+        "The reachable rewritten commit e3d1b2e3e0d86ee7b28cf5b9eed6359f9896559a records Former-commit-id 57fad9e0a284f1d3519c588b504a69fe417a3581; both commits have identical switch_language subtree 19e5f0d4221458af237f0f6d6879efed6d0360be."
+      ]
+    },
+    "immediate_parent_absence": {
+      "status": "PASS",
+      "evidence": [
+        "git cat-file -p 57fad9e0a284f1d3519c588b504a69fe417a3581 identifies immediate parent 094dfe7e532b6d7a64edd7e61c2933f4b51c9ae0.",
+        "git cat-file -e 094dfe7e532b6d7a64edd7e61c2933f4b51c9ae0:web/concrete/blocks/switch_language fails because the path does not exist, while diff-tree marks every switch_language path A in 57fad9e0a284f1d3519c588b504a69fe417a3581."
+      ]
+    },
+    "squash_member_decomposition": {
+      "status": "PASS",
+      "evidence": [
+        "57fad9e0a284f1d3519c588b504a69fe417a3581 is a single-parent original commit, not a merge or squash carrier; its verifiable parent lacks the block and no finer public member writes the vulnerable block.",
+        "e3d1b2e3e0d86ee7b28cf5b9eed6359f9896559a is only a hash-rewritten reachable equivalent: its commit message names 57fad9e0a284f1d3519c588b504a69fe417a3581 as Former-commit-id and the relevant subtree hashes are identical."
+      ]
+    },
+    "affected_release_membership": {
+      "status": "PASS",
+      "evidence": [
+        "CVE.org records affected version 5 through versions less than 9.4.8.",
+        "The reachable equivalent e3d1b2e3e0d86ee7b28cf5b9eed6359f9896559a is not an ancestor of tag 5.7.2.1 (9e827a35c3ab194d5751e26b0ddc2553c890c98b), whose tree lacks the block, but is an ancestor of tag 5.7.3 (8fd82848d51c6c77ab4f207c6bba8320bd4b80a4), whose view.php directly echoes label.",
+        "Tag 9.4.7 peels to f2a9fc77537f412c3e5a30e46924c07987020dd7, contains the BIC-equivalent reachable commit, does not contain direct fix 59bac5a412f4062570c5ac56527f556b5c46af58, and still renders <?= $label ?>."
+      ]
+    },
+    "fixed_release_membership": {
+      "status": "PASS",
+      "evidence": [
+        "Tag 9.4.8 peels to 455229307c0cb421fa6ef7e9aa9f74f0863c4788 and contains both merge 2b7557793f04647c2bbd35105d706d02bd4e673d and direct member 59bac5a412f4062570c5ac56527f556b5c46af58.",
+        "git show 9.4.8:concrete/blocks/switch_language/view.php renders h($label), matching the vendor's 9.4.8 fixed release notes."
+      ]
+    },
+    "direct_fix_or_unpatched": {
+      "status": "PASS",
+      "evidence": [
+        "git show 59bac5a412f4062570c5ac56527f556b5c46af58 changes the three vulnerable sinks in view.php, templates/flags/view.php, and templates/flags_set_default/view.php from raw label output to h($label).",
+        "Merge 2b7557793f04647c2bbd35105d706d02bd4e673d has PR branch parent 5b9deadb391bf95d514ee44799d642cc0a0c5c73; git log of its second-parent range identifies 59bac5a412f4062570c5ac56527f556b5c46af58 as the dedicated Fix h1 3451125 member, so the merge carrier was not mistaken for the direct fix."
+      ]
+    },
+    "bic_only_ai_attribution": {
+      "status": "PASS",
+      "evidence": [
+        "git cat-file -p 57fad9e0a284f1d3519c588b504a69fe417a3581 shows author and committer Andrew Embler <andrew@concrete5.org>, timestamp 2014-12-03, one parent, and message moving single pages, blocks, src, controllers into core.",
+        "The complete BIC commit object contains no Co-authored-by, Copilot, ChatGPT, OpenAI, Claude, generated-by, or other AI marker; attribution uses no repository-level or later-commit signal."
+      ]
+    }
+  },
+  "bug_semantics": "A privileged administrator controls the Switch Language block's label form field. The inherited block save path copies that value into btSwitchLanguage.label, and the block record exposes it as label to the front-end view. Before 9.4.8, the default, flags, and flags_set_default templates inserted label directly into HTML, so a stored script payload executed when another user rendered the block. The direct fix applies h() at every label sink.",
+  "flaw_origin": "Original public commit 57fad9e0a284f1d3519c588b504a69fe417a3581 first added the Switch Language block's persisted administrator-controlled label and its raw HTML sinks; its immediate parent has no such block. The current release lineage carries an identical rewritten form as e3d1b2e3e0d86ee7b28cf5b9eed6359f9896559a, which explicitly maps back to 57fad9e0a284f1d3519c588b504a69fe417a3581.",
+  "introducer_sha": "57fad9e0a284f1d3519c588b504a69fe417a3581",
+  "introducer_parent": "094dfe7e532b6d7a64edd7e61c2933f4b51c9ae0",
+  "introducer_parent_absent": true,
+  "squash_decomposed": false,
+  "decomposed_shas": [],
+  "fix_sha": "2b7557793f04647c2bbd35105d706d02bd4e673d",
+  "direct_fix_sha": "59bac5a412f4062570c5ac56527f556b5c46af58",
+  "unpatched": null,
+  "ai_marker": {
+    "state": "ABSENT",
+    "evidence": [
+      "The BIC object names Andrew Embler <andrew@concrete5.org> as both author and committer on 2014-12-03.",
+      "The full BIC message is moving single pages, blocks, src, controllers into core and contains no AI attribution, co-author, generator, assistant, or bot marker."
+    ]
+  },
+  "evidence": [
+    "CVE.org CNA record: https://cveawg.mitre.org/api/cve/CVE-2026-3242",
+    "Concrete CMS 9.4.8 release notes: https://documentation.concretecms.org/9-x/developers/introduction/version-history/948-release-notes",
+    "Vendor PR #12826: https://github.com/concretecms/concretecms/pull/12826",
+    "Original BIC commit: https://github.com/concretecms/concretecms/commit/57fad9e0a284f1d3519c588b504a69fe417a3581",
+    "Reachable BIC rewrite: https://github.com/concretecms/concretecms/commit/e3d1b2e3e0d86ee7b28cf5b9eed6359f9896559a",
+    "Direct fix commit: https://github.com/concretecms/concretecms/commit/59bac5a412f4062570c5ac56527f556b5c46af58",
+    "Local Git verified all recorded commits as commit objects under GIT_NO_LAZY_FETCH=1, verified both immediate parent trees, verified the BIC rewrite's identical subtree, and verified tag 5.7.2.1/5.7.3/9.4.7/9.4.8 ancestry and file contents."
+  ],
+  "reasoning": "Authoritative CVE and vendor sources confirm a real stored XSS, and the local source closes the administrator-input-to-raw-HTML path. The smallest surviving original public first-writer and its immediate parent are both verifiable; the active-history rewrite maps exactly to that object and release ancestry proves the affected and fixed boundaries. The direct fix is decomposed from the multi-commit PR merge. BIC-local metadata identifies a named human author/committer in 2014 and contains no AI marker, so the closed verdict is NOT_AI.",
+  "remaining_gap": null
+}

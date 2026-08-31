@@ -10,7 +10,7 @@ get the full evidence chain per case without guessing field semantics.
 | Layer | File | Rows | Role |
 |---|---|---|---|
 | Working ledger | `artifacts/funnel-account-*.jsonl` | 29,593 | GitHub recovery export of every candidate case; status state machine |
-| Published catalog | `web/src/generated/research-data.json` | 260 | Published TPs with confirmed/qualified/provisional status |
+| Published catalog | `web/src/generated/research-data.json` | `snapshot.case_count` | Published TPs with confirmed/qualified/provisional status |
 | Chain index | `research/orchestrator-260814-irchains-sol/ir-chains.jsonl` | 51 | Incomplete-remediation causal chains with `evidence_paths` |
 | Origin re-review overlay | `research/ir-chain-origin-rereview-20260830/ir-chain-updates.jsonl` | 4 | Full-history corrections that supersede missing/shallow original-commit fields |
 
@@ -93,9 +93,16 @@ Code evidence (`code_evidence`, present for published cases):
   the exact public-history boundary to the reader
 - `ai_marker`, `fix_marker` — authorship signals on each side
 - unpatched findings may omit `fix_hunks` / `fix_url`; they still need candidate hunks
+- curated code evidence belongs on the canonical ledger row as `code_evidence`;
+  the publisher uses legacy generated/cache evidence only when that field is absent
+- `annotation_mode: "hunk_specific"` opts a canonical record into the strict
+  annotation gate: every displayed hunk needs distinct reader prose, and every
+  string in `required_anchors.candidate` / `.fix` must occur in that role's hunks
 
 Publication:
 
+- fields present on the canonical ledger row take precedence over legacy site
+  overrides and cached generated data, including explicit `null` / empty sets
 - `publication_status` — `confirmed` | `qualified` | `provisional`
 - `publication_issues` — missing-evidence codes; must be empty for `confirmed`
 - `advisory_url` — canonical GHSA or CVE URL

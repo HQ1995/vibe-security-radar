@@ -1,0 +1,185 @@
+{
+ "schema_version": "causal-audit-bundle/1",
+ "class_id": "alias-a7c0a5cf4967b77842042fd7",
+ "status_at_selection": "UNANALYZED",
+ "repo": "jahlives/openssl_encrypt",
+ "clone_dir": "/home/hanqing/agents/ai-slop/.ai-slop/state/repos/openssl_encrypt",
+ "clone_url": "https://github.com/jahlives/openssl_encrypt.git",
+ "clone_head_sha": "c2b412f6fd1bc33734de9fbce9bce68318eb3cbd",
+ "clone_shallow": "false",
+ "clone_promisor": true,
+ "clone_partial_filter": "blob:none",
+ "advisory_ids": [
+  "CVE-2026-74899",
+  "GHSA-5cp4-g2w4-gm8p"
+ ],
+ "base_ledger_revision": 1,
+ "ledger_snapshot_sha256": "2a8e0f606d9dbb6a509188d6f4da35598f233dce4b2b205fa1cb14136e75fbe5",
+ "advisory": {
+  "id": "GHSA-5cp4-g2w4-gm8p",
+  "cve_id": "CVE-2026-74899",
+  "summary": "openssl_encrypt versions before 1.4.0 contain a sandbox escape vulnerability in IsolatedPluginExe...",
+  "description": "openssl_encrypt versions before 1.4.0 contain a sandbox escape vulnerability in IsolatedPluginExecutor that exposes Python type objects in restricted exec() builtins. Attackers can traverse the Python class hierarchy via __class__.__mro__.__subclasses__() to access system functions and execute arbitrary OS commands.",
+  "severity": "critical",
+  "cvss": {
+   "vector_string": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H",
+   "score": 9.8
+  },
+  "cwes": [
+   {
+    "cwe_id": "CWE-95",
+    "name": "Improper Neutralization of Directives in Dynamically Evaluated Code ('Eval Injection')"
+   }
+  ],
+  "published_at": "2026-08-17T12:32:27Z",
+  "updated_at": "2026-08-18T15:31:30Z",
+  "withdrawn_at": null,
+  "vulnerabilities": [],
+  "references": [
+   "https://github.com/jahlives/openssl_encrypt/security/advisories/GHSA-m25m-ggxg-239c",
+   "https://nvd.nist.gov/vuln/detail/CVE-2026-74899",
+   "https://www.vulncheck.com/advisories/openssl-encrypt-before-sandbox-escape-via-type-hierarchy",
+   "https://github.com/siyuan-note/siyuan/security/advisories/GHSA-43jx-gxq4-jpjc",
+   "https://github.com/advisories/GHSA-5cp4-g2w4-gm8p"
+  ],
+  "source": "https://api.github.com/advisories/GHSA-5CP4-G2W4-GM8P",
+  "fetch_error": null
+ },
+ "same_repository_prior_hits": [
+  {
+   "case_id": "GHSA-H45M-MGCP-Q388",
+   "aliases": [
+    "alias-1d21c2a1149d8e93093d3dec"
+   ],
+   "mechanism": "openssl_encrypt TOTP rate limiter used an in-memory defaultdict(list) stored in a class variable, which was not shared across workers and was lost on process restarts, allowing attackers to bypass rate limits (sink: openssl_encrypt_server/modules/pepper/totp.py).",
+   "scope_statement": null,
+   "candidate_set": [
+    "1b6f732232018609189c863a165a11aaa89db250"
+   ],
+   "minimum_fix_set": [
+    "2749bc0949b34a5921a35fb4a3f1856fc51916de"
+   ],
+   "ai_marker": "Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>",
+   "token_overlap": 3
+  },
+  {
+   "case_id": "GHSA-723W-CRW6-P9HX",
+   "aliases": [
+    "CVE-2026-74876",
+    "alias-7a67e4c2cdfe7bc6ade411ee"
+   ],
+   "mechanism": "PublicKeyBundle.from_dict() in openssl_encrypt/modules/key_bundle.py deserializes untrusted JSON into a key bundle without verifying the ML-DSA self_signature, and to_identity() then converts that unverified bundle into an Identity. A caller that does from_dict() then to_identity() (or uses plugin fetch/cache paths that deserialize without verify) can encrypt to an attacker-controlled public key and leak plaintext. key_resolver.py does verify before to_identity, but the unguarded API remains directly callable. CWE-347; vendor GHSA-8h88-gxp3-j7pg; affected < 1.4.0 (1.4.0b* shipped the unguarded API), patched in 1.4.0.",
+   "scope_statement": null,
+   "candidate_set": [
+    "fafdfeed1b279cfe61e86cd8adc132b206eef8d4"
+   ],
+   "minimum_fix_set": [
+    "f4a1ba660063cd9e17883829e5272a248525a16b"
+   ],
+   "ai_marker": "Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>",
+   "token_overlap": 2
+  },
+  {
+   "case_id": "GHSA-P2G6-JJWG-33V4",
+   "aliases": [
+    "CVE-2026-74883",
+    "alias-209b2d91214b63de2866760f"
+   ],
+   "mechanism": "A plugin executing without PluginCapability.READ_FILES was supposed to be confined to the sandbox temporary directory and explicitly safe paths. The sandbox enforced that policy only by replacing builtins.open with restricted_open. Plugin code could instead import pathlib or io and call pathlib.Path.read_text/read_bytes/write_text/write_bytes/open or io.open; those independent entry points never reached restricted_open, so the plugin could read or modify arbitrary host files, for example Path('/etc/passwd').read_text(), despite lacking the file capability. The repository advisory specifically describes the bypass in threading mode and notes that process isolation had a separate broader restriction failure.",
+   "scope_statement": "Attribution covers the audited AI-associated introducer 8a5ed7e62417441ed98b39481ac1a47510c1a9ef and advisory-linked remediation d0be3e989b1632eadb68e17d07294cbf9ac57c1f; unrelated repository changes are outside scope.",
+   "candidate_set": [
+    "8a5ed7e62417441ed98b39481ac1a47510c1a9ef"
+   ],
+   "minimum_fix_set": [
+    "d0be3e989b1632eadb68e17d07294cbf9ac57c1f"
+   ],
+   "ai_marker": "Co-Authored-By: Claude <noreply@anthropic.com>",
+   "token_overlap": 2
+  },
+  {
+   "case_id": "GHSA-VFGX-5Q85-58Q3",
+   "aliases": [
+    "alias-14c5e4aade3fb67cb8ae05db"
+   ],
+   "mechanism": "openssl_encrypt used Python random module (Mersenne Twister seeded with 32-bit hash) for steganography pixel and sample selection, allowing deterministic brute-forcing of hidden payload locations (sink: openssl_encrypt/plugins/steganography/core/utils.py).",
+   "scope_statement": null,
+   "candidate_set": [
+    "990c09c4f33649b9120d4995c385151652bc5cd9"
+   ],
+   "minimum_fix_set": [
+    "09e96e090417d34d2f533f6810d3cd4f77810101"
+   ],
+   "ai_marker": "Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>",
+   "token_overlap": 2
+  },
+  {
+   "case_id": "GHSA-4RH7-JWG9-M28M",
+   "aliases": [
+    "alias-08669df850b6208757ae59cc"
+   ],
+   "mechanism": "openssl_encrypt accepted refresh tokens as URL query parameters in /refresh endpoints (Query(...)), exposing secret tokens in HTTP logs, browser history, and Referer headers (sink: openssl_encrypt_server/modules/telemetry/routes.py).",
+   "scope_statement": null,
+   "candidate_set": [
+    "8170b3e0be064cdaddbc8ef51c17e21c42d2d3f4"
+   ],
+   "minimum_fix_set": [
+    "4b2adb05cde8a7ee03cdd271755da3b377c68011"
+   ],
+   "ai_marker": "Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>",
+   "token_overlap": 1
+  },
+  {
+   "case_id": "GHSA-9J5F-PJWJ-62R3",
+   "aliases": [
+    "CVE-2026-74885",
+    "alias-17a4dce2bfe03aac28aaaa95"
+   ],
+   "mechanism": "PluginImportGuard.restore_hidden_modules() restored entries, cleared self.hidden_modules, and only then logged len(self.hidden_modules), so every restoration audit event falsely reported zero. The same guard removed blocked modules from sys.modules before inserting itself into sys.meta_path; a concurrent thread could re-import a removed module in that interval, repopulating sys.modules and making the supposedly blocked module reachable during plugin execution.",
+   "scope_statement": "Attribution covers the audited AI-associated introducer e588aaa3a53ef291406b02745c20fdea8cea7f7c and advisory-linked remediation 85cdb6bedf3a0fbfb49e2f2e29cd66f1f36f3101; unrelated repository changes are outside scope.",
+   "candidate_set": [
+    "e588aaa3a53ef291406b02745c20fdea8cea7f7c"
+   ],
+   "minimum_fix_set": [
+    "85cdb6bedf3a0fbfb49e2f2e29cd66f1f36f3101"
+   ],
+   "ai_marker": "Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>",
+   "token_overlap": 1
+  },
+  {
+   "case_id": "GHSA-C7VW-VFXJ-3MVH",
+   "aliases": [
+    "CVE-2026-74886",
+    "alias-7e64c88c0c888e3970b52934"
+   ],
+   "mechanism": "PluginImportGuard is a sys.meta_path hook plus a sys.modules hider that is supposed to block dangerous imports at plugin runtime. Its denylist is CWE-184-incomplete: ALWAYS_BLOCKED is only {ctypes, __builtin__, __builtins__} and CAPABILITY_GATED adds subprocess (always), os (always), and socket (NETWORK_ACCESS). _should_block_module() returns False for every other top-level name, so find_module()/find_spec() do not raise and hide_dangerous_modules() never removes those names from sys.modules. After 50bec5d the AST analyzer's DANGEROUS_MODULES independently treats sys, shutil, multiprocessing, importlib, pickle, shelve, pty, fcntl, pwd, grp, signal, resource, pipes, popen2, and platform as never-importable; an attacker who bypasses that static pass (string obfuscation, encoding, or __import__ indirection) can therefore import those modules at runtime and reach arbitrary code execution (pickle.__reduce__, importlib, sys.modules, shutil, multiprocessing). Direct `import pickle`/`import sys` is the sink; AST is only the bypassable outer check.",
+   "scope_statement": null,
+   "candidate_set": [
+    "8a5ed7e62417441ed98b39481ac1a47510c1a9ef"
+   ],
+   "minimum_fix_set": [
+    "e0c999ea44429e8de00b4acb3ba570efdc733092"
+   ],
+   "ai_marker": "Co-Authored-By: Claude <noreply@anthropic.com>",
+   "token_overlap": 1
+  },
+  {
+   "case_id": "GHSA-CCP9-5G7C-PJ86",
+   "aliases": [
+    "CVE-2026-74872",
+    "alias-0ae1e9b85f4a9eebb8ee56b3"
+   ],
+   "mechanism": "Whirlpool compatibility code searched interpreter and user site-packages with broad whirlpool*.so, pywhirlpool*.so, whirlpool-py311*.so, and analogous .pyd globs, selected a filename match without authenticating its bytes, ownership, or permissions, created an import-name symlink or copy, and imported it. Later crypt_core.py and registry/hash_registry.py code also searched for the first whirlpool*py313*.so match and executed it directly with ExtensionFileLoader. An attacker able to plant a matching native module in a searched site-packages directory could therefore execute native code.",
+   "scope_statement": "Attribution covers the audited AI-associated introducer cb07e5f88a98f4459a5f828142e740c024810692 and advisory-linked remediation fdb5d72999914f5604a419225949db669d4be3f2; unrelated repository changes are outside scope.",
+   "candidate_set": [
+    "cb07e5f88a98f4459a5f828142e740c024810692"
+   ],
+   "minimum_fix_set": [
+    "fdb5d72999914f5604a419225949db669d4be3f2"
+   ],
+   "ai_marker": "Co-Authored-By: Claude <noreply@anthropic.com>",
+   "token_overlap": 1
+  }
+ ],
+ "protocol": "docs/AUDIT-PROTOCOL.md",
+ "context_rule": "One case, one clean context. Do not read the canonical ledger, another case bundle/output, or a prior verdict. Prior hits are leads, never proof."
+}
