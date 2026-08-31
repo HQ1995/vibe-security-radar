@@ -710,35 +710,28 @@ function DiffHunk({
     (line) => line.startsWith("-") && !line.startsWith("---"),
   ).length;
   return (
-    <div className="space-y-2">
-      {annotation ? (
-        <p
-          className={`border-l-4 px-4 py-3 text-sm leading-6 ${
-            label === "AI change"
-              ? "border-amber-500 bg-amber-50/70 text-amber-950"
-              : label === "Fix"
-                ? "border-emerald-600 bg-emerald-50/70 text-emerald-950"
-                : "border-primary bg-primary/[0.04] text-foreground"
-          }`}
-        >
-          {annotation}
-        </p>
-      ) : null}
-      <details className="group overflow-hidden border border-border bg-card">
-        <summary className="flex cursor-pointer select-none items-center justify-between gap-3 px-4 py-2.5 [&::-webkit-details-marker]:hidden">
-          <span className="flex min-w-0 flex-wrap items-center gap-2 text-[11px]">
-            <span className="shrink-0 border border-border bg-muted/50 px-1.5 py-0.5 font-mono text-[9px] font-semibold uppercase tracking-wide text-muted-foreground">
-              {label}
-            </span>
-            <FileLink repository={repository} sha={sha} file={hunk.file} />
-            <SourceLink repository={repository} sha={sha} />
+    <details className="group overflow-hidden border border-border bg-card">
+      <summary className="flex cursor-pointer select-none items-center justify-between gap-3 px-4 py-2.5 [&::-webkit-details-marker]:hidden">
+        <span className="flex min-w-0 flex-wrap items-center gap-2 text-[11px]">
+          <span className="shrink-0 border border-border bg-muted/50 px-1.5 py-0.5 font-mono text-[9px] font-semibold uppercase tracking-wide text-muted-foreground">
+            {label}
           </span>
-          <span className="flex shrink-0 items-center gap-2 font-mono text-[10px] tabular-nums">
-            <span className="text-emerald-700">+{added}</span>
-            <span className="text-red-700">−{removed}</span>
-          </span>
-        </summary>
-        <pre className="overflow-x-auto border-t border-border py-3 text-[12px] leading-5 [contain:paint]">
+          <FileLink repository={repository} sha={sha} file={hunk.file} />
+          <SourceLink repository={repository} sha={sha} />
+        </span>
+        <span className="flex shrink-0 items-center gap-2 font-mono text-[10px] tabular-nums">
+          <span className="text-emerald-700">+{added}</span>
+          <span className="text-red-700">−{removed}</span>
+        </span>
+      </summary>
+      <div
+        className={
+          annotation
+            ? "grid border-t border-border xl:grid-cols-[minmax(0,1fr)_18rem]"
+            : "border-t border-border"
+        }
+      >
+        <pre className="overflow-x-auto py-3 text-[12px] leading-5 [contain:paint]">
           <code>
             {lines.map((line, index) => (
               <span
@@ -758,8 +751,22 @@ function DiffHunk({
             ))}
           </code>
         </pre>
-      </details>
-    </div>
+        {annotation ? (
+          <aside
+            aria-label="Key code note"
+            className={`border-t-4 px-4 py-4 text-sm leading-6 xl:border-l-4 xl:border-t-0 ${
+              label === "AI change"
+                ? "border-amber-500 bg-amber-50/70 text-amber-950"
+                : label === "Fix"
+                  ? "border-emerald-600 bg-emerald-50/70 text-emerald-950"
+                  : "border-primary bg-primary/[0.04] text-foreground"
+            }`}
+          >
+            {annotation}
+          </aside>
+        ) : null}
+      </div>
+    </details>
   );
 }
 

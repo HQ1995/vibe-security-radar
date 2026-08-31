@@ -436,7 +436,7 @@ describe("canonical case evidence", () => {
     );
   });
 
-  it("keeps diff code collapsed while showing its curated annotation", () => {
+  it("keeps diff code collapsed with curated notes beside key hunks", () => {
     const item = structuredClone(
       getResearchCaseById("GHSA-9J5F-PJWJ-62R3")!,
     );
@@ -455,6 +455,7 @@ describe("canonical case evidence", () => {
     expect(html).toContain(
       "newly added PluginImportGuard and both causal mechanisms",
     );
+    expect(html).toContain('aria-label="Key code note"');
     expect(html).not.toContain('<details open=""');
     expect(html).not.toContain("Lines beginning with");
     expect(html).not.toContain("Why this change is shown");
