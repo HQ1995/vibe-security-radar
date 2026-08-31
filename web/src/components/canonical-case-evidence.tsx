@@ -695,16 +695,12 @@ function DiffHunk({
   sha,
   label,
   annotation,
-  readerContext,
-  open,
 }: {
   readonly hunk: ResearchCodeHunk;
   readonly repository: string | null;
   readonly sha: string;
   readonly label: DiffRole;
   readonly annotation: string | null;
-  readonly readerContext: string;
-  readonly open: boolean;
 }) {
   const lines = hunk.code.replace(/\n$/, "").split("\n");
   const added = lines.filter(
@@ -713,64 +709,57 @@ function DiffHunk({
   const removed = lines.filter(
     (line) => line.startsWith("-") && !line.startsWith("---"),
   ).length;
-  // Curated, hunk-specific explanations open with their code; unannotated long
-  // patches stay collapsed. Expanded diffs are never clipped.
-  const collapsible = lines.length > 24;
-  const openDefault = Boolean(annotation) || (!collapsible && open);
   return (
-    <details
-      open={openDefault}
-      className="group overflow-hidden border border-border bg-card"
-    >
-      <summary className="flex cursor-pointer select-none items-center justify-between gap-3 px-4 py-2.5 [&::-webkit-details-marker]:hidden">
-        <span className="flex min-w-0 flex-wrap items-center gap-2 text-[11px]">
-          <span className="shrink-0 border border-border bg-muted/50 px-1.5 py-0.5 font-mono text-[9px] font-semibold uppercase tracking-wide text-muted-foreground">
-            {label}
-          </span>
-          <FileLink repository={repository} sha={sha} file={hunk.file} />
-          <SourceLink repository={repository} sha={sha} />
-        </span>
-        <span className="flex shrink-0 items-center gap-2 font-mono text-[10px] tabular-nums">
-          <span className="text-emerald-700">+{added}</span>
-          <span className="text-red-700">−{removed}</span>
-        </span>
-      </summary>
-      <pre className="overflow-x-auto border-t border-border py-3 text-[12px] leading-5 [contain:paint]">
-        <code>
-          {lines.map((line, index) => (
-            <span
-              key={`${index}-${line}`}
-              className={`block min-w-max px-4 ${
-                line.startsWith("+")
-                  ? "bg-emerald-50 text-emerald-900"
-                  : line.startsWith("-")
-                    ? "bg-red-50 text-red-900"
-                    : line.startsWith("@@")
-                      ? "text-primary"
-                      : ""
-              }`}
-            >
-              {line || " "}
+    <div className="space-y-2">
+      {annotation ? (
+        <p
+          className={`border-l-4 px-4 py-3 text-sm leading-6 ${
+            label === "AI change"
+              ? "border-amber-500 bg-amber-50/70 text-amber-950"
+              : label === "Fix"
+                ? "border-emerald-600 bg-emerald-50/70 text-emerald-950"
+                : "border-primary bg-primary/[0.04] text-foreground"
+          }`}
+        >
+          {annotation}
+        </p>
+      ) : null}
+      <details className="group overflow-hidden border border-border bg-card">
+        <summary className="flex cursor-pointer select-none items-center justify-between gap-3 px-4 py-2.5 [&::-webkit-details-marker]:hidden">
+          <span className="flex min-w-0 flex-wrap items-center gap-2 text-[11px]">
+            <span className="shrink-0 border border-border bg-muted/50 px-1.5 py-0.5 font-mono text-[9px] font-semibold uppercase tracking-wide text-muted-foreground">
+              {label}
             </span>
-          ))}
-        </code>
-      </pre>
-      <p
-        className={`border-t px-4 py-3 text-xs leading-5 ${
-          annotation
-            ? "border-amber-200 bg-amber-50/70 text-amber-950"
-            : "border-border bg-muted/30 text-muted-foreground"
-        }`}
-      >
-        <span className="font-semibold text-foreground">
-          Why this change is shown
-          {annotation
-            ? ":"
-            : ` (case-level ${label.toLowerCase()} context; not a hunk-specific annotation):`}
-        </span>{" "}
-        {annotation ?? readerContext}
-      </p>
-    </details>
+            <FileLink repository={repository} sha={sha} file={hunk.file} />
+            <SourceLink repository={repository} sha={sha} />
+          </span>
+          <span className="flex shrink-0 items-center gap-2 font-mono text-[10px] tabular-nums">
+            <span className="text-emerald-700">+{added}</span>
+            <span className="text-red-700">−{removed}</span>
+          </span>
+        </summary>
+        <pre className="overflow-x-auto border-t border-border py-3 text-[12px] leading-5 [contain:paint]">
+          <code>
+            {lines.map((line, index) => (
+              <span
+                key={`${index}-${line}`}
+                className={`block min-w-max px-4 ${
+                  line.startsWith("+")
+                    ? "bg-emerald-50 text-emerald-900"
+                    : line.startsWith("-")
+                      ? "bg-red-50 text-red-900"
+                      : line.startsWith("@@")
+                        ? "text-primary"
+                        : ""
+                }`}
+              >
+                {line || " "}
+              </span>
+            ))}
+          </code>
+        </pre>
+      </details>
+    </div>
   );
 }
 
@@ -803,18 +792,6 @@ export function CanonicalCaseEvidence({
   const introStep = steps.length >= 3 ? steps[0] : null;
   const summary = findingSummary(item);
   const blurb = advisoryBlurb(item);
-  const attempt = item.ir_chain?.attempted_remediation;
-  const candidateExplanation =
-    incomplete && attempt
-      ? `What the AI patch changed: ${attempt.changed} What it still missed: ${attempt.missed}`
-      : (compactPublicProse(
-          evidence?.summary,
-          item.mechanism,
-          item.description,
-        ) ?? contributionHeadline(item.contribution_class));
-  const fixExplanation =
-    compactPublicProse(whatClosedIt(item), rightStep?.detail) ??
-    "This later patch closes the vulnerable path described above.";
   const hunkAnnotation = (hunk: ResearchCodeHunk) => {
     const annotation = usefulHunkAnnotation(hunk.annotation);
     const repeated = [evidence?.summary, item.mechanism].some(
@@ -868,21 +845,26 @@ export function CanonicalCaseEvidence({
       label,
       ...(label === "AI change" ? candidateSource : fixSource),
       annotation: hunkAnnotation(hunk),
-      readerContext:
-        label === "AI change"
-          ? candidateExplanation
-          : label === "Fix"
-            ? fixExplanation
-            : `${candidateExplanation} ${fixExplanation}`,
     };
   });
+  const codeGroups = [
+    {
+      label: "AI change" as const,
+      title: "AI change",
+      hunks: codeHunks.filter((item) => item.label === "AI change"),
+    },
+    {
+      label: "Fix" as const,
+      title: "Security fix",
+      hunks: codeHunks.filter((item) => item.label === "Fix"),
+    },
+    {
+      label: "Comparison" as const,
+      title: "Curated comparison",
+      hunks: codeHunks.filter((item) => item.label === "Comparison"),
+    },
+  ].filter((group) => group.hunks.length > 0);
   const hasCode = codeHunks.length > 0;
-  const codeTitle =
-    candidateHunks.length && fixHunks.length
-      ? "Vulnerable code and fix"
-      : candidateHunks.length
-        ? "Candidate change"
-        : "Security fix";
   return (
     <section className="space-y-12 border-t border-border pt-8">
       <div className="grid items-start gap-8 xl:grid-cols-[minmax(0,1fr)_22rem]">
@@ -955,38 +937,32 @@ export function CanonicalCaseEvidence({
       </div>
 
       {evidence && hasCode ? (
-        <div className="space-y-4" aria-labelledby="code-comparison">
-          <div>
-            <p className="section-kicker">Code comparison</p>
-            <h3 id="code-comparison" className="mt-2 text-lg font-semibold">
-              {codeTitle}
-            </h3>
-            <p className="mt-2 max-w-3xl text-sm leading-6 text-muted-foreground">
-              Lines beginning with − were removed; lines beginning with + were
-              added. The badge shows whether a hunk belongs to the AI-linked
-              change, the later fix, or a curated comparison of the two.
-            </p>
-          </div>
-          {codeHunks.map(
-            (
-              { hunk, label, repository, sha, annotation, readerContext },
-              index,
-            ) => (
-              <DiffHunk
-                key={`${label}-${index}-${hunk.file}`}
-                hunk={hunk}
-                repository={repository}
-                sha={sha}
-                label={label}
-                annotation={annotation}
-                readerContext={readerContext}
-                open={
-                  index === 0 ||
-                  (label === "Fix" && codeHunks[index - 1]?.label !== "Fix")
-                }
-              />
-            ),
-          )}
+        <div className="space-y-8" aria-label="Code evidence">
+          {codeGroups.map((group) => (
+            <section key={group.label} className="space-y-3">
+              <div
+                className={`border-l-4 px-4 py-2 ${
+                  group.label === "AI change"
+                    ? "border-amber-500 bg-amber-50/70"
+                    : group.label === "Fix"
+                      ? "border-emerald-600 bg-emerald-50/70"
+                      : "border-primary bg-primary/[0.04]"
+                }`}
+              >
+                <h3 className="text-sm font-semibold">{group.title}</h3>
+              </div>
+              {group.hunks.map(({ hunk, label, repository, sha, annotation }, index) => (
+                <DiffHunk
+                  key={`${label}-${index}-${hunk.file}`}
+                  hunk={hunk}
+                  repository={repository}
+                  sha={sha}
+                  label={label}
+                  annotation={annotation}
+                />
+              ))}
+            </section>
+          ))}
           {evidence.candidate_patch_sha256 && evidence.fix_patch_sha256 ? (
             <details className="text-xs text-muted-foreground">
               <summary className="cursor-pointer">Patch fingerprints</summary>

@@ -436,7 +436,7 @@ describe("canonical case evidence", () => {
     );
   });
 
-  it("labels every diff hunk and renders its explanation", () => {
+  it("keeps diff code collapsed while showing its curated annotation", () => {
     const item = structuredClone(
       getResearchCaseById("GHSA-9J5F-PJWJ-62R3")!,
     );
@@ -455,6 +455,9 @@ describe("canonical case evidence", () => {
     expect(html).toContain(
       "newly added PluginImportGuard and both causal mechanisms",
     );
+    expect(html).not.toContain('<details open=""');
+    expect(html).not.toContain("Lines beginning with");
+    expect(html).not.toContain("Why this change is shown");
   });
 
   it("supplements a fix-only comparison with the missing candidate hunk", () => {
@@ -475,6 +478,8 @@ describe("canonical case evidence", () => {
 
     expect(html.match(/>AI change<\/span>/g)).toHaveLength(1);
     expect(html.match(/>Fix<\/span>/g)).toHaveLength(1);
+    expect(html).toContain(">AI change</h3>");
+    expect(html).toContain(">Security fix</h3>");
   });
 
   it("links fix hunks to the verified canonical fix commit", () => {
