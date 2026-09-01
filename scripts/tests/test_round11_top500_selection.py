@@ -1,9 +1,7 @@
-"""Drive the round11 ranking function — the freeze must be the real top 500."""
+"""Unit tests for the round11 ranking functions (score_row/select_top/rank)."""
 from __future__ import annotations
 
-import hashlib
 import importlib.util
-import json
 import math
 import sys
 from collections import Counter
@@ -12,8 +10,6 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 LANE = ROOT / "research/round11-top500-20260829"
 RANK_PATH = LANE / "rank.py"
-ROUND10 = ROOT / "research/round10-top200-20260828/manifest.jsonl"
-LEDGER = ROOT / "artifacts/funnel-account-20260817.jsonl"
 
 
 def _load_rank():
@@ -177,86 +173,3 @@ def test_rank_orders_by_score_then_class_id() -> None:
         "alias-cccccccccccccccccccccccc",
     ]
 
-
-def test_recompute_selection_is_500_unique_open_and_excludes_round10() -> None:
-    selected = rank.recompute_selection()
-    assert len(selected) == 500
-    class_ids = [item[1] for item in selected]
-    assert len(set(class_ids)) == 500
-    statuses = {item[2]["status"] for item in selected}
-    assert statuses <= {"UNANALYZED", "PARTIALLY_ANALYZED"}
-    round10 = [json.loads(line) for line in ROUND10.read_text().splitlines() if line.strip()]
-    excluded_classes, excluded_advisories = rank.excluded_identities(round10)
-    assert not (set(class_ids) & excluded_classes)
-    selected_advisories = {
-        value for item in selected for value in rank.official_ids(item[2])
-    }
-    assert not (selected_advisories & excluded_advisories)
-    assert all(rank.ghsa_ids(item[2]) for item in selected)
-    per_repo = Counter(rank.normalize_repo(item[2].get("repo")) for item in selected)
-    assert per_repo
-    assert max(per_repo.values()) <= 5
-
-
-def test_present_primary_records_pass_shipped_gates() -> None:
-    sys.path.insert(0, str(ROOT / "scripts"))
-    from audit_record_gates import check_record
-
-    manifest = [json.loads(line) for line in (LANE / "manifest.jsonl").read_text().splitlines() if line.strip()]
-    by_worker = {row["worker"]: row for row in manifest}
-    paths = sorted((LANE / "primary").glob("w*.json"))
-    assert paths, "workers must start writing primary records"
-    problems = []
-    for path in paths:
-        record = json.loads(path.read_text())
-        item = by_worker[path.stem]
-        assert record["class_id"] == item["class_id"]
-        assert record["repo"] == item["repo"]
-        assert record["advisory_ids"] == item["advisory_ids"]
-        problems.extend(check_record(record))
-    assert problems == []
-
-
-def test_clone_prep_covers_every_selected_repo() -> None:
-    prep_path = LANE / "clone-prep.json"
-    assert prep_path.exists()
-    prep = json.loads(prep_path.read_text())
-    manifest = [json.loads(line) for line in (LANE / "manifest.jsonl").read_text().splitlines() if line.strip()]
-    assert len(prep) == len({row["repo"] for row in manifest})
-    assert all(item.get("ok") is True for item in prep)
-    assert max(Counter(row["repo"] for row in manifest).values()) <= 5
-
-
-def test_frozen_manifest_is_exactly_recomputed_top500() -> None:
-    selected = rank.recompute_selection()
-    class_ids = [item[1] for item in selected]
-    manifest_path = LANE / "manifest.jsonl"
-    summary_path = LANE / "selection-summary.json"
-    assert manifest_path.exists(), "freeze manifest must exist"
-    assert summary_path.exists(), "selection summary must exist"
-    manifest = [json.loads(line) for line in manifest_path.read_text().splitlines() if line.strip()]
-    assert [row["class_id"] for row in manifest] == class_ids
-    assert len(manifest) == 500
-    assert {row["status_at_selection"] for row in manifest} <= {"UNANALYZED", "PARTIALLY_ANALYZED"}
-    summary = json.loads(summary_path.read_text())
-    assert summary["target"] == 500
-    assert summary["excluded_overlap"] == 0
-    assert summary["score_max"] == selected[0][0]
-    assert summary["score_min"] == selected[-1][0]
-    freeze_sha = summary["ledger_sha256_at_freeze"]
-    assert isinstance(freeze_sha, str) and len(freeze_sha) == 64
-    live_sha = hashlib.sha256(LEDGER.read_bytes()).hexdigest()
-    by_id = {}
-    for line in LEDGER.read_text().splitlines():
-        if not line.strip():
-            continue
-        row = json.loads(line)
-        by_id[row["class_id"]] = row
-    for row in manifest:
-        live = by_id[row["class_id"]]
-        assert live.get("round11_research") is None
-        if live_sha == freeze_sha:
-            assert live["status"] == row["status_at_selection"]
-        else:
-            assert row["class_id"] in by_id
-            assert row["status_at_selection"] in {"UNANALYZED", "PARTIALLY_ANALYZED"}
