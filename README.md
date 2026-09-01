@@ -6,7 +6,7 @@ A [Georgia Tech SSLab](https://gts3.org/) catalog of public vulnerabilities whos
 
 We start from disclosed GHSA and CVE advisories, not from a scan of every AI commit. A finding is published only when we can show three things on the same attack path: the AI-authored change, the vulnerable behavior, and the fix that closed it. Cursor, Copilot, Claude Code, and similar tools all appear; the catalog is about the code they left behind, not a ranking of tools.
 
-There are 195 such findings in the 2025-05 – 2026-08 window. That is a lower bound, not a census of every AI bug. Many AI-assisted changes never become a public advisory, and some that do leave a history we cannot recover.
+There are 252 such findings in the 2025-05 – 2026-08 window (155 confirmed, 89 qualified, 8 provisional). That is a lower bound, not a census of every AI bug. Many AI-assisted changes never become a public advisory, and some that do leave a history we cannot recover.
 
 ## How a case gets in
 

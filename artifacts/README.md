@@ -1,34 +1,31 @@
-# Artifact ledger
-
-Single source of truth for the 24,124-class research account (window
-2025-05-01 .. 2026-08-26, CVE+GHSA deduped, withdrawn/rejected excluded).
-
-## Files
-
-- funnel-account-20260817.jsonl — THE book. One row per advisory class:
-  class_id, repo, advisory count, and unified status
-  (AI_ROOT_CAUSE / AI_CODE_FLAWED / NOT_AI / BLOCKED /
-  PARTIALLY_ANALYZED / UNANALYZED), with site tier/scope, ledger best verdict,
-  dossier best verdict.
-- code-writer-repos-20260816.json — verified repos with 2025+ code-writing AI
-  commits (bot-excluded).
-- host-reasons-20260816.txt — per-repo scan audit trail: one reason per repo,
-  no UNKNOWN verdicts.
-- chromium-ai-scan-20260817.jsonl — chromium-family records outside the
-  census alias classes (214 records, per-record repo verdicts).
-- ledger-summary.md — human-readable total account.
-- manifests.jsonl — sha256/size/row manifests of local-only raw pools that are
-  too large for git (the pools themselves stay on disk, not committed).
-
-## History
-
-Pre-unification books (per-case ledger.jsonl, dossiers.jsonl, tp-registry,
-funnel-narrowed, repo-ai-scan) were frozen and removed from the working tree
-in commit 4778fae; recover with:
-  git show 649505a:artifacts/ledger.jsonl
-(and likewise for the other files).
-
-## Status transitions
-
-Every status update appends/updates a row in funnel-account-20260817.jsonl;
-nothing else becomes a source of truth.
+ # Artifact ledger
+ 
+ Canonical account: `artifacts/funnel-account-20260817.jsonl` (29,593 rows,
+ CVE+GHSA deduped, withdrawn/rejected excluded), mirror of the Neon Postgres
+ canonical ledger. This directory keeps only the GitHub recovery JSONL, its
+ universe census metadata, and the mandatory immutable history.
+ 
+ ## Files
+ 
+ - funnel-account-20260817.jsonl — THE book. One row per advisory class:
+   class_id, repo, advisory count, unified status, and site tier/scope, ledger
+   best verdict, dossier best verdict. Deterministic GitHub recovery export;
+   written only by the leader via `scripts/ledger_store.py export`.
+ - funnel-universe-meta-20260826.json — universe census metadata (window,
+   dedup identity, layer counts).
+ - ledger-history/ — immutable audit history (assessments, versions,
+   change-sets, scan-runs, export fingerprint).
+ 
+ ## History
+ 
+ Pre-unification books (per-case ledger.jsonl, dossiers.jsonl, tp-registry,
+ funnel-narrowed, repo-ai-scan, code-writer-repos, host-reasons,
+ chromium-ai-scan, ledger-summary, manifests) were frozen and removed from
+ the working tree in commit 4778fae; recover with
+   git show 649505a:artifacts/ledger.jsonl
+ (and likewise for the other files).
+ 
+ ## Status transitions
+ 
+ Every status update appends/updates a row in funnel-account-20260817.jsonl
+ (mirrored from Neon); nothing else becomes a source of truth.

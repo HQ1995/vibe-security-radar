@@ -14,7 +14,7 @@ Public catalog of confirmed AI-introduced vulnerabilities. Live site: https://vi
 | `docs/AGENT-ONBOARDING.md` | New-agent walkthrough: claim, audit, verify, hand off |
 | `scripts/publish_tp_ledger.py` | Builds `web/src/generated/research-data.json` |
 | `scripts/site_preflight.py` | Publication gates before `web/` build |
-| `cve-analyzer/` | Older CVE → blame CLI; not the live catalog source |
+| `cve-analyzer/` | Analysis toolchain (CVE → blame CLI); not a publication data source |
 
 ## Data flow
 
@@ -52,4 +52,4 @@ Default analyzer batch start: `--since 2025-05-01`. CVEs before 2025-05 are outs
 
 ## Local-only (gitignored)
 
-`.ai-slop/` (cloned-repo cache), `research/` dump dirs (work/, clones/, api-cache/, ...), root `*.py` one-offs, `.tmp_*`, and agent worktrees. Do not commit them. Lane evidence files (result.json, report.md, cases.jsonl, manifests) ARE committed at round close.
+`.ai-slop/` (cloned-repo cache), `research/` dump dirs, root `*.py` one-offs, `.tmp_*`, and agent worktrees. Do not commit them. Research lanes live local-only; the canonical ledger (Neon) and its jsonl backup in `artifacts/` are the only committed data.
