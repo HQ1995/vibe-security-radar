@@ -1651,15 +1651,13 @@ def test_ir_chain_rejects_a_short_original_sha_even_with_a_reason() -> None:
 
 def test_ir_chain_source_records_keep_atomic_qf5v_and_frvj_origin() -> None:
     root = Path(__file__).resolve().parents[2]
-    chains = [
-        json.loads(line)
-        for line in (
-            root
-            / "research/orchestrator-260814-irchains-sol/ir-chains.jsonl"
-        ).read_text(encoding="utf-8").splitlines()
-        if line.strip()
-    ]
-    qf5v = next(item for item in chains if item.get("case_id") == "GHSA-QF5V-M7P4-95RP")
+    # DB-first via publish's loader (falls back to the research/ file for local
+    # dev) so CI with the untracked source removed still validates the record.
+    chains = publish_tp_ledger.load_ir_chains(
+        publish_tp_ledger.IR_CHAINS
+    )
+    qf5v = chains.get("GHSA-QF5V-M7P4-95RP")
+    assert qf5v is not None
     assert qf5v["attempted_remediation"]["candidate_shas"] == [
         "2db76f65dbfe4f657b4a4efb506ed63b24623e92"
     ]
