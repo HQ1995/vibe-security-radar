@@ -83,6 +83,22 @@ def main() -> None:
                 """,
                 (kind, json.dumps(values[kind]), rel, now, actor),
             )
+        # Consistency gate: the research/ file must equal what Neon now holds,
+        # so the git-tracked JSONL backup can never drift silently from the DB.
+        drift = []
+        for kind, rel, kind_type in SOURCES:
+            want = values[kind]
+            have = conn.execute(
+                "SELECT value_json FROM ledger_display WHERE kind = %s", (kind,)
+            ).fetchone()
+            if have is None or have[0] != want:
+                drift.append(kind)
+        if drift:
+            raise SystemExit(
+                "sync consistency gate FAILED for: "
+                + ", ".join(drift)
+                + " (Neon ledger_display != research/ source)"
+            )
     print("synced display kinds:", ", ".join(sorted(values)))
 
 
