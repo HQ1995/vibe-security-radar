@@ -7,15 +7,20 @@ Public catalog of confirmed AI-introduced vulnerabilities. Live site: https://vi
 | Path | Role |
 |------|------|
 | `web/` | Next.js 16 static catalog (Cloudflare Pages) |
-| `artifacts/funnel-account-20260817.jsonl` | Canonical research ledger (schema: `docs/DATA-SCHEMA.md`) |
+| `scripts/ledger_store.py` | Canonical ledger (Neon Postgres): assessments, finalize, export |
+| `scripts/sync_display_to_db.py` | Syncs publication display content into Neon `ledger_display` |
+| `artifacts/funnel-account-20260817.jsonl` | Deterministic GitHub export of the ledger (schema: `docs/DATA-SCHEMA.md`) |
 | `docs/AUDIT-PROTOCOL.md` | How a case gets judged (vulnerability first, AI second) |
+| `docs/AGENT-ONBOARDING.md` | New-agent walkthrough: claim, audit, verify, hand off |
 | `scripts/publish_tp_ledger.py` | Builds `web/src/generated/research-data.json` |
 | `scripts/site_preflight.py` | Publication gates before `web/` build |
 | `cve-analyzer/` | Older CVE → blame CLI; not the live catalog source |
 
 ## Data flow
 
-The site has one data source: confirmed TPs from the funnel ledger.
+Canonical ledger lives in Neon Postgres (`scripts/ledger_store.py`). The publisher
+reads Neon `ledger_display` first and falls back to committed files only when Neon
+is unavailable; `scripts/sync_display_to_db.py` pushes source display content in.
 
 ```
 python3 scripts/publish_tp_ledger.py   # → web/src/generated/research-data.json
