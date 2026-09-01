@@ -38,6 +38,62 @@ _DECISIVE_NONCAUSAL_GATES = (
 )
 
 
+def verify_committed(output: Path) -> int:
+    """Verify the committed publication corpus without reading research/ sources.
+
+    The drift guard is the input_sha256 manifest recorded inside the committed
+    artifact, not a live re-computation against git-tracked research/ files.
+    Publication data lives in the DB/generated artifacts; research dumps are no
+    longer a deploy-time input. This is the deploy-time gate.
+    """
+
+    try:
+        payload = json.loads(output.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        print("publication adjudications unreadable: " + str(exc))
+        return 2
+    errors = []
+    if not isinstance(payload, dict):
+        errors.append("payload is not an object")
+    if payload.get("schema_version") != 1:
+        errors.append("schema_version != 1")
+    rows = payload.get("adjudications")
+    if not isinstance(rows, list) or not rows:
+        errors.append("adjudications is not a non-empty array")
+    else:
+        bad_labels = []
+        missing_ids = []
+        for row in rows:
+            if not isinstance(row, dict):
+                continue
+            if row.get("label") not in _ALLOWED_LABELS:
+                bad_labels.append(row.get("label"))
+            if not row.get("cve_id"):
+                missing_ids.append(row.get("cve_id"))
+        if bad_labels:
+            errors.append("invalid labels: " + repr(sorted(set(bad_labels))[:10]))
+        if missing_ids:
+            errors.append(str(len(missing_ids)) + " rows missing cve_id")
+    manifest = (payload.get("provenance") or {}).get("input_sha256") or {}
+    for required in (
+        "research/orchestrator-260813-fp211-audit/final_mechanisms.jsonl",
+        "research/orchestrator-260813-fp211-audit/manifest.jsonl",
+        "research/orchestrator-260813-fp211-audit/public_cases.jsonl",
+    ):
+        if not manifest.get(required):
+            errors.append("input_sha256 missing " + required)
+    if errors:
+        print("publication adjudications failed closed: " + "; ".join(errors[:8]))
+        return 2
+    print(
+        "publication adjudications verified (committed artifact, "
+        + str(len(rows))
+        + " rows): "
+        + str(output)
+    )
+    return 0
+
+
 class PublicationCorpusError(RuntimeError):
     """An input cannot safely produce the effective publication corpus."""
 
@@ -465,11 +521,14 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument("--supersessions", type=Path, default=_DEFAULT_SUPERSESSIONS)
     parser.add_argument("--output", type=Path, default=_DEFAULT_OUTPUT)
     parser.add_argument("--check", action="store_true")
+    parser.add_argument("--verify-committed", action="store_true")
     return parser
 
 
 def main(argv: Sequence[str] | None = None) -> int:
     args = _parser().parse_args(argv)
+    if args.verify_committed:
+        return verify_committed(args.output)
     try:
         supersessions_payload = json.loads(
             args.supersessions.read_text(encoding="utf-8")

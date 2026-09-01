@@ -29,7 +29,7 @@ def _labels_by_subject() -> dict[str, str]:
 
 def test_generated_publication_corpus_is_current_and_conservative() -> None:
     checked = subprocess.run(
-        [sys.executable, str(_SCRIPT), "--check"],
+        [sys.executable, str(_SCRIPT), "--verify-committed"],
         cwd=_REPO_ROOT,
         capture_output=True,
         text=True,
