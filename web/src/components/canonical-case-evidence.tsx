@@ -68,26 +68,17 @@ function contributionHeadline(value: string): string {
 
 type DiffRole = "AI change" | "Fix" | "Comparison";
 
-function compactPublicProse(
-  ...values: (string | null | undefined)[]
-): string | null {
-  for (const value of values) {
-    const text = stripMarkdown(value).trim();
-    if (text.length <= 360 && isPublicProse(text)) return text;
-  }
-  return null;
-}
-
 function usefulHunkAnnotation(value: string): string | null {
-  const text = compactPublicProse(value);
-  if (
-    !text ||
-    /^(?:AI introduced this behavior|AI removed a constraint|The fix adds):/i.test(
-      text,
+  // Mirror scripts/site_preflight.usable_hunk_annotation: strip the
+  // boilerplate lead-in and keep the concrete pointer/explanation when it
+  // is long enough to stand on its own.
+  const text = stripMarkdown(value)
+    .replace(
+      /^(?:AI introduced this behavior|AI removed a constraint|The fix adds):s*/i,
+      "",
     )
-  ) {
-    return null;
-  }
+    .trim();
+  if (!text || text.length < 8) return null;
   return text;
 }
 
@@ -858,10 +849,14 @@ export function CanonicalCaseEvidence({
     );
     return annotation && !repeated ? annotation : null;
   };
-  const markerMatch = evidence?.ai_marker?.match(
-    /(?:Co-Authored-By|Assisted-by):\s*([^<]+)/i,
-  );
-  const candidateModel = markerMatch?.[1].trim() ?? getAiToolLabel(item);
+  // Authoritative tool attribution comes from ai_provenance, not from
+  // parsing a Co-authored-by trailer (which can name a human co-author
+  // first, mislabeling them as the AI author).
+  const candidateModel =
+    item.ai_provenance?.coverage === "complete" &&
+    item.ai_provenance?.family
+      ? getAiToolLabel(item)
+      : "an AI coding tool";
   const candidateSource = commitSource(
     evidence?.candidate_url,
     item.repository,

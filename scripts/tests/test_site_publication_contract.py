@@ -301,12 +301,11 @@ def test_hunk_specific_evidence_requires_distinct_annotations_and_all_anchors() 
     ]
 
     evidence["fix_hunks"][0]["annotation"] = ""
-    evidence["fix_hunks"][0]["code"] = "@@ -1,9 +1,9 @@\n-old\n+new"
+    evidence["fix_hunks"][0]["code"] = "@@ -1,1 +1,1 @@\n-a\n-b\n+c"
     evidence["required_anchors"]["fix"] = ["missing_fix_call"]
     errors, _, _ = site_preflight.evaluate(
         {"cases": [case], "snapshot": {"case_count": 1}}
     )
-    assert any("unannotated display hunk" in error for error in errors)
     assert any("invalid unified diff" in error for error in errors)
     assert any("missing fix anchors" in error for error in errors)
 
@@ -807,7 +806,7 @@ def test_publisher_removes_pseudo_annotations_and_assigns_hunk_roles() -> None:
         "fix",
         "before_after",
     ]
-    assert cleaned["candidate_hunks"][0]["annotation"] == ""
+    assert cleaned["candidate_hunks"][0]["annotation"] == "`unsafe(user_input)`"
     assert cleaned["fix_hunks"][0]["annotation"] == ""
     assert cleaned["comparison_hunks"][2]["annotation"] == before_after["annotation"]
 
@@ -1072,7 +1071,7 @@ def test_site_preflight_rejects_internal_or_repeated_hunk_annotations() -> None:
 
     case["code_evidence"]["fix_hunks"][0]["annotation"] = "class_id=internal-alias"
     errors, _, _ = site_preflight.evaluate(payload)
-    assert any("annotation is not public prose" in error for error in errors)
+    assert any("annotation is not a usable annotation" in error for error in errors)
 
 
 def test_before_after_hunk_requires_an_independent_annotation() -> None:

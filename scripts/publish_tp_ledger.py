@@ -19,6 +19,8 @@ from site_preflight import (
     comparison_hunk_role,
     is_pseudo_annotation,
     public_explanation,
+    strip_annotation_prefix,
+    usable_hunk_annotation,
 )
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -464,11 +466,11 @@ def scrub_evidence(
             ):
                 annotation = full_summary
             annotation = trim_mid_sentence(annotation)
+            usable = usable_hunk_annotation(annotation)
             item["annotation"] = (
                 ""
-                if is_pseudo_annotation(annotation, annotation_context)
-                or (annotation and not public_explanation(annotation))
-                else annotation
+                if not usable or is_pseudo_annotation(usable, annotation_context)
+                else usable
             )
             item["file"] = infer_hunk_file(item)
             if key == "candidate_hunks":

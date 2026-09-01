@@ -148,7 +148,7 @@
   "mechanism": "Single-parent commit 8170b3e0be064cdaddbc8ef51c17e21c42d2d3f4 created openssl_encrypt_server/config.py with the two known JWT defaults and the length-only validate_config(), and simultaneously created the HS256 TokenAuth and protected route dependencies that consumed those secret"
  },
  "GHSA-PJ24-VJ9G-8VG8": {
-  "summary": "AI-generated code introduced hardcoded JWT secrets that pass validation, letting attackers forge tokens and access keyserver/telemetry APIs.",
+  "summary": "The AI-authored unified FastAPI server shipped two publicly known >=32-char default secrets as the JWT signing keys. validate_config() checked only length and cross-module inequality, so a default deployment started with forgeable tokens, letting an attacker authenticate as any client_id to keyserver/telemetry APIs.",
   "mechanism": "Single-parent commit 8170b3e0be064cdaddbc8ef51c17e21c42d2d3f4 created openssl_encrypt_server/config.py with the two known JWT defaults and the length-only validate_config(), and simultaneously created the HS256 TokenAuth and protected route dependencies that consumed those secret"
  },
  "ALIAS-2AE2EEFCEC8475ABDB79A1A5": {
@@ -636,7 +636,7 @@
   "mechanism": "config section delimiter injection"
  },
  "GHSA-JP7M-XCGX-57QM": {
-  "summary": "AI-written code used a strict parser for validation while the runtime accepted whitespace variants, letting unauthorized users reference protected secrets.",
+  "summary": "The AI-written credential validation used a strict parser that detected only tightly formatted $secrets references, while the runtime expression engine accepted whitespace/newline variants. Stored references that slipped past validation later resolved to protected secrets, letting users without externalSecret:list access secret values.",
   "mechanism": "External Secrets permission bypass caused by parser mismatch: credential validation detected only tightly formatted $secrets expressions, while the runtime expression engine accepted whitespace/newline variants, allowing users without externalSecret:list to store references that"
  },
  "CVE-2026-59259": {
@@ -812,7 +812,7 @@
   "mechanism": "CNA CVE-2026-56678 (GitHub_M) source.advisory is GitHub-reviewed GHSA-6mwv-4mrm-5p3m, omitted from the row public_ids. Advisory names POST /api/oauth/kiro/api-key interpolating user-controlled region into https://codewhisperer.${region}.amazonaws.com and forwarding the submitted API key as Authorization. Parent 3de6ce15 has no api-key route; list-profiles host is hardcoded codewhisperer.us-east-1.amazonaws.com. Member 706e6513 (Claude Opus 4.8 and Cursor trailers) adds the route, validateApiKey, and listAvailableProfiles with unvalidated region. Fix 126aa244 (GHSA-6mwv in subject) adds assertValidAwsRegion before interpolation and stops reflecting upstream bodies. Published GitHub releases v0.5.2 (tag commit 5da508af, GHSA-named) and v0.5.4 contain origin without the fix; v0.5.6 contains 126aa244."
  },
  "GHSA-Q855-8RH5-JFGQ": {
-  "summary": "AI-written code mounted authenticated add-on routes at the bare published port without auth, letting remote clients invoke them.",
+  "summary": "The AI-authored settings UI added a web interface for per-tool controls, but mounted its routes both under the MCP secret path and at the bare published port (:9583). The root-mounted routes perform no auth (no secret, Origin, or CSRF), so any client reaching :9583 can invoke them.",
   "mechanism": ""
  },
  "ALIAS-5E18A59FCF06A2471D623C00": {
@@ -1084,7 +1084,7 @@
   "mechanism": "CVE-2026-48797/GHSA-f65r-h4g3-3h9h UI auth not enforced: backprop ui --auth user:pass prints 'Auth: enabled' and exports BACKPROPAGATE_UI_AUTH to the subprocess launching the Reflex backend, but backpropagate/ui_app/** never reads the env var and registers no auth middleware (no"
  },
  "GHSA-F65R-H4G3-3H9H": {
-  "summary": "The AI-written UI backend accepted the auth flag but never enforced it, leaving the training-control endpoint fully accessible to any client on the bound port.",
+  "summary": "The AI-written UI backend accepted an --auth flag (printed Auth: enabled) but never read the env var or registered any auth middleware. Every client reaching the bound port, including --share, had full training control and path traversal via unsafe paths.",
   "mechanism": "CVE-2026-48797/GHSA-f65r-h4g3-3h9h UI auth not enforced: backprop ui --auth user:pass prints 'Auth: enabled' and exports BACKPROPAGATE_UI_AUTH to the subprocess launching the Reflex backend, but backpropagate/ui_app/** never reads the env var and registers no auth middleware (no"
  },
  "ALIAS-EA4FD743E6A05D2B80633A1F": {
@@ -1100,7 +1100,7 @@
   "mechanism": "16cd712 ('feat: expose NetworkMode::ProxyOnly via CapabilitySet.proxy_only()', 2026-05-07, Sambhav Kothari) first exposed proxy_only() in the Python bindings by setting NetworkMode::ProxyOnly { port, bind_ports: Vec::new() } via set_network_mode_mut; at that point src/sandboxed_e"
  },
  "GHSA-6Q7J-XR26-3H2C": {
-  "summary": "Scriban’s AI-written parser guard only logged a non-fatal error instead of stopping recursion, so deeply nested expressions cause an uncatchable StackOverflowException that crashes the host process.",
+  "summary": "The AI-written ExpressionDepthLimit guard only logged a non-fatal error instead of stopping recursive descent. A deeply nested template drives the .NET parser into an uncatchable StackOverflowException that terminates the host.",
   "mechanism": "parser depth records error but continues recursion"
  },
  "ALIAS-469595425F9374EDBD871410": {
@@ -1108,7 +1108,7 @@
   "mechanism": "parser depth records error but continues recursion"
  },
  "GHSA-2R68-G678-7QR3": {
-  "summary": "The AI-written code enforced only read scope on /mcp yet dispatched store_memory/delete_memory without per-tool write checks, letting read-only OAuth tokens modify memories.",
+  "summary": "The AI-written OAuth layer required only read scope on /mcp and dispatched store_memory/delete_memory without per-tool write checks. A read-only OAuth token could thus mutate memories, despite the read-only grant.",
   "mechanism": "/mcp requires only read scope and dispatches mutating store_memory/delete_memory without per-tool write authorization, allowing read-only OAuth tokens to modify memories"
  },
  "ALIAS-BF56C362053E61B3CC1E478B": {
@@ -1252,7 +1252,7 @@
   "mechanism": "The agent-invocation API skipped token verification whenever disabled mode was selected, regardless of request origin. The fix restricted disabled authentication to loopback-bound requests and stopped advertising the bypass in errors."
  },
  "GHSA-8CCJ-P46R-JWQQ": {
-  "summary": "Cursor-assisted authentication code let disabled mode bypass token verification for requests from any host. A remote caller could invoke agents without a credential.",
+  "summary": "The Cursor-coauthored auth hardening added an environment switch (PRAISONAI_CALL_AUTH=disabled) that returned before parsing or comparing any token. On an externally reachable server configured with that switch, anyone could invoke registered agents without a credential.",
   "mechanism": "The agent-invocation API skipped token verification whenever disabled mode was selected, regardless of request origin. The fix restricted disabled authentication to loopback-bound requests and stopped advertising the bypass in errors."
  },
  "CVE-2026-57132": {
@@ -2012,7 +2012,7 @@
   "mechanism": "Sensitive environment variable exposure via MCP stdio subprocess (GHSA-PJ2R-F9MW-VRCQ / CVE-2026-40159): MCP.__init__ in src/praisonai-agents/praisonaiagents/mcp/mcp.py does `env = kwargs.get('env', {}); if not env: env = os.environ.copy()` and forwards the full parent environmen"
  },
  "GHSA-HM2H-WWWH-G49X": {
-  "summary": "AI-written code protected the password/email update endpoint with the read-only profile:read scope, letting a token with that scope change admin credentials and escalate privileges.",
+  "summary": "The AI-written scoped-token code attached the read-only profile:read scope to PUT /user, a write operation that can change admin password/email. A profile:read scoped token could therefore update the admin credential and escalate to an unrestricted session.",
   "mechanism": "GHSA-hm2h-wwwh-g49x: PUT /user (UpdateUser, can change admin password/email) is protected only by middleware.RequireScopes(authModel.ScopeProfileRead); the read-only profile:read scope is attached to a write operation, so a scoped access token issued for profile:read can change t"
  },
  "ALIAS-305E24587FF88AF010E1FC86": {
@@ -2841,7 +2841,7 @@
   "summary": "Claude-coauthored schema loading used an untrusted node type as a module path. An authenticated n8n member could traverse directories and execute code in the main process."
  },
  "GHSA-2664-HR5V-554W": {
-  "summary": "Claude-assisted sandbox code left JavaScript function prototypes mutable. An authenticated workflow author could combine that flaw with an allowed import to escape the sandbox."
+  "summary": "The AI-coauthored sandbox hardening rewrote js-task-runner to freeze global prototypes and Buffer helpers, but its freeze loop skipped function-typed prototypes (typeof Function.prototype is function). A workflow author could still pollute Function.prototype, recover host globals, and with an allowlisted import escape the VM sandbox."
  },
  "GHSA-JJ45-W38G-GFRJ": {
   "summary": "Copilot SWE-agent changed wildcard escaping without matching native PostgreSQL SQL, so unauthenticated searches could force broad scans and degrade availability."
@@ -2866,5 +2866,37 @@
  },
  "GHSA-G8P2-7WF7-98MQ": {
   "summary": "Claude-coauthored Control UI code auto-connected to a gateway URL from a crafted link, sending the user's stored gateway token to an attacker."
+ },
+ "ALIAS-98B8DF0F369C05CE326A9B13": {
+  "summary": "AI-written plugin sandbox code used an unvalidated plugin ID to build its allowed directory, so path traversal let a restricted plugin read or write files outside its sandbox.",
+  "mechanism": "The sandbox treated a directory derived from the plugin identifier as trusted. Resolving traversal segments before the prefix check could relocate that trusted root into sensitive user directories and make forbidden paths appear allowed."
+ },
+ "ALIAS-A5472BDE6709C5ED932DD021": {
+  "summary": "AI-written post-quantum decryption fell back to a key derived partly from only 16 bytes of private-key material after decapsulation failure, enabling forged ciphertext when that prefix was known.",
+  "mechanism": "When key decapsulation failed, decryption suppressed the error and built an encryption key from attacker-controlled encapsulated data plus a short private-key prefix. This converted a cryptographic failure into a predictable acceptance path."
+ },
+ "ALIAS-A7C0A5CF4967B77842042FD7": {
+  "summary": "AI-written Python plugin sandbox code exposed built-in type objects to untrusted exec code, allowing type-hierarchy traversal to recover host capabilities and execute commands.",
+  "mechanism": "The restricted builtins still contained Python type objects. Untrusted code could walk their class hierarchy, find objects with host globals, and regain operating-system functionality outside the intended sandbox."
+ },
+ "ALIAS-AA527CE9484AF760A24803D1": {
+  "summary": "AI-written TOTP rate limiting kept attempts and lockouts only in process memory, so requests spread across workers or sent after a restart bypassed the intended limit.",
+  "mechanism": "The remediation added a per-process guard instead of shared persistent state. Each worker counted independently and restarts erased counters; a later database backend existed but production code never selected it."
+ },
+ "ALIAS-B9176A7227AD946B34143643": {
+  "summary": "AI-written GitPython blame validation blocked only output options but missed file-reading options, allowing callers to read arbitrary files through a revision argument.",
+  "mechanism": "The guard checked a short denylist before passing the caller-controlled revision to git blame. File-input options remained accepted before the path separator, so Git read the chosen victim file and returned its contents through blame output."
+ },
+ "ALIAS-A39BBCB4F9D32E18EC24C4C8": {
+  "summary": "Claude-coauthored key revocation trusted a target-key signature without checking that the authenticated requester owned the key, allowing another client with a valid signature to revoke it.",
+  "mechanism": "The unified keyserver stored the uploader as owner_client_id and passed the authenticated client_id into revoke_key, but the AI-coauthored first write never compared them before setting revoked. openssl_encrypt 1.4.2 removes the complete server surface; the history-filtered successor later adds the missing owner check and focused denial tests."
+ },
+ "GHSA-HMF7-54MH-CVP4": {
+  "summary": "Claude-coauthored key revocation trusted a target-key signature without checking that the authenticated requester owned the key, allowing another client with a valid signature to revoke it.",
+  "mechanism": "The unified keyserver stored the uploader as owner_client_id and passed the authenticated client_id into revoke_key, but the AI-coauthored first write never compared them before setting revoked. openssl_encrypt 1.4.2 removes the complete server surface; the history-filtered successor later adds the missing owner check and focused denial tests."
+ },
+ "CVE-2026-74877": {
+  "summary": "Claude-coauthored key revocation trusted a target-key signature without checking that the authenticated requester owned the key, allowing another client with a valid signature to revoke it.",
+  "mechanism": "The unified keyserver stored the uploader as owner_client_id and passed the authenticated client_id into revoke_key, but the AI-coauthored first write never compared them before setting revoked. openssl_encrypt 1.4.2 removes the complete server surface; the history-filtered successor later adds the missing owner check and focused denial tests."
  }
 }

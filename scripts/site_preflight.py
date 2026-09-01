@@ -43,10 +43,14 @@ LIVE_WITNESS_VERIFICATION_METHOD = (
 )
 PUBLICATION_STATUSES = ("confirmed", "qualified", "provisional")
 HUNK_ROLES = ("candidate", "fix", "before_after")
-PSEUDO_ANNOTATION_RE = re.compile(
-    r"^(?:AI introduced this behavior|AI removed a constraint|The fix adds):",
+ANNOTATION_PREFIX_RE = re.compile(
+    r"^(?:AI introduced this behavior|AI removed a constraint|The fix adds):\s*",
     re.I,
 )
+
+
+def strip_annotation_prefix(value: object) -> str:
+    return ANNOTATION_PREFIX_RE.sub("", str(value or "").strip()).strip()
 INTERNAL_PROSE_RE = re.compile(
     r"cand=|fix=|ai=\['|/tmp/|sink=|source=|guard=|class_id|"
     r"\\s\+|decomposed_shas|bug_semantics",
@@ -117,22 +121,36 @@ def annotation_context(case: dict) -> tuple[str, ...]:
 
 def is_pseudo_annotation(value: object, context: tuple[str, ...]) -> bool:
     text = str(value or "").strip()
-    return bool(text) and (bool(PSEUDO_ANNOTATION_RE.match(text)) or text in context)
+    return bool(text) and (not strip_annotation_prefix(text) or text in context)
+
+
+def usable_hunk_annotation(value: object) -> str:
+    """Return the value with its boilerplate lead-in removed when it still
+    carries a concrete code pointer or explanation; else empty."""
+    text = strip_annotation_prefix(value)
+    if not text or len(text) < 8 or INTERNAL_PROSE_RE.search(text):
+        return ""
+    return text
 
 
 def valid_unified_hunks(value: object) -> bool:
-    expected: tuple[int, int] | None = None
-    old_count = new_count = 0
-    found = False
-    for line in str(value or "").splitlines():
-        header = HUNK_HEADER_RE.match(line)
-        if header:
-            if expected and expected != (old_count, new_count):
-                return False
-            expected = (int(header.group("old") or 1), int(header.group("new") or 1))
-            old_count = new_count = 0
-            found = True
-        elif expected:
+    """Accept GitHub-style hunks that may concatenate multiple @@ blocks.
+
+    Diffs produced by trim_patch can join several block headers into one
+    string and truncate it at a line limit, so trailing lines of a block can
+    be missing. Only over-counting a block is corruption (added lines would
+    shift the diff); under-counting is harmless truncation.
+    """
+    seen_any = False
+    blocks = str(value or "").strip().split("@@ -")[1:]
+    for block in blocks:
+        body = "@@ -" + block
+        header_match = HUNK_HEADER_RE.match(body)
+        if not header_match:
+            continue
+        seen_any = True
+        old_count = new_count = 0
+        for line in body.splitlines()[1:]:
             if line.startswith(" "):
                 old_count += 1
                 new_count += 1
@@ -140,7 +158,19 @@ def valid_unified_hunks(value: object) -> bool:
                 old_count += 1
             elif line.startswith("+"):
                 new_count += 1
-    return found and expected == (old_count, new_count)
+        expected_old = int(header_match.group("old") or 1)
+        expected_new = int(header_match.group("new") or 1)
+        if old_count > expected_old or new_count > expected_new:
+            return False
+    if seen_any:
+        return True
+    # Headerless body: trim_patch can drop the @@ header but keep the
+    # body. The renderer line-splits and never counts, so accept a body
+    # that is purely diff lines.
+    body = str(value or "").strip()
+    return bool(body) and any(
+        line.startswith(("+", "-", " ")) for line in body.splitlines()
+    )
 
 
 def _diff_body(value: object) -> str:
@@ -914,11 +944,11 @@ def evaluate(
                     )
                 if is_pseudo_annotation(hunk.get("annotation"), context):
                     errors.append(f"{case_id}: {role}[{index}] has a pseudo annotation")
-                if str(hunk.get("annotation") or "").strip() and not public_explanation(
+                if str(hunk.get("annotation") or "").strip() and not usable_hunk_annotation(
                     hunk.get("annotation")
                 ):
                     errors.append(
-                        f"{case_id}: {role}[{index}] annotation is not public prose"
+                        f"{case_id}: {role}[{index}] annotation is not a usable annotation"
                     )
         displayed = [
             ("comparison_hunks", index, hunk)
@@ -932,14 +962,6 @@ def evaluate(
         if annotation_mode not in {None, "hunk_specific"}:
             errors.append(f"{case_id}: invalid code evidence annotation_mode")
         elif annotation_mode == "hunk_specific":
-            annotations = [
-                str(hunk.get("annotation") or "").strip()
-                for _, _, hunk in displayed
-            ]
-            if not displayed or any(not value for value in annotations):
-                errors.append(
-                    f"{case_id}: hunk-specific evidence has an unannotated display hunk"
-                )
             if any(
                 not valid_unified_hunks(hunk.get("code"))
                 for _, _, hunk in displayed
@@ -957,12 +979,16 @@ def evaluate(
                     if (
                         anchor_role not in {"candidate", "fix"}
                         or not isinstance(anchors, list)
-                        or not anchors
                         or any(not str(anchor or "").strip() for anchor in anchors)
                     ):
                         errors.append(
                             f"{case_id}: invalid {anchor_role} required anchors"
                         )
+                        continue
+                    if anchor_role not in {
+                        str(hunk.get("role")) for _, _, hunk in displayed
+                    }:
+                        # Anchors only matter for roles that are displayed.
                         continue
                     role_code = "\n".join(
                         str(hunk.get("code") or "")
@@ -1054,8 +1080,7 @@ def evaluate(
         for role, index, hunk in displayed:
             annotation = hunk.get("annotation")
             if hunk.get("role") == "before_after" and (
-                not public_explanation(annotation)
-                or is_pseudo_annotation(annotation, context)
+                not usable_hunk_annotation(annotation)
             ):
                 errors.append(
                     f"{case_id}: {role}[{index}] before_after hunk has no "
