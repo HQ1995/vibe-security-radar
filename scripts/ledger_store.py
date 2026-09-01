@@ -36,13 +36,15 @@ def load_env() -> None:
         os.environ.setdefault(key, value.strip().strip('"').strip("'"))
 
 
-def connect(*, direct: bool = False):
+def connect(*, direct: bool = False, write: bool = False):
     load_env()
-    pooled = os.environ.get("DATABASE_URL")
-    unpooled = os.environ.get("DATABASE_URL_UNPOOLED")
+    prefix = "DATABASE_URL_OWNER" if write else "DATABASE_URL"
+    pooled = os.environ.get(prefix)
+    unpooled = os.environ.get(prefix + "_UNPOOLED")
     url = unpooled if direct else pooled or unpooled
     if not url:
-        raise SystemExit("DATABASE_URL is required")
+        kind = "owner" if write else "read-only"
+        raise SystemExit(f"{prefix} (write={write}) is required for a {kind} connection")
     try:
         import psycopg
     except ImportError as exc:
@@ -98,7 +100,7 @@ def sha256(value: str | bytes) -> str:
 
 
 def migrate() -> None:
-    with connect(direct=True) as conn:
+    with connect(direct=True, write=True) as conn:
         conn.execute(SCHEMA.read_text(encoding="utf-8"))
     print("ledger schema is current")
 
@@ -108,7 +110,7 @@ def bootstrap(path: Path, actor: str) -> None:
 
     records = read_jsonl(path)
     change_set = f"bootstrap-{uuid.uuid4()}"
-    with connect(direct=True) as conn:
+    with connect(direct=True, write=True) as conn:
         conn.execute(SCHEMA.read_text(encoding="utf-8"))
         count = conn.execute("SELECT count(*) FROM ledger_rows").fetchone()[0]
         if count:
@@ -445,7 +447,7 @@ def apply_updates(
     all_assessments = sorted(
         {assessment for item in patches for assessment in item.get("assessment_ids", [])}
     )
-    with connect() as conn:
+    with connect(write=True) as conn:
         conn.execute(
             """
             INSERT INTO ledger_change_sets(
@@ -538,7 +540,7 @@ def start_run(args: argparse.Namespace) -> None:
     prompt = args.prompt_file.read_text(encoding="utf-8")
     run_id = args.run_id or str(uuid.uuid4())
     source_hash = snapshot_sha256()
-    with connect() as conn:
+    with connect(write=True) as conn:
         conn.execute(
             """
             INSERT INTO scan_runs(
@@ -564,7 +566,7 @@ def start_run(args: argparse.Namespace) -> None:
 
 
 def complete_run(run_id: str) -> None:
-    with connect() as conn:
+    with connect(write=True) as conn:
         changed = conn.execute(
             """
             UPDATE scan_runs SET completed_at = now()
@@ -589,7 +591,7 @@ def add_assessments(path: Path) -> None:
             raise ValueError(f"{path}:{number}: run_id required")
         run_ids.append(item["run_id"])
     inserted = []
-    with connect() as conn:
+    with connect(write=True) as conn:
         active_runs = {
             row[0]
             for row in conn.execute(

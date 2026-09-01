@@ -59,7 +59,7 @@ def load(kind: str, path: Path, kind_type: str) -> dict:
 def main() -> None:
     actor = "display-sync"
     values = {kind: load(kind, ROOT / rel, kind_type) for kind, rel, kind_type in SOURCES}
-    with connect(direct=True) as conn:
+    with connect(direct=True, write=True) as conn:
         conn.execute("""
             CREATE TABLE IF NOT EXISTS ledger_display (
                 kind text PRIMARY KEY,
