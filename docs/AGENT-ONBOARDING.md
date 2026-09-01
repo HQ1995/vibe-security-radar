@@ -9,6 +9,20 @@ document.
 
 ## 0. The one-sentence job
 
+
+### New machine setup (first time on this computer)
+
+- Clone the repo, then copy .env.example to .env.local and fill in only the
+  read-only connection string: NEON_BRANCH + DATABASE_URL (and
+  DATABASE_URL_UNPOOLED if used). Get those from the coordinator or Neon
+  console. Leave the DATABASE_URL_OWNER lines empty - the write role is
+  coordinator-only and must never be placed on agent machines.
+
+- The audit queue/claim tools read the pipeline cache under
+  ~/.cache/cve-analyzer/ - local per machine, not in git. If that cache is
+  empty, sync it from the coordinator host or re-run the pipeline before
+  audit_queue.py can pick work.
+
 Independently decide whether AI-written code introduced a security
 vulnerability (opened the vulnerable path, or left a fix incomplete), then
 record the judgment in the ledger so the site can publish it.
