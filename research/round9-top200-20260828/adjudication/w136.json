@@ -1,0 +1,31 @@
+{
+  "class_id": "alias-20648a6f1e6e73fc25466c98",
+  "case_id": "GHSA-m42h-3232-vpv3",
+  "repo": "nltk/nltk",
+  "advisory_ids": [
+    "CVE-2026-12243",
+    "GHSA-m42h-3232-vpv3"
+  ],
+  "bug_semantics": "nltk.data.find() validates a still-percent-encoded resource name and later passes it to url2pathname() while constructing a filesystem path. Percent encodings such as %2e%2e therefore survive the raw-string check, decode to .. only at filesystem resolution, escape the configured NLTK data root, and let find()/load() read an arbitrary process-readable file. The pathsec routing present in 3.9.4 only warned because ENFORCE was false, so it did not prevent the read.",
+  "flaw_origin": "Commit 51ceb7517237d78b843a95db56629b11d41ede2b is the smallest introducing change: it imported url2pathname and changed the ordinary-filesystem join from os.path.join(path_, resource_name) to os.path.join(path_, url2pathname(resource_name)). Its immediate parent e8c09039f8d805437a6fea14a3bce619db452eee joined the encoded string unchanged, so the advisory's percent-encoded traversal did not become a filesystem traversal there. Later checks, moves, and security wrappers did not originate that decoding primitive.",
+  "introducer_sha": "51ceb7517237d78b843a95db56629b11d41ede2b",
+  "introducer_parent": "e8c09039f8d805437a6fea14a3bce619db452eee",
+  "introducer_parent_absent": true,
+  "squash_decomposed": false,
+  "decomposed_shas": [],
+  "ai_marker": "absent — the complete BIC commit object has one parent, names Steven Xu as both author and committer, contains only the message `convert the resource names to paths in windows so data.doctest passes`, and has no AI/bot identity, Co-Authored-By, Generated-with, or similar marker.",
+  "verdict": "NOT_AI",
+  "fix_sha": "7df10e6efa0417145e370aa42d8342faa6d244b8",
+  "direct_fix_sha": "7df10e6efa0417145e370aa42d8342faa6d244b8",
+  "evidence": [
+    "The first-party GHSA-m42h-3232-vpv3 states that affected versions are <=3.9.4, patched versions are >=3.10.0, identifies the raw-check/late-url2pathname decode ordering, and prescribes decoding before checking.",
+    "`git diff e8c09039f8d805437a6fea14a3bce619db452eee 51ceb7517237d78b843a95db56629b11d41ede2b -- nltk/data.py nltk/compat.py` shows that the immediate parent used `os.path.join(path_, resource_name)` and the BIC first imported url2pathname and used `os.path.join(path_, url2pathname(resource_name))`; this directly proves parent absence for the encoded-traversal mechanism.",
+    "`git cat-file -p 51ceb7517237d78b843a95db56629b11d41ede2b` shows parent e8c09039f8d805437a6fea14a3bce619db452eee, human author/committer Steven Xu, the single Windows-path message, and no AI/bot marker or trailer. It is a normal one-parent commit, so no squash decomposition is needed.",
+    "The disputed field was fix_sha: the primary selected 155e40343cff0bf50d233e274a12e04d1428b1d9, while the reviewer selected 7df10e6efa0417145e370aa42d8342faa6d244b8. `git show --stat 155e40343cff0bf50d233e274a12e04d1428b1d9` shows a three-file, 325-addition/192-deletion aggregate titled `Enable ENFORCE by default and harden downloader concurrency (#3593)`; its relevant hunk only changes pathsec ENFORCE from false to true, generically containing an escaped path after resolution while bundling unrelated downloader concurrency work.",
+    "`git diff 4a820afa58810cd05049b6c6eae306694d6cfe65 7df10e6efa0417145e370aa42d8342faa6d244b8 -- nltk/data.py` proves the direct fix is absent from its immediate parent and added there: it imports unquote, adds `_assert_no_encoded_bypass`, checks the once-decoded value with `_UNSAFE_NO_PROTOCOL_RE`, and calls that check from resource normalization and find() before url2pathname can activate encoded separators or traversal. `git show --stat 7df10e6efa0417145e370aa42d8342faa6d244b8` confines the implementation to nltk/data.py plus its mechanism-specific regression tests.",
+    "`git merge-base --is-ancestor 7df10e6efa0417145e370aa42d8342faa6d244b8 3.9.4` exits 1, while the same command against v3.10.0 exits 0; the peeled release commits are ad9c96ba00a16923ffe917eacf63f1707bfa2d08 and bd49f9011d7dc8c6a36b3c4ae71f04060c9b3fb9. Thus the selected direct fix matches the advisory's vulnerable and patched version boundary.",
+    "The advisory-linked merge aec4fce1b84ad725b8975f7365b23a4f626572a9 is already an ancestor of 3.9.4, and `git grep -n 'ENFORCE =' 3.9.4 -- nltk/pathsec.py` returns `ENFORCE = False`; it is preparatory routing, not a release-boundary closure. Both 155e40343cff0bf50d233e274a12e04d1428b1d9 and 7df10e6efa0417145e370aa42d8342faa6d244b8 are absent from 3.9.4 and present in v3.10.0, but 155e40343cff0bf50d233e274a12e04d1428b1d9 is an earlier generic aggregate and 7df10e6efa0417145e370aa42d8342faa6d244b8 is the direct decode-before-check correction for the advisory's named mechanism."
+  ],
+  "reasoning": "The BIC is unchanged by the fix disagreement: the immediate-parent diff establishes that 51ceb7517237d78b843a95db56629b11d41ede2b first converted percent escapes into native path components, and its commit object supplies the only admissible AI evidence, which is absent. On fix_sha, the reviewer wins. The primary correctly observed that enabling pathsec enforcement at 155e40343cff0bf50d233e274a12e04d1428b1d9 can contain this read, but that commit is a broad downloader/pathsec aggregate and does not repair the advisory's raw-check/decoded-use ordering. Commit 7df10e6efa0417145e370aa42d8342faa6d244b8 directly decodes once and rejects the resulting unsafe path before url2pathname at every relevant nltk.data entry point; its parent lacks those checks, and its ancestry exactly spans the 3.9.4-to-3.10.0 boundary. It is therefore the canonical fix_sha and direct_fix_sha. With a verified smallest BIC, direct parent absence, direct version-boundary fix, and BIC-object AI signal, the gate-complete verdict is NOT_AI.",
+  "remaining_gap": null
+}

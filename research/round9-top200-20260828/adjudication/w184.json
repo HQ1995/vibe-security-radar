@@ -1,0 +1,31 @@
+{
+  "class_id": "alias-15cfd1dfca485ce4fe3fdca2",
+  "case_id": "GHSA-6pr3-cx3j-4949",
+  "repo": "rapid7/metasploit-framework",
+  "advisory_ids": [
+    "CVE-2025-37164",
+    "GHSA-6pr3-cx3j-4949"
+  ],
+  "bug_semantics": "HPE OneView exposes PUT /rest/id-pools/executeCommand without authentication. The controller deserializes the request JSON as an ExecutableCommand and passes its attacker-controlled cmd value to RuntimeExecutorService.execute, which invokes Java Runtime.exec. An unauthenticated network attacker can therefore execute arbitrary commands in the appliance's Trusted RM Container context when the ID Pools endpoint is enabled.",
+  "flaw_origin": "The vulnerable implementation is proprietary HPE OneView appliance code in guidserver.jar, specifically PoolController.executeCommand and RuntimeExecutorService, not code in rapid7/metasploit-framework. The assigned repository contains a post-disclosure exploit client and documentation. The smallest real BIC is the unavailable HPE source change that first combined unauthenticated reachability with execution of the request-controlled cmd value.",
+  "introducer_sha": null,
+  "introducer_parent": null,
+  "introducer_parent_absent": false,
+  "squash_decomposed": false,
+  "decomposed_shas": [],
+  "ai_marker": "unavailable: the true HPE OneView BIC commit object is not public and is absent from the assigned clone, so its author, committer, message, and trailers cannot be inspected. The Rapid7 exploit commit is not the BIC and supplies no admissible AI-attribution evidence.",
+  "verdict": "BLOCKED",
+  "fix_sha": null,
+  "direct_fix_sha": null,
+  "evidence": [
+    "The current HPE-authored CVE record at https://cveawg.mitre.org/api/cve/CVE-2025-37164 identifies Hewlett Packard Enterprise OneView as the affected product, marks versions less than 11.00 affected, and provides no public source repository or source commit. Its CISA enrichment labels the rapid7/metasploit-framework module URL as an exploit, not vulnerable product source.",
+    "Rapid7's first-party analysis at https://www.rapid7.com/blog/post/ra-cve-2025-37164-analysis/ decompiles @DocAuthSpecial(SpecialAuthType.NO_AUTH) PoolController.executeCommand, shows exeCmd.getCmd() flowing to runtimeExecutor.execute and Runtime.getRuntime().exec(command), and reports that hotfix HPE_OneView_CVE_37164_Z7550-98077.bin adds RewriteRule ^/rest/id-pools/executeCommand$ - [R=404,L]. The same analysis states that affected OneView versions are before 11.0. This verifies mechanism and the product release boundary, but not a Git fix object.",
+    "An exact repository search for com.hp.ci.mgmt.guidpools.controllers.PoolController, com.hp.ci.mgmt.guidpools.service.RuntimeExecutorService, and RuntimeExecutorService returned no matches in the assigned clone. The vulnerable HPE classes and their source history are absent.",
+    "NUMA-node-1 git log --follow --format=%H%x09%P%x09%aI%x09%s -- modules/exploits/linux/http/hpe_oneview_rce.rb identifies a4dba967122de40dc3e4cba554dc4fa2be73ca48 as the file's first commit, dated 2025-12-19T15:30:53+00:00, with immediate parent 2bb30ba7a3eae4560a7e8ac34e09339804ddef2e. It landed after HPE's 2025-12-16 disclosure and therefore cannot be the vulnerability introducer.",
+    "NUMA-node-1 git diff-tree --no-commit-id --name-status -r a4dba967122de40dc3e4cba554dc4fa2be73ca48 reports two additions only: the Metasploit documentation and exploit module. git ls-tree shows the module absent from direct parent 2bb30ba7a3eae4560a7e8ac34e09339804ddef2e and present in a4dba967122de40dc3e4cba554dc4fa2be73ca48. git show of the added module sends the malicious PUT to the external HPE endpoint. Thus this is neither a move/refactor/revert nor a squash aggregate hiding an HPE BIC; it is post-disclosure exploit code in the wrong repository and is rejected as the BIC.",
+    "NUMA-node-1 git cat-file -p a4dba967122de40dc3e4cba554dc4fa2be73ca48 confirms its single parent, Rapid7 author and committer, and message 'add in the HPE OneView exploit', with no trailer block. Because that object is not the BIC, its marker state is excluded rather than transferred to the unavailable HPE BIC. No true BIC commit object exists here to inspect for an AI marker.",
+    "The assigned marker_state disagreement is lexical: the primary says 'unavailable' while the reviewer says 'Not assessable'. The command/object evidence resolves the canonical state as unavailable, because there is no true BIC object on which an AI marker could be present or absent. The primary's explicit state label therefore wins; the reviewer's prose is substantively consistent but not the canonical label."
+  ],
+  "reasoning": "Vulnerability-first tracing places the causal endpoint and Runtime.exec sink in HPE's closed appliance. The Rapid7 repository was linked as an exploit reference and first added its client three days after disclosure, so treating that addition, any later edit, or its direct parent as the BIC would invert cause and proof-of-concept. The candidate is a simple two-file exploit addition rather than an import, move, refactor, revert, or squash aggregate, but that does not make it the vendor BIC. The direct parent check is valid only for the exploit module and cannot prove absence of the proprietary flaw from the unknown HPE BIC parent; introducer_parent_absent therefore remains false. The HPE CNA record and Rapid7 analysis establish the affected boundary below 11.00 and the hotfix's endpoint-blocking behavior, but neither remediation maps to a commit in this clone. For the sole marker_state disagreement, only the real BIC commit object is admissible: because it is unavailable, the resolved state is unavailable, not marker-present or marker-absent. This makes BLOCKED gate-complete rather than an attribution verdict.",
+  "remaining_gap": "HPE OneView source/VCS history is not public in the assigned repository. Closing the audit requires the full commit object for the first HPE source change that created the unauthenticated executeCommand-to-Runtime.exec path, its immediate parent tree, any squash-member history, and the source commit corresponding to OneView 11.00 or the HPE hotfix. Until those objects are available, the smallest BIC, direct-parent absence, squash decomposition, source-level fix SHAs, and BIC-only AI marker state cannot be observed."
+}

@@ -1,0 +1,47 @@
+{
+  "class_id": "alias-b6e3fc0b1ea1f97e4a86bbc5",
+  "case_id": "GHSA-p3f5-w63m-mxph",
+  "repo": "webpack/webpack-dev-middleware",
+  "advisory_ids": [
+    "CVE-2026-76844",
+    "GHSA-p3f5-w63m-mxph"
+  ],
+  "bug_semantics": "getFilenameFromUrl accepts a decoded request pathname when it merely starts with the configured publicPath pathname, rejects dot-dot only when UP_PATH_REGEXP sees `..` as a complete path segment, and then slices the accepted string at publicPathPathname.length before joining the suffix to outputPath. With a non-slash-terminated publicPath `/assets`, `/assets../.env` passes the prefix check and guard because `..` remains embedded in the `assets..` segment, but the fixed-offset slice yields `../.env`, so path.join resolves one directory above outputPath. Disclosure requires a physical or custom output filesystem, such as writeToDisk; the default memfs and default publicPath `auto`/`/` do not expose this path, and URL normalization limits this bypass to one parent directory.",
+  "flaw_origin": "This is the incomplete CVE-2024-29180 remediation developed in PR #1771. The first member commit, a840f5abc1f49539a7dc8b3d13c3fbec0f090450, directly added the decoded-path UP_PATH_REGEXP guard while retaining boundary-blind startsWith containment and the fixed-offset slice/path.join construction. GitHub later squash-landed the 14-member PR as e10008c762e4d5821ed6990348dabf0d4d93a10e; equivalent maintenance-line landings were 9670b3495da518fe667ff3428c5e4cb9f2f3d353 and 189c4ac7d2344ec132a4689e74dc837ec5be0132.",
+  "introducer_sha": "a840f5abc1f49539a7dc8b3d13c3fbec0f090450",
+  "introducer_parent": "ab533de933c6684218172b86992f35c3ca6c58a4",
+  "introducer_parent_absent": true,
+  "squash_decomposed": true,
+  "decomposed_shas": [
+    "a840f5abc1f49539a7dc8b3d13c3fbec0f090450",
+    "145f03c376a379a9c8746d0a0d12003e7438138e",
+    "c8447f7d2bfba11b4998a1c5e760bb0812af3472",
+    "f8dd4b76c4609e4abd2119ef32db5578d1257f31",
+    "1baf30c11364cf4ccf95c2977b2d46e384bff5f5",
+    "fa133c36262b1785b55057a6c4dce18a244ae47a",
+    "b0f671ec8f8062090a9b0aa660bba3a2ed19eb03",
+    "887eaf822c0ee0bab7c1931c63dede1d16d4fee0",
+    "fb305ff460b373c87500b9678fb36e5297aa50d2",
+    "e114a950d19b84587d0b50fa8e7def6d2aca5c42",
+    "fb0dcc23968b5611cb2eaddbeb436b9bb1a0877c",
+    "d0edf11b041c554b158e4ebecf29a58785a26335",
+    "4019ebf39c3f41e750c14f6da14d7408450099eb",
+    "a7a8cf3c7352774e9818aab40df1a439da3894e3"
+  ],
+  "ai_marker": "absent — the BIC commit object names human author and committer `alexander.akait <sheo13666q@gmail.com>`, has only the message `fix(security): do not allow to read files above`, contains no Co-Authored-By, Generated-with, or other AI trailer, and uses no bot identity.",
+  "verdict": "NOT_AI",
+  "fix_sha": null,
+  "direct_fix_sha": null,
+  "evidence": [
+    "The disputed introducer_sha was primary a840f5abc1f49539a7dc8b3d13c3fbec0f090450 versus reviewer e10008c762e4d5821ed6990348dabf0d4d93a10e. `git cat-file commit a840f5abc1f49539a7dc8b3d13c3fbec0f090450` reports parent ab533de933c6684218172b86992f35c3ca6c58a4, and `git show --format=fuller --find-renames --find-copies a840f5abc1f49539a7dc8b3d13c3fbec0f090450 -- src/utils/getFilenameFromUrl.js` directly adds UP_PATH_REGEXP, decode-before-check, startsWith containment, the segment-only guard, the fixed-offset slice, and path.join. The public GitHub commit object also reports six modified files and the same parent. `git diff-tree -r -M -C` classifies all six as modifications, not a rename, copy, import, or later move. This is the first member that actually writes the disputed vulnerable security design.",
+    "The reviewer candidate is an excluded squash aggregate, not the smallest BIC. `git cat-file commit e10008c762e4d5821ed6990348dabf0d4d93a10e` shows the same base parent ab533de933c6684218172b86992f35c3ca6c58a4 and message suffix `(#1771)`. PR #1771 reports base ab533de933c6684218172b86992f35c3ca6c58a4 and head a7a8cf3c7352774e9818aab40df1a439da3894e3. `git rev-list --reverse --ancestry-path ab533de933c6684218172b86992f35c3ca6c58a4..a7a8cf3c7352774e9818aab40df1a439da3894e3` yields the recorded 14-member chain beginning with a840f5abc1f49539a7dc8b3d13c3fbec0f090450, while `git rev-parse e10008c762e4d5821ed6990348dabf0d4d93a10e^{tree} a7a8cf3c7352774e9818aab40df1a439da3894e3^{tree}` returns ef4a2105582f172a550153d46febad6a0226d526 twice. Therefore e10008c is the aggregate of the final PR tree and protocol requires decomposing it; the primary claim wins and the reviewer claim is wrong.",
+    "Direct-parent absence is verified against the actual parent tree: `git show ab533de933c6684218172b86992f35c3ca6c58a4:src/utils/getFilenameFromUrl.js` contains the older pathname-prefix/slice logic but no UP_PATH_REGEXP, no decode-before-guard flow, and no guarded-but-bypassable security construction. The parent remains affected by predecessor CVE-2024-29180, but the specific incomplete-fix state of CVE-2026-76844 is absent, so introducer_parent_absent is true.",
+    "A direct mechanism reproduction with Node gives normalized `assets../.env`, guard false, suffix `../.env`, and joined path `/srv/app/.env` for pathname `/assets../.env`, publicPath `/assets`, and outputPath `/srv/app/dist`. This verifies that the lines first written by a840f5abc1f49539a7dc8b3d13c3fbec0f090450 implement the current advisory's escape mechanism rather than merely adjacent security code.",
+    "The advisory boundary and Git tag boundary agree. GHSA-p3f5-w63m-mxph says the incomplete guard/slice fix is present in every release from 5.3.4, 6.1.2, and 7.1.0 onward. The predecessor advisory GHSA-wr3j-pwj9-hqq6 lists 5.3.4, 6.1.2, and 7.1.0 as its patched releases and names landings 189c4ac7d2344ec132a4689e74dc837ec5be0132, 9670b3495da518fe667ff3428c5e4cb9f2f3d353, and e10008c762e4d5821ed6990348dabf0d4d93a10e. `git tag --contains` starts at v7.1.0 for e10008c, returns v6.1.2 and v6.1.3 for 9670b34, and returns v5.3.4 for 189c4ac; no preceding release in those lines contains its landing.",
+    "Aggregate/refactor rejection is cross-checked by `git log --all --reverse -S 'const UP_PATH_REGEXP' -- src/utils/getFilenameFromUrl.js src/middleware.js`: the reachable additions are the three squash/backport landings e10008c762e4d5821ed6990348dabf0d4d93a10e, 9670b3495da518fe667ff3428c5e4cb9f2f3d353, and 189c4ac7d2344ec132a4689e74dc837ec5be0132, followed by 71ab7ba864ab14b981b615750371406c522cd4a0 (`refactor: merge all utils`). The direct public PR-member object a840f5abc1f49539a7dc8b3d13c3fbec0f090450 predates the aggregate and directly modifies the original utility; the later merge-all-utils move is not an origin.",
+    "No closing fix exists in the audited history. `git rev-parse refs/remotes/origin/main` is 11ea5b0f98f6610cccc6de22d654e343028ca602, `git describe --tags --abbrev=0` there is v8.1.1, and `git grep` at both objects still finds UP_PATH_REGEXP, pathname.startsWith(publicPathPathname), and pathname.slice(publicPathPathname.length) in src/middleware.js. The current advisory lists affected and patched versions as unknown and describes all releases from the three 2024 boundary releases onward as affected. Thus fix_sha and direct_fix_sha are justified nulls for an explicitly unpatched case.",
+    "Only the resolved BIC commit object was used for AI attribution. `git cat-file commit a840f5abc1f49539a7dc8b3d13c3fbec0f090450` shows author and committer `alexander.akait <sheo13666q@gmail.com>` and the complete single-line message `fix(security): do not allow to read files above`; it has no trailers, generated-with marker, or bot identity. The squash commit's GitHub service committer is irrelevant after decomposition."
+  ],
+  "reasoning": "Both audits correctly identified the residual one-directory traversal and its release lifecycle, but they disagreed on whether to attribute it to the first PR member or the GitHub squash landing. The primary is correct. The protocol defines the BIC as the smallest commit that first wrote the vulnerable lines and expressly excludes squash aggregates. Object and patch inspection proves a840f5abc1f49539a7dc8b3d13c3fbec0f090450 directly writes the decoded-path, segment-guard, boundary-blind prefix, and fixed-offset slice construction on a parent that lacks that incomplete-fix state. The matching tree of e10008c762e4d5821ed6990348dabf0d4d93a10e and PR head a7a8cf3c7352774e9818aab40df1a439da3894e3, together with the 14-member ancestry chain, proves the reviewer chose the squash aggregate rather than the smallest real commit. This is not an import, rename, or later move. The three official landings establish first affected release boundaries 7.1.0, 6.1.2, and 5.3.4, and the vulnerable construction remains in v8.1.1 and main tip 11ea5b0f98f6610cccc6de22d654e343028ca602, so the explicit unpatched exception closes the fix gate with null fix fields. The actual BIC object is human-authored and has no AI marker, yielding NOT_AI.",
+  "remaining_gap": "The vulnerability is still unpatched in the audited public history: no remediation commit, direct fix, or fixed release exists through origin/main 11ea5b0f98f6610cccc6de22d654e343028ca602 and latest reachable tag v8.1.1. Accordingly fix_sha and direct_fix_sha remain null; there is no unresolved introducer or attribution gap."
+}

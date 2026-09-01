@@ -1,0 +1,34 @@
+{
+  "class_id": "alias-7cbb5ef103c773c164aaf4d9",
+  "case_id": "GHSA-jh23-4vmr-7f8q",
+  "repo": "bash-it/bash-it",
+  "advisory_ids": [
+    "CVE-2026-73036",
+    "GHSA-jh23-4vmr-7f8q"
+  ],
+  "bug_semantics": "With the barbuk theme active, when neither CONDA_DEFAULT_ENV nor VIRTUAL_ENV_PROMPT supplies the segment and the current directory contains pyproject.toml, __python_venv_prompt extracts the double-quoted requires-python value with awk and emits it without neutralizing terminal control sequences. __prompt-command captures that directory-controlled output and appends it directly to PS1, so entering an attacker-prepared directory can cause raw OSC/CSI sequences to be interpreted by the terminal on every prompt render.",
+  "flaw_origin": "The default-branch commit f4443b147be00b0c198efcf7adbf546d761418d1 is a squash aggregate of PR #2367, not the smallest BIC. The retained member 2e53f8956f8c48b7138b556dca9b002f17d06562 alone added the pyproject.toml fallback, unfiltered requires-python extraction, and echo into the existing PS1 compositor. Its direct parent 8417414a15ca085a05d4822e65e7bbbd48876e72 has no file-derived prompt path.",
+  "introducer_sha": "2e53f8956f8c48b7138b556dca9b002f17d06562",
+  "introducer_parent": "8417414a15ca085a05d4822e65e7bbbd48876e72",
+  "introducer_parent_absent": true,
+  "squash_decomposed": true,
+  "decomposed_shas": [
+    "2e53f8956f8c48b7138b556dca9b002f17d06562"
+  ],
+  "ai_marker": "absent: git cat-file -p 2e53f8956f8c48b7138b556dca9b002f17d06562 shows human author and committer BarbUk <julien.virey@gmail.com>, a GPG signature, and the ordinary message 'Handle more dev tools' with four description lines; the BIC commit object contains no AI-tool, generated-with, coauthor, or bot marker.",
+  "verdict": "NOT_AI",
+  "fix_sha": "fab8f57818f28bfc6f2a81f86a58981c4ea72e5a",
+  "direct_fix_sha": "404bba0725abd6809e298199dc9a8555a1efb142",
+  "evidence": [
+    "The assigned advisory bundle identifies the affected barbuk prompt path and directly references fix commit fab8f57818f28bfc6f2a81f86a58981c4ea72e5a. Git shows that object is a merge with default-branch parent 30415491e6118daea08477e92405d3a2b07c9b09 and fix-branch tip 404bba0725abd6809e298199dc9a8555a1efb142.",
+    "git diff 8417414a15ca085a05d4822e65e7bbbd48876e72 2e53f8956f8c48b7138b556dca9b002f17d06562 -- themes/barbuk/barbuk.theme.bash shows the BIC adding the pyproject.toml branch, raw awk extraction, and emitted python_info. The parent version only reads active Conda or virtualenv state and has no requires-python input, directly proving parent absence.",
+    "git show -s reports identical tree 5c55798c29723f30037d2249c0c8a86c4ecc17b5 for default-branch squash f4443b147be00b0c198efcf7adbf546d761418d1 and retained PR tip e7fb96930384b124bdfb4a8e1b4a5e9711cbca0c. The member diff isolates 2e53f8956f8c48b7138b556dca9b002f17d06562 as the authoring change, so the aggregate is rejected as BIC.",
+    "BIC-only AI check: raw git cat-file -p 2e53f8956f8c48b7138b556dca9b002f17d06562 gives parent 8417414a15ca085a05d4822e65e7bbbd48876e72, BarbUk as both author and committer, a signature, and the complete non-AI-attributed message. No fix-branch identity or later commit was used for attribution.",
+    "The listed fix disagreement is between the primary's direct_fix_sha 7b7718c7e2a7f906e9bfcb988d547bfe0015b9e7 and the reviewer's 404bba0725abd6809e298199dc9a8555a1efb142; both agree on landed fix_sha fab8f57818f28bfc6f2a81f86a58981c4ea72e5a. Git shows 7b7718c7e2a7f906e9bfcb988d547bfe0015b9e7 is only an intermediate child of revert 496e52ec973beadb80bf4bceb97f176bd4c164f5, while 404bba0725abd6809e298199dc9a8555a1efb142 is its child and the merge's direct second parent.",
+    "The intermediate 7b7718c7e2a7f906e9bfcb988d547bfe0015b9e7 patch only adds source-level awk sanitation that removes non-printable bytes and literal backslash-letter pairs; it leaves Bash echo behavior and the common segment sink unchanged. A targeted probe executing that exact awk rule with shopt -s xpg_echo and a printable \\033]0;PWN\\033\\\\ value emitted bytes 1b 5d 30 3b 50 57 4e 1b 5c 0a, proving an OSC sequence remains possible through textual octal escapes. The probe with 404bba0725abd6809e298199dc9a8555a1efb142's exact info=${info//[[:cntrl:]]/} sink strip emitted only 5d 30 3b 50 57 4e 5c, with both ESC bytes removed. Therefore the reviewer wins: 404bba0725abd6809e298199dc9a8555a1efb142 is the complete direct fix, while 7b7718c7e2a7f906e9bfcb988d547bfe0015b9e7 is incomplete alone.",
+    "git diff 30415491e6118daea08477e92405d3a2b07c9b09 fab8f57818f28bfc6f2a81f86a58981c4ea72e5a -- themes/barbuk/barbuk.theme.bash shows the vulnerable plain {print $2} extraction in the merge parent and all three landed measures in the merge: source sanitation, removal of echo -e from git_prompt_info, and common [[:cntrl:]] stripping. rev-parse gives the same affected-file blob b3f2827c00c21104d994ac860766a7f27371f0e0 at direct tip 404bba0725abd6809e298199dc9a8555a1efb142 and merge fab8f57818f28bfc6f2a81f86a58981c4ea72e5a.",
+    "Version-boundary checks resolve v3.2.0 to 0f04edce0ca93fbe66f1fe23c8d9b7a01e53f94c, the immediate parent of landed squash f4443b147be00b0c198efcf7adbf546d761418d1. merge-base verifies v3.2.0 -> f4443b147be00b0c198efcf7adbf546d761418d1 -> vulnerable fix parent 30415491e6118daea08477e92405d3a2b07c9b09 -> fix merge fab8f57818f28bfc6f2a81f86a58981c4ea72e5a, and git tag --contains returns no tag for either the landed introducer or fix. Thus the immutable v3.2.0 tag lacks the flaw; the vulnerable and patched boundaries are unreleased default-branch commits."
+  ],
+  "reasoning": "The vulnerability begins when PR member 2e53f8956f8c48b7138b556dca9b002f17d06562 first crosses the directory-file-to-terminal trust boundary; its immediate parent lacks that path, and the later default-branch squash only aggregates the member. The BIC object carries no AI attribution, so the gate-complete verdict is NOT_AI. On the sole listed fix dispute, the advisory-linked landed merge is uncontroversially fab8f57818f28bfc6f2a81f86a58981c4ea72e5a, but the primary selected intermediate 7b7718c7e2a7f906e9bfcb988d547bfe0015b9e7 as the direct fix whereas the reviewer selected branch tip 404bba0725abd6809e298199dc9a8555a1efb142. Commit parentage, affected-file blob identity at the merge, and the exact xpg_echo octal-escape probe all favor the reviewer: 7b7718c7e2a7f906e9bfcb988d547bfe0015b9e7 does not close every terminal-escape path by itself, while 404bba0725abd6809e298199dc9a8555a1efb142 adds the final common-sink control stripping and is the commit directly merged. The tag/ancestry checks also prevent repeating the advisory summary's inaccurate literal v3.2.0 boundary.",
+  "remaining_gap": null
+}
