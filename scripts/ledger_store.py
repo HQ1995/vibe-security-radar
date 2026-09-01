@@ -18,6 +18,7 @@ from audit_envelope import violations
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_LEDGER = ROOT / "artifacts/funnel-account-20260817.jsonl"
 DEFAULT_HISTORY = ROOT / "artifacts/ledger-history"
+EXPORT_MARKER_NAME = ".funnel-export-marker.json"
 SCHEMA = ROOT / "scripts/ledger_schema.sql"
 ENV_FILE = ROOT / ".env.local"
 TERMINAL_STATUSES = {"NOT_AI", "AI_ROOT_CAUSE", "AI_CODE_FLAWED", "BLOCKED", "FALSE_POSITIVE"}
@@ -275,6 +276,100 @@ def export_jsonl(path: Path, *, force: bool = False) -> None:
     print(f"exported {content.count(chr(10).encode())} rows to {path} sha256={sha256(content)}")
 
 
+INCREMENTAL_ROWS_SQL = """
+SELECT class_id, raw_json, revision, updated_at
+FROM ledger_rows WHERE updated_at > %s ORDER BY ordinal
+"""
+
+
+def _marker_path(path: Path) -> Path:
+    return path.with_name(EXPORT_MARKER_NAME)
+
+
+def _max_updated_at() -> str:
+    with connect() as conn:
+        latest = conn.execute("SELECT max(updated_at) FROM ledger_rows").fetchone()[0]
+    if latest is None:
+        return ""
+    return latest.isoformat()
+
+
+def read_jsonl_map(path: Path) -> dict[str, tuple[str, dict]]:
+    """class_id -> (raw line, row) for the full local jsonl; no egress."""
+    return {row["class_id"]: (line, row) for line, row in read_jsonl(path)}
+
+
+def _write_jsonl_map(path: Path, records: dict[str, tuple[str, dict]]) -> None:
+    tmp = path.with_name(f".{path.name}.tmp")
+    with tmp.open("w", encoding="utf-8") as handle:
+        for raw, _row in records.values():
+            handle.write(raw if raw.endswith(chr(10)) else raw + chr(10))
+    os.replace(tmp, path)
+
+
+def export_jsonl_incremental(path: Path, *, force: bool = False) -> bool:
+    """Delta-export ledger_rows into the local jsonl, gated on updated_at.
+
+    Returns True when the file was rewritten. A no-marker first run reuses the
+    export_jsonl snapshot digest gate: an up-to-date local file costs only the
+    64-byte sha256 probe, and only a stale file triggers a full transfer.
+    """
+    marker_path = _marker_path(path)
+    cursor = None
+    if marker_path.exists() and not force:
+        try:
+            cursor = json.loads(marker_path.read_text(encoding="utf-8"))["updated_at"]
+        except (KeyError, json.JSONDecodeError):
+            cursor = None
+    if cursor:
+        with connect() as conn:
+            changed = conn.execute(INCREMENTAL_ROWS_SQL, (cursor,)).fetchall()
+        if changed:
+            local = read_jsonl_map(path)
+            for class_id, raw, _revision, _updated_at in changed:
+                local[class_id] = (raw + chr(10), json.loads(raw))
+            _write_jsonl_map(path, local)
+            max_updated = max(row[3] for row in changed)
+            marker_path.write_text(
+                json.dumps(
+                    {"updated_at": max_updated.isoformat()},
+                    indent=2,
+                    sort_keys=True,
+                )
+                + chr(10),
+                encoding="utf-8",
+            )
+            print(
+                f"exported {len(changed)} incremental rows to {path} "
+                f"sha256={sha256(path.read_bytes())}"
+            )
+            return True
+        # No rows past the cursor. Confirm the local file still matches the
+        # server-side digest (64-byte probe) before skipping; a miss falls
+        # through to a full export below.
+        if path.exists() and sha256(path.read_bytes()) == snapshot_sha256():
+            return False
+    digest = snapshot_sha256()
+    if not force and path.exists() and sha256(path.read_bytes()) == digest:
+        marker_path.write_text(
+            json.dumps({"updated_at": _max_updated_at()}, indent=2, sort_keys=True)
+            + chr(10),
+            encoding="utf-8",
+        )
+        print(
+            f"export primed: {path} already matches snapshot sha256={digest[:16]} "
+            "; wrote marker, no transfer"
+        )
+        return False
+    export_jsonl(path, force=True)
+    marker_path.write_text(
+        json.dumps({"updated_at": _max_updated_at()}, indent=2, sort_keys=True)
+        + chr(10),
+        encoding="utf-8",
+    )
+    return True
+
+
 def get_row(class_id: str) -> None:
     with connect() as conn:
         found = conn.execute(
@@ -434,6 +529,7 @@ def apply_updates(
             (change_set,),
         )
     print(f"applied {len(patches)} rows in change set {change_set}")
+    export_jsonl_incremental(DEFAULT_LEDGER)
 
 
 def start_run(args: argparse.Namespace) -> None:
@@ -894,6 +990,9 @@ def build_parser() -> argparse.ArgumentParser:
     exp = sub.add_parser("export")
     exp.add_argument("--out", type=Path, default=DEFAULT_LEDGER)
     exp.add_argument("--force", action="store_true")
+    exp_inc = sub.add_parser("export-incremental")
+    exp_inc.add_argument("--out", type=Path, default=DEFAULT_LEDGER)
+    exp_inc.add_argument("--force", action="store_true")
     hist_export = sub.add_parser("export-history")
     hist_export.add_argument("--out", type=Path, default=DEFAULT_HISTORY)
     hist_export.add_argument("--force", action="store_true")
@@ -935,6 +1034,8 @@ def main() -> int:
         bootstrap(args.ledger, args.actor)
     elif args.command == "export":
         export_jsonl(args.out, force=args.force)
+    elif args.command == "export-incremental":
+        export_jsonl_incremental(args.out, force=args.force)
     elif args.command == "export-history":
         export_history(args.out, force=args.force)
     elif args.command == "get":

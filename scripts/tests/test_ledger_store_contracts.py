@@ -7,7 +7,12 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from ledger_store import read_patches, validate_update
+from ledger_store import (
+    read_patches,
+    validate_update,
+    export_jsonl_incremental,
+    _marker_path,
+)
 from audit_record_gates import check_record
 
 
@@ -106,6 +111,67 @@ class LedgerStoreContracts(unittest.TestCase):
         from audit_envelope import violations
         row = {"class_id": "alias-fp", "status": "FALSE_POSITIVE", "advisory_ids": ["CVE-2025-63391"], "causal_research": record}
         self.assertEqual(violations(row), [])
+
+    def test_incremental_export_merges_only_changed_rows(self):
+        import ledger_store as store
+        from datetime import datetime, timezone
+
+        base_rows = [
+            {"class_id": "case-keep", "status": "NOT_AI", "advisory_ids": []},
+            {"class_id": "case-edit", "status": "AI_ROOT_CAUSE", "advisory_ids": []},
+        ]
+        now = datetime(2026, 9, 1, 4, 0, 0, tzinfo=timezone.utc)
+        changed_rows = [
+            (
+                "case-edit",
+                json.dumps({"class_id": "case-edit", "status": "BLOCKED", "advisory_ids": []}, ensure_ascii=False),
+                2,
+                now,
+            ),
+            (
+                "case-new",
+                json.dumps({"class_id": "case-new", "status": "FALSE_POSITIVE", "advisory_ids": []}, ensure_ascii=False),
+                1,
+                now,
+            ),
+        ]
+
+        class FakeConn:
+            def __enter__(self):
+                return self
+            def __exit__(self, *args):
+                return False
+            def execute(self, sql, params):
+                return self
+            def fetchall(self):
+                return changed_rows
+
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "ledger.jsonl"
+            nl = chr(10)
+            path.write_text(nl.join(json.dumps(r) for r in base_rows) + nl)
+            _marker_path(path).write_text(
+                json.dumps({"updated_at": "2026-09-01T03:00:00+00:00"})
+            )
+            original = store.connect
+            store.connect = lambda **kwargs: FakeConn()
+            try:
+                result = export_jsonl_incremental(path)
+            finally:
+                store.connect = original
+            self.assertTrue(result)
+            rows = {
+                json.loads(line)["class_id"]: json.loads(line)
+                for line in path.read_text().splitlines()
+                if line.strip()
+            }
+            self.assertEqual(set(rows), {"case-keep", "case-edit", "case-new"})
+            self.assertEqual(rows["case-edit"]["status"], "BLOCKED")
+            self.assertEqual(rows["case-new"]["status"], "FALSE_POSITIVE")
+            self.assertEqual(
+                json.loads(_marker_path(path).read_text())["updated_at"],
+                "2026-09-01T04:00:00+00:00",
+            )
 
 
 if __name__ == "__main__":
