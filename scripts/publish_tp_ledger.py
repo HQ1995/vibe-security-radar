@@ -40,6 +40,50 @@ DATE_FALLBACK = (
     ROOT / "research/orchestrator-260814-ghsa200-canvas/sweep/ghsa-first-party-dates.json"
 )
 
+_DB_DISPLAY_CACHE: dict[str, dict] | None = None
+
+
+def _db_display() -> dict[str, dict] | None:
+    """Load the ledger_display table from Neon as a {kind: value} map.
+
+    Returns None when no DATABASE_URL is configured (local dev or CI without
+    the secret) so callers fall back to the research/ files. Errors are
+    non-fatal: publication must not depend on Neon availability.
+    """
+    global _DB_DISPLAY_CACHE
+    if _DB_DISPLAY_CACHE is not None:
+        return _DB_DISPLAY_CACHE
+    import os
+
+    if not os.environ.get("DATABASE_URL"):
+        _DB_DISPLAY_CACHE = {}
+        return _DB_DISPLAY_CACHE
+    try:
+        sys.path.insert(0, str(ROOT / "scripts"))
+        from ledger_store import connect
+
+        out: dict[str, dict] = {}
+        with connect(direct=True) as conn:
+            rows = conn.execute(
+                "SELECT kind, value_json FROM ledger_display"
+            ).fetchall()
+        for kind, value in rows:
+            if isinstance(value, dict):
+                out[str(kind)] = value
+        _DB_DISPLAY_CACHE = out
+        return out
+    except Exception as exc:  # noqa: BLE001 - never break publication
+        print(f"ledger_display unavailable (falling back to files): {exc}", file=sys.stderr)
+        _DB_DISPLAY_CACHE = {}
+        return _DB_DISPLAY_CACHE
+
+
+def _db_display_kind(kind: str) -> dict:
+    display = _db_display()
+    if not display:
+        return {}
+    return display.get(kind) or {}
+
 TP_STATUSES = {"AI_ROOT_CAUSE", "AI_CODE_FLAWED"}
 # Inclusive GHSA/CVE publication window of the funnel ledger.
 LEDGER_WINDOW_START = "2025-05-01"
@@ -434,7 +478,9 @@ def scrub_evidence(
         if len(str(cleaned.get("summary") or "")) > 180
         else (cleaned.get("mechanism") or cleaned.get("summary") or "")
     )
-    fulltexts = load_json(ANNOTATION_FULLTEXTS) or {}
+    fulltexts = _db_display_kind("annotation_fulltext")
+    if not fulltexts:
+        fulltexts = load_json(ANNOTATION_FULLTEXTS) or {}
     annotation_context = tuple(
         str(value).strip()
         for value in (
@@ -980,7 +1026,14 @@ def normalize_ir_chain(raw: dict | None) -> dict | None:
 
 def load_advisory_dates() -> dict[str, str]:
     dates: dict[str, str] = {}
+    db_dates = _db_display_kind("advisory_dates_fallback")
     for path in (DATE_FALLBACK, ADVISORY_DATES):
+        if str(path) == str(DATE_FALLBACK) and db_dates:
+            for key, value in db_dates.items():
+                text = str(value or "")[:10]
+                if key and len(text) >= 10 and text[4] == "-":
+                    dates[str(key).upper()] = text
+            continue
         payload = load_json(path)
         if not isinstance(payload, dict):
             continue
@@ -1076,7 +1129,9 @@ def _index_prose(value: object) -> None:
 
 def _load_summary_maps() -> None:
     global AI_SUMMARIES, AI_SUMMARIES_MECHANISM, ANNOTATION_PROSE
-    overlay = load_json(AI_CASE_SUMMARIES) or {}
+    overlay = _db_display_kind("ai_summaries")
+    if not overlay:
+        overlay = load_json(AI_CASE_SUMMARIES) or {}
     AI_SUMMARIES = {}
     AI_SUMMARIES_MECHANISM = {}
     ANNOTATION_PROSE = {}
@@ -1094,19 +1149,29 @@ def _load_summary_maps() -> None:
             _index_prose(json.loads(line))
         except (json.JSONDecodeError, ValueError):
             continue
-    for prose_path in sorted(ROUND_ADJUDICATION.glob("*.json")):
-        try:
-            _index_prose(json.loads(prose_path.read_text(encoding="utf-8")))
-        except (json.JSONDecodeError, ValueError, OSError):
-            continue
-    for patch_path in sorted(ROOT.glob("research/*/finalize-patches.jsonl")):
-        for line in patch_path.read_text(encoding="utf-8").splitlines():
-            if not line.strip():
-                continue
+    db_round9 = _db_display_kind("round9_adjudication")
+    if db_round9:
+        for value in db_round9.values():
+            _index_prose(value)
+    else:
+        for prose_path in sorted(ROUND_ADJUDICATION.glob("*.json")):
             try:
-                _index_prose(json.loads(line))
-            except (json.JSONDecodeError, ValueError):
+                _index_prose(json.loads(prose_path.read_text(encoding="utf-8")))
+            except (json.JSONDecodeError, ValueError, OSError):
                 continue
+    db_patches = _db_display_kind("finalize_patches")
+    if db_patches:
+        for value in db_patches.values():
+            _index_prose(value)
+    else:
+        for patch_path in sorted(ROOT.glob("research/*/finalize-patches.jsonl")):
+            for line in patch_path.read_text(encoding="utf-8").splitlines():
+                if not line.strip():
+                    continue
+                try:
+                    _index_prose(json.loads(line))
+                except (json.JSONDecodeError, ValueError):
+                    continue
     for key, mechanism in AI_SUMMARIES_MECHANISM.items():
         prose = ANNOTATION_PROSE.get(mechanism[:100])
         if prose and prose.startswith(mechanism):
@@ -1198,6 +1263,22 @@ def first_party_date(*keys: object, dates: dict[str, str]) -> str | None:
 
 
 def load_ir_chains(path: Path) -> dict[str, dict]:
+    if str(path) == str(IR_CHAINS):
+        db_chains = _db_display_kind("ir_chains")
+        if db_chains:
+            return {
+                str(case_id).upper(): normalize_ir_chain(raw)
+                for case_id, raw in db_chains.items()
+                if normalize_ir_chain(raw)
+            }
+    elif str(path) == str(IR_CHAIN_UPDATES):
+        db_updates = _db_display_kind("ir_chain_updates")
+        if db_updates:
+            return {
+                str(case_id).upper(): normalize_ir_chain(raw)
+                for case_id, raw in db_updates.items()
+                if normalize_ir_chain(raw)
+            }
     index: dict[str, dict] = {}
     if not path.exists():
         return index
@@ -1784,7 +1865,7 @@ def main() -> None:
         "cases": cases,
     }
 
-    ai_commit_census = load_json(
+    ai_commit_census = _db_display_kind("ai_commit_census") or load_json(
         ROOT / "research/ai-commit-census-current/ai-commit-census.json"
     )
     if ai_commit_census.get("total_commits"):

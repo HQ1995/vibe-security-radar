@@ -48,6 +48,14 @@ ALTER TABLE ledger_change_sets
 ALTER TABLE ledger_versions
     ADD COLUMN IF NOT EXISTS source_assessment_ids jsonb NOT NULL DEFAULT '[]'::jsonb;
 
+CREATE TABLE IF NOT EXISTS ledger_display (
+    kind text PRIMARY KEY,
+    value_json jsonb NOT NULL,
+    source text NOT NULL,
+    updated_at timestamptz NOT NULL DEFAULT now(),
+    updated_by text NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS scan_runs (
     run_id text PRIMARY KEY,
     model_provider text NOT NULL,
