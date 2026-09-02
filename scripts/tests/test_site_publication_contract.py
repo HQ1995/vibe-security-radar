@@ -1662,15 +1662,18 @@ def test_ir_chain_source_records_keep_atomic_qf5v_and_frvj_origin() -> None:
         "2db76f65dbfe4f657b4a4efb506ed63b24623e92"
     ]
 
-    ledger = [
+    frvj = [
         json.loads(line)
         for line in (root / "artifacts/funnel-account-20260817.jsonl")
         .read_text(encoding="utf-8")
         .splitlines()
-        if "GHSA-FRVJ-C5QP-XJ4W" in line.upper()
+        if (json.loads(line).get("advisory_identity") or {}).get(
+            "analysis_subject"
+        )
+        == "GHSA-FRVJ-C5QP-XJ4W"
     ]
-    assert len(ledger) == 1
-    assert ledger[0]["ir_chain"]["original_sha"] == (
+    assert len(frvj) == 1, f"expected 1 FRVJ record, got {len(frvj)}"
+    assert frvj[0]["ir_chain"]["original_sha"] == (
         "4737e1f11847d057859ec78892fa89e24cbcd83b"
     )
 
