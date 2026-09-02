@@ -26,6 +26,13 @@ jobs:
       - run: python -m pip install pytest
       - name: Install neon deps
         run: python -m pip install -r ../scripts/requirements-neon.txt
+      - name: Debug db env
+        shell: bash
+        run: |
+          echo "db_len=${#DATABASE_URL}"
+          echo "db_scheme=${DATABASE_URL%%://*}"
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
       - name: Build and publish
         run: npm run build
         env:
