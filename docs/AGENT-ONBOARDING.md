@@ -25,35 +25,22 @@
  | Path | What it is | Writable by |
  |------|-----------|-------------|
  | artifacts/funnel-account-20260817.jsonl | Deterministic GitHub recovery export of the canonical ledger | leader only (ledger_store.py export) |
- | artifacts/ledger-history/ | Immutable audit history (assessments, versions, change-sets) | sync tooling |
- | scripts/ledger_store.py | Neon ledger access: assessment-add, finalize, export, connect | leader only |
- | scripts/audit_lock.py | Per-CVE claim lock (claim/release/check/list) | any audit agent |
- | scripts/audit_queue.py | Picks next CVE per queue (--fp/--fn/--stats) | any audit agent |
- | scripts/publish_tp_ledger.py | Builds web/src/generated/research-data.json DB-first | leader only, via this script |
- | scripts/site_preflight.py | Publication gates before web build | leader only |
+| artifacts/ledger-history/ | Immutable audit history (assessments, versions, change-sets) | sync tooling |
+| scripts/ledger_store.py | Neon ledger access: assessment-add, finalize, export, connect | leader only |
+| scripts/publish_tp_ledger.py | Builds web/src/generated/research-data.json DB-first | leader only, via this script |
+| scripts/site_preflight.py | Publication gates before web build | leader only |
  | web/src/generated/research-data.json | Generated site data | NEVER by hand |
  | research/ | LOCAL-ONLY lane scratch (result.json, report.md); git-ignored, never committed | owning lane |
  | docs/AUDIT-PROTOCOL.md | How a case gets judged (principles) | - |
  | docs/DATA-SCHEMA.md | Field semantics, ledger schema | - |
  | docs/AGENT-OWNERSHIP.md | File ownership + conflict rules | - |
  
- ## 2. Pick a target and lock it
- 
-     cd ~/agents/ai-slop/scripts
- 
-     # Pick from a queue (or pass an explicit CVE/GHSA id)
-     python3 audit_queue.py            # default queue
-     python3 audit_queue.py --fn       # false-negative queue
-     python3 audit_queue.py --stats    # queue health
- 
-     # Claim before starting (parallel safety). Claims auto-expire after 2h.
-     python3 audit_lock.py claim <CVE-ID> --worker `$(hostname)-$$`
- 
- If the claim fails, the target is held by another session - pick the next one.
- **On any early exit (error, timeout, missing data), release the claim before
- stopping.**
- 
- ## 3. Independent investigation (do this FIRST, before any cached result)
+## 2. Pick a target
+
+The leader assigns you a specific case (CVE/GHSA id and its bundle). Audit
+that one case only; do not read other bundles or prior verdicts.
+
+## 3. Independent investigation (do this FIRST, before any cached result)
  
  Read only the fix commits / repo URL from the cache - not the full verdict,
  which would anchor your reasoning to the pipeline's conclusion:
@@ -61,7 +48,7 @@
      jq '{fix_commits: [.fix_commits[] | {sha, repo_url}]}' \
        ~/.cache/cve-analyzer/results/<CVE-ID>.json
  
- If this fails (missing file, null fix commits), release the claim and stop.
+If this fails (missing file, null fix commits), stop and report the gap.
  
  1. **Understand the vuln.** git show <fix_sha> in
     ~/.cache/cve-analyzer/repos/<owner>_<repo>/. Identify the vulnerable
@@ -117,10 +104,9 @@
  (co-author trailer format not matched), squash_loss (signal on sub-commit
  lost in squash), pr_only_signal / bot_review (AI via PR metadata).
  
- Same claim/free protocol as Section 2, with --fn queue. Before saving each
- finding, triage improvement value: is it a first occurrence or a pattern?
- What's the blast radius? Which file would change? Assign FIX / OBSERVE /
- WONTFIX.
+Before saving each finding, triage improvement value: is it a first
+occurrence or a pattern? What's the blast radius? Which file would change?
+Assign FIX / OBSERVE / WONTFIX.
  
  ## 7. Deep verification (when asked)
  
@@ -146,7 +132,6 @@
  
  Before you stop:
  
- - [ ] Release the claim (python3 scripts/audit_lock.py release <id>)
- - [ ] Finding saved via save_finding to ~/.cache/cve-analyzer/audit/findings.json
+- [ ] Finding saved via save_finding to ~/.cache/cve-analyzer/audit/findings.json
  - [ ] Final record handed to the leader (for ledger_store.py assessment-add/finalize)
  - [ ] Research lanes are LOCAL-ONLY: keep result files on disk, never commit under research/
