@@ -1,28 +1,31 @@
 # Audit protocol
 
-How a case gets judged. One principle: **no mechanical scanning** —
-fully understand the vulnerability's root cause and its complete
-lifecycle before judging the AI role.
+Understand the real vulnerability first, then judge AI's causal contribution.
+Choose methods, order and depth to resolve facts that could change the conclusion.
+Give each independent case a fresh context with its task and primary evidence;
+form your own judgment before consulting prior verdicts.
 
-Vulnerability first, AI second. One vulnerability, one clean analysis
-context — no leftover verdicts from other cases. The leader still
-passes same-mechanism ledger/site hits, the advisory, and the clone.
-The BIC is the smallest commit that first wrote the vulnerable lines —
-a move, refactor, revert, or squash aggregate is not a BIC. But a
-first-write that is the smallest surviving object in public history
-IS a valid BIC when its immediate parent is verifiable and no finer
-public member can be reconstructed; never invert the search to first
-find an AI-marked commit and then call it the BIC. Judge the AI role
-from signals on that BIC only.
+**Origin and attribution.** Find the smallest original commit that first wrote
+the defective code (BIC); compare its immediate parent to establish the causal change.
+Trace through moves/refactors and reconstruct merge/squash members needed to
+identify the first-write. A surviving first-write is acceptable only when no
+finer public member is recoverable; state that limit. Tie AI evidence to causal
+code, not neighboring markers or authorship of the final fix.
 
-Withdrawn/rejected advisories are `FALSE_POSITIVE`, not `NOT_AI`:
-`NOT_AI` means a real vulnerability with human authorship, while
-`FALSE_POSITIVE` means the advisory itself was wrong or was withdrawn.
-Check the CVE.org record (and vendor disposition) before closing; the
-GitHub advisory's `withdrawn_at` field is not authoritative.
+**Fix and lifecycle.** Find the direct fix or minimum fix set even when none is
+supplied. Verify that it closes the same mechanism and matches affected/fixed
+versions. If truly unpatched, document why and propose a concrete fix with rationale.
+For incomplete fixes, explain the entire chain: original flaw → attempted fixes
+→ what remained insecure and why → final closure or verified unpatched state.
+Identify advisories, commits and authorship throughout; distinguish original
+introduction, new exposure and incomplete remediation.
 
-Record the judgment in the ledger. Do not publish `ALIAS-*` cases or
-use the introducer commit date as `published_at`. Field semantics,
-file ownership, and landing gates live in `docs/DATA-SCHEMA.md`,
-`docs/AGENT-OWNERSHIP.md`, `scripts/audit_record_gates.py`, and
-`scripts/publish_tp_ledger.py`.
+**Evidence and judgment.** Use primary sources, seek counterevidence and limit
+claims to what is proved. Missing facts remain explicit gaps, never inferred
+`NOT_AI`. `FALSE_POSITIVE` needs authoritative advisory invalidation or withdrawal.
+Save a standalone report for each wave before landing: scope and actual coverage,
+per-case judgments with causal reasoning and exact evidence links, gaps and
+proposed ledger changes. Passing scripts cannot replace causal judgment.
+Default to reports; use existing explicit authorization for ledger updates or publication.
+
+Formats: [Data schema](DATA-SCHEMA.md). Write boundaries: [AGENTS.md](../AGENTS.md).
