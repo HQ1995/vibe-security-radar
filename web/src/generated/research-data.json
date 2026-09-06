@@ -6,8 +6,8 @@
   "ai_root_cause": 200,
   "ai_code_flawed": 57,
   "ledger_total": 29593,
-  "ledger_reviewed": 2441,
-  "ledger_in_progress": 5922,
+  "ledger_reviewed": 2439,
+  "ledger_in_progress": 5924,
   "ledger_not_started": 21230,
   "confirmed_cases": 155,
   "qualified_cases": 89,
@@ -18,7 +18,7 @@
   "coverage_from": "2025-05-01",
   "coverage_to": "2026-08-26",
   "source_cutoff": "2026-08-26",
-  "generated_at": "2026-09-02T05:19:59Z",
+  "generated_at": "2026-09-05T17:35:58Z",
   "ledger": "artifacts/funnel-account-20260817.jsonl"
  },
  "cause_categories": {
@@ -5856,144 +5856,6 @@
     "missing_fixed_release"
    ],
    "publication_status": "qualified"
-  },
-  {
-   "case_id": "GHSA-JV2H-4P9V-WF5W",
-   "class_id": "alias-04967329955171a53cc2731f",
-   "aliases": [
-    "CVE-2026-47211",
-    "alias-04967329955171a53cc2731f"
-   ],
-   "repository": "q00/ouroboros",
-   "repository_metadata": {
-    "full_name": "q00/ouroboros",
-    "language": "Python",
-    "archived": false
-   },
-   "contribution_class": "AI_NEW_SURFACE_CONTRIBUTOR",
-   "ledger_status": "AI_ROOT_CAUSE",
-   "candidate_set": [
-    "d30b61759b8efe4554978438abbcc5a9d698d055"
-   ],
-   "carrier_set": [
-    "4aaf9147a6c6f76aecc775defcd1a542537cf01f"
-   ],
-   "minimum_fix_set": [
-    "4e70b760b4eb157469b58645339ba831f6513d37"
-   ],
-   "gates": {
-    "ai_hunk": "PASS",
-    "but_for": "PASS",
-    "fix_reversal": "PASS",
-    "identity": "PASS",
-    "release": "PASS",
-    "topology": "PASS",
-    "uniqueness": "PASS"
-   },
-   "vulnerable_release": {
-    "kind": "git_tag",
-    "tag": "v0.38.2",
-    "version": "0.38.2"
-   },
-   "fixed_release": {
-    "kind": "git_tag",
-    "tag": "v0.39.0",
-    "version": "0.39.0"
-   },
-   "published_at": "2026-08-03",
-   "severity": null,
-   "cwes": [],
-   "description": "/ .env loader os.environ OUROBOROS_CLI_PATH ClaudeCodeAdapter._resolve_cli_path cli_path SDK .env -> RCE _load_env_file trusted .env (trusted=False) (OUROBOROS_CLI_PATH )",
-   "references": [],
-   "mechanism_key": null,
-   "mechanism": "/ .env loader os.environ OUROBOROS_CLI_PATH ClaudeCodeAdapter._resolve_cli_path cli_path SDK .env -> RCE _load_env_file trusted .env (trusted=False) (OUROBOROS_CLI_PATH )",
-   "scope_statement": "Attribution is limited to the ClaudeCodeAdapter OUROBOROS_CLI_PATH source-to-execution chain, not sibling selectors or the entire project-dotenv advisory.",
-   "cause_category": "injection",
-   "ai_provenance": {
-    "family": "claude",
-    "coverage": "complete",
-    "candidate_count": 1,
-    "named_candidate_count": 1,
-    "note": "Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com> on d30b61759b8efe4554978438abbcc5a9d698d055"
-   },
-   "fix_authorship": null,
-   "code_evidence": {
-    "advisory_url": "https://github.com/Q00/ouroboros/security/advisories/GHSA-c4m7-2gwp-vw76",
-    "ai_marker": "Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>",
-    "annotation_mode": "hunk_specific",
-    "candidate_hunks": [
-     {
-      "annotation": "The adapter accepts an executable path from OUROBOROS_CLI_PATH, resolves it, and stores it for later use. Checking that the path exists does not establish who chose it, so a value loaded from a cloned project environment remains attacker-controlled.",
-      "code": "@@ -58,12 +79,54 @@ class ClaudeCodeAdapter:\n             permission_mode: Permission mode for SDK operations.\n                 - \"default\": Standard permissions\n                 - \"acceptEdits\": Auto-approve edits (not needed for interview)\n+            cli_path: Path to the Claude CLI binary. If not provided,\n+                checks OUROBOROS_CLI_PATH env var, then falls back to\n+                SDK's bundled CLI.\n         \"\"\"\n         self._permission_mode: str = permission_mode\n+        self._cli_path: Path | None = self._resolve_cli_path(cli_path)\n         log.info(\n             \"claude_code_adapter.initialized\",\n             permission_mode=permission_mode,\n+            cli_path=str(self._cli_path) if self._cli_path else None,\n+        )\n+\n+    def _resolve_cli_path(self, cli_path: str | Path | None) -> Path | None:\n+        \"\"\"Resolve the CLI path from parameter or environment variable.\n+\n+        Args:\n+            cli_path: Explicit CLI path from constructor.\n+\n+        Returns:\n+            Resolved Path if set and exists, None otherwise.\n+        \"\"\"\n+        # Priority: explicit parameter > environment variable > None (SDK default)\n+        path_str = cli_path or os.environ.get(\"OUROBOROS_CLI_PATH\")\n+\n+        if not path_str:\n+            return None\n+\n+        resolved = Path(path_str).expanduser().resolve()\n+\n+        if not resolved.exists():\n+            log.warning(\n+                \"claude_code_adapter.cli_path_not_found\",\n+                cli_path=str(resolved),\n+            )\n+            return None\n+\n+        if not resolved.is_file():\n+            log.warning(\n+                \"claude_code_adapter.cli_path_not_file\",\n+                cli_path=str(resolved),\n+            )\n+            return None\n+\n+        log.debug(\n+            \"claude_code_adapter.using_custom_cli\",\n+            cli_path=str(resolved),\n         )\n+        return resolved\n \n     async def complete(\n         self,",
-      "file": "src/ouroboros/providers/claude_code_adapter.py",
-      "role": "candidate"
-     },
-     {
-      "annotation": "The stored path is passed to the Claude Agent SDK as cli_path; the SDK launches that file instead of its bundled CLI. This is the execution sink that turns a project-controlled environment value into code execution.",
-      "code": "@@ -107,6 +170,7 @@ class ClaudeCodeAdapter:\n                 allowed_tools=[],  # No tools - pure conversation\n                 permission_mode=self._permission_mode,  # type: ignore[arg-type]\n                 cwd=os.getcwd(),\n+                cli_path=self._cli_path,\n             )\n \n             # Collect the response",
-      "file": "src/ouroboros/providers/claude_code_adapter.py",
-      "role": "candidate"
-     }
-    ],
-    "candidate_patch_files": [
-     "src/ouroboros/providers/claude_code_adapter.py"
-    ],
-    "candidate_patch_sha256": "d7dc0fc30783606cace15eaf0bcdeb53d7738ba0db1bc231722ab446f5255149",
-    "candidate_url": "https://github.com/Q00/ouroboros/commit/d30b61759b8efe4554978438abbcc5a9d698d055",
-    "comparison_hunks": [],
-    "fix_files": [
-     "src/ouroboros/config/loader.py"
-    ],
-    "fix_hunks": [
-     {
-      "annotation": "The fix classifies OUROBOROS_CLI_PATH as an execution-sensitive setting and skips every denylisted key while loading an untrusted environment file. The guard sits at the shared loader, before the adapter can read the value.",
-      "code": "@@ -118,7 +118,53 @@ def _is_placeholder_api_key(value: str) -> bool:\n     )\n \n \n-def _load_env_file(path: Path) -> None:\n+# Environment variables that determine HOW Ouroboros executes work. This\n+# is the single authoritative trust boundary: a cloned repository's `.env`\n+# must not be able to change which binary runs or whether the user's\n+# approval gate applies. Three classes, all remote-code-execution sinks\n+# when sourced from an untrusted location:\n+#   1. Explicit CLI path overrides fed straight into a subprocess.\n+#   2. Runtime/backend selectors that pick which adapter (and therefore\n+#      which executable) is spawned — a selector can route to a backend\n+#      whose CLI then resolves via a weak shutil.which / bare-name lookup.\n+#   3. Permission-mode overrides — setting acceptEdits/bypassPermissions\n+#      silently removes the human approval gate, letting a malicious repo\n+#      auto-approve arbitrary tool calls (effectively RCE).\n+# These keys are only honored from trusted sources (the real process\n+# environment, ~/.ouroboros/.env, ~/.ouroboros/config.yaml), never from\n+# the project-directory .env that travels with a cloned repo. Enforcing\n+# this here — at the .env load — keeps the policy in one place rather than\n+# split across downstream sinks.\n+_UNTRUSTED_ENV_DENYLIST = frozenset(\n+    {\n+        # Explicit executable-path overrides.\n+        \"OUROBOROS_CLI_PATH\",\n+        \"OUROBOROS_CODEX_CLI_PATH\",\n+        \"OUROBOROS_COPILOT_CLI_PATH\",\n+        \"OUROBOROS_KIRO_CLI_PATH\",\n+        \"OUROBOROS_OPENCODE_CLI_PATH\",\n+        \"OUROBOROS_HERMES_CLI_PATH\",\n+        \"OUROBOROS_GOOSE_CLI_PATH\",\n+        \"OUROBOROS_GEMINI_CLI_PATH\",\n+        # Bare provider aliases (no OUROBOROS_ prefix) that adapters also\n+        # honor and then execute. Any new such alias MUST be added here:\n+        # `opencode_config._configured_opencode_cli_path` reads\n+        # OPENCODE_CLI_PATH and runs it via subprocess.run.\n+        \"OPENCODE_CLI_PATH\",\n+        # Runtime/backend selectors — choose which adapter is spawned.\n+        \"OUROBOROS_AGENT_RUNTIME\",\n+        \"OUROBOROS_RUNTIME\",\n+        \"OUROBOROS_LLM_BACKEND\",\n+        # Permission-mode overrides — must not silently disable the\n+        # user's approval gate from an untrusted repo.\n+        \"OUROBOROS_AGENT_PERMISSION_MODE\",\n+        \"OUROBOROS_LLM_PERMISSION_MODE\",\n+        \"OUROBOROS_OPENCODE_PERMISSION_MODE\",\n+    }\n+)\n+\n+\n+def _load_env_file(path: Path, *, trusted: bool = False) -> None:\n     if not path.is_file():\n         return\n \n@@ -136,6 +182,11 @@ def _load_env_file(path: Path) -> None:\n         if not key or any(ch.isspace() for ch in key):\n             continue\n \n+        if not trusted and key in _UNTRUSTED_ENV_DENYLIST:\n+            # Untrusted project-directory .env must not redirect which\n+            # binary Ouroboros executes (remote code execution guard).\n+            continue\n+\n         parsed_value = _parse_env_value(raw_value)\n         if not parsed_value or _is_placeholder_api_key(parsed_value):\n             continue",
-      "file": "src/ouroboros/config/loader.py",
-      "role": "fix"
-     },
-     {
-      "annotation": "The current-directory .env is now explicitly untrusted, while the user-owned home .env remains trusted. A cloned repository can no longer choose the executable, but intentional user configuration still works.",
-      "code": "@@ -145,8 +196,13 @@ def _load_env_file(path: Path) -> None:\n             os.environ[key] = parsed_value\n \n \n-for env_path in (Path(\".env\"), Path.home() / \".ouroboros\" / \".env\"):\n-    _load_env_file(env_path)\n+# The project-directory .env travels with whatever repository the user\n+# cloned and is therefore untrusted; ~/.ouroboros/.env lives in the user's\n+# home and is trusted. The trust flag gates execution-redirecting keys above.\n+# `_load_env_file` defaults to trusted=False (fail-closed) so any future\n+# caller is safe-by-default; trust must be opted into explicitly.\n+_load_env_file(Path(\".env\"), trusted=False)\n+_load_env_file(Path.home() / \".ouroboros\" / \".env\", trusted=True)\n \n \n def ensure_config_dir() -> Path:",
-      "file": "src/ouroboros/config/loader.py",
-      "role": "fix"
-     }
-    ],
-    "fix_marker": null,
-    "fix_patch_files": [
-     "src/ouroboros/config/loader.py"
-    ],
-    "fix_patch_sha256": "f8042190564a9c526bc43f7d718db7608a98b72519974f2f0391bff8d3b9f17a",
-    "fix_url": "https://github.com/Q00/ouroboros/commit/4e70b760b4eb157469b58645339ba831f6513d37",
-    "mechanism": "A project-local .env populated OUROBOROS_CLI_PATH; the adapter resolved that value and supplied it as the executable path to the Claude Agent SDK.",
-    "required_anchors": {
-     "candidate": [
-      "os.environ.get(\"OUROBOROS_CLI_PATH\")",
-      "cli_path=self._cli_path"
-     ],
-     "fix": [
-      "\"OUROBOROS_CLI_PATH\"",
-      "if not trusted and key in _UNTRUSTED_ENV_DENYLIST",
-      "_load_env_file(Path(\".env\"), trusted=False)"
-     ]
-    },
-    "steps": [
-     {
-      "detail": "The Claude-coauthored PR member read OUROBOROS_CLI_PATH, resolved it as a file, and handed it to the SDK as the CLI executable.",
-      "title": "AI change"
-     },
-     {
-      "detail": "The later patch made the project .env untrusted and blocked execution-affecting selectors before they enter the process environment.",
-      "title": "Security fix"
-     }
-    ],
-    "summary": "Claude-assisted adapter code let OUROBOROS_CLI_PATH choose the executable handed to the Claude SDK. Once Ouroboros loaded a cloned project .env, that path became repository-controlled and could run attacker code."
-   },
-   "ir_chain": null,
-   "research_status": "d30b6175 parent 9ed95f0f and carrier 4aaf9147 parent 797441d9 have the identical tree cf189687; d30b6175 adds OUROBOROS_CLI_PATH and cli_path=self._cli_path, while 4aaf9147 contains that change plus a later executable-permission validation. d30b6175 is not an ancestor of 4aaf9147 because GitHub squashed PR #49. Fix 4e70b760 deny-lists OUROBOROS_CLI_PATH for untrusted project .env loading.",
-   "unpatched": null,
-   "advisory_url": "https://github.com/Q00/ouroboros/security/advisories/GHSA-c4m7-2gwp-vw76",
-   "publication_issues": [],
-   "publication_status": "confirmed"
   },
   {
    "case_id": "GHSA-7P8R-X3MC-P8W7",
@@ -18388,6 +18250,144 @@
    "research_status": "git show 4f86724:packages/mcp/src/startHttpServer.ts: createServer handler routes on pathname only (no Host/Origin check), handleMcp reads body without cap, respondError(res,500,err.message) echoes internals. Fix 7c3ae2e3 (#163) adds Host/Origin allowlist guard on every route, maxBodyBytes 1MiB (413 on declared, streaming cap), generic 500, loopback bind defaults + compose port regression test. Commit 4f86724 is single-parent (c84c70c) direct on main; refs/pull/11/head is a different commit (tmp pin 0884970), so the (#11) in subject is repo-internal numbering, not a squash merge.",
    "unpatched": null,
    "advisory_url": "https://github.com/advisories/GHSA-V52W-28XH-V562",
+   "publication_issues": [],
+   "publication_status": "confirmed"
+  },
+  {
+   "case_id": "GHSA-JV2H-4P9V-WF5W",
+   "class_id": "alias-04967329955171a53cc2731f",
+   "aliases": [
+    "CVE-2026-47211",
+    "alias-04967329955171a53cc2731f"
+   ],
+   "repository": "q00/ouroboros",
+   "repository_metadata": {
+    "full_name": "q00/ouroboros",
+    "language": "Python",
+    "archived": false
+   },
+   "contribution_class": "AI_NEW_SURFACE_CONTRIBUTOR",
+   "ledger_status": "AI_ROOT_CAUSE",
+   "candidate_set": [
+    "d30b61759b8efe4554978438abbcc5a9d698d055"
+   ],
+   "carrier_set": [
+    "4aaf9147a6c6f76aecc775defcd1a542537cf01f"
+   ],
+   "minimum_fix_set": [
+    "4e70b760b4eb157469b58645339ba831f6513d37"
+   ],
+   "gates": {
+    "ai_hunk": "PASS",
+    "but_for": "PASS",
+    "fix_reversal": "PASS",
+    "identity": "PASS",
+    "release": "PASS",
+    "topology": "PASS",
+    "uniqueness": "PASS"
+   },
+   "vulnerable_release": {
+    "kind": "git_tag",
+    "tag": "v0.38.2",
+    "version": "0.38.2"
+   },
+   "fixed_release": {
+    "kind": "git_tag",
+    "tag": "v0.39.0",
+    "version": "0.39.0"
+   },
+   "published_at": "2026-06-19",
+   "severity": null,
+   "cwes": [],
+   "description": "/ .env loader os.environ OUROBOROS_CLI_PATH ClaudeCodeAdapter._resolve_cli_path cli_path SDK .env -> RCE _load_env_file trusted .env (trusted=False) (OUROBOROS_CLI_PATH )",
+   "references": [],
+   "mechanism_key": null,
+   "mechanism": "/ .env loader os.environ OUROBOROS_CLI_PATH ClaudeCodeAdapter._resolve_cli_path cli_path SDK .env -> RCE _load_env_file trusted .env (trusted=False) (OUROBOROS_CLI_PATH )",
+   "scope_statement": "Attribution is limited to the ClaudeCodeAdapter OUROBOROS_CLI_PATH source-to-execution chain, not sibling selectors or the entire project-dotenv advisory.",
+   "cause_category": "injection",
+   "ai_provenance": {
+    "family": "claude",
+    "coverage": "complete",
+    "candidate_count": 1,
+    "named_candidate_count": 1,
+    "note": "Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com> on d30b61759b8efe4554978438abbcc5a9d698d055"
+   },
+   "fix_authorship": null,
+   "code_evidence": {
+    "advisory_url": "https://github.com/Q00/ouroboros/security/advisories/GHSA-c4m7-2gwp-vw76",
+    "ai_marker": "Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>",
+    "annotation_mode": "hunk_specific",
+    "candidate_hunks": [
+     {
+      "annotation": "The adapter accepts an executable path from OUROBOROS_CLI_PATH, resolves it, and stores it for later use. Checking that the path exists does not establish who chose it, so a value loaded from a cloned project environment remains attacker-controlled.",
+      "code": "@@ -58,12 +79,54 @@ class ClaudeCodeAdapter:\n             permission_mode: Permission mode for SDK operations.\n                 - \"default\": Standard permissions\n                 - \"acceptEdits\": Auto-approve edits (not needed for interview)\n+            cli_path: Path to the Claude CLI binary. If not provided,\n+                checks OUROBOROS_CLI_PATH env var, then falls back to\n+                SDK's bundled CLI.\n         \"\"\"\n         self._permission_mode: str = permission_mode\n+        self._cli_path: Path | None = self._resolve_cli_path(cli_path)\n         log.info(\n             \"claude_code_adapter.initialized\",\n             permission_mode=permission_mode,\n+            cli_path=str(self._cli_path) if self._cli_path else None,\n+        )\n+\n+    def _resolve_cli_path(self, cli_path: str | Path | None) -> Path | None:\n+        \"\"\"Resolve the CLI path from parameter or environment variable.\n+\n+        Args:\n+            cli_path: Explicit CLI path from constructor.\n+\n+        Returns:\n+            Resolved Path if set and exists, None otherwise.\n+        \"\"\"\n+        # Priority: explicit parameter > environment variable > None (SDK default)\n+        path_str = cli_path or os.environ.get(\"OUROBOROS_CLI_PATH\")\n+\n+        if not path_str:\n+            return None\n+\n+        resolved = Path(path_str).expanduser().resolve()\n+\n+        if not resolved.exists():\n+            log.warning(\n+                \"claude_code_adapter.cli_path_not_found\",\n+                cli_path=str(resolved),\n+            )\n+            return None\n+\n+        if not resolved.is_file():\n+            log.warning(\n+                \"claude_code_adapter.cli_path_not_file\",\n+                cli_path=str(resolved),\n+            )\n+            return None\n+\n+        log.debug(\n+            \"claude_code_adapter.using_custom_cli\",\n+            cli_path=str(resolved),\n         )\n+        return resolved\n \n     async def complete(\n         self,",
+      "file": "src/ouroboros/providers/claude_code_adapter.py",
+      "role": "candidate"
+     },
+     {
+      "annotation": "The stored path is passed to the Claude Agent SDK as cli_path; the SDK launches that file instead of its bundled CLI. This is the execution sink that turns a project-controlled environment value into code execution.",
+      "code": "@@ -107,6 +170,7 @@ class ClaudeCodeAdapter:\n                 allowed_tools=[],  # No tools - pure conversation\n                 permission_mode=self._permission_mode,  # type: ignore[arg-type]\n                 cwd=os.getcwd(),\n+                cli_path=self._cli_path,\n             )\n \n             # Collect the response",
+      "file": "src/ouroboros/providers/claude_code_adapter.py",
+      "role": "candidate"
+     }
+    ],
+    "candidate_patch_files": [
+     "src/ouroboros/providers/claude_code_adapter.py"
+    ],
+    "candidate_patch_sha256": "d7dc0fc30783606cace15eaf0bcdeb53d7738ba0db1bc231722ab446f5255149",
+    "candidate_url": "https://github.com/Q00/ouroboros/commit/d30b61759b8efe4554978438abbcc5a9d698d055",
+    "comparison_hunks": [],
+    "fix_files": [
+     "src/ouroboros/config/loader.py"
+    ],
+    "fix_hunks": [
+     {
+      "annotation": "The fix classifies OUROBOROS_CLI_PATH as an execution-sensitive setting and skips every denylisted key while loading an untrusted environment file. The guard sits at the shared loader, before the adapter can read the value.",
+      "code": "@@ -118,7 +118,53 @@ def _is_placeholder_api_key(value: str) -> bool:\n     )\n \n \n-def _load_env_file(path: Path) -> None:\n+# Environment variables that determine HOW Ouroboros executes work. This\n+# is the single authoritative trust boundary: a cloned repository's `.env`\n+# must not be able to change which binary runs or whether the user's\n+# approval gate applies. Three classes, all remote-code-execution sinks\n+# when sourced from an untrusted location:\n+#   1. Explicit CLI path overrides fed straight into a subprocess.\n+#   2. Runtime/backend selectors that pick which adapter (and therefore\n+#      which executable) is spawned — a selector can route to a backend\n+#      whose CLI then resolves via a weak shutil.which / bare-name lookup.\n+#   3. Permission-mode overrides — setting acceptEdits/bypassPermissions\n+#      silently removes the human approval gate, letting a malicious repo\n+#      auto-approve arbitrary tool calls (effectively RCE).\n+# These keys are only honored from trusted sources (the real process\n+# environment, ~/.ouroboros/.env, ~/.ouroboros/config.yaml), never from\n+# the project-directory .env that travels with a cloned repo. Enforcing\n+# this here — at the .env load — keeps the policy in one place rather than\n+# split across downstream sinks.\n+_UNTRUSTED_ENV_DENYLIST = frozenset(\n+    {\n+        # Explicit executable-path overrides.\n+        \"OUROBOROS_CLI_PATH\",\n+        \"OUROBOROS_CODEX_CLI_PATH\",\n+        \"OUROBOROS_COPILOT_CLI_PATH\",\n+        \"OUROBOROS_KIRO_CLI_PATH\",\n+        \"OUROBOROS_OPENCODE_CLI_PATH\",\n+        \"OUROBOROS_HERMES_CLI_PATH\",\n+        \"OUROBOROS_GOOSE_CLI_PATH\",\n+        \"OUROBOROS_GEMINI_CLI_PATH\",\n+        # Bare provider aliases (no OUROBOROS_ prefix) that adapters also\n+        # honor and then execute. Any new such alias MUST be added here:\n+        # `opencode_config._configured_opencode_cli_path` reads\n+        # OPENCODE_CLI_PATH and runs it via subprocess.run.\n+        \"OPENCODE_CLI_PATH\",\n+        # Runtime/backend selectors — choose which adapter is spawned.\n+        \"OUROBOROS_AGENT_RUNTIME\",\n+        \"OUROBOROS_RUNTIME\",\n+        \"OUROBOROS_LLM_BACKEND\",\n+        # Permission-mode overrides — must not silently disable the\n+        # user's approval gate from an untrusted repo.\n+        \"OUROBOROS_AGENT_PERMISSION_MODE\",\n+        \"OUROBOROS_LLM_PERMISSION_MODE\",\n+        \"OUROBOROS_OPENCODE_PERMISSION_MODE\",\n+    }\n+)\n+\n+\n+def _load_env_file(path: Path, *, trusted: bool = False) -> None:\n     if not path.is_file():\n         return\n \n@@ -136,6 +182,11 @@ def _load_env_file(path: Path) -> None:\n         if not key or any(ch.isspace() for ch in key):\n             continue\n \n+        if not trusted and key in _UNTRUSTED_ENV_DENYLIST:\n+            # Untrusted project-directory .env must not redirect which\n+            # binary Ouroboros executes (remote code execution guard).\n+            continue\n+\n         parsed_value = _parse_env_value(raw_value)\n         if not parsed_value or _is_placeholder_api_key(parsed_value):\n             continue",
+      "file": "src/ouroboros/config/loader.py",
+      "role": "fix"
+     },
+     {
+      "annotation": "The current-directory .env is now explicitly untrusted, while the user-owned home .env remains trusted. A cloned repository can no longer choose the executable, but intentional user configuration still works.",
+      "code": "@@ -145,8 +196,13 @@ def _load_env_file(path: Path) -> None:\n             os.environ[key] = parsed_value\n \n \n-for env_path in (Path(\".env\"), Path.home() / \".ouroboros\" / \".env\"):\n-    _load_env_file(env_path)\n+# The project-directory .env travels with whatever repository the user\n+# cloned and is therefore untrusted; ~/.ouroboros/.env lives in the user's\n+# home and is trusted. The trust flag gates execution-redirecting keys above.\n+# `_load_env_file` defaults to trusted=False (fail-closed) so any future\n+# caller is safe-by-default; trust must be opted into explicitly.\n+_load_env_file(Path(\".env\"), trusted=False)\n+_load_env_file(Path.home() / \".ouroboros\" / \".env\", trusted=True)\n \n \n def ensure_config_dir() -> Path:",
+      "file": "src/ouroboros/config/loader.py",
+      "role": "fix"
+     }
+    ],
+    "fix_marker": null,
+    "fix_patch_files": [
+     "src/ouroboros/config/loader.py"
+    ],
+    "fix_patch_sha256": "f8042190564a9c526bc43f7d718db7608a98b72519974f2f0391bff8d3b9f17a",
+    "fix_url": "https://github.com/Q00/ouroboros/commit/4e70b760b4eb157469b58645339ba831f6513d37",
+    "mechanism": "A project-local .env populated OUROBOROS_CLI_PATH; the adapter resolved that value and supplied it as the executable path to the Claude Agent SDK.",
+    "required_anchors": {
+     "candidate": [
+      "os.environ.get(\"OUROBOROS_CLI_PATH\")",
+      "cli_path=self._cli_path"
+     ],
+     "fix": [
+      "\"OUROBOROS_CLI_PATH\"",
+      "if not trusted and key in _UNTRUSTED_ENV_DENYLIST",
+      "_load_env_file(Path(\".env\"), trusted=False)"
+     ]
+    },
+    "steps": [
+     {
+      "detail": "The Claude-coauthored PR member read OUROBOROS_CLI_PATH, resolved it as a file, and handed it to the SDK as the CLI executable.",
+      "title": "AI change"
+     },
+     {
+      "detail": "The later patch made the project .env untrusted and blocked execution-affecting selectors before they enter the process environment.",
+      "title": "Security fix"
+     }
+    ],
+    "summary": "Claude-assisted adapter code let OUROBOROS_CLI_PATH choose the executable handed to the Claude SDK. Once Ouroboros loaded a cloned project .env, that path became repository-controlled and could run attacker code."
+   },
+   "ir_chain": null,
+   "research_status": "d30b6175 parent 9ed95f0f and carrier 4aaf9147 parent 797441d9 have the identical tree cf189687; d30b6175 adds OUROBOROS_CLI_PATH and cli_path=self._cli_path, while 4aaf9147 contains that change plus a later executable-permission validation. d30b6175 is not an ancestor of 4aaf9147 because GitHub squashed PR #49. Fix 4e70b760 deny-lists OUROBOROS_CLI_PATH for untrusted project .env loading.",
+   "unpatched": null,
+   "advisory_url": "https://github.com/Q00/ouroboros/security/advisories/GHSA-c4m7-2gwp-vw76",
    "publication_issues": [],
    "publication_status": "confirmed"
   },
@@ -30930,11 +30930,11 @@
    "scope_statement": null,
    "cause_category": "auth_access",
    "ai_provenance": {
-    "family": "openai_gpt_codex",
+    "family": "claude",
     "coverage": "complete",
     "candidate_count": 1,
     "named_candidate_count": 1,
-    "note": null
+    "note": "Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>"
    },
    "fix_authorship": null,
    "code_evidence": {
@@ -31037,7 +31037,7 @@
     "mechanism": "The key routes check actor type but skip the company-scoping check used by sibling endpoints, and the created key is bound to the victim company, letting a cross-tenant caller take over stored credentials."
    },
    "ir_chain": null,
-   "research_status": "['Advisory GHSA-47wq-cj9q-wpmp critical 9.9, CWE-285/639/862/1220, range < 2026.416.0, first_patched 2026.416.0, withdrawn_at null.', 'git show abadd469b:server/src/routes/agents.ts (POST /agents/:id/keys): assertBoard(req) then svc.createApiKey(id, req.body.name), no company access check.', 'git show abadd469b:server/src/services/agents.ts createApiKey: inserts agentApiKeys with companyId: existing.companyId and returns plaintext token.', 'git show b95c05a24:server/src/routes/agents.ts (GET/DELETE /agents/:id/keys): assertBoard only, no assertCompanyAccess.', 'git show 32a9165dd -- server/src/routes/agents.ts adds getAccessibleAgent (svc.getById + assertCompanyAccess + assertBoardCanManageAgentsForCompany) to all three /keys handlers.', 'git log -S \\'router.post(\"/agents/:id/keys\")\\' -> abadd469b only; parent tree has 0 keys routes.', 'abadd469b and b95c05a24 both single-parent commits carrying Co-Authored-By: Claude Opus 4.6 (verified via git show -s raw trailers).']",
+   "research_status": "['Advisory GHSA-47wq-cj9q-wpmp critical, CWE-285/639/862/1220, range < 2026.416.0, first_patched 2026.416.0, withdrawn_at null (bundle + advisory-cache GHSA-47WQ-CJ9Q-WPMP.json).', 'git show abadd469b -- server/src/routes/agents.ts: adds POST /agents/:id/keys with assertBoard(req) then svc.createApiKey, no assertCompanyAccess; parent 8c830eae tree has 0 keys-route hits -> first-write of the mint route.', 'git show abadd469b -- server/src/services/agents.ts: createApiKey inserts agentApiKeys with companyId: existing.companyId and returns plaintext token.', 'git show b95c05a24 -- server/src/routes/agents.ts: adds GET /agents/:id/keys and DELETE /agents/:id/keys/:keyId with assertBoard only, no assertCompanyAccess.', 'git show 32a9165dd -- server/src/routes/agents.ts: GET/POST/DELETE /keys handlers each gain getAccessibleAgent guard (assertCompanyAccess path); direct fix.', 'abadd469b 29 files/2149 insertions and b95c05a24 10 files/396 insertions, each single-parent; AI signal is commit-level trailer only, diff-body marker grep hits trailer line only.', 'Prior-wave fix_sha b8725c52 is release-notes only; corrected direct fix is 32a9165dd.']",
    "unpatched": null,
    "advisory_url": "https://github.com/advisories/ghsa-47wq-cj9q-wpmp",
    "publication_issues": [],
@@ -31055,7 +31055,7 @@
     "language": "TypeScript",
     "archived": false
    },
-   "contribution_class": "AI_DIRECT_ROOT",
+   "contribution_class": "AI_NEW_SURFACE_CONTRIBUTOR",
    "ledger_status": "AI_ROOT_CAUSE",
    "candidate_set": [
     "abadd469bc85e9fa5137ff5ffce433f1c2db2c0b"
@@ -31093,11 +31093,11 @@
    "scope_statement": null,
    "cause_category": "auth_access",
    "ai_provenance": {
-    "family": "openai_gpt_codex",
+    "family": "claude",
     "coverage": "complete",
     "candidate_count": 1,
     "named_candidate_count": 1,
-    "note": null
+    "note": "Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>"
    },
    "fix_authorship": null,
    "code_evidence": {
@@ -31221,11 +31221,10 @@
    "contribution_class": "AI_DIRECT_ROOT",
    "ledger_status": "AI_ROOT_CAUSE",
    "candidate_set": [
-    "a63e1fd2db4ba622e07e8469bbec4df3ab9c7a7b"
+    "e9cc1fb8d94af893889aa268e96531b96970848e"
    ],
    "carrier_set": [],
    "minimum_fix_set": [
-    "edeec965f84e4376c42e93761823ff1b959a8302",
     "32a9165ddf6308f3b46eae0653b6f583e502e538"
    ],
    "gates": {
@@ -31257,24 +31256,24 @@
    "scope_statement": null,
    "cause_category": "injection",
    "ai_provenance": {
-    "family": "openai_gpt_codex",
+    "family": "claude",
     "coverage": "complete",
     "candidate_count": 1,
     "named_candidate_count": 1,
-    "note": null
+    "note": "Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>"
    },
    "fix_authorship": null,
    "code_evidence": {
     "ai_marker": "Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>",
     "fix_marker": null,
-    "candidate_url": "https://github.com/paperclipai/paperclip/commit/a63e1fd2db4ba622e07e8469bbec4df3ab9c7a7b",
-    "fix_url": "https://github.com/paperclipai/paperclip/commit/edeec965f84e4376c42e93761823ff1b959a8302",
+    "candidate_url": "https://github.com/paperclipai/paperclip/commit/e9cc1fb8d94af893889aa268e96531b96970848e",
+    "fix_url": "https://github.com/paperclipai/paperclip/commit/32a9165ddf6308f3b46eae0653b6f583e502e538",
     "advisory_url": "https://github.com/advisories/ghsa-3pw3-v88x-xj24",
     "summary": "The server reads an agent-configurable file path directly from the host filesystem when running the local adapter, so anyone holding an agent API key can point the runtime at arbitrary readable files.",
     "steps": [
      {
       "title": "AI change",
-      "detail": "feat(adapter): agent instructions file support and docs:dev script"
+      "detail": "fix(adapter): combine instructions file and path directive into single temp file"
      },
      {
       "title": "Fix",
@@ -31284,87 +31283,61 @@
     "candidate_hunks": [
      {
       "file": "packages/adapters/claude-local/src/server/execute.ts",
-      "code": "@@ -267,6 +267,8 @@ export async function execute(ctx: AdapterExecutionContext): Promise<AdapterExec\n   const chrome = asBoolean(config.chrome, false);\n   const maxTurns = asNumber(config.maxTurnsPerRun, 0);\n   const dangerouslySkipPermissions = asBoolean(config.dangerouslySkipPermissions, false);\n+  const instructionsFilePath = asString(config.instructionsFilePath, \"\").trim();\n+  const instructionsFileDir = instructionsFilePath ? `${path.dirname(instructionsFilePath)}/` : \"\";\n \n   const runtimeConfig = await buildClaudeRuntimeConfig({\n     runId,\n@@ -321,6 +323,13 @@ export async function execute(ctx: AdapterExecutionContext): Promise<AdapterExec\n     if (model) args.push(\"--model\", model);\n     if (effort) args.push(\"--effort\", effort);\n     if (maxTurns > 0) args.push(\"--max-turns\", String(maxTurns));\n+    if (instructionsFilePath) {\n+      args.push(\"--append-system-prompt-file\", instructionsFilePath);\n+      args.push(\n+        \"--append-system-prompt\",\n+        `The above agent instructions were loaded from ${instructionsFilePath}. Resolve any relative file references from ${instructionsFileDir}.`,\n+      );\n+    }\n     args.push(\"--add-dir\", skillsDir);\n     if (extraArgs.length > 0) args.push(...extraArgs);\n     return args;",
-      "annotation": "",
-      "role": "candidate"
-     },
-     {
-      "file": "packages/adapters/codex-local/src/server/execute.ts",
-      "code": "@@ -230,8 +230,30 @@ export async function execute(ctx: AdapterExecutionContext): Promise<AdapterExec\n       `[paperclip] Codex session \"${runtimeSessionId}\" was saved for cwd \"${runtimeSessionCwd}\" and will not be resumed in \"${cwd}\".\\n`,\n     );\n   }\n+  const instructionsFilePath = asString(config.instructionsFilePath, \"\").trim();\n+  let instructionsPrefix = \"\";\n+  if (instructionsFilePath) {\n+    try {\n+      const instructionsContents = await fs.readFile(instructionsFilePath, \"utf8\");\n+      const instructionsDir = `${path.dirname(instructionsFilePath)}/`;\n+      instructionsPrefix =\n+        `${instructionsContents}\\n\\n` +\n+        `The above agent instructions were loaded from ${instructionsFilePath}. ` +\n+        `Resolve any relative file references from ${instructionsDir}.\\n\\n`;\n+      await onLog(\n+        \"stderr\",\n+        `[paperclip] Loaded agent instructions file: ${instructionsFilePath}\\n`,\n+      );\n+    } catch (err) {\n+      const reason = err instanceof Error ? err.message : String(err);\n+      await onLog(\n+        \"stderr\",\n+        `[paperclip] Warning: could not read agent instructions file \"${instructionsFilePath}\": ${reason}\\n`,\n+      );\n+    }\n+  }\n   const template = sessionId ? promptTemplate : bootstrapTemplate;\n-  const prompt = renderTemplate(template, {\n+  const renderedPrompt = renderTemplate(template, {\n     agentId: agent.id,\n     companyId: agent.companyId,\n     runId,\n@@ -240,6 +262,7 @@ export async function execute(ctx: AdapterExecutionContext): Promise<AdapterExec\n     run: { id: runId, source: \"on_demand\" },\n     context,\n   });\n+  const prompt = `${instructionsPrefix}${renderedPrompt}`;\n \n   const buildArgs = (resumeSessionId: string | null) => {\n     const args = [\"exec\", \"--json\"];",
-      "annotation": "",
-      "role": "candidate"
-     },
-     {
-      "file": "package.json",
-      "code": "@@ -15,7 +15,8 @@\n     \"db:migrate\": \"pnpm --filter @paperclip/db migrate\",\n     \"secrets:migrate-inline-env\": \"tsx scripts/migrate-inline-env-secrets.ts\",\n     \"db:backup\": \"./scripts/backup-db.sh\",\n-    \"paperclip\": \"node cli/node_modules/tsx/dist/cli.mjs cli/src/index.ts\"\n+    \"paperclip\": \"node cli/node_modules/tsx/dist/cli.mjs cli/src/index.ts\",\n+    \"docs:dev\": \"cd docs && npx mintlify dev\"\n   },\n   \"devDependencies\": {\n     \"typescript\": \"^5.7.3\",",
-      "annotation": "",
+      "code": "@@ -291,6 +291,18 @@ export async function execute(ctx: AdapterExecutionContext): Promise<AdapterExec\n   const billingType = resolveClaudeBillingType(env);\n   const skillsDir = await buildSkillsDir();\n\n+  // When instructionsFilePath is configured, create a combined temp file that\n+  // includes both the file content and the path directive, so we only need\n+  // --append-system-prompt-file (Claude CLI forbids using both flags together).\n+  let effectiveInstructionsFilePath = instructionsFilePath;\n+  if (instructionsFilePath) {\n+    const instructionsContent = await fs.readFile(instructionsFilePath, \"utf-8\");\n+    const pathDirective = `\\nThe above agent instructions were loaded from ${instructionsFilePath}. Resolve any relative file references from ${instructionsFileDir}.`;\n+    const combinedPath = path.join(skillsDir, \"agent-instructions.md\");\n+    await fs.writeFile(combinedPath, instructionsContent + pathDirective, \"utf-8\");\n+    effectiveInstructionsFilePath = combinedPath;\n+  }\n+\n   const runtimeSessionParams = parseObject(runtime.sessionParams);\n   const runtimeSessionId = asString(runtimeSessionParams.sessionId, runtime.sessionId ?? \"\");\n   const runtimeSessionCwd = asString(runtimeSessionParams.cwd, \"\");\n@@ -323,12 +335,8 @@ export async function execute(ctx: AdapterExecutionContext): Promise<AdapterExec\n     if (model) args.push(\"--model\", model);\n     if (effort) args.push(\"--effort\", effort);\n     if (maxTurns > 0) args.push(\"--max-turns\", String(maxTurns));\n-    if (instructionsFilePath) {\n-      args.push(\"--append-system-prompt-file\", instructionsFilePath);\n-      args.push(\n-        \"--append-system-prompt\",\n-        `The above agent instructions were loaded from ${instructionsFilePath}. Resolve any relative file references from ${instructionsFileDir}.`,\n-      );\n+    if (effectiveInstructionsFilePath) {\n+      args.push(\"--append-system-prompt-file\", effectiveInstructionsFilePath);\n     }\n     args.push(\"--add-dir\", skillsDir);\n     if (extraArgs.length > 0) args.push(...extraArgs);",
+      "annotation": "the adapter now reads the agent-controlled instructionsFilePath from the host filesystem and feeds that content into Claude.",
       "role": "candidate"
      }
     ],
     "fix_hunks": [
      {
-      "file": "server/src/services/company-portability.ts",
-      "code": "@@ -47,7 +47,9 @@ import {\n   readPaperclipSkillSyncPreference,\n   writePaperclipSkillSyncPreference,\n } from \"@paperclipai/adapter-utils/server-utils\";\n-import { notFound, unprocessable } from \"../errors.js\";\n+import { ensureOpenCodeModelConfiguredAndAvailable } from \"@paperclipai/adapter-opencode-local/server\";\n+import { findServerAdapter } from \"../adapters/index.js\";\n+import { forbidden, notFound, unprocessable } from \"../errors.js\";\n import { ghFetch, gitHubApiBase, resolveRawGitHubUrl } from \"./github-fetch.js\";\n import type { StorageService } from \"../storage/types.js\";\n import { accessService } from \"./access.js\";\n@@ -62,6 +64,7 @@ import { validateCron } from \"./cron.js\";\n import { issueService } from \"./issues.js\";\n import { projectService } from \"./projects.js\";\n import { routineService } from \"./routines.js\";\n+import { secretService } from \"./secrets.js\";\n \n /** Build OrgNode tree from manifest agent list (slug + reportsToSlug). */\n function buildOrgTreeFromManifest(agents: CompanyPortabilityManifest[\"agents\"]): OrgNode[] {\n@@ -117,6 +120,7 @@ const DEFAULT_INCLUDE: CompanyPortabilityInclude = {\n };\n \n const DEFAULT_COLLISION_STRATEGY: CompanyPortabilityCollisionStrategy = \"rename\";\n+const IMPORT_FORBIDDEN_ADAPTER_TYPES = new Set([\"process\", \"http\"]);\n const execFileAsync = promisify(execFile);\n let bundledSkillsCommitPromise: Promise<string | null> | null = null;\n \n@@ -2747,6 +2751,94 @@ export function companyPortabilityService(db: Db, storage?: StorageService) {\n   const projects = projectService(db);\n   const issues = issueService(db);\n   const companySkills = companySkillService(db);\n+  const secrets = secretService(db);\n+  const strictSecretsMode = process.env.PAPERCLIP_SECRETS_STRICT_MODE === \"true\";\n+\n+  function assertKnownImportAdapterType(type: string | null | undefined): string {\n+    const adapterType = typeof type === \"string\" ? type.trim() : \"\";\n+    if (!adapterType) {\n+      throw unprocessable(\"Adapter type is required\");\n+    }\n+    if (!findServerAdapter(adapterType)) {\n+      throw unprocessable(`Unknown adapter type: ${adapterType}`);\n+    }\n+    return adapterType;\n+  }\n+\n+  async function assertImportAdapterConfigConstraints(\n+    companyId: string,\n+    adapterType: string,\n+    adapterConfig: Record<string, unknown>,\n+  ) {\n+    if (adapterType !== \"opencode_local\") return;\n+    const { config: runtimeConfig } = await secrets.resolveAdapterConfigForRuntime(companyId, adapterConfig);\n+    const runtimeEnv = isPlainRecord(runtimeConfig.env) ? runtimeConfig.env : {};\n+    try {\n+      await ensureOpenCodeModelConfiguredAndAvailable({\n+        model: runtimeConfig.model,\n+        command: runtimeConfig.command,\n+        cwd: runtimeConfig.cwd,\n+        env: runtimeEnv,\n+      });\n+    } catch (err) {\n+      const reason = err instanceof Error ? err.message : String(err);\n+      throw unprocessable(`Invalid opencode_local adapterConfig: ${reason}`);\n+    }\n+  }\n+\n+  async function prepareImportedAgentAdapter(\n+    companyId: string,\n+    adapterType: string | null | undefined,\n+    adapterConfig: Record<string, unknown>,\n+    desiredSkills: string[],\n+    mode: ImportMode,\n+  ) {\n+    const effectiveAdapterType = assertKnownImportAdapterType(adapterType);\n+    if (mode === \"agent_safe\" && IMPORT_FORBIDDEN_ADAPTER_TYPES.has(effectiveAdapterType)) {\n+      throw forbidden(`Adapter type \"${effectiveAdapterType}\" is not allowed in safe imports`);\n+    }\n+    const nextAdapterConfig = writePaperclipSkillSyncPreference({ ...adapterConfig }, desiredSkills);\n+    delete nextAdapterConfig.promptTemplate;\n+    delete nextAdapterConfig.bootstrapPromptTemplate;\n+    delete nextAdapterConfig.instructionsFilePath;\n+    delete nextAdapterConfig.instructionsBundleMode;\n+    delete nextAdapterConfig.instructionsRootPath;\n+    delete nextAdapterConfig.instructionsEntryFile;\n+    const normalizedAdapterConfig = await secrets.normalizeAdapterConfigForPersistence(\n+      companyId,\n+      nextAdapterConfig,\n+      { strictMode: strictSecretsMode },\n+    );\n+    await assertImportAdapterConfigConstraints(companyId, effectiveAdapterType, normalizedAdapterConfig);",
-      "annotation": "",
+      "file": "server/src/routes/agents.ts",
+      "code": "@@ -605,29 +638,34 @@ export function agentRoutes(db: Db) {\n     delete nextAdapterConfig.promptTemplate;\n \n     const updated = await svc.update(agent.id, { adapterConfig: nextAdapterConfig });\n     return (updated as T | null) ?? { ...agent, adapterConfig: nextAdapterConfig };\n   }\n \n   async function assertCanManageInstructionsPath(req: Request, targetAgent: { id: string; companyId: string }) {\n     assertCompanyAccess(req, targetAgent.companyId);\n-    if (req.actor.type === \"board\") return;\n-    if (!req.actor.agentId) throw forbidden(\"Agent authentication required\");\n-\n-    const actorAgent = await svc.getById(req.actor.agentId);\n-    if (!actorAgent || actorAgent.companyId !== targetAgent.companyId) {\n-      throw forbidden(\"Agent key cannot access another company\");\n+    if (req.actor.type !== \"board\") {\n+      throw forbidden(\n+        \"Only board-authenticated callers can manage instructions path or bundle configuration\",\n+      );\n     }\n-    if (actorAgent.id === targetAgent.id) return;\n-\n-    const chainOfCommand = await svc.getChainOfCommand(targetAgent.id);\n-    if (chainOfCommand.some((manager) => manager.id === actorAgent.id)) return;\n+    await assertBoardCanManageAgentsForCompany(req, targetAgent.companyId);\n+  }\n \n-    throw forbidden(\"Only the target agent or an ancestor manager can update instructions path\");\n+  function assertNoAgentInstructionsConfigMutation(\n+    req: Request,\n+    adapterConfig: Record<string, unknown> | null | undefined,\n+  ) {\n+    if (req.actor.type !== \"agent\" || !adapterConfig) return;\n+    const changedSensitiveKeys = KNOWN_INSTRUCTIONS_BUNDLE_KEYS.filter((key) => adapterConfig[key] !== undefined);\n+    if (changedSensitiveKeys.length === 0) return;\n+    throw forbidden(\n+      `Agent-authenticated callers cannot modify instructions path or bundle configuration (${changedSensitiveKeys.join(\", \")})`,\n+    );\n   }\n \n   function summarizeAgentUpdateDetails(patch: Record<string, unknown>) {\n     const changedTopLevelKeys = Object.keys(patch).sort();\n     const details: Record<string, unknown> = { changedTopLevelKeys };\n \n     const adapterConfigPatch = asRecord(patch.adapterConfig);\n     if (adapterConfigPatch) {",
+      "annotation": "Agent API keys can no longer change instructions path or bundle keys; only a board-authenticated caller is allowed, so a stolen agent key cannot retarget instructionsFilePath.",
       "role": "fix"
      },
      {
       "file": "server/src/routes/agents.ts",
-      "code": "@@ -1,4 +1,4 @@\n-import { Router, type Request } from \"express\";\n+import { Router, type Request, type Response } from \"express\";\n import { generateKeyPairSync, randomUUID } from \"node:crypto\";\n import path from \"node:path\";\n import type { Db } from \"@paperclipai/db\";\n@@ -46,6 +46,10 @@ import {\n } from \"../services/index.js\";\n import { conflict, forbidden, notFound, unprocessable } from \"../errors.js\";\n import { assertBoard, assertCompanyAccess, assertInstanceAdmin, getActorInfo } from \"./authz.js\";\n+import {\n+  assertNoAgentHostWorkspaceCommandMutation,\n+  collectAgentAdapterWorkspaceCommandPaths,\n+} from \"./workspace-command-authz.js\";\n import {\n   detectAdapterModel,\n   findActiveServerAdapter,\n@@ -231,10 +235,33 @@ export function agentRoutes(db: Db) {\n     return actorAgent;\n   }\n \n+  async function assertBoardCanManageAgentsForCompany(req: Request, companyId: string) {\n+    assertBoard(req);\n+    assertCompanyAccess(req, companyId);\n+    if (req.actor.source === \"local_implicit\" || req.actor.isInstanceAdmin) return;\n+    const allowed = await access.canUser(companyId, req.actor.userId, \"agents:create\");\n+    if (!allowed) {\n+      throw forbidden(\"Missing permission: agents:create\");\n+    }\n+  }\n+\n   async function assertCanReadConfigurations(req: Request, companyId: string) {\n     return assertCanCreateAgentsForCompany(req, companyId);\n   }\n \n+  async function getAccessibleAgent(req: Request, res: Response, id: string) {\n+    const agent = await svc.getById(id);\n+    if (!agent) {\n+      res.status(404).json({ error: \"Agent not found\" });\n+      return null;\n+    }\n+    assertCompanyAccess(req, agent.companyId);\n+    if (req.actor.type === \"board\") {\n+      await assertBoardCanManageAgentsForCompany(req, agent.companyId);\n+    }\n+    return agent;\n+  }\n+\n   async function actorCanReadConfigurationsForCompany(req: Request, companyId: string) {\n     assertCompanyAccess(req, companyId);\n     if (req.actor.type === \"board\") {\n@@ -317,7 +344,10 @@ export function agentRoutes(db: Db) {\n \n   async function assertCanUpdateAgent(req: Request, targetAgent: { id: string; companyId: string }) {\n     assertCompanyAccess(req, targetAgent.companyId);\n-    if (req.actor.type === \"board\") return;\n+    if (req.actor.type === \"board\") {\n+      await assertBoardCanManageAgentsForCompany(req, targetAgent.companyId);\n+      return;\n+    }\n     if (!req.actor.agentId) throw forbidden(\"Agent authentication required\");\n \n     const actorAgent = await svc.getById(req.actor.agentId);\n@@ -339,7 +369,10 @@ export function agentRoutes(db: Db) {\n \n   async function assertCanReadAgent(req: Request, targetAgent: { companyId: string }) {\n     assertCompanyAccess(req, targetAgent.companyId);\n-    if (req.actor.type === \"board\") return;\n+    if (req.actor.type === \"board\") {\n+      await assertCanReadConfigurations(req, targetAgent.companyId);\n+      return;\n+    }\n     if (!req.actor.agentId) throw forbidden(\"Agent authentication required\");\n \n     const actorAgent = await svc.getById(req.actor.agentId);\n@@ -610,19 +643,24 @@ export function agentRoutes(db: Db) {\n \n   async function assertCanManageInstructionsPath(req: Request, targetAgent: { id: string; companyId: string }) {\n     assertCompanyAccess(req, targetAgent.companyId);\n-    if (req.actor.type === \"board\") return;\n-    if (!req.actor.agentId) throw forbidden(\"Agent authentication required\");\n-\n-    const actorAgent = await svc.getById(req.actor.agentId);\n-    if (!actorAgent || actorAgent.companyId !== targetAgent.companyId) {\n-      throw forbidden(\"Agent key cannot access another company\");\n+    if (req.actor.type !== \"board\") {\n+      throw forbidden(\n+        \"Only board-authenticated callers can manage instructions path or bundle configuration\",\n+      );\n     }",
-      "annotation": "",
-      "role": "fix"
-     },
-     {
-      "file": "server/src/routes/workspace-runtime-service-authz.ts",
-      "code": "@@ -0,0 +1,138 @@\n+import { and, eq, inArray, isNull, ne, or } from \"drizzle-orm\";\n+import type { Db } from \"@paperclipai/db\";\n+import { agents, issues } from \"@paperclipai/db\";\n+import type { Request } from \"express\";\n+import { forbidden } from \"../errors.js\";\n+import { assertCompanyAccess } from \"./authz.js\";\n+\n+const WORKSPACE_RUNTIME_ELIGIBLE_ISSUE_STATUSES: string[] = [\n+  \"backlog\",\n+  \"todo\",\n+  \"in_progress\",\n+  \"in_review\",\n+  \"blocked\",\n+];\n+\n+async function listReportingSubtreeAgentIds(db: Db, companyId: string, actorAgentId: string) {\n+  const companyAgents = await db\n+    .select({\n+      id: agents.id,\n+      reportsTo: agents.reportsTo,\n+    })\n+    .from(agents)\n+    .where(and(eq(agents.companyId, companyId), ne(agents.status, \"terminated\")));\n+\n+  const reportsByManager = new Map<string, string[]>();\n+  for (const agent of companyAgents) {\n+    if (!agent.reportsTo) continue;\n+    const reports = reportsByManager.get(agent.reportsTo) ?? [];\n+    reports.push(agent.id);\n+    reportsByManager.set(agent.reportsTo, reports);\n+  }\n+\n+  const visited = new Set<string>([actorAgentId]);\n+  const queue = [actorAgentId];\n+  while (queue.length > 0) {\n+    const current = queue.shift();\n+    if (!current) continue;\n+    const reports = reportsByManager.get(current) ?? [];\n+    for (const reportId of reports) {\n+      if (visited.has(reportId)) continue;\n+      visited.add(reportId);\n+      queue.push(reportId);\n+    }\n+  }\n+\n+  return [...visited];\n+}\n+\n+async function assertAgentCanManageRuntimeServicesForWorkspace(\n+  db: Db,\n+  req: Request,\n+  input: {\n+    companyId: string;\n+    projectWorkspaceId?: string | null;\n+    executionWorkspaceId?: string | null;\n+    sourceIssueId?: string | null;\n+  },\n+) {\n+  if (req.actor.type !== \"agent\" || !req.actor.agentId) {\n+    throw forbidden(\"Agent authentication required\");\n+  }\n+\n+  const actorAgent = await db\n+    .select({\n+      id: agents.id,\n+      companyId: agents.companyId,\n+      role: agents.role,\n+    })\n+    .from(agents)\n+    .where(eq(agents.id, req.actor.agentId))\n+    .then((rows) => rows[0] ?? null);\n+\n+  if (!actorAgent || actorAgent.companyId !== input.companyId) {\n+    throw forbidden(\"Agent key cannot access another company\");\n+  }\n+\n+  if (actorAgent.role === \"ceo\") {\n+    return;\n+  }\n+\n+  const eligibleAgentIds = await listReportingSubtreeAgentIds(db, input.companyId, actorAgent.id);\n+  const workspaceScopeConditions = [\n+    input.projectWorkspaceId ? eq(issues.projectWorkspaceId, input.projectWorkspaceId) : null,\n+    input.executionWorkspaceId ? eq(issues.executionWorkspaceId, input.executionWorkspaceId) : null,\n+    input.sourceIssueId ? eq(issues.id, input.sourceIssueId) : null,\n+  ].filter((condition): condition is NonNullable<typeof condition> => condition !== null);\n+\n+  if (workspaceScopeConditions.length === 0) {\n+    throw forbidden(\"Missing permission to manage workspace runtime services\");",
-      "annotation": "",
+      "code": "@@ -1885,20 +1937,25 @@ export function agentRoutes(db: Db) {\n     const replaceAdapterConfig = patchData.replaceAdapterConfig === true;\n     delete patchData.replaceAdapterConfig;\n     if (hasOwn(patchData, \"adapterConfig\")) {\n       const adapterConfig = asRecord(patchData.adapterConfig);\n       if (!adapterConfig) {\n         res.status(422).json({ error: \"adapterConfig must be an object\" });\n         return;\n       }\n-      const changingInstructionsPath = Object.keys(adapterConfig).some((key) =>\n-        KNOWN_INSTRUCTIONS_PATH_KEYS.has(key),\n+      assertNoAgentInstructionsConfigMutation(req, adapterConfig);\n+      assertNoAgentHostWorkspaceCommandMutation(\n+        req,\n+        collectAgentAdapterWorkspaceCommandPaths(adapterConfig),\n+      );\n+      const changingInstructionsConfig = Object.keys(adapterConfig).some((key) =>\n+        KNOWN_INSTRUCTIONS_BUNDLE_KEYS.includes(key as (typeof KNOWN_INSTRUCTIONS_BUNDLE_KEYS)[number]),\n       );\n-      if (changingInstructionsPath) {\n+      if (changingInstructionsConfig) {\n         await assertCanManageInstructionsPath(req, existing);\n       }\n       patchData.adapterConfig = adapterConfig;\n     }\n \n     const requestedAdapterType = hasOwn(patchData, \"adapterType\")\n       ? assertKnownAdapterType(patchData.adapterType as string | null | undefined)\n       : existing.adapterType;",
+      "annotation": "The agent update route now treats every instruction-bundle key as sensitive and rejects the PATCH before adapterConfig is saved.",
       "role": "fix"
      }
     ],
     "comparison_hunks": [
      {
       "file": "packages/adapters/claude-local/src/server/execute.ts",
-      "code": "@@ -267,6 +267,8 @@ export async function execute(ctx: AdapterExecutionContext): Promise<AdapterExec\n   const chrome = asBoolean(config.chrome, false);\n   const maxTurns = asNumber(config.maxTurnsPerRun, 0);\n   const dangerouslySkipPermissions = asBoolean(config.dangerouslySkipPermissions, false);\n+  const instructionsFilePath = asString(config.instructionsFilePath, \"\").trim();\n+  const instructionsFileDir = instructionsFilePath ? `${path.dirname(instructionsFilePath)}/` : \"\";\n \n   const runtimeConfig = await buildClaudeRuntimeConfig({\n     runId,\n@@ -321,6 +323,13 @@ export async function execute(ctx: AdapterExecutionContext): Promise<AdapterExec\n     if (model) args.push(\"--model\", model);\n     if (effort) args.push(\"--effort\", effort);\n     if (maxTurns > 0) args.push(\"--max-turns\", String(maxTurns));\n+    if (instructionsFilePath) {\n+      args.push(\"--append-system-prompt-file\", instructionsFilePath);\n+      args.push(\n+        \"--append-system-prompt\",\n+        `The above agent instructions were loaded from ${instructionsFilePath}. Resolve any relative file references from ${instructionsFileDir}.`,\n+      );\n+    }\n     args.push(\"--add-dir\", skillsDir);\n     if (extraArgs.length > 0) args.push(...extraArgs);\n     return args;",
-      "annotation": "",
+      "code": "@@ -291,6 +291,18 @@ export async function execute(ctx: AdapterExecutionContext): Promise<AdapterExec\n   const billingType = resolveClaudeBillingType(env);\n   const skillsDir = await buildSkillsDir();\n\n+  // When instructionsFilePath is configured, create a combined temp file that\n+  // includes both the file content and the path directive, so we only need\n+  // --append-system-prompt-file (Claude CLI forbids using both flags together).\n+  let effectiveInstructionsFilePath = instructionsFilePath;\n+  if (instructionsFilePath) {\n+    const instructionsContent = await fs.readFile(instructionsFilePath, \"utf-8\");\n+    const pathDirective = `\\nThe above agent instructions were loaded from ${instructionsFilePath}. Resolve any relative file references from ${instructionsFileDir}.`;\n+    const combinedPath = path.join(skillsDir, \"agent-instructions.md\");\n+    await fs.writeFile(combinedPath, instructionsContent + pathDirective, \"utf-8\");\n+    effectiveInstructionsFilePath = combinedPath;\n+  }\n+\n   const runtimeSessionParams = parseObject(runtime.sessionParams);\n   const runtimeSessionId = asString(runtimeSessionParams.sessionId, runtime.sessionId ?? \"\");\n   const runtimeSessionCwd = asString(runtimeSessionParams.cwd, \"\");\n@@ -323,12 +335,8 @@ export async function execute(ctx: AdapterExecutionContext): Promise<AdapterExec\n     if (model) args.push(\"--model\", model);\n     if (effort) args.push(\"--effort\", effort);\n     if (maxTurns > 0) args.push(\"--max-turns\", String(maxTurns));\n-    if (instructionsFilePath) {\n-      args.push(\"--append-system-prompt-file\", instructionsFilePath);\n-      args.push(\n-        \"--append-system-prompt\",\n-        `The above agent instructions were loaded from ${instructionsFilePath}. Resolve any relative file references from ${instructionsFileDir}.`,\n-      );\n+    if (effectiveInstructionsFilePath) {\n+      args.push(\"--append-system-prompt-file\", effectiveInstructionsFilePath);\n     }\n     args.push(\"--add-dir\", skillsDir);\n     if (extraArgs.length > 0) args.push(...extraArgs);",
+      "annotation": "the adapter now reads the agent-controlled instructionsFilePath from the host filesystem and feeds that content into Claude.",
       "role": "candidate"
      },
      {
-      "file": "packages/adapters/codex-local/src/server/execute.ts",
-      "code": "@@ -230,8 +230,30 @@ export async function execute(ctx: AdapterExecutionContext): Promise<AdapterExec\n       `[paperclip] Codex session \"${runtimeSessionId}\" was saved for cwd \"${runtimeSessionCwd}\" and will not be resumed in \"${cwd}\".\\n`,\n     );\n   }\n+  const instructionsFilePath = asString(config.instructionsFilePath, \"\").trim();\n+  let instructionsPrefix = \"\";\n+  if (instructionsFilePath) {\n+    try {\n+      const instructionsContents = await fs.readFile(instructionsFilePath, \"utf8\");\n+      const instructionsDir = `${path.dirname(instructionsFilePath)}/`;\n+      instructionsPrefix =\n+        `${instructionsContents}\\n\\n` +\n+        `The above agent instructions were loaded from ${instructionsFilePath}. ` +\n+        `Resolve any relative file references from ${instructionsDir}.\\n\\n`;\n+      await onLog(\n+        \"stderr\",\n+        `[paperclip] Loaded agent instructions file: ${instructionsFilePath}\\n`,\n+      );\n+    } catch (err) {\n+      const reason = err instanceof Error ? err.message : String(err);\n+      await onLog(\n+        \"stderr\",\n+        `[paperclip] Warning: could not read agent instructions file \"${instructionsFilePath}\": ${reason}\\n`,\n+      );\n+    }\n+  }\n   const template = sessionId ? promptTemplate : bootstrapTemplate;\n-  const prompt = renderTemplate(template, {\n+  const renderedPrompt = renderTemplate(template, {\n     agentId: agent.id,\n     companyId: agent.companyId,\n     runId,\n@@ -240,6 +262,7 @@ export async function execute(ctx: AdapterExecutionContext): Promise<AdapterExec\n     run: { id: runId, source: \"on_demand\" },\n     context,\n   });\n+  const prompt = `${instructionsPrefix}${renderedPrompt}`;\n \n   const buildArgs = (resumeSessionId: string | null) => {\n     const args = [\"exec\", \"--json\"];",
-      "annotation": "",
-      "role": "candidate"
-     },
-     {
-      "file": "package.json",
-      "code": "@@ -15,7 +15,8 @@\n     \"db:migrate\": \"pnpm --filter @paperclip/db migrate\",\n     \"secrets:migrate-inline-env\": \"tsx scripts/migrate-inline-env-secrets.ts\",\n     \"db:backup\": \"./scripts/backup-db.sh\",\n-    \"paperclip\": \"node cli/node_modules/tsx/dist/cli.mjs cli/src/index.ts\"\n+    \"paperclip\": \"node cli/node_modules/tsx/dist/cli.mjs cli/src/index.ts\",\n+    \"docs:dev\": \"cd docs && npx mintlify dev\"\n   },\n   \"devDependencies\": {\n     \"typescript\": \"^5.7.3\",",
-      "annotation": "",
-      "role": "candidate"
-     },
-     {
-      "file": "server/src/services/company-portability.ts",
-      "code": "@@ -47,7 +47,9 @@ import {\n   readPaperclipSkillSyncPreference,\n   writePaperclipSkillSyncPreference,\n } from \"@paperclipai/adapter-utils/server-utils\";\n-import { notFound, unprocessable } from \"../errors.js\";\n+import { ensureOpenCodeModelConfiguredAndAvailable } from \"@paperclipai/adapter-opencode-local/server\";\n+import { findServerAdapter } from \"../adapters/index.js\";\n+import { forbidden, notFound, unprocessable } from \"../errors.js\";\n import { ghFetch, gitHubApiBase, resolveRawGitHubUrl } from \"./github-fetch.js\";\n import type { StorageService } from \"../storage/types.js\";\n import { accessService } from \"./access.js\";\n@@ -62,6 +64,7 @@ import { validateCron } from \"./cron.js\";\n import { issueService } from \"./issues.js\";\n import { projectService } from \"./projects.js\";\n import { routineService } from \"./routines.js\";\n+import { secretService } from \"./secrets.js\";\n \n /** Build OrgNode tree from manifest agent list (slug + reportsToSlug). */\n function buildOrgTreeFromManifest(agents: CompanyPortabilityManifest[\"agents\"]): OrgNode[] {\n@@ -117,6 +120,7 @@ const DEFAULT_INCLUDE: CompanyPortabilityInclude = {\n };\n \n const DEFAULT_COLLISION_STRATEGY: CompanyPortabilityCollisionStrategy = \"rename\";\n+const IMPORT_FORBIDDEN_ADAPTER_TYPES = new Set([\"process\", \"http\"]);\n const execFileAsync = promisify(execFile);\n let bundledSkillsCommitPromise: Promise<string | null> | null = null;\n \n@@ -2747,6 +2751,94 @@ export function companyPortabilityService(db: Db, storage?: StorageService) {\n   const projects = projectService(db);\n   const issues = issueService(db);\n   const companySkills = companySkillService(db);\n+  const secrets = secretService(db);\n+  const strictSecretsMode = process.env.PAPERCLIP_SECRETS_STRICT_MODE === \"true\";\n+\n+  function assertKnownImportAdapterType(type: string | null | undefined): string {\n+    const adapterType = typeof type === \"string\" ? type.trim() : \"\";\n+    if (!adapterType) {\n+      throw unprocessable(\"Adapter type is required\");\n+    }\n+    if (!findServerAdapter(adapterType)) {\n+      throw unprocessable(`Unknown adapter type: ${adapterType}`);\n+    }\n+    return adapterType;\n+  }\n+\n+  async function assertImportAdapterConfigConstraints(\n+    companyId: string,\n+    adapterType: string,\n+    adapterConfig: Record<string, unknown>,\n+  ) {\n+    if (adapterType !== \"opencode_local\") return;\n+    const { config: runtimeConfig } = await secrets.resolveAdapterConfigForRuntime(companyId, adapterConfig);\n+    const runtimeEnv = isPlainRecord(runtimeConfig.env) ? runtimeConfig.env : {};\n+    try {\n+      await ensureOpenCodeModelConfiguredAndAvailable({\n+        model: runtimeConfig.model,\n+        command: runtimeConfig.command,\n+        cwd: runtimeConfig.cwd,\n+        env: runtimeEnv,\n+      });\n+    } catch (err) {\n+      const reason = err instanceof Error ? err.message : String(err);\n+      throw unprocessable(`Invalid opencode_local adapterConfig: ${reason}`);\n+    }\n+  }\n+\n+  async function prepareImportedAgentAdapter(\n+    companyId: string,\n+    adapterType: string | null | undefined,\n+    adapterConfig: Record<string, unknown>,\n+    desiredSkills: string[],\n+    mode: ImportMode,\n+  ) {\n+    const effectiveAdapterType = assertKnownImportAdapterType(adapterType);\n+    if (mode === \"agent_safe\" && IMPORT_FORBIDDEN_ADAPTER_TYPES.has(effectiveAdapterType)) {\n+      throw forbidden(`Adapter type \"${effectiveAdapterType}\" is not allowed in safe imports`);\n+    }\n+    const nextAdapterConfig = writePaperclipSkillSyncPreference({ ...adapterConfig }, desiredSkills);\n+    delete nextAdapterConfig.promptTemplate;\n+    delete nextAdapterConfig.bootstrapPromptTemplate;\n+    delete nextAdapterConfig.instructionsFilePath;\n+    delete nextAdapterConfig.instructionsBundleMode;\n+    delete nextAdapterConfig.instructionsRootPath;\n+    delete nextAdapterConfig.instructionsEntryFile;\n+    const normalizedAdapterConfig = await secrets.normalizeAdapterConfigForPersistence(\n+      companyId,\n+      nextAdapterConfig,\n+      { strictMode: strictSecretsMode },\n+    );\n+    await assertImportAdapterConfigConstraints(companyId, effectiveAdapterType, normalizedAdapterConfig);",
-      "annotation": "",
+      "file": "server/src/routes/agents.ts",
+      "code": "@@ -605,29 +638,34 @@ export function agentRoutes(db: Db) {\n     delete nextAdapterConfig.promptTemplate;\n \n     const updated = await svc.update(agent.id, { adapterConfig: nextAdapterConfig });\n     return (updated as T | null) ?? { ...agent, adapterConfig: nextAdapterConfig };\n   }\n \n   async function assertCanManageInstructionsPath(req: Request, targetAgent: { id: string; companyId: string }) {\n     assertCompanyAccess(req, targetAgent.companyId);\n-    if (req.actor.type === \"board\") return;\n-    if (!req.actor.agentId) throw forbidden(\"Agent authentication required\");\n-\n-    const actorAgent = await svc.getById(req.actor.agentId);\n-    if (!actorAgent || actorAgent.companyId !== targetAgent.companyId) {\n-      throw forbidden(\"Agent key cannot access another company\");\n+    if (req.actor.type !== \"board\") {\n+      throw forbidden(\n+        \"Only board-authenticated callers can manage instructions path or bundle configuration\",\n+      );\n     }\n-    if (actorAgent.id === targetAgent.id) return;\n-\n-    const chainOfCommand = await svc.getChainOfCommand(targetAgent.id);\n-    if (chainOfCommand.some((manager) => manager.id === actorAgent.id)) return;\n+    await assertBoardCanManageAgentsForCompany(req, targetAgent.companyId);\n+  }\n \n-    throw forbidden(\"Only the target agent or an ancestor manager can update instructions path\");\n+  function assertNoAgentInstructionsConfigMutation(\n+    req: Request,\n+    adapterConfig: Record<string, unknown> | null | undefined,\n+  ) {\n+    if (req.actor.type !== \"agent\" || !adapterConfig) return;\n+    const changedSensitiveKeys = KNOWN_INSTRUCTIONS_BUNDLE_KEYS.filter((key) => adapterConfig[key] !== undefined);\n+    if (changedSensitiveKeys.length === 0) return;\n+    throw forbidden(\n+      `Agent-authenticated callers cannot modify instructions path or bundle configuration (${changedSensitiveKeys.join(\", \")})`,\n+    );\n   }\n \n   function summarizeAgentUpdateDetails(patch: Record<string, unknown>) {\n     const changedTopLevelKeys = Object.keys(patch).sort();\n     const details: Record<string, unknown> = { changedTopLevelKeys };\n \n     const adapterConfigPatch = asRecord(patch.adapterConfig);\n     if (adapterConfigPatch) {",
+      "annotation": "Agent API keys can no longer change instructions path or bundle keys; only a board-authenticated caller is allowed, so a stolen agent key cannot retarget instructionsFilePath.",
       "role": "fix"
      },
      {
       "file": "server/src/routes/agents.ts",
-      "code": "@@ -1,4 +1,4 @@\n-import { Router, type Request } from \"express\";\n+import { Router, type Request, type Response } from \"express\";\n import { generateKeyPairSync, randomUUID } from \"node:crypto\";\n import path from \"node:path\";\n import type { Db } from \"@paperclipai/db\";\n@@ -46,6 +46,10 @@ import {\n } from \"../services/index.js\";\n import { conflict, forbidden, notFound, unprocessable } from \"../errors.js\";\n import { assertBoard, assertCompanyAccess, assertInstanceAdmin, getActorInfo } from \"./authz.js\";\n+import {\n+  assertNoAgentHostWorkspaceCommandMutation,\n+  collectAgentAdapterWorkspaceCommandPaths,\n+} from \"./workspace-command-authz.js\";\n import {\n   detectAdapterModel,\n   findActiveServerAdapter,\n@@ -231,10 +235,33 @@ export function agentRoutes(db: Db) {\n     return actorAgent;\n   }\n \n+  async function assertBoardCanManageAgentsForCompany(req: Request, companyId: string) {\n+    assertBoard(req);\n+    assertCompanyAccess(req, companyId);\n+    if (req.actor.source === \"local_implicit\" || req.actor.isInstanceAdmin) return;\n+    const allowed = await access.canUser(companyId, req.actor.userId, \"agents:create\");\n+    if (!allowed) {\n+      throw forbidden(\"Missing permission: agents:create\");\n+    }\n+  }\n+\n   async function assertCanReadConfigurations(req: Request, companyId: string) {\n     return assertCanCreateAgentsForCompany(req, companyId);\n   }\n \n+  async function getAccessibleAgent(req: Request, res: Response, id: string) {\n+    const agent = await svc.getById(id);\n+    if (!agent) {\n+      res.status(404).json({ error: \"Agent not found\" });\n+      return null;\n+    }\n+    assertCompanyAccess(req, agent.companyId);\n+    if (req.actor.type === \"board\") {\n+      await assertBoardCanManageAgentsForCompany(req, agent.companyId);\n+    }\n+    return agent;\n+  }\n+\n   async function actorCanReadConfigurationsForCompany(req: Request, companyId: string) {\n     assertCompanyAccess(req, companyId);\n     if (req.actor.type === \"board\") {\n@@ -317,7 +344,10 @@ export function agentRoutes(db: Db) {\n \n   async function assertCanUpdateAgent(req: Request, targetAgent: { id: string; companyId: string }) {\n     assertCompanyAccess(req, targetAgent.companyId);\n-    if (req.actor.type === \"board\") return;\n+    if (req.actor.type === \"board\") {\n+      await assertBoardCanManageAgentsForCompany(req, targetAgent.companyId);\n+      return;\n+    }\n     if (!req.actor.agentId) throw forbidden(\"Agent authentication required\");\n \n     const actorAgent = await svc.getById(req.actor.agentId);\n@@ -339,7 +369,10 @@ export function agentRoutes(db: Db) {\n \n   async function assertCanReadAgent(req: Request, targetAgent: { companyId: string }) {\n     assertCompanyAccess(req, targetAgent.companyId);\n-    if (req.actor.type === \"board\") return;\n+    if (req.actor.type === \"board\") {\n+      await assertCanReadConfigurations(req, targetAgent.companyId);\n+      return;\n+    }\n     if (!req.actor.agentId) throw forbidden(\"Agent authentication required\");\n \n     const actorAgent = await svc.getById(req.actor.agentId);\n@@ -610,19 +643,24 @@ export function agentRoutes(db: Db) {\n \n   async function assertCanManageInstructionsPath(req: Request, targetAgent: { id: string; companyId: string }) {\n     assertCompanyAccess(req, targetAgent.companyId);\n-    if (req.actor.type === \"board\") return;\n-    if (!req.actor.agentId) throw forbidden(\"Agent authentication required\");\n-\n-    const actorAgent = await svc.getById(req.actor.agentId);\n-    if (!actorAgent || actorAgent.companyId !== targetAgent.companyId) {\n-      throw forbidden(\"Agent key cannot access another company\");\n+    if (req.actor.type !== \"board\") {\n+      throw forbidden(\n+        \"Only board-authenticated callers can manage instructions path or bundle configuration\",\n+      );\n     }",
-      "annotation": "",
-      "role": "fix"
-     },
-     {
-      "file": "server/src/routes/workspace-runtime-service-authz.ts",
-      "code": "@@ -0,0 +1,138 @@\n+import { and, eq, inArray, isNull, ne, or } from \"drizzle-orm\";\n+import type { Db } from \"@paperclipai/db\";\n+import { agents, issues } from \"@paperclipai/db\";\n+import type { Request } from \"express\";\n+import { forbidden } from \"../errors.js\";\n+import { assertCompanyAccess } from \"./authz.js\";\n+\n+const WORKSPACE_RUNTIME_ELIGIBLE_ISSUE_STATUSES: string[] = [\n+  \"backlog\",\n+  \"todo\",\n+  \"in_progress\",\n+  \"in_review\",\n+  \"blocked\",\n+];\n+\n+async function listReportingSubtreeAgentIds(db: Db, companyId: string, actorAgentId: string) {\n+  const companyAgents = await db\n+    .select({\n+      id: agents.id,\n+      reportsTo: agents.reportsTo,\n+    })\n+    .from(agents)\n+    .where(and(eq(agents.companyId, companyId), ne(agents.status, \"terminated\")));\n+\n+  const reportsByManager = new Map<string, string[]>();\n+  for (const agent of companyAgents) {\n+    if (!agent.reportsTo) continue;\n+    const reports = reportsByManager.get(agent.reportsTo) ?? [];\n+    reports.push(agent.id);\n+    reportsByManager.set(agent.reportsTo, reports);\n+  }\n+\n+  const visited = new Set<string>([actorAgentId]);\n+  const queue = [actorAgentId];\n+  while (queue.length > 0) {\n+    const current = queue.shift();\n+    if (!current) continue;\n+    const reports = reportsByManager.get(current) ?? [];\n+    for (const reportId of reports) {\n+      if (visited.has(reportId)) continue;\n+      visited.add(reportId);\n+      queue.push(reportId);\n+    }\n+  }\n+\n+  return [...visited];\n+}\n+\n+async function assertAgentCanManageRuntimeServicesForWorkspace(\n+  db: Db,\n+  req: Request,\n+  input: {\n+    companyId: string;\n+    projectWorkspaceId?: string | null;\n+    executionWorkspaceId?: string | null;\n+    sourceIssueId?: string | null;\n+  },\n+) {\n+  if (req.actor.type !== \"agent\" || !req.actor.agentId) {\n+    throw forbidden(\"Agent authentication required\");\n+  }\n+\n+  const actorAgent = await db\n+    .select({\n+      id: agents.id,\n+      companyId: agents.companyId,\n+      role: agents.role,\n+    })\n+    .from(agents)\n+    .where(eq(agents.id, req.actor.agentId))\n+    .then((rows) => rows[0] ?? null);\n+\n+  if (!actorAgent || actorAgent.companyId !== input.companyId) {\n+    throw forbidden(\"Agent key cannot access another company\");\n+  }\n+\n+  if (actorAgent.role === \"ceo\") {\n+    return;\n+  }\n+\n+  const eligibleAgentIds = await listReportingSubtreeAgentIds(db, input.companyId, actorAgent.id);\n+  const workspaceScopeConditions = [\n+    input.projectWorkspaceId ? eq(issues.projectWorkspaceId, input.projectWorkspaceId) : null,\n+    input.executionWorkspaceId ? eq(issues.executionWorkspaceId, input.executionWorkspaceId) : null,\n+    input.sourceIssueId ? eq(issues.id, input.sourceIssueId) : null,\n+  ].filter((condition): condition is NonNullable<typeof condition> => condition !== null);\n+\n+  if (workspaceScopeConditions.length === 0) {\n+    throw forbidden(\"Missing permission to manage workspace runtime services\");",
-      "annotation": "",
+      "code": "@@ -1885,20 +1937,25 @@ export function agentRoutes(db: Db) {\n     const replaceAdapterConfig = patchData.replaceAdapterConfig === true;\n     delete patchData.replaceAdapterConfig;\n     if (hasOwn(patchData, \"adapterConfig\")) {\n       const adapterConfig = asRecord(patchData.adapterConfig);\n       if (!adapterConfig) {\n         res.status(422).json({ error: \"adapterConfig must be an object\" });\n         return;\n       }\n-      const changingInstructionsPath = Object.keys(adapterConfig).some((key) =>\n-        KNOWN_INSTRUCTIONS_PATH_KEYS.has(key),\n+      assertNoAgentInstructionsConfigMutation(req, adapterConfig);\n+      assertNoAgentHostWorkspaceCommandMutation(\n+        req,\n+        collectAgentAdapterWorkspaceCommandPaths(adapterConfig),\n+      );\n+      const changingInstructionsConfig = Object.keys(adapterConfig).some((key) =>\n+        KNOWN_INSTRUCTIONS_BUNDLE_KEYS.includes(key as (typeof KNOWN_INSTRUCTIONS_BUNDLE_KEYS)[number]),\n       );\n-      if (changingInstructionsPath) {\n+      if (changingInstructionsConfig) {\n         await assertCanManageInstructionsPath(req, existing);\n       }\n       patchData.adapterConfig = adapterConfig;\n     }\n \n     const requestedAdapterType = hasOwn(patchData, \"adapterType\")\n       ? assertKnownAdapterType(patchData.adapterType as string | null | undefined)\n       : existing.adapterType;",
+      "annotation": "The agent update route now treats every instruction-bundle key as sensitive and rejects the PATCH before adapterConfig is saved.",
       "role": "fix"
      }
     ],
-    "candidate_patch_sha256": "5a849ab74e552252d5567097f7bda53a62ad12c53c48c64a6161e2cee23e3ab1",
-    "fix_patch_sha256": "adf141f55cf7db47c6552eb0c9f7860bdeecb9fa1143d369f2edc3c9a248c6b3",
+    "candidate_patch_sha256": "5936bebca48a21a082612eaaaa053ab04831c721a98c30f78250d9e6fa6e55ba",
+    "fix_patch_sha256": "6c58913c7392c2cecd9fc2b919bc94b317daf2fadede92ce487d227a87a9306e",
+    "annotation_mode": "hunk_specific",
+    "required_anchors": {
+     "candidate": [
+      "fs.readFile(instructionsFilePath"
+     ],
+     "fix": [
+      "Only board-authenticated callers can manage instructions path",
+      "assertNoAgentInstructionsConfigMutation"
+     ]
+    },
     "mechanism": "Instructions are loaded through a file path the agent can rewrite without any restriction, and the server resolves that path itself rather than through a sandboxed or curated document store."
    },
    "ir_chain": null,
-   "research_status": "None material. The advisory recommended path-validation hardening (rejecting absolute/system paths or limiting reads to a workspace) is not present even at HEAD; the deployed fix is the authorization restriction (board-only), not path validation. Noted as an as-yet-unpatched hardening gap for the filesystem primitive itself, but it does not affect the AI_ROOT_CAUSE attribution. ['v2026.416.0 and HEAD both contain the vulnerable fs.readFile(instructionsFilePath, utf-8) in packages/adapters/claude-local/src/server/execute.ts.', 'Advisory withdrawn_at null; cve_id null; advisory root-cause/recommended-fix (board-only config authority) aligns exactly with the deployed assertNoAgentInstructionsConfigMutation fix.', 'git log -S instructionsFilePath shows a63e1fd2db4ba62 as the earliest commit introducing the mechanism in claude-local adapters.', 'git log -S fs.readFile(instructionsFilePath shows e9cc1fb8d94af893 as the earliest commit writing the direct server-side read primitive.', 'Confirmed v2026.416.0 guard: assertNoAgentInstructionsConfigMutation throws for agent actors modifying instructionsFilePath/agentsMdPath/bundle keys.', 'squash 32a9165dd merged the fix into master and is an ancestor of v2026.416.0.']",
+   "research_status": "['Advisory GHSA-3pw3-v88x-xj24 bundle + advisory-cache + live api.github.com (medium 6.5, published 2026-04-16T22:45:14Z, withdrawn null, cve null).', 'HEAD sink HEAD:packages/adapters/claude-local/src/server/execute.ts fs.readFile(instructionsFilePath, utf-8); HEAD validators/agent.ts adapterConfigSchema z.record with env-only superRefine.', 'git log -S fs.readFile(instructionsFilePath -- claude-local execute.ts => only e9cc1fb8 (2026-03-02); git show e9cc diff = sink hunk + temp-file plumbing; parent bcc64f65 blob has zero readFile.', 'git log -S instructionsFilePath -- claude-local => earliest a63e1fd2 (2026-02-26); parent 02dc46e8 count 0; codex-local a63 blob line 237 fs.readFile utf8 (different adapter, not advisory sink).', 'Single-parent checks: e9cc->bcc64f65, a63->02dc46e7, 32a9165->50cd76d8, counts 1; 83be9436 merge only adds commandNotes; b41c try/catch preserves sink (blame v2026.416.0/tag+HEAD read line -> b41c).', 'Release lineage: v2026.416.0 = b8725c52 (release notes only); 32a9165 ancestor of tag (exit 0), edeec965 not ancestor (exit 1, PAP-1427 only); tag blob has assertNoAgentInstructionsConfigMutation x3, parent 50cd76 has 0.', 'BIC objects: a63/e9cc/bcc64f Author Dotta + Co-Authored-By Claude Opus 4.6; edeec965 Author Dotta no AI trailer shown; 32a9165 Author Dotta + Co-authored-by Paperclip bot + GPT-5 Codex PR body (excluded as fix-side).']",
    "unpatched": null,
    "advisory_url": "https://github.com/advisories/ghsa-3pw3-v88x-xj24",
    "publication_issues": [],
@@ -32374,7 +32347,7 @@
     "coverage": "complete",
     "candidate_count": 1,
     "named_candidate_count": 1,
-    "note": "Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com> (commit message trailer). Commit object author/committer: Forgotten <forgottenrunes@protonmail.com>; single parent 79a9dffc80f546a198cabd98d841c68d843a9379; not a merge/squash aggregate."
+    "note": "Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>"
    },
    "fix_authorship": null,
    "code_evidence": {
@@ -32477,7 +32450,7 @@
     "mechanism": "The import routes trust any board-level actor and skip the instance-admin gate that the sibling company-creation route enforces, so a plain signed-up user can escalate to full import access."
    },
    "ir_chain": null,
-   "research_status": "['bundle advisory GHSA-68qg-g8mg-6pr7 / CVE-2026-41679 confirms import authorization bypass -> RCE; vulnerable range < 2026.410.0, first patched 2026.410.0; reference: https://github.com/paperclipai/paperclip/security/advisories/GHSA-68qg-g8mg-6pr7', 'git cat-file -p cc2c724ad2bdc288976e9085f08679f17006d987: single parent, author/committer Forgotten <forgottenrunes@protonmail.com>, no merge parents; commit message carries Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>', \"git show cc2c724ad -- server/src/routes/companies.ts: introduces router.post('/import/preview') and router.post('/import'), each gating only assertBoard(req) for new_company mode then calling portability.previewImport/importBundle with no assertInstanceAdmin\", \"Parent absence check: git show 79a9dffc80f546a198cabd98d841c68d843a9379:server/src/routes/companies.ts contains zero matches for 'importBundle' and zero for '/import' - the vulnerable lines are absent at the immediate parent, so cc2c724ad is the first-write BIC (not a move/refactor)\", 'git merge-base --is-ancestor cc2c724ad ac664df8e -> true (BIC precedes fix); git merge-base --is-ancestor ac664df8e HEAD -> true (fix in current history)', \"git show ac664df8e -- server/src/routes/companies.ts: adds 'assertInstanceAdmin' to the authz import in companies.ts, introduces assertImportTargetAccess(req,target) which calls assertInstanceAdmin(req) when target.mode==='new_company', and routes both /import/preview and /import through it (removes the old assertBoard-only else branch)\", 'Pre-fix state confirmed: git show ac664df8e^:server/src/routes/companies.ts shows POST /import gating only assertBoard(req) + existing_company assertCompanyAccess, i.e. no admin gate on new_company', 'Commit ac664df8e^ (fix parent) has the vulnerable code; fix date 2026-04-10 aligns with advisory first_patched_version 2026.410.0']",
+   "research_status": "['Bundle sha256 verified: a5de6cfb8d2eedfe4536cf95cfdb4785ac525a945c6fb5097d7b9151ba14bc58; clone HEAD fc9e9b704f6b9f43246120bd6f63c7d48506fa73 matches bundle clone_head_sha.', 'Bundle advisory GHSA-68qg-g8mg-6pr7 / CVE-2026-41679: critical import authorization bypass to RCE; vulnerable < 2026.410.0, first patched 2026.410.0; withdrawn_at null.', 'git show cc2c724ad -- server/src/routes/companies.ts: introduces /import/preview and /import with assertBoard-only gating for new_company mode, no assertInstanceAdmin.', 'Parent absence: immediate parent 79a9dffc tree has 0 importBundle and 0 import-route matches in server/src/routes/companies.ts.', 'git merge-base --is-ancestor cc2c724ad ac664df8e true; git merge-base --is-ancestor ac664df8e HEAD true; all three SHAs verify via git rev-parse --verify.', 'git show ac664df8e -- server/src/routes/companies.ts: adds assertInstanceAdmin import and assertImportTargetAccess enforcing instance-admin for new_company on both import routes.', 'Fix contained in canary/v2026.410.0-canary.1, matching advisory first_patched_version 2026.410.0.']",
    "unpatched": null,
    "advisory_url": "https://github.com/advisories/ghsa-68qg-g8mg-6pr7",
    "publication_issues": [],
@@ -37729,7 +37702,7 @@
     "coverage": "complete",
     "candidate_count": 1,
     "named_candidate_count": 1,
-    "note": null
+    "note": "Co-authored-by: Claude Sonnet 4.6 <noreply@anthropic.com>"
    },
    "fix_authorship": null,
    "code_evidence": {
@@ -37832,7 +37805,7 @@
     "mechanism": "Authorization relies entirely on a spoofable header value and performs no message-authentication check, so the allowlist gate can be satisfied by simply writing the victim address."
    },
    "ir_chain": null,
-   "research_status": "['51bc07a atomic first write: parent 24386e4 lacks src/channels/email_channel.rs (git cat-file rc=128); file added with 746 insertions in that commit.', 'v0.7.5 blob shows parsed.from().address() -> is_sender_allowed from-header-only trust.', 'is_sender_allowed IDENTICAL BIC vs v0.7.5 vs v0.7.6.', 'Only v0.7.5..v0.7.6 change to the file: bf004a2 adds module doc + two warn!() calls; no behavior change to the vulnerable auth path.', \"Recorded fix_sha 409041a... is the v0.7.6 release-tag object (annotated), corroborating that the 'fix' is a release boundary, not a code-level fix.\"]",
+   "research_status": "['51bc07a atomic first write: parent 24386e4 lacks src/channels/email_channel.rs (git cat-file rc=128); file added with 746 insertions in that commit.', 'v0.7.5 blob shows parsed.from().address() -> is_sender_allowed from-header-only trust.', 'is_sender_allowed IDENTICAL BIC vs v0.7.5 vs v0.7.6.', 'Only v0.7.5..v0.7.6 change to the file: bf004a2 adds module doc + two warn!() calls; no behavior change to the vulnerable auth path.', \"Recorded fix_sha 409041a... is the v0.7.6 release-tag object (annotated), corroborating that the 'fix' is a release boundary, not a code-level fix.\", 'Re-verify 2026-09-05: is_sender_allowed / parsed.from() path unchanged between v0.7.5 and v0.7.6.']",
    "unpatched": null,
    "advisory_url": "https://github.com/advisories/ghsa-4cm8-xpfv-jv6f",
    "publication_issues": [],
