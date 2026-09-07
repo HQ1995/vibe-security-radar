@@ -6,6 +6,7 @@ import { describe, expect, it } from "vitest";
 import ErrorPage from "@/app/error";
 import Loading from "@/app/loading";
 import AboutPage from "@/app/about/page";
+import CvesPage from "@/app/cves/page";
 import CveDetailPage from "@/app/cves/[id]/page";
 import HomePage from "@/app/page";
 import { CanonicalCaseEvidence } from "@/components/canonical-case-evidence";
@@ -110,8 +111,8 @@ describe("homepage hierarchy", () => {
     expect(html).toContain("2025-05 – 2026-08");
     expect(html).not.toContain("Covered Advisories (2025-05-01");
     expect(html).not.toContain("Research ledger");
-    expect(html).toContain("completed");
-    expect(html).toContain("not started");
+    expect(html).not.toContain("completed");
+    expect(html).not.toContain("not started");
     expect(html).not.toContain("under analysis");
     expect(html).not.toContain("flawed AI code");
     expect(html).not.toContain(" · PUBLISHED");
@@ -187,6 +188,7 @@ describe("canonical case evidence", () => {
       month: "2026-08",
     });
 
+    expect(JSON.stringify(CvesPage())).not.toContain('"research_status"');
     expect(html).toContain("CVE, GHSA, or repository");
     expect(html).toContain("All root causes");
     expect(html).toContain("All contribution types");
@@ -347,14 +349,14 @@ describe("canonical case evidence", () => {
   });
 
   it("shows audited fix authorship without unknown labels", () => {
-    const humanMarked = getResearchCaseById("GHSA-7P8R-X3MC-P8W7");
+    const humanMarked = getResearchCaseById("GHSA-8359-H9FX-J6V9");
     const aiMarked = getResearchCaseById("GHSA-5XXX-QHH7-9287");
 
     expect(humanMarked).not.toBeNull();
     expect(aiMarked).not.toBeNull();
     expect(
       renderToStaticMarkup(<CanonicalCaseEvidence item={humanMarked!} />),
-    ).toContain("Fix by Matteo Collina · no AI marker found");
+    ).toContain("Fix by Koudai Aono · no AI marker found");
     expect(
       renderToStaticMarkup(<CanonicalCaseEvidence item={aiMarked!} />),
     ).toContain("AI-assisted fix: ChatGPT/Codex · Byron");
