@@ -173,12 +173,6 @@ export default function HomePage() {
                     <dd className="text-right font-semibold">
                       {formatCount(research.snapshot.ledger_total ?? 0)}{" "}
                       advisories
-                      <span className="block text-xs font-normal text-muted-foreground">
-                        {formatCount(research.snapshot.ledger_reviewed ?? 0)}{" "}
-                        completed ·{" "}
-                        {formatCount(research.snapshot.ledger_not_started ?? 0)}{" "}
-                        not started
-                      </span>
                     </dd>
                   </div>
                   <div className="flex items-start justify-between gap-4 py-2.5">
