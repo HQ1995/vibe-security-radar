@@ -1,11 +1,17 @@
 # Data contract
 
 Neon is canonical; `artifacts/funnel-account-*.jsonl` is its deterministic recovery
-export. The [publisher](../scripts/publish_tp_ledger.py) reads Neon first with
-committed-file fallback. Writes follow [AGENTS.md](../AGENTS.md).
+export. The [publisher](../scripts/publish_tp_ledger.py) reads case rows from that
+export; display content is synced separately to Neon and read with committed-file
+fallbacks. `finalize` exports after its transaction succeeds. Writes follow
+[AGENTS.md](../AGENTS.md).
 
 Field definitions: [Ledger SQL](../scripts/ledger_schema.sql) and
 [published types](../web/src/lib/research-data.ts).
+
+The public site is a concise projection, without internal workflow dashboards.
+The ledger retains full assessments, evidence and history; published types do not
+define the research evidence standard.
 
 ## Ledger
 
@@ -14,7 +20,13 @@ Field definitions: [Ledger SQL](../scripts/ledger_schema.sql) and
   `AI_CODE_FLAWED`, `NOT_AI`, `BLOCKED`, `FALSE_POSITIVE`.
   `EVIDENCE_GAP` is an audit verdict, not a ledger status.
 - `finalize` requires `expected_revision` and supporting `assessment_ids`.
-  Assessments and version history are append-only.
+  New terminal updates require nonempty `row.causal_research` with `verdict`
+  matching `row.status`: the leader's accepted synthesis. Assessments and full row
+  versions, including supporting assessment IDs, are append-only.
+- Publisher/envelope use `row.causal_research` whenever the key exists; null, empty
+  or malformed values do not fall back to older assessments. Only rows without
+  the key retain legacy lookup. Canonical publication fields override synthesis
+  fallbacks, including explicit nulls/empty sets.
 
 ## Published cases
 

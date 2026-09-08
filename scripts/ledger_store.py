@@ -428,6 +428,12 @@ def read_patches(path: Path, *, require_assessments: bool) -> list[dict]:
             raise SystemExit(f"{path}:{number}: assessment_ids must be a string list")
         if require_assessments and not ids:
             raise SystemExit(f"{path}:{number}: finalize requires assessment_ids")
+        if require_assessments and item["row"].get("status") in TERMINAL_STATUSES:
+            accepted = item["row"].get("causal_research")
+            if not isinstance(accepted, dict) or not accepted:
+                raise SystemExit(f"{path}:{number}: finalize requires causal_research")
+            if accepted.get("verdict") != item["row"]["status"]:
+                raise SystemExit(f"{path}:{number}: causal_research verdict must match status")
     if len(set(class_ids)) != len(class_ids):
         raise SystemExit(f"{path}: duplicate class_id patch")
     return sorted(patches, key=lambda item: item["row"]["class_id"])

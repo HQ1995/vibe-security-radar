@@ -21,6 +21,7 @@ export default function CvesPage() {
       references: [],
       code_evidence: null,
       ir_chain: null,
+      research_status: undefined,
     }));
   const snapshot = getResearchSnapshot().snapshot;
 

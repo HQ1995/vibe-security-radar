@@ -26,6 +26,9 @@ ITEM_ARRAYS = ("squash_audit", "partial_wave", "blocked535")
 
 
 def payloads(row: dict) -> list:
+    if "causal_research" in row:
+        accepted = row["causal_research"]
+        return [accepted] if isinstance(accepted, dict) and accepted else []
     recs = [
         v
         for k, v in row.items()
@@ -64,6 +67,12 @@ def violations(row: dict) -> list:
         row.get("site_scope") is not None or row.get("site_tier") is not None
     ):
         bad.append("NOT_AI must not carry site_scope/site_tier")
+    if "causal_research" in row:
+        accepted = row["causal_research"]
+        if not isinstance(accepted, dict) or not accepted:
+            bad.append("causal_research must be a nonempty object")
+        elif accepted.get("verdict") != row["status"]:
+            bad.append("causal_research verdict must match status")
     ps = payloads(row)
     bics = [p.get("introducer_sha") for p in ps if p.get("introducer_sha")]
     if row["status"] == "FALSE_POSITIVE":

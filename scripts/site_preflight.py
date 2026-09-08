@@ -19,6 +19,11 @@ from urllib.error import HTTPError
 from urllib.parse import urlparse
 from urllib.request import Request, urlopen
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from verify_cache import load as cache_load, save as cache_save, fresh as cache_fresh
+
+VERIFY_CACHE_ACTIVE = True
+
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_DATA = ROOT / "web/src/generated/research-data.json"
 ALLOWLIST = ROOT / "scripts/site_preflight_allowlist.json"
@@ -485,8 +490,29 @@ def live_fix_object_witness_errors(witness: dict) -> list[str]:
             except (OSError, TimeoutError, UnicodeError, ValueError):
                 return repository, sha, None
 
-    with ThreadPoolExecutor(max_workers=min(12, len(targets) or 1)) as pool:
-        results = list(pool.map(verify, targets))
+    force_online = not VERIFY_CACHE_ACTIVE or "--force-online" in (sys.argv[1:] if len(sys.argv) > 1 else [])
+    cache = {} if force_online else cache_load()
+    witness_cache = cache.get("fix_objects") or {}
+    cached_ok: set[tuple[str, str]] = set()
+    stale: list[tuple[str, str]] = []
+    for target in targets:
+        entry = witness_cache.get(f"{target[0]}@{target[1]}")
+        if not force_online and cache_fresh(entry):
+            cached_ok.add(target)
+        else:
+            stale.append(target)
+
+    online: list[tuple[str, str, str | None]] = []
+    if stale:
+        with ThreadPoolExecutor(max_workers=min(12, len(stale))) as pool:
+            online = list(pool.map(verify, stale))
+        for repository, sha, actual in online:
+            if actual == sha:
+                witness_cache[f"{repository}@{sha}"] = {"verified_at": time.time()}
+        cache["fix_objects"] = witness_cache
+        cache_save(cache)
+
+    results = online + [(r, s, s) for r, s in cached_ok]
     return [
         f"published fix object witness live check failed for {repository}@{sha}"
         for repository, sha, actual in results

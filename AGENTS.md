@@ -7,8 +7,12 @@ Keep committed content in English.
 
 - Make the smallest complete change; fix root causes, reuse code and preserve unrelated work.
 - Prefer parallel work across independent cases, with isolated contexts and owned
-  outputs. Bound total concurrency by the shared host budget, and keep one owner
-  responsible for each case's complete causal chain.
+  outputs. Bound total concurrency by the shared host budget. Keep the same owner
+  through each case's causal chain and follow-up; record the next decisive question.
+- Reuse neutral primary evidence for blind review; hide prior judgments.
+- Before fanning out a new runner/profile, run one harmless multi-turn check.
+- In the existing run index, separate execution status, research acceptance,
+  and publication status.
 - Follow the assigned scope, file ownership, read-only and stop instructions.
   Shared files have one writer; the leader resolves conflicts.
 - Audits: [Audit protocol](docs/AUDIT-PROTOCOL.md).

@@ -392,7 +392,7 @@ def ledger_case(row: dict, publication_overrides: dict | None = None) -> dict | 
     rec = records[0] if records else None
     if not rec:
         return None
-    candidates, fixes = public_shas(rec, None)
+    candidates, fixes = public_shas(rec, None, row=row)
     if not candidates and not fixes:
         return None
     ghsas, cves = collect_ids(row, rec)
@@ -406,7 +406,7 @@ def ledger_case(row: dict, publication_overrides: dict | None = None) -> dict | 
         "class_id": row.get("class_id"),
         "aliases": [case_id, *(cves or ghsas)],
         "repository": repo_of(row, rec),
-        "mechanism": mechanism[:400],
+        "mechanism": row["mechanism"] if "mechanism" in row else mechanism[:400],
         "candidate_set": candidates,
         "minimum_fix_set": fixes,
     }
@@ -420,7 +420,8 @@ def ledger_case(row: dict, publication_overrides: dict | None = None) -> dict | 
             *(alias for alias in case["aliases"] if alias.upper() != case["case_id"]),
         ]
     for field in ("repository", "mechanism", "candidate_set", "minimum_fix_set"):
-        if field in spec:
+        canonical_field = "repo" if field == "repository" else field
+        if field in spec and canonical_field not in row:
             case[field] = spec[field]
     return case
 

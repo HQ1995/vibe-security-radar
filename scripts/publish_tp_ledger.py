@@ -282,9 +282,15 @@ def contribution_class(row: dict, rec: dict | None) -> str:
 
 
 def research_records(row: dict) -> list[dict]:
+    if "causal_research" in row:
+        record = row["causal_research"]
+        if not isinstance(record, dict) or not record:
+            raise ValueError(f"{row.get('class_id')}: causal_research must be a nonempty object")
+        if record.get("verdict") != row.get("status"):
+            raise ValueError(f"{row.get('class_id')}: causal_research verdict must match status")
+        return [record]
     records: list[dict] = []
     for key in (
-        "causal_research",
         "round6_research",
         "round5_research",
         "round4_research",
@@ -788,6 +794,14 @@ def public_shas(
     over cached evidence so re-generated comparison hunks stay consistent
     with the listing SHAs.
     """
+    chain = ir_chain_of(row, (cached or {}).get("ir_chain")) or {}
+    if (cached or {}).get("ir_chain") and (
+        not chain or (row is not None and "ir_chain" in row)
+    ):
+        # A rejected legacy chain cannot re-enter through its cached SHA sets or URLs.
+        cached = None
+        if row is None or "code_evidence" not in row:
+            evidence = None
     if row is not None and "candidate_set" in row:
         candidates = list(row.get("candidate_set") or [])
     else:
@@ -800,8 +814,11 @@ def public_shas(
         fixes = collect_shas(rec, "direct_fix_sha", "fix_sha")
     if not fixes and cached and not (row is not None and "minimum_fix_set" in row):
         fixes = list(cached.get("minimum_fix_set") or [])
-    chain = (cached or {}).get("ir_chain") or {}
-    evidence = evidence or (cached or {}).get("code_evidence") or {}
+    if row is not None and "code_evidence" in row:
+        evidence = row.get("code_evidence")
+    elif evidence is None:
+        evidence = (cached or {}).get("code_evidence")
+    evidence = evidence or {}
     attempted = ((chain.get("attempted_remediation") or {}).get("candidate_shas") or [])
     final = ((chain.get("final_closure") or {}).get("minimum_fix_shas") or [])
     url_candidate = sha_from_url(evidence.get("candidate_url"))
@@ -877,7 +894,7 @@ def merge_duplicate_identities(cases: list[dict]) -> list[dict]:
             winner["contribution_class"] = "AI_INCOMPLETE_REMEDIATION"
         if evidence and not winner.get("code_evidence"):
             winner["code_evidence"] = evidence
-        winner["candidate_set"], winner["minimum_fix_set"] = public_shas(None, winner)
+        winner["candidate_set"], winner["minimum_fix_set"] = public_shas(None, winner, row=winner)
         provenance = dict(winner.get("ai_provenance") or {})
         provenance["candidate_count"] = len(winner["candidate_set"])
         provenance["named_candidate_count"] = len(winner["candidate_set"])
@@ -1022,6 +1039,15 @@ def normalize_ir_chain(raw: dict | None) -> dict | None:
         "residual_bypass": raw.get("residual_bypass"),
         "final_closure": raw.get("final_closure"),
     }
+
+
+def ir_chain_of(row: dict | None, fallback: dict | None) -> dict | None:
+    if row is not None:
+        if "ir_chain" in row:
+            return normalize_ir_chain(row["ir_chain"])
+        if "site_scope" in row and SCOPE_TO_CLASS.get(row["site_scope"]) != "AI_INCOMPLETE_REMEDIATION":
+            return None
+    return normalize_ir_chain(fallback)
 
 
 def load_advisory_dates() -> dict[str, str]:
@@ -1409,13 +1435,12 @@ def apply_case_overrides(
             item for item in (case.get("aliases") or []) if item.upper() not in dropped
         ]
     class_override = (overrides.get("class_overrides") or {}).get(class_id)
-    if class_override:
+    if "site_scope" in row:
+        case["contribution_class"] = contribution_class(row, rec)
+    elif class_override:
         case["contribution_class"] = class_override
-    chain = (
-        normalize_ir_chain(row.get("ir_chain"))
-        if "ir_chain" in row
-        else normalize_ir_chain(spec.get("ir_chain"))
-    )
+    case["ir_chain"] = ir_chain_of(row, case.get("ir_chain"))
+    chain = ir_chain_of(row, spec.get("ir_chain"))
     indexed_chain = chains.get(str(case.get("case_id") or "").upper())
     if (
         "ir_chain" not in row
@@ -1437,9 +1462,9 @@ def apply_case_overrides(
         ):
             if not chain.get(field) or chain.get(field) == "UNKNOWN":
                 chain[field] = indexed_chain.get(field)
-    if not chain:
+    if not chain and "ir_chain" not in row:
         chain = indexed_chain
-    if chain and rec and rec.get("squash_decomposed"):
+    if chain and "ir_chain" not in row and rec and rec.get("squash_decomposed"):
         introducer = str(rec.get("introducer_sha") or "")
         evidence_sha = sha_from_url((case.get("code_evidence") or {}).get("candidate_url"))
         if introducer and evidence_sha and sha_overlap([introducer], [evidence_sha]):
@@ -1447,20 +1472,23 @@ def apply_case_overrides(
             attempted = dict(chain.get("attempted_remediation") or {})
             attempted["candidate_shas"] = [introducer]
             chain["attempted_remediation"] = attempted
+    chain = ir_chain_of(row, chain)
     if chain and (
-        spec.get("ir_chain")
+        "ir_chain" in row
+        or spec.get("ir_chain")
         or case.get("contribution_class") == "AI_INCOMPLETE_REMEDIATION"
     ):
         case["ir_chain"] = chain
-        case["contribution_class"] = "AI_INCOMPLETE_REMEDIATION"
-    if spec.get("candidate_set") and "candidate_set" not in row:
-        case["candidate_set"] = list(spec["candidate_set"])
+        if "site_scope" not in row:
+            case["contribution_class"] = "AI_INCOMPLETE_REMEDIATION"
+    if "candidate_set" in spec and "candidate_set" not in row:
+        case["candidate_set"] = list(spec.get("candidate_set") or [])
     if "carrier_set" in spec and "carrier_set" not in row:
-        case["carrier_set"] = list(spec["carrier_set"])
+        case["carrier_set"] = list(spec.get("carrier_set") or [])
     if "minimum_fix_set" in spec and "minimum_fix_set" not in row:
-        case["minimum_fix_set"] = list(spec["minimum_fix_set"])
+        case["minimum_fix_set"] = list(spec.get("minimum_fix_set") or [])
     if case.get("ir_chain"):
-        aligned_candidates, aligned_fixes = public_shas(rec, case)
+        aligned_candidates, aligned_fixes = public_shas(rec, case, row=row)
         if (
             aligned_candidates
             and "candidate_set" not in row
@@ -1574,9 +1602,10 @@ def build_case(
     else:
         gates = dict(DEFAULT_GATES)
     derived_class = contribution_class(row, rec)
+    chain = ir_chain_of(row, (cached or {}).get("ir_chain"))
     contribution = (
         "AI_INCOMPLETE_REMEDIATION"
-        if (cached or {}).get("ir_chain") or derived_class == "AI_INCOMPLETE_REMEDIATION"
+        if chain and "site_scope" not in row
         else derived_class
     )
     if "carrier_set" in row:
@@ -1664,11 +1693,11 @@ def build_case(
         ),
         "severity": (cached or {}).get("severity"),
         "cwes": list((cached or {}).get("cwes") or []),
-        "description": public_text(row.get("description"), description),
+        "description": public_text(row.get("description")) if "description" in row else description,
         "references": list((cached or {}).get("references") or []),
         "mechanism_key": (cached or {}).get("mechanism_key"),
-        "mechanism": public_text(row.get("mechanism"), mechanism),
-        "scope_statement": public_text(row.get("scope_statement"), scope_statement),
+        "mechanism": public_text(row.get("mechanism")) if "mechanism" in row else mechanism,
+        "scope_statement": public_text(row.get("scope_statement")) if "scope_statement" in row else scope_statement,
         "cause_category": (cached or {}).get("cause_category")
         or cause_of(
             first_text(
@@ -1693,7 +1722,7 @@ def build_case(
         },
         "fix_authorship": (cached or {}).get("fix_authorship"),
         "code_evidence": scrub_evidence(case_evidence, (mechanism, description)),
-        "ir_chain": (cached or {}).get("ir_chain"),
+        "ir_chain": chain,
     }
     if candidate_sources:
         case["candidate_sources"] = candidate_sources
@@ -1723,6 +1752,7 @@ def build_case(
             list(case.get("candidate_set") or []),
             dates=dates,
         )
+    case.pop("research_status", None)
     return strip_cjk_tree(drop_original_aliases(case))
 
 def main() -> None:

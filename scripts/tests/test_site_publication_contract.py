@@ -77,6 +77,22 @@ def _ir_chain() -> dict:
     }
 
 
+def _ledger_row() -> dict:
+    return {
+        "class_id": "alias-canonical",
+        "status": "AI_ROOT_CAUSE",
+        "repo": "acme/app",
+        "causal_research": {
+            "case_id": "CVE-2026-12345",
+            "verdict": "AI_ROOT_CAUSE",
+            "introducer_shas": ["d" * 40],
+            "fix_sha": "e" * 40,
+            "ai_marker": "Co-Authored-By: Claude",
+            "bug_semantics": "Untrusted input reached a privileged operation.",
+        },
+    }
+
+
 def test_publication_status_fails_closed() -> None:
     case = _case()
     case["publication_issues"] = publish_tp_ledger.publication_issues(case)
@@ -264,6 +280,172 @@ def test_canonical_ledger_code_evidence_overrides_generated_and_cached_data(
     assert case["code_evidence"]["summary"] == fallback
 
 
+@pytest.mark.parametrize(
+    "canonical",
+    [
+        {"site_scope": "AI_ROOT_CAUSE", "ir_chain": None},
+        {"site_scope": "AI_ROOT_CAUSE", "ir_chain": {}},
+        {"site_scope": "AI_ROOT_CAUSE"},
+        {"site_scope": None},
+        {"site_scope": ""},
+        {"ir_chain": None},
+    ],
+)
+def test_canonical_ir_fields_reject_cached_and_indexed_chains(canonical: dict) -> None:
+    row = {**_ledger_row(), **canonical}
+    cached = {**_case(), "repository": "acme/app", "ir_chain": _ir_chain()}
+    overrides = {
+        "cases": {row["class_id"]: {"ir_chain": _ir_chain()}},
+        "class_overrides": (
+            {row["class_id"]: "AI_CODE_FLAWED"} if "site_scope" in row else {}
+        ),
+    }
+    indexed = {cached["case_id"]: {**_ir_chain(), "_publication_override": True}}
+
+    case = publish_tp_ledger.build_case(
+        row, {cached["case_id"]: cached}, {}, overrides, indexed, {}, {}, {}, {}, {}
+    )
+
+    assert case["contribution_class"] == "AI_DIRECT_ROOT"
+    assert case["ir_chain"] is None
+    assert case["candidate_set"] == ["d" * 40]
+    assert case["minimum_fix_set"] == ["e" * 40]
+
+
+def test_canonical_ir_chain_is_not_backfilled_or_rewritten() -> None:
+    chain = {
+        **_ir_chain(),
+        "original_sha": None,
+        "original_author_kind": "UNKNOWN",
+        "original_author_name": None,
+        "unresolved_reason": "The original parent commit is unavailable.",
+    }
+    row = {**_ledger_row(), "site_scope": "AI_INCOMPLETE_FIX", "ir_chain": chain}
+    row["causal_research"].update(
+        {"squash_decomposed": True, "introducer_sha": "d" * 40}
+    )
+    case = {**_case(), "contribution_class": "AI_DIRECT_ROOT"}
+    case["code_evidence"]["candidate_url"] = (
+        f"https://github.com/acme/app/commit/{'d' * 40}"
+    )
+    updated = publish_tp_ledger.apply_case_overrides(
+        case,
+        row,
+        row["causal_research"],
+        {
+            "class_overrides": {row["class_id"]: "AI_CODE_FLAWED"},
+            "cases": {row["class_id"]: {"ir_chain": _ir_chain()}},
+        },
+        {case["case_id"]: {**_ir_chain(), "_publication_override": True}},
+    )
+
+    assert updated["contribution_class"] == "AI_INCOMPLETE_REMEDIATION"
+    assert updated["ir_chain"] == chain
+    assert updated["candidate_set"] == chain["attempted_remediation"]["candidate_shas"]
+    assert updated["minimum_fix_set"] == chain["final_closure"]["minimum_fix_shas"]
+
+
+def test_explicit_scope_and_chain_conflict_still_fails_publication() -> None:
+    row = {**_ledger_row(), "site_scope": "AI_ROOT_CAUSE", "ir_chain": _ir_chain()}
+    case = publish_tp_ledger.build_case(row, {}, {}, {}, {}, {}, {}, {}, {}, {})
+
+    assert case["contribution_class"] == "AI_DIRECT_ROOT"
+    assert case["ir_chain"] == _ir_chain()
+    assert (
+        f"{case['case_id']}: ir_chain present but class is AI_DIRECT_ROOT"
+        in publish_tp_ledger.publication_errors([case], {}, {})
+    )
+
+
+@pytest.mark.parametrize("source", ["cached", "indexed"])
+def test_publisher_keeps_legacy_ir_fallbacks(source: str) -> None:
+    row = _ledger_row()
+    row["round6_research"] = row.pop("causal_research")
+    row["round6_research"]["flaw_origin"] = "An incomplete fix left the bypass reachable."
+    cached = {**_case(), "repository": "acme/app"}
+    indexed = {}
+    if source == "cached":
+        cached["ir_chain"] = _ir_chain()
+    else:
+        indexed[cached["case_id"]] = _ir_chain()
+
+    case = publish_tp_ledger.build_case(
+        row, {cached["case_id"]: cached}, {}, {}, indexed, {}, {}, {}, {}, {}
+    )
+
+    assert case["contribution_class"] == "AI_INCOMPLETE_REMEDIATION"
+    assert case["ir_chain"] == _ir_chain()
+    assert case["candidate_set"] == ["a" * 40]
+    assert case["minimum_fix_set"] == ["b" * 40]
+
+
+def test_publisher_uses_only_the_accepted_research_projection() -> None:
+    row = _ledger_row()
+    row["round11_research"] = {
+        "case_id": "GHSA-9999-9999-9999",
+        "verdict": row["status"],
+        "introducer_sha": "a" * 40,
+        "fix_sha": "b" * 40,
+    }
+    assert publish_tp_ledger.research_records(row) == [row["causal_research"]]
+
+    case = publish_tp_ledger.build_case(row, {}, {}, {}, {}, {}, {}, {}, {}, {})
+    evidence_case = build_missing_code_evidence.ledger_case(row)
+    for result in (case, evidence_case):
+        assert result["case_id"] == row["causal_research"]["case_id"]
+        assert result["candidate_set"] == ["d" * 40]
+        assert result["minimum_fix_set"] == ["e" * 40]
+
+
+@pytest.mark.parametrize("record", [None, {}, [], "stale", 0, {"verdict": "NOT_AI"}])
+def test_invalid_canonical_research_does_not_fall_back(record: object) -> None:
+    row = _ledger_row()
+    row["round11_research"] = row["causal_research"]
+    row["causal_research"] = record
+    for read in (publish_tp_ledger.research_records, build_missing_code_evidence.ledger_case):
+        with pytest.raises(ValueError, match="alias-canonical: causal_research"):
+            read(row)
+
+
+def test_publisher_omits_internal_research_after_validation() -> None:
+    row = _ledger_row()
+    row["causal_research"].update(
+        {
+            "fix_sha": None,
+            "remaining_gap": "Unpatched; internal-review-marker.",
+            "evidence": "assessment-only-marker",
+            "assessment_id": "private-assessment-marker",
+        }
+    )
+    row["assessment_ids"] = ["private-history-marker"]
+
+    case = publish_tp_ledger.build_case(row, {}, {}, {}, {}, {}, {}, {}, {}, {})
+
+    assert "missing_fix" not in case["publication_issues"]
+    assert "missing_fixed_release" not in case["publication_issues"]
+    published = json.dumps(case)
+    for internal in (
+        "research_status", "remaining_gap", "assessment_ids", "assessment_id",
+        "internal-review-marker", "assessment-only-marker", "private-assessment-marker",
+        "private-history-marker",
+    ):
+        assert internal not in published
+
+
+@pytest.mark.parametrize("empty", [None, ""])
+def test_canonical_empty_reader_copy_does_not_use_stale_overlays(empty: object) -> None:
+    fields = ("description", "mechanism", "scope_statement")
+    row = {**_ledger_row(), **dict.fromkeys(fields, empty)}
+    stale = dict.fromkeys(fields, "Stale reader copy describes a rejected mechanism.")
+    cached = {**_case(), "repository": "acme/app", **stale}
+    case = publish_tp_ledger.build_case(
+        row, {cached["case_id"]: cached}, {},
+        {"cases": {row["class_id"]: stale}}, {}, {}, {}, {}, {}, {}
+    )
+
+    assert all(case[field] is None for field in fields)
+
+
 def test_hunk_specific_evidence_requires_distinct_annotations_and_all_anchors() -> None:
     assert site_preflight.valid_unified_hunks(
         "@@ -1 +1 @@\n--- a removed SQL comment\n+++incremented"
@@ -324,6 +506,7 @@ def test_targeted_overrides_replace_stale_mechanism_and_release_metadata() -> No
             "cases": {
                 "CVE-2026-12345": {
                     "mechanism": mechanism,
+                    "candidate_set": [],
                     "carrier_set": carrier,
                     "minimum_fix_set": [],
                     "vulnerable_release": vulnerable,
@@ -335,6 +518,7 @@ def test_targeted_overrides_replace_stale_mechanism_and_release_metadata() -> No
     )
 
     assert updated["mechanism"] == mechanism
+    assert updated["candidate_set"] == []
     assert updated["carrier_set"] == carrier
     assert updated["minimum_fix_set"] == []
     assert updated["vulnerable_release"] == vulnerable
@@ -373,6 +557,14 @@ def test_targeted_overrides_replace_stale_mechanism_and_release_metadata() -> No
     assert canonical["candidate_set"] == ["d" * 40]
 
 
+def test_class_override_remains_available_without_canonical_scope() -> None:
+    case = publish_tp_ledger.apply_case_overrides(
+        _case(), {"class_id": "alias-legacy"}, None,
+        {"class_overrides": {"alias-legacy": "AI_CODE_FLAWED"}}, {},
+    )
+    assert case["contribution_class"] == "AI_CODE_FLAWED"
+
+
 def test_public_shas_preserve_a_multi_commit_set_when_evidence_overlaps() -> None:
     candidates = ["a" * 40, "c" * 40]
     evidence = {
@@ -400,6 +592,24 @@ def test_public_shas_prefer_explicit_ledger_sets_over_stale_site_evidence() -> N
         ["b" * 40],
         [],
     )
+
+
+@pytest.mark.parametrize("evidence", [None, {}])
+def test_public_shas_preserve_explicit_empty_code_evidence(evidence: object) -> None:
+    row = {**_ledger_row(), "code_evidence": evidence}
+    assert publish_tp_ledger.public_shas(row["causal_research"], _case(), row=row) == (
+        ["d" * 40],
+        ["e" * 40],
+    )
+
+
+def test_duplicate_merge_preserves_resolved_sha_sets() -> None:
+    case = {**_case(), "candidate_set": ["d" * 40], "minimum_fix_set": ["e" * 40]}
+    merged = publish_tp_ledger.merge_duplicate_identities([case, deepcopy(case)])
+
+    assert len(merged) == 1
+    assert merged[0]["candidate_set"] == ["d" * 40]
+    assert merged[0]["minimum_fix_set"] == ["e" * 40]
 
 
 def test_identity_replacement_does_not_reuse_a_dropped_by_class_cache() -> None:
@@ -1332,6 +1542,8 @@ def test_live_fix_object_witness_binds_repository_and_full_sha() -> None:
 
     original = site_preflight.urlopen
     try:
+        original_cache = site_preflight.VERIFY_CACHE_ACTIVE
+        site_preflight.VERIFY_CACHE_ACTIVE = False
         site_preflight.urlopen = open_request
         success = site_preflight.live_fix_object_witness_errors(witness)
         wrong_sha = site_preflight.live_fix_object_witness_errors(witness)
@@ -1342,6 +1554,7 @@ def test_live_fix_object_witness_binds_repository_and_full_sha() -> None:
         soft_404 = site_preflight.live_fix_object_witness_errors(witness)
         truncated_html = site_preflight.live_fix_object_witness_errors(witness)
     finally:
+        site_preflight.VERIFY_CACHE_ACTIVE = original_cache
         site_preflight.urlopen = original
 
     assert success == []

@@ -1,0 +1,104 @@
+{
+  "schema_version": "independent-case-audit/v1",
+  "worker": "w012",
+  "review_agent_id": "r13_independent_20260904_w012",
+  "class_id": "alias-4f7ab0330198dceb409712a6",
+  "case_id": "GHSA-9525-27vj-c8r8",
+  "repo": "thorsten/phpmyfaq",
+  "advisory_ids": [
+    "CVE-2026-46367",
+    "GHSA-9525-27vj-c8r8"
+  ],
+  "input_binding": {
+    "bundle_sha256": "a4b19cc61481f16979503d57a16a91d5bcffb8259f8f3f13d730eb1c805d9c31",
+    "clone_head_sha": "2da26942172d87b3f0624bccfbfd0e356b1b1187"
+  },
+  "verdict": "EVIDENCE_GAP",
+  "protocol_checks": {
+    "vulnerability_mechanism": {
+      "status": "GAP",
+      "evidence": [
+        "The vendor advisory at https://github.com/thorsten/phpMyFAQ/security/advisories/GHSA-9525-27vj-c8r8 claims that 4.1.1 stores a literal quote through a main.enableCommentEditor/sanitizeHtmlComment() path and later passes it to Utils::parseUrl().",
+        "GIT_NO_LAZY_FETCH=1 git grep on tag 4.1.1 finds neither main.enableCommentEditor nor sanitizeHtmlComment; its only comment creation controller is phpmyfaq/src/phpMyFAQ/Controller/Frontend/CommentController.php.",
+        "Tag 4.1.1 CommentController.php line 77 applies Filter::filterVar($data->comment_text, FILTER_SANITIZE_SPECIAL_CHARS), and line 115 additionally applies strip_tags before storage. Filter.php implements that filter with htmlspecialchars(ENT_QUOTES) and explicit replacement of literal quotes by &#39; and &#34;.",
+        "Tag 4.1.1 does pass stored comments to Utils::parseUrl() in CommentHelper.php and renders the resulting HTML, but the inspected first-party source does not preserve the advisory PoC's literal attribute-closing quote to that sink."
+      ]
+    },
+    "atomic_bic": {
+      "status": "PASS",
+      "evidence": [
+        "GIT_NO_LAZY_FETCH=1 git blame -L 281,295 4.1.1 -- phpmyfaq/src/phpMyFAQ/Utils.php identifies b0db7b8925bc7748589648f5187c80263e281021 as the first writer of a URL match that accepts every non-whitespace character and directly inserts the result into href.",
+        "git show b0db7b8925bc7748589648f5187c80263e281021^..b0db7b8925bc7748589648f5187c80263e281021 shows the atomic change from a restricted URL character class to all non-whitespace characters while continuing to interpolate the match directly into a quoted href."
+      ]
+    },
+    "immediate_parent_absence": {
+      "status": "PASS",
+      "evidence": [
+        "git rev-list --parents -n 1 b0db7b8925bc7748589648f5187c80263e281021 gives immediate parent c8cdea3ef168cde3be98ed37ad34d19ddd50e2b1.",
+        "The parent parseUrl() regex accepts only letters, digits, hyphens, periods, and slashes after http://, so a double quote cannot enter its generated href value; the child changes the match to all non-whitespace characters and therefore first creates the unsafe sink behavior fixed by c601bf985cf762c8c4ed6e660ad8055067a1f011."
+      ]
+    },
+    "squash_member_decomposition": {
+      "status": "PASS",
+      "evidence": [
+        "git cat-file -p b0db7b8925bc7748589648f5187c80263e281021 shows one parent, c8cdea3ef168cde3be98ed37ad34d19ddd50e2b1, and a direct source diff; it is not a merge, release carrier, or squash aggregate requiring member decomposition."
+      ]
+    },
+    "affected_release_membership": {
+      "status": "GAP",
+      "evidence": [
+        "CVE.org record https://cveawg.mitre.org/api/cve/CVE-2026-46367 and the vendor advisory identify 4.1.1 as affected and 4.1.2 as fixed.",
+        "git merge-base --is-ancestor b0db7b8925bc7748589648f5187c80263e281021 4.1.1 succeeds, proving that 4.1.1 contains the unsafe parseUrl() sink.",
+        "However, tag 4.1.1 lacks the advisory-described main.enableCommentEditor/sanitizeHtmlComment() source path and instead encodes comment quotes before storage, so membership of a complete exploitable source-to-sink chain in the 4.1.1 tag is not established."
+      ]
+    },
+    "fixed_release_membership": {
+      "status": "PASS",
+      "evidence": [
+        "git merge-base --is-ancestor c601bf985cf762c8c4ed6e660ad8055067a1f011 4.1.1 fails and the same check against 4.1.2 succeeds.",
+        "Tag 4.1.2 contains c601bf985cf762c8c4ed6e660ad8055067a1f011, which HTML-encodes the full matched URL with ENT_QUOTES before placing it in href and link text."
+      ]
+    },
+    "direct_fix_or_unpatched": {
+      "status": "PASS",
+      "evidence": [
+        "git show c601bf985cf762c8c4ed6e660ad8055067a1f011 shows the direct fix: replace raw $1 interpolation with preg_replace_callback and htmlspecialchars($matches[1], ENT_QUOTES, 'UTF-8'), plus quote and markup regression tests.",
+        "The bundle's 66792f2575b07d65896b504d47deb5f4f903f9ff is only the 4.1.2 release commit; it does not modify Utils.php and is not recorded as the direct fix."
+      ]
+    },
+    "bic_only_ai_attribution": {
+      "status": "PASS",
+      "evidence": [
+        "git cat-file -p b0db7b8925bc7748589648f5187c80263e281021 records author and committer Thorsten Rinne <thorsten@phpmyfaq.de>, one parent, and message 'test: added missing tests for Utils class'.",
+        "The complete BIC commit object has no AI generator, assistant, bot, or co-author marker; attribution is based only on this atomic causal commit, not on repository activity, later fixes, or releases."
+      ]
+    }
+  },
+  "bug_semantics": "The advisory claims that an authenticated user's comment containing https://www.evil.com/\"onmouseover=\"... reaches Utils::parseUrl() with literal quotes intact; parseUrl() matches every non-whitespace character and inserts the match unescaped into a quoted href, so a literal quote would terminate href and create an event-handler attribute in raw-rendered comment HTML. The 4.1.1 tag contains that unsafe sink, but its inspected comment creation path encodes literal quotes as entities before storage and has no main.enableCommentEditor bypass, so the claimed source-to-sink chain is not reproduced by the first-party release source.",
+  "flaw_origin": "Commit b0db7b8925bc7748589648f5187c80263e281021 is the smallest first-writer of the unsafe parseUrl() sink: it broadens the URL body from a restricted character class to all non-whitespace characters and interpolates the result directly into href. Immediate parent c8cdea3ef168cde3be98ed37ad34d19ddd50e2b1 excludes quotes from that match. This establishes the sink origin, but the advisory's vulnerable 4.1.1 input path remains contradicted by the release tag.",
+  "introducer_sha": "b0db7b8925bc7748589648f5187c80263e281021",
+  "introducer_parent": "c8cdea3ef168cde3be98ed37ad34d19ddd50e2b1",
+  "introducer_parent_absent": true,
+  "squash_decomposed": false,
+  "decomposed_shas": [],
+  "fix_sha": "c601bf985cf762c8c4ed6e660ad8055067a1f011",
+  "direct_fix_sha": "c601bf985cf762c8c4ed6e660ad8055067a1f011",
+  "unpatched": null,
+  "ai_marker": {
+    "state": "ABSENT",
+    "evidence": [
+      "The complete commit object for b0db7b8925bc7748589648f5187c80263e281021 names Thorsten Rinne <thorsten@phpmyfaq.de> as author and committer and contains no AI, bot, assistant, generator, or co-author marker."
+    ]
+  },
+  "evidence": [
+    "Vendor advisory: https://github.com/thorsten/phpMyFAQ/security/advisories/GHSA-9525-27vj-c8r8 (stored XSS claim, =4.1.1 affected, 4.1.2 first patched).",
+    "CVE.org record: https://cveawg.mitre.org/api/cve/CVE-2026-46367 (PUBLISHED; 4.1.1 affected and 4.1.2 unaffected as supplied by the CNA).",
+    "BIC: https://github.com/thorsten/phpMyFAQ/commit/b0db7b8925bc7748589648f5187c80263e281021; parent c8cdea3ef168cde3be98ed37ad34d19ddd50e2b1 excludes quotes from the URL regex, while the child accepts all non-whitespace characters with unescaped href interpolation.",
+    "Direct fix: https://github.com/thorsten/phpMyFAQ/commit/c601bf985cf762c8c4ed6e660ad8055067a1f011; the matched URL is encoded with htmlspecialchars(..., ENT_QUOTES, 'UTF-8') before HTML insertion.",
+    "Release membership: GIT_NO_LAZY_FETCH=1 git merge-base --is-ancestor proves BIC b0db7b8925bc7748589648f5187c80263e281021 is in 4.1.1, direct fix c601bf985cf762c8c4ed6e660ad8055067a1f011 is absent from 4.1.1 and present in 4.1.2.",
+    "Tag 4.1.1 source inspection: Frontend/CommentController.php encodes comment_text with FILTER_SANITIZE_SPECIAL_CHARS and then strip_tags before storage; Filter.php encodes ENT_QUOTES and replaces literal quotes; no main.enableCommentEditor or sanitizeHtmlComment symbol exists in that tag.",
+    "Assigned clone HEAD 2da26942172d87b3f0624bccfbfd0e356b1b1187 and all four recorded SHAs were verified as local commit objects with GIT_NO_LAZY_FETCH=1."
+  ],
+  "reasoning": "The atomic unsafe sink, its parent boundary, its direct fix, release containment, and BIC-local named-human/no-AI-marker evidence are closed. The vulnerability itself is not: both published advisory authorities describe a 4.1.1 editor-enabled source path that does not exist in the inspected 4.1.1 tag, whose sole comment writer encodes the PoC's literal quotes before the unsafe sink. The advisory is still published rather than authoritatively withdrawn, so this conflict cannot be promoted to FALSE_POSITIVE; and because a complete vulnerable source-to-sink chain is not proved, it cannot support a closed NOT_AI verdict despite the BIC-local attribution. EVIDENCE_GAP preserves both facts without inferring causality from the advisory alone.",
+  "remaining_gap": "Obtain first-party vendor confirmation identifying the exact shipped 4.1.1 artifact/commit and request route that contains main.enableCommentEditor plus sanitizeHtmlComment(), or a vendor/CNA correction or withdrawal explaining why the published 4.1.1 tag lacks that path. Then reproduce the literal-quote source-to-sink flow against that exact artifact and re-evaluate affected membership and the final verdict."
+}
