@@ -32,6 +32,7 @@ PUBLICATION_ADJUDICATIONS = ROOT / "scripts/publication_adjudications.json"
 EVIDENCE_FETCH_OVERRIDES = ROOT / "scripts/evidence_fetch_overrides.json"
 PUBLICATION_OVERRIDES = ROOT / "scripts/tp_publication_overrides.json"
 EVIDENCE_REQUIRED_ROLES = ROOT / "scripts/code-evidence-required-roles.json"
+GENERATED_CODE_EVIDENCE = ROOT / "scripts/generated-code-evidence.json"
 GHSA_RE = re.compile(r"^GHSA-[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}$", re.I)
 CVE_RE = re.compile(r"^CVE-\d{4}-\d{4,7}$", re.I)
 CJK_RE = re.compile(r"[\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff\u3000-\u303f]")
@@ -698,6 +699,42 @@ def evidence_role_allowlist_errors(
     return errors
 
 
+def curated_steps_source_errors(cases: list[dict]) -> list[str]:
+    """Check that curated steps in site data also exist in the data source."""
+    if not GENERATED_CODE_EVIDENCE.exists():
+        return []
+    generated = load_json(GENERATED_CODE_EVIDENCE)
+    generic_titles = {"ai change", "ai fix", "fix", "root cause", "change"}
+    errors: list[str] = []
+    for case in cases:
+        case_id = str(case.get("case_id") or "")
+        evidence = case.get("code_evidence") or {}
+        steps = evidence.get("steps") or []
+        if not steps:
+            continue
+        has_curated = any(
+            str(step.get("title") or "").strip().lower() not in generic_titles
+            for step in steps
+        )
+        if not has_curated:
+            continue
+        generated_entry = generated.get(case_id)
+        if generated_entry is None:
+            errors.append(
+                f"{case_id}: curated steps in site data but no entry in generated-code-evidence.json"
+            )
+            continue
+        generated_steps = generated_entry.get("steps") or []
+        if not any(
+            str(step.get("title") or "").strip().lower() not in generic_titles
+            for step in generated_steps
+        ):
+            errors.append(
+                f"{case_id}: curated steps in site data but generated-code-evidence.json has only generic steps"
+            )
+    return errors
+
+
 def evaluate(
     payload: dict,
     allowlist: dict | None = None,
@@ -768,6 +805,9 @@ def evaluate(
             if EVIDENCE_REQUIRED_ROLES.exists()
             else {},
         )
+    )
+    errors.extend(
+        curated_steps_source_errors(cases)
     )
 
     if snapshot.get("case_count") != len(cases):
