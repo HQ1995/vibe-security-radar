@@ -187,6 +187,10 @@ def score_file(path: str, patch: str, mechanism: str) -> int:
     score = 0
     if SOURCE.search(path):
         score += 6
+    words = re.findall(r"[a-z0-9_.\-/]+", str(path or "").lower())
+    haystack = f" {(mechanism or "").lower()} "
+    if any(len(word) >= 8 and f" {word} " in haystack for word in words):
+        score += 50
     if SKIP.search(path):
         return -100
     if re.search(r"(^|/)(tests?|spec|__tests__|fixtures)/", path, re.I):

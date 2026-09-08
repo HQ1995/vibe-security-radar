@@ -606,6 +606,84 @@ def normalize_fix_authorship(value: object, fixes: list[str]) -> dict | None:
     }
 
 
+_FIX_AI_FAMILY_MAP = (
+    ("claude_flow", ("claude-flow", "claude flow")),
+    ("copilot", ("copilot",)),
+    ("cursor", ("cursor",)),
+    ("openai_gpt_codex", ("codex", "gpt", "openai")),
+    ("claude", ("claude", "anthropic")),
+)
+
+
+def _fix_ai_families(marker_text: str) -> list[str]:
+    tokens = [token.strip().lower() for token in str(marker_text or "").split(",")]
+    families: list[str] = []
+    for family, aliases in _FIX_AI_FAMILY_MAP:
+        if any(token in aliases for token in tokens) and family not in families:
+            families.append(family)
+    return families
+
+
+def derive_fix_authorship(rec: dict | None, fixes: list[str]) -> dict | None:
+    if not isinstance(rec, dict) or not fixes:
+        return None
+    marker = rec.get("fix_ai_marker")
+    if not isinstance(marker, dict):
+        return None
+    per_sha = marker.get("per_sha")
+    if not isinstance(per_sha, dict):
+        return None
+    seen: list[dict] = []
+    for sha in fixes:
+        match = next(
+            (
+                per
+                for key, per in per_sha.items()
+                if isinstance(per, dict) and sha_overlap([str(key)], [sha])
+            ),
+            None,
+        )
+        if match is None:
+            return None
+        state = str(match.get("state") or "").upper()
+        if state not in ("PRESENT", "ABSENT"):
+            return None
+        evidence = [str(item) for item in match.get("evidence") or []]
+        blob = " ".join(evidence)
+        author = re.search(r"author\s+(.*?)\s*<([^>]*)>", blob)
+        name = (author.group(1) if author else "").strip()
+        email = (author.group(2) if author else "").strip()
+        if not name:
+            return None
+        marker_line = next(
+            (line for line in evidence if re.search(r"AI marker\(s\)", line)),
+            "",
+        )
+        families = _fix_ai_families(marker_line.split(":", 1)[-1])
+        entry: dict = {
+            "sha": sha,
+            "classification": "ai_assisted" if state == "PRESENT" else "no_ai_marker",
+            "author": {"name": name, "email": email},
+        }
+        if state == "PRESENT":
+            entry["families"] = families
+        seen.append(entry)
+    classes = {entry["classification"] for entry in seen}
+    classification = (
+        "ai_assisted"
+        if classes == {"ai_assisted"}
+        else "no_ai_marker"
+        if classes == {"no_ai_marker"}
+        else "mixed"
+    )
+    families_out: list[str] = []
+    for entry in seen:
+        for family in entry.pop("families", []):
+            if family not in families_out:
+                families_out.append(family)
+    return {"classification": classification, "families": families_out, "fixes": seen}
+
+
 def advisory_url_of(case: dict) -> str | None:
     override_url = str(case.get("advisory_url") or "").strip()
     if override_url:
@@ -1764,6 +1842,7 @@ def build_case(
             "note": public_text(marker),
         },
         "fix_authorship": (cached or {}).get("fix_authorship"),
+        "fix_authorship": (cached or {}).get("fix_authorship") or derive_fix_authorship(rec, list(fixes)),
         "code_evidence": scrub_evidence(case_evidence, (mechanism, description)),
         "ir_chain": chain,
     }
