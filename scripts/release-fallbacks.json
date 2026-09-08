@@ -1,0 +1,293 @@
+{
+ "GHSA-GVQ9-CMXR-844M": {
+  "reason": "no_release_channel",
+  "detail": "No published artifact contains the candidate stub; release claim may need rescoping to the git/deployment surface rather than PyPI.",
+  "evidence": [
+   "DECISIVE: the vulnerable accept-any-Bearer stub verify_api_token lives ONLY in git-tree dir server/key-server/app/api/v1/keys.py at tags v1.4.0/v1.4.1 (19 files), and that dir is NOT in any published PyPI sdist (1.4.0b3/1.4.0b8/1.4.0/1.4.1 all contain 0 server/key-server files).",
+   "Shipped keyserver modules (openssl_encrypt_server/modules/keyserver/{auth,routes}.py) use TokenAuth + verify_token (JWT/HMAC, hmac.compare_digest); grep for stub verify_api_token + return True across all sdists finds no files.",
+   "server/key-server absent at HEAD (removed upstream by chore commits 4986a1b1/89ace4a1). Release surface exists (PyPI) but no artifact contains the candidate stub -> release stays NARROW."
+  ],
+  "reviewed": "2026-09-08",
+  "reviewer": "round15-gate104-leader"
+ },
+ "GHSA-RRF2-J3H9-99WG": {
+  "reason": "no_release_channel",
+  "detail": "Version info recovered: no tags, no npm package, no PyPI project; the mechanism is unpatched at HEAD and has no release channel, so no version pair exists.",
+  "evidence": [
+   "git tag -> EMPTY; curl https://registry.npmjs.org/llm-memory-mcp -> dist-tags None; curl https://pypi.org/pypi/llm-memory-mcp/json -> 404"
+  ],
+  "reviewed": "2026-09-08",
+  "reviewer": "round15-gate104-leader"
+ },
+ "GHSA-JCPJ-R94H-977W": {
+  "reason": "no_release_channel",
+  "detail": "No npm/PyPI artifact; repo has 0 tags and no publish CI, so no fixed release artifact can be cited.",
+  "evidence": [
+   "git tag -> 0 tags; package.json version 1.5.0 at candidate, fix and HEAD (no bump)",
+   "npm view mcp-chat-studio -> 404; CI workflows have no publish step (no docker push/npm publish)",
+   "no fixed release artifact and no released artifact containing candidate -> release NARROW (NA rejected: Docker/package channels plausibly exist but unevidenced)"
+  ],
+  "reviewed": "2026-09-08",
+  "reviewer": "round15-gate104-leader"
+ },
+ "GHSA-CR5W-67CM-WR78": {
+  "reason": "no_release_channel",
+  "detail": "No PyPI/npm artifact exists; repo has no tags and empty GitHub releases, so no release surface can be proven.",
+  "evidence": [
+   "curl https://pypi.org/pypi/splunk-mcp-integration/json -> 404",
+   "curl https://registry.npmjs.org/splunk-mcp-integration -> {'error':'Not found'}",
+   "version recovery: no git tags and no npm/PyPI artifact for this repo; recorded as git-only (HEAD) vulnerable state"
+  ],
+  "reviewed": "2026-09-08",
+  "reviewer": "round15-gate104-leader"
+ },
+ "GHSA-M2H4-J4P2-4J7C": {
+  "reason": "no_release_channel",
+  "detail": "No PyPI artifact (branch-monkey-mcp 404); repo has no tags and empty GitHub releases, so no release surface can be proven.",
+  "evidence": [
+   "curl https://pypi.org/pypi/branch-monkey-mcp/json -> 404",
+   "version recovery: no git tags and no npm/PyPI artifact for this repo; recorded as git-only (HEAD) vulnerable state"
+  ],
+  "reviewed": "2026-09-08",
+  "reviewer": "round15-gate104-leader"
+ },
+ "GHSA-4PQR-V6C3-X77J": {
+  "reason": "no_release_channel",
+  "detail": "No npm/PyPI artifact for mysti; fix 9b4aff0f is on main only and no released tag (v0.3.1, v0.4.0) contains it.",
+  "evidence": [
+   "git -C deepmyst_mysti tag --contains 94e14d9d30e2b9bf0b9d67ae6d459dbf263b9d99 => v0.3.1 v0.4.0 (candidate present in both vulnerable artifacts)",
+   "git -C deepmyst_mysti tag --contains 9b4aff0f106db424aa45a35aa89dd0b8f2eb9a48 => empty; tag --no-contains 9b4aff0f106db424aa45a35aa89dd0b8f2eb9a48 => v0.3.1 v0.4.0 (no released tag contains the fix)",
+   "curl npmjs mysti -> Not found; @deepmyst/mysti -> Not found; pypi mysti -> 404"
+  ],
+  "reviewed": "2026-09-08",
+  "reviewer": "round15-gate104-leader"
+ },
+ "GHSA-FWPR-59HH-GR98": {
+  "reason": "no_release_channel",
+  "detail": "No npm/PyPI artifact for mysti; fix 6d709229 is in no released tag.",
+  "evidence": [
+   "git -C deepmyst_mysti rev-parse v0.4.0 => bce0d2ba7904c056c576cf94db817635421d1f41 (candidate IS the v0.4.0 release commit; vulnerable artifact exists)",
+   "git -C deepmyst_mysti tag --contains 6d709229b5199f6769fb3cf763e5122dcc43c079 => empty; tag --no-contains 6d709229b5199f6769fb3cf763e5122dcc43c079 => v0.3.1 v0.4.0 (fix 6d70922 is in no released tag)",
+   "curl npmjs mysti -> Not found; pypi mysti -> 404"
+  ],
+  "reviewed": "2026-09-08",
+  "reviewer": "round15-gate104-leader"
+ },
+ "GHSA-H2V8-4C3F-VQGV": {
+  "reason": "no_release_channel",
+  "detail": "Version info recovered: the repo is never published (0 git tags; its package.json version 2.2.1 does not exist on npm). The npm name evernote-mcp-server is held by an unrelated package (0.0.2/0.0.3), so no released artifact of THIS repo exists.",
+  "evidence": [
+   "git tag -> EMPTY; git show HEAD:package.json -> name=evernote-mcp-server version=2.2.1",
+   "curl https://registry.npmjs.org/evernote-mcp-server -> dist-tags latest 0.0.3, versions ['0.0.2','0.0.3'], repository=null: this npm package is a DIFFERENT project, not this repo (repo is 2.2.1 and unpublished)"
+  ],
+  "reviewed": "2026-09-08",
+  "reviewer": "round15-gate104-leader"
+ },
+ "GHSA-6XQM-JW5J-72JF": {
+  "reason": "same_version",
+  "detail": "npm channel IS real (zmcp-tools through 0.2.3) and 0.2.3 ships a byte-identical vulnerable bundle, so a vulnerable artifact is released; release stays NARROW because NO fixed artifact exists in any channel.",
+  "evidence": [
+   "curl https://registry.npmjs.org/zmcp-tools -> published 0.1.0..0.2.3 (latest 0.2.3, 2025-07-14); repo package.json name=zmcp-tools (NOT 'zmcptools')",
+   "downloaded npm tarballs 0.2.2 and 0.2.3: dist/cli/index.js MD5 identical (69c02092ff0dfa01a297b7e7c400a46c) -> 0.2.3 does NOT fix the advisory; sink join(homedir(), '.mcptools','logs',category) present in both",
+   "repo has 0 git tags, but the npm channel publishes the vulnerable build; advisory range <=0.2.2 is understated because 0.2.3 is equally vulnerable"
+  ],
+  "reviewed": "2026-09-08",
+  "reviewer": "round15-gate104-leader"
+ },
+ "GHSA-C7RR-QHWX-6Q49": {
+  "reason": "same_version",
+  "detail": "Version info recovered: the repo has exactly one tag (dmca-compliance-2025-08-14) and it contains BOTH the candidate and the fix, so no released artifact was ever vulnerable-only and no fixed release exists to pair.",
+  "evidence": [
+   "git tag -> only 'dmca-compliance-2025-08-14'; git tag --contains 64f9f86f87c2 -> same tag, so candidate and fix ship in the SAME single tag (no vulnerable-only released artifact)"
+  ],
+  "reviewed": "2026-09-08",
+  "reviewer": "round15-gate104-leader"
+ },
+ "GHSA-W9RM-VVQP-QQ3H": {
+  "reason": "same_version",
+  "detail": "Version info recovered: the sink first appears in v1.3 together with its fix (v1.2 has 0 innerHTML), so no released artifact was vulnerable-only; the advisory window is git-development-only.",
+  "evidence": [
+   "git show v1.2:website/web/templates/base.html | grep -c innerHTML -> 0; git show v1.3:... -> 6 (candidate innerHTML sink appears only from v1.3)",
+   "git tag -> v1.0..v1.5; candidate and fix both first appear in v1.3, so v1.3 ships vulnerable+fixed together (development-only interval)"
+  ],
+  "reviewed": "2026-09-08",
+  "reviewer": "round15-gate104-leader"
+ },
+ "GHSA-H45M-MGCP-Q388": {
+  "reason": "same_version",
+  "detail": "No released artifact contains the vulnerable candidate without the fix: candidate and fix both first appear in tag v1.4.0",
+  "evidence": [
+   "git tag --contains 1b6f732232018609189c863a165a11aaa89db250 | sort -V | head -1 => v1.4.0; git merge-base --is-ancestor 1b6f732232018609189c863a165a11aaa89db250 v1.3.6 => NO: candidate (in-memory TOTP rate limiter) first ships in v1.4.0",
+   "git tag --contains 2749bc0949b34a5921a35fb4a3f1856fc51916de | sort -V | head -1 => v1.4.0: the fix (pluggable DB backend) debuts in the SAME release, so no released artifact carries the vulnerable limiter without the fix and advisory '< 1.4.0' has no distinct released vulnerable object",
+   "git tag --contains 1b6f73223201 -> v1.4.0, v1.4.1...; git tag --contains 2749bc0949b3 -> v1.4.0, v1.4.1... (candidate AND fix both first ship in v1.4.0)"
+  ],
+  "reviewed": "2026-09-08",
+  "reviewer": "round15-gate104-leader"
+ },
+ "GHSA-8G98-M4J9-QWW5": {
+  "reason": "same_version",
+  "detail": "Version info recovered: npm/taylored has exactly one published version (8.2.4) which contains both candidate and fix; the advisory-named 7.0.7/7.0.8 artifacts were never published.",
+  "evidence": [
+   "curl https://registry.npmjs.org/taylored -> dist-tags latest 8.2.4; all published versions = ['8.2.4'] only (7.0.7 / 7.0.8 were never published to npm)",
+   "git tag -> only 8.2.4; git tag --contains 57b763 -> 8.2.4, so the only published artifact contains candidate and fix together"
+  ],
+  "reviewed": "2026-09-08",
+  "reviewer": "round15-gate104-leader"
+ },
+ "GHSA-P5RM-JG5C-8C77": {
+  "reason": "same_version",
+  "detail": "No vulnerable artifact contains the candidate/carrier without the fix: candidate f51f4971 and carrier de3d18d9 first appear in v1.34.0, together with the closing fix 430008e9. Release containment therefore fails on the vulnerable-artifact side.",
+  "evidence": [
+   "git tag --contains de3d18d9fe31ced4ac749728d3a2f94811f59268 | sort -V | head -1 -> v1.34.0: the candidate's squash carrier first ships in v1.34.0",
+   "git tag --contains 430008e9d700b3fe80f206c672415cfbd8e830e7 | sort -V | head -1 -> v1.34.0: the closing fix first ships in the same release",
+   "git merge-base --is-ancestor de3d18d9fe31ced4ac749728d3a2f94811f59268 v1.33.0 -> no; and not in v1.32.5 either: the percent-decode remediation never shipped in the advisory's vulnerable range >= 1.30.0, < 1.34.0"
+  ],
+  "reviewed": "2026-09-08",
+  "reviewer": "round15-gate104-leader"
+ },
+ "GHSA-Q269-XQWW-45MM": {
+  "reason": "no_fixed_artifact",
+  "detail": "Open gate(s) release=NA: the recorded evidence does not close this gate to PASS; see notes/evidence for the exact boundary that remains.",
+  "evidence": [
+   "git log -1 --format=%ci 3.4.0 -> 2025-04-20; candidate 9e8cda73 date 2025-06-30 -> NOT ancestor of 3.4.0 (merge-base --is-ancestor -> NOT)",
+   "git tag --contains 9e8cda73f69493012c8784667b03016c2072ed2b -> only 4.0.0 and 4.0.0-rc..rc4",
+   "git merge-base --is-ancestor 93619f06dd378db6766666b30c08978311c7ec94 4.0.0-rc -> ANCESTOR; every 4.0.0-rc/4.0.0 tag contains BOTH candidate and fix"
+  ],
+  "reviewed": "2026-09-08",
+  "reviewer": "round15-gate104-leader"
+ },
+ "GHSA-GC8W-X73W-P4RH": {
+  "reason": "no_fixed_artifact",
+  "detail": "No patched release exists; npm latest remains the vulnerable 1.0.2. release NARROW on the fix-present leg.",
+  "evidence": [
+   "Release surface exists (npm package). Vulnerable artifact concrete (1.0.2 tarball verified vulnerable). But no fixed artifact exists (no patched npm version; repo has no tags). Fix-present leg not provable -> release stays NARROW."
+  ],
+  "reviewed": "2026-09-08",
+  "reviewer": "round15-gate104-leader"
+ },
+ "GHSA-4P6X-RJ5H-HG93": {
+  "reason": "no_fixed_artifact",
+  "detail": "Unpatched: the libraryId path-traversal write in saveLibrary remains at HEAD db1d0cc with no fix commit in any branch; a future release would need the containment fix above.",
+  "evidence": [
+   "git tag -> empty; git ls-remote --tags https://github.com/astralisone/rive-mcp-server-core.git -> no refs/tags; npm registry rive-mcp-server-core and @astralismotion/mcp-server and @astralisone/mcp-server -> HTTP 404; hub.docker.com astralisone/* and astralismotion/* -> HTTP 404; no release artifact or release channel exists",
+   "version recovery: no git tags and no npm/PyPI artifact for this repo; recorded as git-only (HEAD) vulnerable state"
+  ],
+  "reviewed": "2026-09-08",
+  "reviewer": "round15-gate104-leader"
+ },
+ "GHSA-R8RP-HX65-58JJ": {
+  "reason": "no_fixed_artifact",
+  "detail": "release stays NARROW: the vulnerable artifacts are verified (candidate cd0d6bfacfe71005a78c99f2cd118da09a446a20 is contained in v1.2.0-v1.2.4 and npm 1.2.4 still ships the sink) but no fixed artifact exists because the case is genuinely unpatched.",
+  "evidence": [
+   "git tag --contains cd0d6bfacfe71005a78c99f2cd118da09a446a20 -> v1.2.0, v1.2.1, v1.2.3, v1.2.4 (candidate present in the vulnerable releases); git tag --contains for any fix -> none, and npm latest is still 1.2.4, so no fixed artifact exists"
+  ],
+  "reviewed": "2026-09-08",
+  "reviewer": "round15-gate104-leader"
+ },
+ "CVE-2026-42278": {
+  "reason": "no_fixed_artifact",
+  "detail": "Release claim remains commit-only: no released artifact contains candidate 8f000e94 or fix fb6ef59d. The only tags (v0.1.0=3b0589a2, latest=a82ffe84) predate both commits, and the first-party advisory states patched versions None and names the boundary as a commit interval, so release stays NARROW with null release fields.",
+  "evidence": [
+   "git -C /tmp/ai-slop-release-gap-ultradag.o1qObf/repo tag -> only 'latest' and 'v0.1.0' (2 tags total)",
+   "git merge-base --is-ancestor 8f000e9403a33c693eeb630771bc3d4846473991 v0.1.0 -> non-zero; ... latest -> non-zero: candidate is in no released tag",
+   "git merge-base --is-ancestor fb6ef59d6c1385400e7acea7ae31fc6a473c3051 v0.1.0 -> non-zero; ... latest -> non-zero: fix is in no released tag"
+  ],
+  "reviewed": "2026-09-08",
+  "reviewer": "round15-gate104-leader"
+ },
+ "GHSA-H7X2-H6G9-P789": {
+  "reason": "no_fixed_artifact",
+  "detail": "No commit or released artifact closes the gateway raw-proxy api_base destination check; SSRF to internal/metadata endpoints remains at HEAD and v3.16.0.",
+  "evidence": [
+   "carrier 96b7d900e14227e0821981409d86f5fb6c59b386 IN v3.13.0, v3.15.2, v3.16.0 (candidate surface present in vulnerable artifacts 3.13.0-3.15.2); OSV first_patched_version null -> no fixed artifact exists, so release stays NARROW"
+  ],
+  "reviewed": "2026-09-08",
+  "reviewer": "round15-gate104-leader"
+ },
+ "GHSA-8JQH-598V-RFXC": {
+  "reason": "no_fixed_artifact",
+  "detail": "Cannot prove candidate release containment or that a 0.7.0 artifact was ever published; release stays NARROW until a published channel/tag is identified.",
+  "evidence": [
+   "clone .ai-slop/state/repos/arnasdon_wacrm: 'git tag' -> 0 tags; curl https://api.github.com/repos/arnasdon/wacrm/releases -> [] (no releases)",
+   "npm registry: https://registry.npmjs.org/wacrm -> Not Found; npm search finds only 'wacrm-mcp' v0.1.0 (a separate MCP-server package, not the CRM app); https://pypi.org/pypi/wacrm and /wacrm-mcp -> Not Found",
+   "candidate b7b362ae427ccf4b33b8e8cd147f16410f3ce800 is an ancestor of fix 23838a9959550e975d732ae08a44a3a2f0cc084b on mainline, but no tag or published artifact exists to prove a released vulnerable 0.7.0"
+  ],
+  "reviewed": "2026-09-08",
+  "reviewer": "round15-gate104-leader"
+ },
+ "GHSA-V9V4-F5WM-PHH4": {
+  "reason": "no_fixed_artifact",
+  "detail": "npm channel is real (2.1.2 and 2.2.0 both published and both still ship the raw credential/signed-URL logging sink); no published fixed artifact exists, so release cannot reach PASS.",
+  "evidence": [
+   "git rev-parse v2.1.2^{commit} -> eba7d2efe0a5f37670ffe2f0f2ff91677cb9d735; candidate OUT v2.1.1, IN v2.1.2 and HEAD; package.json version at the candidate is 2.1.2; the only release containing the candidate is the vulnerable v2.1.2 and no fixed artifact exists -> NARROW",
+   "curl https://registry.npmjs.org/jimeng-web-mcp -> dist-tags latest 2.2.0; versions incl 2.1.2 (2025-10-04) and 2.2.0 (2025-12-08)",
+   "downloaded npm tarballs 2.1.2 and 2.2.0: BOTH still ship the raw sink logger.debug([ImageUploader] ... JSON.stringify(authRes)) (2.1.2 chunk-N3NBFJHI.js:1331, 2.2.0 chunk-OHYIZE5D.js:957); redactKeys present in both, so no published fixed artifact"
+  ],
+  "reviewed": "2026-09-08",
+  "reviewer": "round15-gate104-leader"
+ },
+ "GHSA-4CM8-XPFV-JV6F": {
+  "reason": "no_fixed_artifact",
+  "detail": "Vulnerable artifact IS released (v0.5.x+ ship is_sender_allowed with no SPF/DKIM/DMARC gate) but no fixed release exists; release stays NARROW on the fix-present leg only.",
+  "evidence": [
+   "git grep -l is_sender_allowed v0.5.4 -> src/channels/email_channel.rs, src/channels/lark.rs (sink present in released tag)",
+   "git grep -l is_sender_allowed v0.7.0 and v0.7.5 -> same two files; no released tag removes or gates the sender check",
+   "git tag --contains 51bc07a02484ddfd2ec9c7f382dc43f829a9df86 -> v0.5.0..v0.5.4 (candidate/carrier shipped from v0.5.0)"
+  ],
+  "reviewed": "2026-09-08",
+  "reviewer": "round15-gate104-leader"
+ },
+ "GHSA-64VR-4GR2-M642": {
+  "reason": "no_fixed_artifact",
+  "detail": "No patched v2 release exists: v2.5.28-rc.4 still ships the vulnerable execSync sink, and v3.260302.2 removes the v2 MCP surface rather than patching it.",
+  "evidence": [
+   "git -C genie show v2.5.27:src/mcp/server.ts lines 163-177 => readTranscriptFromCommit builds execSync with interpolated commitSha and gitDir => vulnerable sink present in the v2.5.27 release",
+   "git -C genie tag --contains 32230bc7acff055a089eaf682d6717ca945b6c7d => v2.5.17 through v2.5.28-rc.4 (carrier is in the vulnerable release line)",
+   "git -C genie show v2.5.28-rc.4:src/mcp/server.ts => readTranscriptFromCommit and execSync still present => no v2 patch release"
+  ],
+  "reviewed": "2026-09-08",
+  "reviewer": "round15-gate104-leader"
+ },
+ "GHSA-6R3X-GC73-H69W": {
+  "reason": "no_fixed_artifact",
+  "detail": "PyPI channel is real (hermes-agent 0.13.0..0.19.0 published), but the recorded fix is not in any published artifact; no fixed release exists.",
+  "evidence": [
+   "curl https://pypi.org/pypi/hermes-agent/json -> published versions 0.13.0..0.19.0 (latest 0.19.0); release channel exists"
+  ],
+  "reviewed": "2026-09-08",
+  "reviewer": "round15-gate104-leader"
+ },
+ "GHSA-F67F-HCR6-94MF": {
+  "reason": "no_fixed_artifact",
+  "detail": "PyPI channel is real (zen-ai-pentest through 3.0.0 published), but no published artifact carries the workflow-injection fix; no fixed release exists.",
+  "evidence": [
+   "tag v3.0.0 (2026-02-19) contains the sink: git show v3.0.0:.github/workflows/zenclaw-discord.yml shows DESCRIPTION=\"${{ github.event.issue.title }}\"; the workflow was added by candidate 6b469ce04dff96b2400987580f22d77acab98020 (feat: ZenClaw Discord Integration Infrastructure, 2026-02-16)",
+   "fix 15cf07f8e00f8d930c276060175292b360ccbb01 (security(workflows): fix script injection vulnerabilities, 2026-02-24) is merged on main only and NO tag contains it (merge-base --is-ancestor fix t => no YES for any refs/tags): no fixed release exists (bundle already lists missing_fixed_release)",
+   "curl https://pypi.org/pypi/zen-ai-pentest/json -> published 2.0.0..3.0.0 (latest 3.0.0); release channel exists"
+  ],
+  "reviewed": "2026-09-08",
+  "reviewer": "round15-gate104-leader"
+ },
+ "CVE-2026-1979": {
+  "reason": "no_fixed_artifact",
+  "detail": "No tag or released artifact contains candidate 2b72d8a7c or fix e50f15c1; both are post-3.3.0 master commits. The advisory's '<= 3.3' vulnerable range and any fixed release cannot be substantiated from the local clone.",
+  "evidence": [
+   "git describe --tags --always 2b72d8a7c153e2afb22245ad9e40e0c7d5b1aa70 -> 3.3.0-2558-g2b72d8a7c (candidate is after the newest tag)",
+   "git merge-base --is-ancestor 2b72d8a7c153e2afb22245ad9e40e0c7d5b1aa70 3.3.0 -> no: candidate not in any released tag",
+   "git tag --contains e50f15c1c6e131fa7934355eb02b8173b13df415 -> empty: fix not in any released tag"
+  ],
+  "reviewed": "2026-09-08",
+  "reviewer": "round15-gate104-leader"
+ },
+ "GHSA-FR8F-RWJX-F32V": {
+  "reason": "no_fixed_artifact",
+  "detail": "Release containment unproven: neither candidate fc2f89ea nor fix 0bada735 is an ancestor of tag 2.16.0-lts (candidate first ships in 2.17.0, fix first in 2.19.0); the LTS line released before the fix with no backport, so the advisory's '< 2.16.0-lts / fixed 2.16.0-lts' boundary cannot be substantiated.",
+  "evidence": [
+   "git merge-base --is-ancestor fc2f89ea94543a2642dd20df7be03c1cd5161121 2.16.0-lts -> no: candidate absent from the claimed vulnerable boundary tag",
+   "git merge-base --is-ancestor 0bada735849bdbab579968ad9a8fc991b8e6be8a 2.16.0-lts -> no: fix absent from the claimed fixed tag",
+   "git tag --contains fc2f89ea94543a2642dd20df7be03c1cd5161121 | sort -V | head -1 -> 2.17.0 (first release containing the candidate)"
+  ],
+  "reviewed": "2026-09-08",
+  "reviewer": "round15-gate104-leader"
+ }
+}

@@ -36,6 +36,7 @@ UNPATCHED_FIXES = ROOT / "scripts/unpatched-potential-fixes.json"
 REPO_LANGUAGES = ROOT / "scripts/repo-language-map.json"
 SITE_PREFLIGHT_ALLOWLIST = ROOT / "scripts/site_preflight_allowlist.json"
 SECURITY_FIX_CONTEXTS = ROOT / "scripts/security-fix-contexts.json"
+RELEASE_FALLBACKS = ROOT / "scripts/release-fallbacks.json"
 DATE_FALLBACK = (
     ROOT / "research/orchestrator-260814-ghsa200-canvas/sweep/ghsa-first-party-dates.json"
 )
@@ -637,6 +638,9 @@ def publication_issues(case: dict) -> list[str]:
         ("missing_fixed_release", (case.get("fixed_release") or unpatched)),
     )
     issues.extend(name for name, value in checks if not value)
+    fallback = release_fallback(case)
+    if fallback and (case.get("gates") or {}).get("release") != "PASS":
+        issues.append(f"release_fallback:{fallback.get('reason')}")
     for role in ("candidate_hunks", "fix_hunks"):
         # A confirmed case must carry both hunk sets (site_preflight contract);
         # their absence keeps the case qualified, never confirmed.
@@ -721,11 +725,40 @@ def strip_unpatched_fix_claims(case: dict) -> None:
         evidence.pop(field, None)
 
 
+def release_fallback(case: dict) -> dict | None:
+    """An explicit, reviewed fallback for a release gate that cannot close."""
+    fallbacks = _release_fallbacks()
+    for key in (case.get("case_id"), *(case.get("aliases") or [])):
+        hit = fallbacks.get(str(key or "").upper())
+        if isinstance(hit, dict) and str(hit.get("reason") or "").strip():
+            return hit
+    return None
+
+
+def _release_fallbacks() -> dict[str, dict]:
+    if not RELEASE_FALLBACKS.exists():
+        return {}
+    try:
+        payload = json.loads(RELEASE_FALLBACKS.read_text())
+    except ValueError:
+        return {}
+    if not isinstance(payload, dict):
+        return {}
+    return {str(k).upper(): v for k, v in payload.items() if isinstance(v, dict)}
+
+
 def publication_status(case: dict) -> str:
     gate_values = set((case.get("gates") or {}).values())
     if not gate_values or "UNKNOWN" in gate_values or not case.get("candidate_set"):
         return "provisional"
-    if gate_values == {"PASS"} and not case.get("publication_issues"):
+    # release may be non-PASS when a reviewed fallback records that the gate
+    # cannot close (no release channel / no fixed artifact / same version).
+    unresolved = {
+        name
+        for name, value in (case.get("gates") or {}).items()
+        if value != "PASS" and not (name == "release" and release_fallback(case))
+    }
+    if not unresolved and not case.get("publication_issues"):
         return "confirmed"
     return "qualified"
 

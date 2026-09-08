@@ -19,6 +19,13 @@ GATE_VALUES = frozenset({"PASS", "FAIL", "NARROW", "UNKNOWN", "BLOCKED", "NA"})
 VERDICTS = frozenset({"CONFIRM", "NARROW", "FALSE_POSITIVE", "UNKNOWN", "BLOCKED"})
 CONFIDENCE = frozenset({"HIGH", "MEDIUM", "LOW"})
 RELEASED_SOURCE_TIERS = frozenset({"STRICT_RELEASED", "INCOMPLETE_RELEASED"})
+# A release gate that cannot close may be released through an explicit,
+# reviewed fallback (scripts/release-fallbacks.json) naming why it cannot.
+RELEASE_FALLBACK_REASONS = frozenset({
+    "no_release_channel",
+    "no_fixed_artifact",
+    "same_version",
+})
 
 
 def _closed_gate(value: object) -> bool:
@@ -41,6 +48,7 @@ def evaluate_publication_admission(
     *,
     source_public_ids: Collection[str] | None = None,
     source_tier: str | None = None,
+    release_fallback: str | None = None,
 ) -> dict[str, object]:
     """Retain one candidate and decide whether its adjudication may be published."""
 
@@ -60,6 +68,13 @@ def evaluate_publication_admission(
     for field, value in gates.items():
         if not isinstance(value, str) or value not in GATE_VALUES:
             errors.append(f"{field} is invalid")
+    # An explicit reviewed fallback lets a release gate that cannot close still
+    # be published, provided the reason is one of the admitted ones.
+    release_fallback = (
+        str(release_fallback).strip() if isinstance(release_fallback, str) else None
+    )
+    if release_fallback and release_fallback not in RELEASE_FALLBACK_REASONS:
+        errors.append(f"invalid release_fallback reason: {release_fallback}")
 
     kept = _public_ids(candidate.get("public_ids_keep"), "public_ids_keep", errors)
     removed = _public_ids(
@@ -95,7 +110,12 @@ def evaluate_publication_admission(
     if has_duplicate and verdict != "FALSE_POSITIVE":
         errors.append("a duplicate row must have verdict FALSE_POSITIVE")
 
-    if verdict == "CONFIRM" and not all(map(_closed_gate, gates.values())):
+    # release may be non-PASS only when a reviewed fallback reason was supplied.
+    release_closed = _closed_gate(gates["release_gate"]) or release_fallback is not None
+    other_closed = all(
+        _closed_gate(value) for name, value in gates.items() if name != "release_gate"
+    )
+    if verdict == "CONFIRM" and not (release_closed and other_closed):
         errors.append("CONFIRM requires all seven gates to be PASS or NA")
     elif verdict == "NARROW":
         if "NARROW" not in gates.values():
@@ -121,15 +141,18 @@ def evaluate_publication_admission(
         causal_valid
         and verdict == "CONFIRM"
         and confidence == "HIGH"
-        and all(map(_closed_gate, gates.values()))
+        and release_closed
+        and other_closed
     )
     # Released publication is the countable contract: every one of the seven
     # gates must be exactly PASS, never merely closed (NA).
+    release_gate_ok = gates["release_gate"] == "PASS" or release_fallback is not None
     released_publication_admitted = (
         strict_confirmed
         and isinstance(publication_tier, str)
         and publication_tier in RELEASED_SOURCE_TIERS
-        and all(value == "PASS" for value in gates.values())
+        and release_gate_ok
+        and all(value == "PASS" for name, value in gates.items() if name != "release_gate")
     )
     if errors:
         admission, reason = "HOLD", "invalid_adjudication"
@@ -167,5 +190,6 @@ def evaluate_publication_admission(
         "public_ids_conserved": public_ids_conserved,
         "errors": errors,
         "gates": gates,
+        "release_fallback": release_fallback,
         "recall_candidate": candidate,
     }

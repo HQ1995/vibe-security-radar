@@ -105,6 +105,53 @@ def test_publication_status_fails_closed() -> None:
     assert publish_tp_ledger.publication_status(case) == "provisional"
 
 
+def test_release_fallback_admits_a_reviewed_release_gap(monkeypatch) -> None:
+    """A reviewed release fallback lets a case confirm; unknown reasons do not."""
+    case = _case()
+    case["gates"]["release"] = "NARROW"
+    case["publication_issues"] = publish_tp_ledger.publication_issues(case)
+
+    monkeypatch.setattr(publish_tp_ledger, "_release_fallbacks", lambda: {})
+    assert publish_tp_ledger.publication_status(case) == "qualified"
+
+    monkeypatch.setattr(
+        publish_tp_ledger,
+        "_release_fallbacks",
+        lambda: {str(case["case_id"]).upper(): {"reason": "no_release_channel"}},
+    )
+    assert publish_tp_ledger.release_fallback(case) == {"reason": "no_release_channel"}
+    issues = publish_tp_ledger.publication_issues(case)
+    assert "release_fallback:no_release_channel" in issues
+
+
+def test_release_fallback_rejects_an_unknown_reason() -> None:
+    from cohort.publication_admission import evaluate_publication_admission
+
+    row = {
+        "verdict": "CONFIRM",
+        "confidence": "HIGH",
+        "identity_gate": "PASS",
+        "ai_hunk_gate": "PASS",
+        "topology_gate": "PASS",
+        "but_for_gate": "PASS",
+        "fix_reversal_gate": "PASS",
+        "release_gate": "NARROW",
+        "uniqueness_gate": "PASS",
+        "public_ids_keep": ["GHSA-AAAA-BBBB-CCCC"],
+        "public_ids_remove": [],
+        "source_tier": "STRICT_RELEASED",
+    }
+    admitted = evaluate_publication_admission(
+        row, release_fallback="no_release_channel"
+    )
+    assert admitted["released_publication_admitted"] is True
+    assert admitted["release_fallback"] == "no_release_channel"
+
+    rejected = evaluate_publication_admission(row, release_fallback="because_i_said_so")
+    assert rejected["released_publication_admitted"] is False
+    assert any("release_fallback" in error for error in rejected["errors"])
+
+
 def test_site_preflight_rejects_a_fail_gate_on_a_published_case() -> None:
     case = _case()
     case["gates"]["release"] = "FAIL"
