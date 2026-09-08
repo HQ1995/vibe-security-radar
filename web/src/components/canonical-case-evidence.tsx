@@ -421,6 +421,22 @@ function CaseFactsCard({ item }: { readonly item: ResearchCase }) {
       value: item.published_at ? formatPublished(item.published_at) : "Unavailable",
     },
     {
+      label: "Review status",
+      value: (
+        <Badge
+          className={
+            item.publication_status === "confirmed"
+              ? "border-emerald-300 bg-emerald-50 text-emerald-800"
+              : item.publication_status === "qualified"
+                ? "border-amber-300 bg-amber-50 text-amber-800"
+                : "border-zinc-300 bg-zinc-100 text-zinc-600"
+          }
+        >
+          {item.publication_status}
+        </Badge>
+      ),
+    },
+    {
       label: "Severity",
       value: item.severity ? (
         <Badge className={severityBadgeClass(item.severity)}>{item.severity}</Badge>
@@ -428,6 +444,14 @@ function CaseFactsCard({ item }: { readonly item: ResearchCase }) {
         "Not scored"
       ),
     },
+    ...(item.publication_issues.length
+      ? [
+          {
+            label: "Known gaps",
+            value: item.publication_issues.join(", "),
+          },
+        ]
+      : []),
     {
       label: "Language",
       value: item.repository_metadata.language || "Unknown",

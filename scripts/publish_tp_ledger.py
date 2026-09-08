@@ -1589,6 +1589,16 @@ def build_case(
             ),
             None,
         ) or (cached or {}).get("code_evidence")
+    if case_evidence and (cached or {}).get("code_evidence", {}).get("steps"):
+        # ponytail: prefer cached reader-facing steps over generated commit
+        # subjects so rebuilds do not erase curated annotations.
+        generic = {"ai change", "ai fix", "fix", "root cause", "change"}
+        has_curated = any(
+            str(step.get("title") or "").strip().lower() not in generic
+            for step in cached["code_evidence"]["steps"]
+        )
+        if has_curated:
+            case_evidence = {**case_evidence, "steps": cached["code_evidence"]["steps"]}
     candidates, fixes = public_shas(rec, cached, case_evidence, row)
     ledger_gates = row.get("gates")
     if ledger_gates:

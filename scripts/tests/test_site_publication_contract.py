@@ -649,7 +649,13 @@ def test_incomplete_security_boundary_is_not_misclassified_as_remediation() -> N
 
 def test_evidence_backfill_preserves_existing_canonical_entry() -> None:
     case_id = "GHSA-1234-5678-9ABC"
-    existing = {case_id: {"comparison_hunks": [{"file": "src/app.py"}]}}
+    existing = {
+        case_id: {
+            "comparison_hunks": [{"file": "src/app.py"}],
+            "fix_hunks": [{"file": "src/app.py"}],
+            "fix_url": "https://github.com/org/repo/commit/abc",
+        }
+    }
 
     assert not build_missing_code_evidence.needs_evidence(case_id, existing, set())
     assert build_missing_code_evidence.needs_evidence(case_id, existing, {case_id})
@@ -657,6 +663,14 @@ def test_evidence_backfill_preserves_existing_canonical_entry() -> None:
     assert not build_missing_code_evidence.needs_evidence(
         "GHSA-NEW1-NEW2-NEW3", existing, {case_id}
     )
+
+
+def test_evidence_backfill_rebuilds_when_fix_hunks_missing() -> None:
+    case_id = "GHSA-1234-5678-9ABC"
+    existing = {case_id: {"comparison_hunks": [{"file": "src/app.py"}]}}
+
+    # Candidate diff exists but the fix diff was never fetched: rebuild.
+    assert build_missing_code_evidence.needs_evidence(case_id, existing, set())
 
 
 def test_hunk_paths_are_recovered_from_git_diffs() -> None:

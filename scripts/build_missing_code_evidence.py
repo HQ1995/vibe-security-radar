@@ -152,9 +152,18 @@ def load_fetch_overrides() -> dict[str, dict]:
     }
 
 def needs_evidence(case_id: str, existing: dict, force: set[str]) -> bool:
-    return case_id in force or (not force and not (
-        (existing.get(case_id) or {}).get("comparison_hunks")
-    ))
+    entry = existing.get(case_id) or {}
+    if case_id in force:
+        return True
+    if force:
+        return False
+    # ponytail: comparison_hunks alone is not complete evidence; rebuild when
+    # the fix diff was never fetched but a fix sha exists on the case.
+    if not entry.get("comparison_hunks"):
+        return True
+    if not entry.get("fix_hunks") and not entry.get("fix_url"):
+        return True
+    return False
 
 
 
