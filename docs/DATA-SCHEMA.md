@@ -1,10 +1,11 @@
 # Data contract
 
 Neon is canonical; `artifacts/funnel-account-*.jsonl` is its deterministic recovery
-export. The [publisher](../scripts/publish_tp_ledger.py) reads case rows from that
-export; display content is synced separately to Neon and read with committed-file
-fallbacks. `finalize` exports after its transaction succeeds. Writes follow
-[AGENTS.md](../AGENTS.md).
+export, not a publish input. The [publisher](../scripts/publish_tp_ledger.py)
+reads case rows from Neon `ledger_rows` (`--from-export` reads the jsonl
+backup). Display content is synced separately to Neon and read with
+committed-file fallbacks. `finalize` exports after its transaction succeeds.
+Writes follow [AGENTS.md](../AGENTS.md).
 
 Field definitions: [Ledger SQL](../scripts/ledger_schema.sql) and
 [published types](../web/src/lib/research-data.ts).

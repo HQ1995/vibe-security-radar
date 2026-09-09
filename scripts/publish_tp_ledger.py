@@ -1,12 +1,16 @@
 #!/usr/bin/env python3
-"""Publish confirmed True Positives from the canonical funnel ledger.
+"""Publish confirmed True Positives from the Neon ledger.
 
-Reads AI_ROOT_CAUSE and AI_CODE_FLAWED rows from the research ledger and
-writes web/src/generated/research-data.json. Existing site evidence is reused
-when a public advisory ID matches; missing fields stay null rather than guessed.
+Reads AI_ROOT_CAUSE and AI_CODE_FLAWED rows from Neon ledger_rows and
+writes web/src/generated/research-data.json. The committed jsonl file is a
+recovery export, not a publish input (--from-export for offline restore).
+Existing site evidence is reused when a public advisory ID matches; missing
+fields stay null rather than guessed.
 """
 from __future__ import annotations
 
+import argparse
+import os
 import json
 import re
 import subprocess
@@ -47,15 +51,13 @@ _DB_DISPLAY_CACHE: dict[str, dict] | None = None
 def _db_display() -> dict[str, dict] | None:
     """Load the ledger_display table from Neon as a {kind: value} map.
 
-    Returns None when no DATABASE_URL is configured (local dev or CI without
-    the secret) so callers fall back to the research/ files. Errors are
-    non-fatal: publication must not depend on Neon availability.
+    Overlay only. Case rows come from ledger_rows and do not fall back to
+    jsonl. Display kinds still fall back to committed research/ files when
+    this table is missing, so a display miss cannot block a row publish.
     """
     global _DB_DISPLAY_CACHE
     if _DB_DISPLAY_CACHE is not None:
         return _DB_DISPLAY_CACHE
-    import os
-
     if not os.environ.get("DATABASE_URL"):
         _DB_DISPLAY_CACHE = {}
         return _DB_DISPLAY_CACHE
@@ -86,6 +88,45 @@ def _db_display_kind(kind: str) -> dict:
     return display.get(kind) or {}
 
 TP_STATUSES = {"AI_ROOT_CAUSE", "AI_CODE_FLAWED"}
+
+def _read_export_rows() -> list[dict]:
+    rows = []
+    for line in LEDGER.read_text(encoding="utf-8").splitlines():
+        if not line.strip():
+            continue
+        rows.append(json.loads(line))
+    return rows
+
+
+def load_ledger_rows(*, from_export: bool = False) -> list[dict]:
+    """Load ledger rows for publication.
+
+    Neon ledger_rows is the only publish input. The jsonl file is a recovery
+    export; pass from_export=True for offline restore.
+    """
+    if from_export:
+        return _read_export_rows()
+    sys.path.insert(0, str(ROOT / "scripts"))
+    from ledger_store import connect, load_env
+
+    load_env()
+    if not os.environ.get("DATABASE_URL") and not os.environ.get(
+        "DATABASE_URL_UNPOOLED"
+    ):
+        raise SystemExit(
+            "publish reads Neon ledger_rows; set DATABASE_URL. "
+            "jsonl is export-only (pass --from-export for the backup)."
+        )
+    with connect(direct=bool(os.environ.get("DATABASE_URL_UNPOOLED"))) as conn:
+        fetched = conn.execute(
+            """
+            SELECT raw_json FROM ledger_rows
+            WHERE status IN ('AI_ROOT_CAUSE', 'AI_CODE_FLAWED')
+            ORDER BY ordinal
+            """
+        ).fetchall()
+    return [json.loads(raw) for (raw,) in fetched]
+
 # Inclusive GHSA/CVE publication window of the funnel ledger.
 LEDGER_WINDOW_START = "2025-05-01"
 LEDGER_WINDOW_END = "2026-08-26"
@@ -610,6 +651,7 @@ _FIX_AI_FAMILY_MAP = (
     ("claude_flow", ("claude-flow", "claude flow")),
     ("copilot", ("copilot",)),
     ("cursor", ("cursor",)),
+    ("google_jules", ("google_jules", "jules")),
     ("openai_gpt_codex", ("codex", "gpt", "openai")),
     ("claude", ("claude", "anthropic")),
 )
@@ -714,6 +756,8 @@ def publication_issues(case: dict) -> list[str]:
         ("missing_vulnerable_release", case.get("vulnerable_release")),
         # Unpatched findings have no fixed release by definition.
         ("missing_fixed_release", (case.get("fixed_release") or unpatched)),
+        # Fix authorship must be analyzed so the site can show who fixed it and whether they used AI.
+        ("missing_fix_authorship", (case.get("fix_authorship") or unpatched)),
     )
     issues.extend(name for name, value in checks if not value)
     fallback = release_fallback(case)
@@ -1264,7 +1308,7 @@ def _index_prose(value: object) -> None:
         ANNOTATION_PROSE[value[:100]] = value
 
 
-def _load_summary_maps() -> None:
+def _load_summary_maps(rows: list[dict]) -> None:
     global AI_SUMMARIES, AI_SUMMARIES_MECHANISM, ANNOTATION_PROSE
     overlay = _db_display_kind("ai_summaries")
     if not overlay:
@@ -1279,11 +1323,9 @@ def _load_summary_maps() -> None:
             AI_SUMMARIES[str(key).upper()] = str(value["summary"])
         if value.get("mechanism"):
             AI_SUMMARIES_MECHANISM[str(key).upper()] = str(value["mechanism"])
-    for line in LEDGER.read_text(encoding="utf-8").splitlines():
-        if not line.strip():
-            continue
+    for row in rows:
         try:
-            _index_prose(json.loads(line))
+            _index_prose(row)
         except (json.JSONDecodeError, ValueError):
             continue
     db_round9 = _db_display_kind("round9_adjudication")
@@ -1437,7 +1479,7 @@ def load_json(path: Path) -> dict:
         return {}
 
 
-def ledger_census() -> dict[str, int]:
+def ledger_census(*, from_export: bool = False) -> dict[str, int]:
     counts = {
         "AI_ROOT_CAUSE": 0,
         "AI_CODE_FLAWED": 0,
@@ -1448,13 +1490,24 @@ def ledger_census() -> dict[str, int]:
         "UNANALYZED": 0,
     }
     total = 0
-    for line in LEDGER.read_text(encoding="utf-8").splitlines():
-        if not line.strip():
-            continue
-        total += 1
-        status = json.loads(line).get("status")
-        if status in counts:
-            counts[status] += 1
+    if from_export:
+        for row in _read_export_rows():
+            total += 1
+            status = row.get("status")
+            if status in counts:
+                counts[status] += 1
+    else:
+        sys.path.insert(0, str(ROOT / "scripts"))
+        from ledger_store import load_env, snapshot_aggregates
+
+        load_env()
+        agg = snapshot_aggregates()
+        raw_statuses = agg["statuses"] or {}
+        if isinstance(raw_statuses, str):
+            raw_statuses = json.loads(raw_statuses)
+        statuses = {str(key): int(value) for key, value in dict(raw_statuses).items()}
+        counts = {key: statuses.get(key, 0) for key in counts}
+        total = int(agg["rows"])
     closed = (
         counts["AI_ROOT_CAUSE"]
         + counts["AI_CODE_FLAWED"]
@@ -1841,8 +1894,11 @@ def build_case(
             "named_candidate_count": len(candidates),
             "note": public_text(marker),
         },
-        "fix_authorship": (cached or {}).get("fix_authorship"),
-        "fix_authorship": (cached or {}).get("fix_authorship") or derive_fix_authorship(rec, list(fixes)),
+        # The ledger is the source of truth: a derived authorship wins over the
+        # committed snapshot, which can hold a stale non-null value that would
+        # otherwise shadow a corrected ledger row forever. The snapshot stays as
+        # the fallback for rows the ledger cannot derive.
+        "fix_authorship": derive_fix_authorship(rec, list(fixes)) or (cached or {}).get("fix_authorship"),
         "code_evidence": scrub_evidence(case_evidence, (mechanism, description)),
         "ir_chain": chain,
     }
@@ -1877,8 +1933,18 @@ def build_case(
     case.pop("research_status", None)
     return strip_cjk_tree(drop_original_aliases(case))
 
-def main() -> None:
-    _load_summary_maps()
+def main(argv: list[str] | None = None) -> None:
+    parser = argparse.ArgumentParser(
+        description="Publish TPs from Neon ledger_rows into research-data.json"
+    )
+    parser.add_argument(
+        "--from-export",
+        action="store_true",
+        help="Read the jsonl recovery export instead of Neon (offline/backup only)",
+    )
+    args = parser.parse_args(argv)
+    rows = load_ledger_rows(from_export=args.from_export)
+    _load_summary_maps(rows)
     existing = git_head_research_data() or load_json(OUT)
     cache = merge_indexes(
         index_existing(existing),
@@ -1900,10 +1966,7 @@ def main() -> None:
     }
     canonical_evidence_classes: set[str] = set()
     cases: list[dict] = []
-    for line in LEDGER.read_text(encoding="utf-8").splitlines():
-        if not line.strip():
-            continue
-        row = json.loads(line)
+    for row in rows:
         if row.get("status") not in TP_STATUSES:
             continue
         if (row.get("site_publication") or {}).get("publish") is False:
@@ -1981,7 +2044,7 @@ def main() -> None:
         reverse=True,
     )
     dated = sum(1 for item in cases if item.get("published_at"))
-    census = ledger_census()
+    census = ledger_census(from_export=args.from_export)
     generated_at = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
     payload = {
         "snapshot": {
@@ -2010,7 +2073,11 @@ def main() -> None:
             "coverage_to": LEDGER_WINDOW_END,
             "source_cutoff": LEDGER_WINDOW_END,
             "generated_at": generated_at,
-            "ledger": "artifacts/funnel-account-20260817.jsonl",
+            "ledger": (
+                "artifacts/funnel-account-20260817.jsonl"
+                if args.from_export
+                else "neon:ledger_rows"
+            ),
         },
         "cause_categories": existing.get("cause_categories") or CAUSE_CATEGORIES,
         "ai_provenance_families": FAMILIES,

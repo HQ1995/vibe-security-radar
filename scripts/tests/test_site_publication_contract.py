@@ -25,6 +25,21 @@ def _case() -> dict:
         "fixed_release": {"version": "1.0.1"},
         "advisory_url": "https://www.cve.org/CVERecord?id=CVE-2026-12345",
         "ai_provenance": {"coverage": "complete"},
+        # A confirmed case must carry fix authorship (publication_issues gate).
+        "fix_authorship": {
+            "classification": "no_ai_marker",
+            "families": [],
+            "fixes": [
+                {
+                    "sha": "b" * 40,
+                    "classification": "no_ai_marker",
+                    "author": {
+                        "name": "Example Maintainer",
+                        "email": "maintainer@example.com",
+                    },
+                }
+            ],
+        },
         "code_evidence": {
             "summary": "The AI-linked change left user input able to cross the security boundary.",
             "candidate_url": f"https://github.com/acme/app/commit/{'a' * 40}",
@@ -1043,7 +1058,7 @@ def test_site_preflight_rejects_an_unexplained_origin_gap() -> None:
 
 
 def test_publisher_removes_pseudo_annotations_and_assigns_hunk_roles() -> None:
-    publish_tp_ledger._load_summary_maps()
+    publish_tp_ledger._load_summary_maps([])
     summary = "The candidate change passed an unchecked value into a command runner."
     candidate = {
         "file": "src/app.py",

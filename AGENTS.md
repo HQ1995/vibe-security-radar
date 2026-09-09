@@ -27,9 +27,12 @@ Keep committed content in English.
   (`assessment-add`, `finalize`, `export`), `scripts/sync_display_to_db.py`
   (display content) and `scripts/publish_tp_ledger.py` (generated site data).
   Check records and duplicate TPs before `finalize`; export/publish only after
-  the transaction succeeds. Never hand-edit exports or generated site data.
-- In `web/`, `npm run dev` runs the publisher; `npm run build` runs publication
-  checks and tests.
+  the transaction succeeds. Publish reads Neon `ledger_rows`; the jsonl file is
+  a recovery export, not a publish input. Never hand-edit exports or generated
+  site data.
+- In `web/`, `npm run dev` and `npm run build` use committed generated site
+  data and do not read Neon. CI deploy runs `publish_tp_ledger.py` against
+  Neon, then publication checks and tests.
   Public data must pass `scripts/site_preflight.py`; never use allowlisting as a filter.
 
 ## host-1 NUMA

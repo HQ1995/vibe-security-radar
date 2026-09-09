@@ -166,6 +166,7 @@ function fixAuthorship(item: ResearchCase): string {
           claude: "Claude Code",
           claude_code: "Claude Code",
           cursor: "Cursor",
+          google_jules: "Google Jules",
           github_copilot: "GitHub Copilot",
           copilot: "GitHub Copilot",
           openai_codex: "ChatGPT/Codex",

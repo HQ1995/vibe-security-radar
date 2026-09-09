@@ -1145,11 +1145,11 @@ def evaluate(
                 )
         for role, index, hunk in displayed:
             annotation = hunk.get("annotation")
-            if hunk.get("role") == "before_after" and (
+            if hunk.get("role") in ("before_after", "candidate", "fix") and (
                 not usable_hunk_annotation(annotation)
             ):
                 errors.append(
-                    f"{case_id}: {role}[{index}] before_after hunk has no "
+                    f"{case_id}: {role}[{index}] {hunk.get('role')} hunk has no "
                     "genuine annotation"
                 )
         if status == "confirmed":
@@ -1166,8 +1166,12 @@ def evaluate(
                 "vulnerable_release",
                 "fixed_release",
                 "advisory_url",
+                "fix_authorship",
             ):
-                if field in {"minimum_fix_set", "fixed_release"} and unpatched:
+                if (
+                    field in {"minimum_fix_set", "fixed_release", "fix_authorship"}
+                    and unpatched
+                ):
                     continue
                 if not case.get(field):
                     errors.append(f"{case_id}: confirmed case has no {field}")
@@ -1343,10 +1347,11 @@ def main(argv: list[str] | None = None) -> int:
             print(f"warn: {warning}")
     if errors:
         print("preflight failed:")
-        for error in errors[:40]:
+        error_limit = len(errors) if verbose else 40
+        for error in errors[:error_limit]:
             print(f"  {error}")
-        if len(errors) > 40:
-            print(f"  ... {len(errors) - 40} more")
+        if len(errors) > error_limit:
+            print(f"  ... {len(errors) - error_limit} more")
         return 1
     return 0
 
