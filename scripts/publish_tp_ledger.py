@@ -1903,6 +1903,11 @@ def main(argv: list[str] | None = None) -> None:
         chain["_publication_override"] = True
     chains.update(chain_updates)
     dates = load_advisory_dates()
+    if not dates:
+        # publication_errors only enforces date traceability when the table is
+        # non-empty; fail closed here so a missing table cannot publish dates
+        # nobody verified.
+        raise SystemExit(f"missing advisory date table: {ADVISORY_DATES}")
     generated_evidence = load_generated_evidence()
     unpatched_fixes = load_unpatched_fixes()
     drop_class_ids = {
