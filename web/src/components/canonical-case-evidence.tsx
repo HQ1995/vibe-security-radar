@@ -20,6 +20,12 @@ function shortSha(value: string): string {
   return value.slice(0, 10);
 }
 
+function displayFiles(item: ResearchCase, role: string): string[] {
+  return (item.code_evidence?.display_hunks ?? [])
+    .filter((hunk) => hunk.role === role)
+    .map((hunk) => hunk.file);
+}
+
 function commitUrl(repository: string | null, sha: string): string | null {
   return repository ? `https://github.com/${repository}/commit/${sha}` : null;
 }
@@ -583,7 +589,7 @@ function IncompleteRemediationFlow({
       missed={attempt?.missed ?? chain.residual_bypass}
       repository={item.repository}
       shas={attemptShas}
-      files={item.code_evidence?.candidate_hunks.map((hunk) => hunk.file) ?? []}
+      files={displayFiles(item, "candidate")}
       authorship={`Incomplete AI fix · ${getAiToolLabel(item)}`}
     />
   );
@@ -603,7 +609,7 @@ function IncompleteRemediationFlow({
       }
       repository={item.repository}
       shas={closureShas}
-      files={item.code_evidence?.fix_hunks.map((hunk) => hunk.file) ?? []}
+      files={displayFiles(item, "fix")}
       authorship={hasClosure ? fixAuthorship(item) : "Fix status unresolved"}
     />
   );
@@ -819,10 +825,8 @@ export function CanonicalCaseEvidence({
 }) {
   const visibleId = displayId ?? preferredCaseId(item);
   const evidence = item.code_evidence;
-  const candidateHunks = evidence?.candidate_hunks ?? [];
-  const fixHunks = evidence?.fix_hunks ?? [];
-  const candidateFiles = candidateHunks.map((hunk) => hunk.file);
-  const fixFiles = fixHunks.map((hunk) => hunk.file);
+  const candidateFiles = displayFiles(item, "candidate");
+  const fixFiles = displayFiles(item, "fix");
   const hasFix = item.minimum_fix_set.length > 0;
   const incomplete =
     item.contribution_class === "AI_INCOMPLETE_REMEDIATION" &&

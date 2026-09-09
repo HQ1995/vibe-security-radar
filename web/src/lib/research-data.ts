@@ -29,10 +29,8 @@ export interface ResearchCodeEvidence {
     readonly title: string;
     readonly detail: string;
   }[];
-  readonly candidate_hunks: readonly ResearchCodeHunk[];
-  readonly fix_hunks: readonly ResearchCodeHunk[];
-  readonly comparison_hunks: readonly ResearchCodeHunk[];
-  readonly display_hunks?: readonly ResearchCodeHunk[];
+  /** Publish resolves the reader-facing list once; the raw collections are inputs. */
+  readonly display_hunks: readonly ResearchCodeHunk[];
   readonly candidate_patch_sha256: string | null;
   readonly fix_patch_sha256: string | null;
   readonly required_anchors?: Readonly<{

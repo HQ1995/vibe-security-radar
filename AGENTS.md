@@ -24,8 +24,8 @@ Keep committed content in English.
 ## Data and commands
 
 - Only the leader writes canonical data: `scripts/ledger_store.py`
-  (`assessment-add`, `finalize`, `export`), `scripts/sync_display_to_db.py`
-  (display content) and `scripts/publish_tp_ledger.py` (generated site data).
+  (`assessment-add`, `finalize`, `export`) and `scripts/publish_tp_ledger.py`
+  (generated site data).
   Check records and duplicate TPs before `finalize`; export/publish only after
   the transaction succeeds. Publish reads Neon `ledger_rows`; the jsonl file is
   a recovery export, and `--prefer-export` uses it only when its sha256 matches

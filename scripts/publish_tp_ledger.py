@@ -34,8 +34,6 @@ ROOT = Path(__file__).resolve().parents[1]
 LEDGER = ROOT / "artifacts/funnel-account-20260817.jsonl"
 OUT = ROOT / "web/src/generated/research-data.json"
 OVERRIDES = ROOT / "scripts/tp_publication_overrides.json"
-IR_CHAINS = ROOT / "research/orchestrator-260814-irchains-sol/ir-chains.jsonl"
-IR_CHAIN_UPDATES = ROOT / "research/ir-chain-origin-rereview-20260830/ir-chain-updates.jsonl"
 ADVISORY_DATES = ROOT / "scripts/first-party-advisory-dates.json"
 GENERATED_EVIDENCE = ROOT / "scripts/generated-code-evidence.json"
 UNPATCHED_FIXES = ROOT / "scripts/unpatched-potential-fixes.json"
@@ -56,7 +54,6 @@ class Overlays:
     official: dict[str, dict] = field(default_factory=dict)
     by_class: dict[str, dict] = field(default_factory=dict)
     overrides: dict = field(default_factory=dict)
-    chains: dict[str, dict] = field(default_factory=dict)
     dates: dict[str, str] = field(default_factory=dict)
     generated_evidence: dict[str, dict] = field(default_factory=dict)
     unpatched_fixes: dict[str, dict] = field(default_factory=dict)
@@ -66,18 +63,13 @@ class Overlays:
 
     @classmethod
     def load(cls, rows: list[dict]) -> "Overlays":
-        """Read every overlay once: Neon display kinds first, files as backup."""
+        """Read every overlay once from committed inputs."""
         # Curated reader-facing values (severity, CWEs, references, release
         # ranges, curated steps, dates) have no source in ledger_rows. They
         # live in committed files, never in the previous publish output:
         # publish stays a pure function of Neon rows plus committed inputs, so
         # a bad run cannot feed its own mistakes back in.
         official, by_class = index_existing(load_json(CURATION))
-        chains = load_ir_chains(IR_CHAINS)
-        chain_updates = load_ir_chains(IR_CHAIN_UPDATES)
-        for chain in chain_updates.values():
-            chain["_publication_override"] = True
-        chains.update(chain_updates)
         dates = load_advisory_dates()
         if not dates:
             # publication_errors only enforces date traceability when the
@@ -89,7 +81,6 @@ class Overlays:
             official=official,
             by_class=by_class,
             overrides=load_json(OVERRIDES),
-            chains=chains,
             dates=dates,
             generated_evidence=load_generated_evidence(),
             unpatched_fixes=load_unpatched_fixes(),
@@ -97,43 +88,6 @@ class Overlays:
             mechanisms=mechanisms,
             prose=prose,
         )
-
-_DB_DISPLAY_CACHE: dict[str, dict] = {}
-_DB_DISPLAY_UNAVAILABLE = False
-
-
-def _db_display_kind(kind: str) -> dict:
-    """Fetch one ledger_display kind from Neon, cached per process.
-
-    Only the requested kind is fetched; the full table is ~2.4 MB and callers
-    such as the postbuild ir-chain test need a single small kind. Overlay only:
-    case rows come from ledger_rows and never fall back to jsonl, while a
-    display miss falls back to committed research/ files at the call site.
-    """
-    global _DB_DISPLAY_UNAVAILABLE
-    if kind not in _DB_DISPLAY_CACHE and not _DB_DISPLAY_UNAVAILABLE:
-        if not os.environ.get("DATABASE_URL"):
-            _DB_DISPLAY_UNAVAILABLE = True
-        else:
-            try:
-                sys.path.insert(0, str(ROOT / "scripts"))
-                from ledger_store import connect
-
-                with connect(direct=True) as conn:
-                    row = conn.execute(
-                        "SELECT value_json FROM ledger_display WHERE kind = %s",
-                        (kind,),
-                    ).fetchone()
-                if row is not None and isinstance(row[0], dict):
-                    _DB_DISPLAY_CACHE[kind] = row[0]
-            except Exception as exc:  # noqa: BLE001 - never break publication
-                print(
-                    f"ledger_display unavailable (falling back to files): {exc}",
-                    file=sys.stderr,
-                )
-                _DB_DISPLAY_UNAVAILABLE = True
-        _DB_DISPLAY_CACHE.setdefault(kind, {})
-    return _DB_DISPLAY_CACHE.get(kind) or {}
 
 TP_STATUSES = {"AI_ROOT_CAUSE", "AI_CODE_FLAWED"}
 
@@ -675,8 +629,20 @@ def scrub_evidence(
         cleaned[key] = hunks
     for hunk in cleaned["comparison_hunks"]:
         hunk["role"] = comparison_hunk_role(cleaned, hunk)
-    cleaned["display_hunks"] = display_hunks(cleaned)
     return cleaned
+
+
+def finalize_evidence(evidence: dict) -> None:
+    """Resolve the reader-facing hunk list once, after every filter.
+
+    Only this list ships: the raw candidate/fix/comparison collections were
+    ~5.8 MB of duplicated payload, and because they were resolved before the
+    unpatched and fix-allowlist filters, the shipped list could keep hunks
+    those filters had already dropped.
+    """
+    evidence["display_hunks"] = display_hunks(evidence)
+    for key in ("candidate_hunks", "fix_hunks", "comparison_hunks"):
+        evidence.pop(key, None)
 
 
 def apply_security_fix_context(evidence: dict, context: object) -> None:
@@ -1387,9 +1353,7 @@ def _load_summary_maps(
     rows: list[dict],
 ) -> tuple[dict[str, str], dict[str, str], dict[str, str]]:
     """Return reader summaries, mechanisms, and the truncated-prose index."""
-    overlay = _db_display_kind("ai_summaries")
-    if not overlay:
-        overlay = load_json(AI_CASE_SUMMARIES) or {}
+    overlay = load_json(AI_CASE_SUMMARIES) or {}
     summaries: dict[str, str] = {}
     mechanisms: dict[str, str] = {}
     prose: dict[str, str] = {}
@@ -1463,37 +1427,6 @@ def first_party_date(*keys: object, dates: dict[str, str]) -> str | None:
     return None
 
 
-def load_ir_chains(path: Path) -> dict[str, dict]:
-    if str(path) == str(IR_CHAINS):
-        db_chains = _db_display_kind("ir_chains")
-        if db_chains:
-            return {
-                str(case_id).upper(): normalize_ir_chain(raw)
-                for case_id, raw in db_chains.items()
-                if normalize_ir_chain(raw)
-            }
-    elif str(path) == str(IR_CHAIN_UPDATES):
-        db_updates = _db_display_kind("ir_chain_updates")
-        if db_updates:
-            return {
-                str(case_id).upper(): normalize_ir_chain(raw)
-                for case_id, raw in db_updates.items()
-                if normalize_ir_chain(raw)
-            }
-    index: dict[str, dict] = {}
-    if not path.exists():
-        return index
-    for line in path.read_text(encoding="utf-8").splitlines():
-        if not line.strip():
-            continue
-        raw = json.loads(line)
-        case_id = str(raw.get("case_id") or "").upper()
-        chain = normalize_ir_chain(raw)
-        if case_id and chain:
-            index[case_id] = chain
-    return index
-
-
 def load_json(path: Path) -> dict:
     try:
         return json.loads(path.read_text())
@@ -1553,7 +1486,6 @@ def apply_case_overrides(
     row: dict,
     rec: dict | None,
     overrides: dict,
-    chains: dict[str, dict],
 ) -> dict:
     class_id = str(row.get("class_id") or "")
     spec = (overrides.get("cases") or {}).get(class_id) or {}
@@ -1615,29 +1547,6 @@ def apply_case_overrides(
         case["contribution_class"] = class_override
     case["ir_chain"] = ir_chain_of(row, case.get("ir_chain"))
     chain = ir_chain_of(row, spec.get("ir_chain"))
-    indexed_chain = chains.get(str(case.get("case_id") or "").upper())
-    if (
-        "ir_chain" not in row
-        and indexed_chain
-        and indexed_chain.get("_publication_override")
-    ):
-        chain = {
-            key: value
-            for key, value in indexed_chain.items()
-            if key != "_publication_override"
-        }
-    elif "ir_chain" not in row and chain and indexed_chain:
-        chain = dict(chain)
-        for field in (
-            "original_author_kind",
-            "original_author_name",
-            "original_sha",
-            "unresolved_reason",
-        ):
-            if not chain.get(field) or chain.get(field) == "UNKNOWN":
-                chain[field] = indexed_chain.get(field)
-    if not chain and "ir_chain" not in row:
-        chain = indexed_chain
     if chain and "ir_chain" not in row and rec and rec.get("squash_decomposed"):
         introducer = str(rec.get("introducer_sha") or "")
         evidence_sha = sha_from_url((case.get("code_evidence") or {}).get("candidate_url"))
@@ -1896,7 +1805,7 @@ def build_case(row: dict, overlays: Overlays) -> dict:
             case_id, aliases, row.get("class_id"), overlays.unpatched_fixes
         ),
     )
-    case = apply_case_overrides(case, row, rec, overlays.overrides, overlays.chains)
+    case = apply_case_overrides(case, row, rec, overlays.overrides)
     strip_unpatched_fix_claims(case)
     case["fix_authorship"] = normalize_fix_authorship(
         case.get("fix_authorship"), list(case.get("minimum_fix_set") or [])
@@ -2000,6 +1909,7 @@ def main(argv: list[str] | None = None) -> None:
             for role in ("comparison_hunks", "candidate_hunks", "fix_hunks")
         ):
             evidence.pop("unavailable_reason", None)
+        finalize_evidence(evidence)
 
     root_cause = sum(1 for item in cases if item["ledger_status"] == "AI_ROOT_CAUSE")
     code_flawed = sum(1 for item in cases if item["ledger_status"] == "AI_CODE_FLAWED")
@@ -2051,7 +1961,7 @@ def main(argv: list[str] | None = None) -> None:
         "cases": cases,
     }
 
-    ai_commit_census = _db_display_kind("ai_commit_census") or load_json(
+    ai_commit_census = load_json(
         ROOT / "research/ai-commit-census-current/ai-commit-census.json"
     )
     if ai_commit_census.get("total_commits"):

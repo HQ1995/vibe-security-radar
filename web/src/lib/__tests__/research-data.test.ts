@@ -212,10 +212,7 @@ describe("canonical research data", () => {
     const coolify = getResearchCaseById("CVE-2026-32718");
     expect(coolify?.candidate_set[0]).toMatch(/^62c394d3a1db/);
     expect(
-      Boolean(
-        coolify?.code_evidence?.comparison_hunks?.length ||
-          coolify?.code_evidence?.candidate_hunks?.length,
-      ),
+      Boolean(coolify?.code_evidence?.display_hunks?.length),
     ).toBe(true);
     expect(coolify?.vulnerable_release?.version).toMatch(/beta\.466/);
 
@@ -233,9 +230,7 @@ describe("canonical research data", () => {
     };
     const noVersionRange = preflightAllowlist.missing_release;
     for (const item of cases) {
-      const hunks =
-        item.code_evidence?.comparison_hunks?.length ||
-        item.code_evidence?.candidate_hunks?.length;
+      const hunks = item.code_evidence?.display_hunks?.length;
       expect(hunks, item.case_id).toBeGreaterThan(0);
       const official = [item.case_id, ...item.aliases].filter((value) =>
         /^(GHSA-|CVE-)/i.test(value),

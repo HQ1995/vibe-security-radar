@@ -334,7 +334,7 @@ def test_canonical_ledger_code_evidence_overrides_generated_and_cached_data() ->
         {"ir_chain": None},
     ],
 )
-def test_canonical_ir_fields_reject_cached_and_indexed_chains(canonical: dict) -> None:
+def test_canonical_ir_fields_reject_cached_chains(canonical: dict) -> None:
     row = {**_ledger_row(), **canonical}
     cached = {**_case(), "repository": "acme/app", "ir_chain": _ir_chain()}
     overrides = {
@@ -343,14 +343,12 @@ def test_canonical_ir_fields_reject_cached_and_indexed_chains(canonical: dict) -
             {row["class_id"]: "AI_CODE_FLAWED"} if "site_scope" in row else {}
         ),
     }
-    indexed = {cached["case_id"]: {**_ir_chain(), "_publication_override": True}}
 
     case = publish_tp_ledger.build_case(
         row,
         publish_tp_ledger.Overlays(
             official={cached["case_id"]: cached},
             overrides=overrides,
-            chains=indexed,
         ),
     )
 
@@ -384,7 +382,6 @@ def test_canonical_ir_chain_is_not_backfilled_or_rewritten() -> None:
             "class_overrides": {row["class_id"]: "AI_CODE_FLAWED"},
             "cases": {row["class_id"]: {"ir_chain": _ir_chain()}},
         },
-        {case["case_id"]: {**_ir_chain(), "_publication_override": True}},
     )
 
     assert updated["contribution_class"] == "AI_INCOMPLETE_REMEDIATION"
@@ -405,23 +402,16 @@ def test_explicit_scope_and_chain_conflict_still_fails_publication() -> None:
     )
 
 
-@pytest.mark.parametrize("source", ["cached", "indexed"])
-def test_publisher_keeps_legacy_ir_fallbacks(source: str) -> None:
+def test_publisher_keeps_legacy_cached_ir_fallback() -> None:
     row = _ledger_row()
     row["round6_research"] = row.pop("causal_research")
     row["round6_research"]["flaw_origin"] = "An incomplete fix left the bypass reachable."
     cached = {**_case(), "repository": "acme/app"}
-    indexed = {}
-    if source == "cached":
-        cached["ir_chain"] = _ir_chain()
-    else:
-        indexed[cached["case_id"]] = _ir_chain()
+    cached["ir_chain"] = _ir_chain()
 
     case = publish_tp_ledger.build_case(
         row,
-        publish_tp_ledger.Overlays(
-            official={cached["case_id"]: cached}, chains=indexed
-        ),
+        publish_tp_ledger.Overlays(official={cached["case_id"]: cached}),
     )
 
     assert case["contribution_class"] == "AI_INCOMPLETE_REMEDIATION"
@@ -568,7 +558,6 @@ def test_targeted_overrides_replace_stale_mechanism_and_release_metadata() -> No
                 }
             }
         },
-        {},
     )
 
     assert updated["mechanism"] == mechanism
@@ -604,7 +593,6 @@ def test_targeted_overrides_replace_stale_mechanism_and_release_metadata() -> No
                 }
             }
         },
-        {},
     )
     assert canonical["mechanism"] == "The ledger is authoritative."
     assert canonical["fixed_release"] == {"version": "2.0.2"}
@@ -614,7 +602,7 @@ def test_targeted_overrides_replace_stale_mechanism_and_release_metadata() -> No
 def test_class_override_remains_available_without_canonical_scope() -> None:
     case = publish_tp_ledger.apply_case_overrides(
         _case(), {"class_id": "alias-legacy"}, None,
-        {"class_overrides": {"alias-legacy": "AI_CODE_FLAWED"}}, {},
+        {"class_overrides": {"alias-legacy": "AI_CODE_FLAWED"}},
     )
     assert case["contribution_class"] == "AI_CODE_FLAWED"
 
@@ -1099,7 +1087,7 @@ def test_publisher_removes_pseudo_annotations_and_assigns_hunk_roles() -> None:
     assert deduped is not None
     assert [
         (hunk["role"], hunk["annotation"])
-        for hunk in deduped["display_hunks"]
+        for hunk in site_preflight.display_hunks(deduped)
     ] == [("candidate", note), ("fix", "")]
 
 
@@ -2061,7 +2049,9 @@ def test_published_cross_repo_origins_keep_their_import_carrier() -> None:
             f"https://github.com/openclaw/openclaw/commit/{values['fix']}"
         )
         assert values["anchor"] in "\n".join(
-            hunk["code"] for hunk in evidence["candidate_hunks"]
+            hunk["code"]
+            for hunk in evidence["display_hunks"]
+            if hunk["role"] == "candidate"
         )
 
     x22 = cases["GHSA-X22M-J5QQ-J49M"]

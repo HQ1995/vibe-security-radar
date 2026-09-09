@@ -91,11 +91,7 @@ def official_ids(case: dict) -> list[str]:
 
 def has_hunks(case: dict) -> bool:
     evidence = case.get("code_evidence") or {}
-    return bool(
-        evidence.get("comparison_hunks")
-        or evidence.get("candidate_hunks")
-        or evidence.get("fix_hunks")
-    )
+    return bool(display_hunks(evidence))
 
 
 def public_explanation(value: object) -> bool:
@@ -243,11 +239,15 @@ def display_hunks(evidence: dict) -> list[dict]:
     The web component used to re-derive this list from the raw collections
     (role labels, supplementing a role the comparison omits, dropping repeated
     annotations), so publish-time checks and the rendered page could disagree
-    about which hunks a reader sees. Publish now ships the final list.
+    about which hunks a reader sees. Publish now ships the final list and drops
+    the raw collections; ledger rows and test fixtures still carry them, so the
+    list is derived from those when present.
     """
     candidate = list(evidence.get("candidate_hunks") or [])
     fix = list(evidence.get("fix_hunks") or [])
     comparison = list(evidence.get("comparison_hunks") or [])
+    if not (candidate or fix or comparison):
+        return [dict(hunk) for hunk in evidence.get("display_hunks") or []]
     selected = [dict(hunk) for hunk in (comparison or [*candidate, *fix])]
     if comparison:
         for role, hunks in (("candidate", candidate), ("fix", fix)):
@@ -265,6 +265,14 @@ def display_hunks(evidence: dict) -> list[dict]:
         elif annotation:
             seen.add(annotation)
     return selected
+
+
+def hunks_for_role(evidence: dict, role: str) -> list[dict]:
+    """Hunks for one reader role: raw collections, or the shipped display list."""
+    raw = evidence.get(f"{role}_hunks")
+    if raw:
+        return list(raw)
+    return [hunk for hunk in display_hunks(evidence) if hunk.get("role") == role]
 
 
 def has_reader_fallback(case: dict, role: str) -> bool:
@@ -327,10 +335,7 @@ def unpatched_errors(case_id: str, case: dict) -> list[str]:
         for field in ("fix_url", "fix_marker", "fix_files", "fix_patch_sha256")
     ):
         errors.append(f"{case_id}: unpatched case still has fix evidence metadata")
-    if evidence.get("fix_hunks") or any(
-        hunk.get("role") == "fix"
-        for hunk in evidence.get("comparison_hunks") or []
-    ):
+    if any(hunk.get("role") == "fix" for hunk in display_hunks(evidence)):
         errors.append(f"{case_id}: unpatched case still has fix hunks")
     if any(
         re.search(r"\bfix\b", str(step.get("title") or ""), re.I)
@@ -688,19 +693,12 @@ def evidence_role_allowlist_errors(
                 f"{case_id}: allowlisted fix does not belong to minimum_fix_set"
             )
 
-        role_hunks = evidence.get(f"{role}_hunks") or []
+        role_hunks = hunks_for_role(evidence, role)
         if not role_hunks:
             errors.append(f"{case_id}: required {role} role emitted no hunk")
-        comparison_role_hunks = [
-            hunk
-            for hunk in evidence.get("comparison_hunks") or []
-            if hunk.get("role") == role
+        displayed_role_hunks = [
+            hunk for hunk in display_hunks(evidence) if hunk.get("role") == role
         ]
-        displayed_role_hunks = (
-            comparison_role_hunks
-            if evidence.get("comparison_hunks")
-            else role_hunks
-        )
         emitted_paths = {
             str(hunk.get("file") or "").strip() for hunk in role_hunks
         }
@@ -1028,27 +1026,38 @@ def evaluate(
             fix_match = COMMIT_URL_RE.fullmatch(fix_url)
             if not fix_match:
                 errors.append(f"{case_id}: Security fix step has no full commit fix_url")
-        for role in ("candidate_hunks", "fix_hunks", "comparison_hunks"):
+        raw_roles = [
+            role
+            for role in ("candidate_hunks", "fix_hunks", "comparison_hunks")
+            if evidence.get(role)
+        ]
+        for role in raw_roles or ["display_hunks"]:
             for index, hunk in enumerate(evidence.get(role) or []):
                 if not str(hunk.get("file") or "").strip():
                     errors.append(f"{case_id}: {role}[{index}] has no file")
                 if not str(hunk.get("code") or "").strip():
                     errors.append(f"{case_id}: {role}[{index}] has no code")
-                expected_role = (
-                    comparison_hunk_role(evidence, hunk)
-                    if role == "comparison_hunks"
-                    else role.removesuffix("_hunks")
-                )
-                if expected_role is None:
-                    errors.append(
-                        f"{case_id}: {role}[{index}] cannot map to candidate/fix "
-                        "and is not a before/after diff"
+                if role == "display_hunks":
+                    if hunk.get("role") not in HUNK_ROLES:
+                        errors.append(
+                            f"{case_id}: display_hunks[{index}] has no resolved role"
+                        )
+                else:
+                    expected_role = (
+                        comparison_hunk_role(evidence, hunk)
+                        if role == "comparison_hunks"
+                        else role.removesuffix("_hunks")
                     )
-                elif hunk.get("role") != expected_role:
-                    errors.append(
-                        f"{case_id}: {role}[{index}] role {hunk.get('role')!r} "
-                        f"does not match {expected_role!r}"
-                    )
+                    if expected_role is None:
+                        errors.append(
+                            f"{case_id}: {role}[{index}] cannot map to candidate/fix "
+                            "and is not a before/after diff"
+                        )
+                    elif hunk.get("role") != expected_role:
+                        errors.append(
+                            f"{case_id}: {role}[{index}] role {hunk.get('role')!r} "
+                            f"does not match {expected_role!r}"
+                        )
                 if is_pseudo_annotation(hunk.get("annotation"), context):
                     errors.append(f"{case_id}: {role}[{index}] has a pseudo annotation")
                 if str(hunk.get("annotation") or "").strip() and not usable_hunk_annotation(
@@ -1205,11 +1214,11 @@ def evaluate(
                     continue
                 if not case.get(field):
                     errors.append(f"{case_id}: confirmed case has no {field}")
-            for role in ("candidate_hunks", "fix_hunks"):
-                if role == "fix_hunks" and unpatched:
+            for role in ("candidate", "fix"):
+                if role == "fix" and unpatched:
                     continue
-                if not evidence.get(role):
-                    errors.append(f"{case_id}: confirmed case has no {role}")
+                if not hunks_for_role(evidence, role):
+                    errors.append(f"{case_id}: confirmed case has no {role}_hunks")
         published = str(case.get("published_at") or "")
         if not DATE_RE.match(published):
             errors.append(f"{case_id}: missing published_at")
