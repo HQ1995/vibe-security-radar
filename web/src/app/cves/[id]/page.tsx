@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft, ExternalLink } from "lucide-react";
-import { isPublicProse, stripMarkdown } from "@/lib/markdown-utils";
+import { stripMarkdown } from "@/lib/markdown-utils";
 
 import { CanonicalCaseEvidence } from "@/components/canonical-case-evidence";
 import {
@@ -36,10 +36,9 @@ export async function generateMetadata({
   if (!item) return { title: "Finding not found" };
   const canonicalId = preferredCaseId(item);
   const raw = stripMarkdown(item.description ?? "");
-  // Same reader filter as the case body: internal audit notes and machine
-  // slugs must never become the search/social snippet.
+  // Publish already dropped internal audit notes, so this is reader copy.
   const description = (
-    isPublicProse(raw) ? raw : `Mechanism-level evidence for ${canonicalId}.`
+    raw || `Mechanism-level evidence for ${canonicalId}.`
   ).slice(0, 200);
   const title = `${canonicalId} — AI contribution evidence`;
   return {

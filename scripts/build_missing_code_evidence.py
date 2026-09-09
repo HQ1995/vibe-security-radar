@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Build comparison hunks for published cases that still lack code evidence.
+"""Build display hunks for published cases that still lack code evidence.
 
 Uses GitHub commit patches. Mechanical: no fabricated files or SHAs.
 """
@@ -13,7 +13,13 @@ import subprocess
 import sys
 from pathlib import Path
 
-from publish_tp_ledger import collect_ids, public_shas, repo_of, research_records
+from publish_tp_ledger import (
+    collect_ids,
+    public_shas,
+    repo_of,
+    research_records,
+    scrub_evidence,
+)
 
 ROOT = Path(__file__).resolve().parents[1]
 DATA = ROOT / "web/src/generated/research-data.json"
@@ -157,11 +163,12 @@ def needs_evidence(case_id: str, existing: dict, force: set[str]) -> bool:
         return True
     if force:
         return False
-    # ponytail: comparison_hunks alone is not complete evidence; rebuild when
-    # the fix diff was never fetched but a fix sha exists on the case.
-    if not entry.get("comparison_hunks"):
+    # The store ships the publisher's resolved `display_hunks`; a missing list
+    # or a missing fix role still needs fetching.
+    hunks = entry.get("display_hunks") or []
+    if not hunks:
         return True
-    if not entry.get("fix_hunks") and not entry.get("fix_url"):
+    if not any(hunk.get("role") == "fix" for hunk in hunks) and not entry.get("fix_url"):
         return True
     return False
 
@@ -466,7 +473,7 @@ def main() -> None:
     if not ledger_arg and "FORCE_IDS" not in os.environ:
         cases = [
             c for c in cases
-            if not (c.get("code_evidence") or {}).get("comparison_hunks")
+            if not (c.get("code_evidence") or {}).get("display_hunks")
         ]
     existing = {}
     if OUT.exists():
@@ -524,7 +531,10 @@ def main() -> None:
             )
         else:
             print(f"{index}/{len(missing)} SKIP {case['case_id']}")
-    OUT.write_text(json.dumps(built, indent=1, ensure_ascii=False) + "\n")
+    # Normalize through the publisher's own scrubber so the store always ships
+    # the resolved `display_hunks` shape and rebuilds cannot revert it.
+    built = {key: scrub_evidence(value) or value for key, value in built.items()}
+    OUT.write_text(json.dumps(built, indent=2, ensure_ascii=False) + "\n")
     print(json.dumps({"wrote": len(built), "new": ok, "out": str(OUT)}))
 
 

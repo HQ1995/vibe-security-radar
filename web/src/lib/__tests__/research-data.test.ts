@@ -88,7 +88,20 @@ describe("canonical research data", () => {
       resolve(import.meta.dirname, "../../generated/research-data.json"),
       "utf8",
     );
-    expect(raw).not.toMatch(/[\u4e00-\u9fff]/);
+    // Quoted upstream `code` stays verbatim, non-English comments included;
+    // every field publish writes for readers is English.
+    const cjkPaths = (value: unknown, path = ""): string[] => {
+      if (typeof value === "string")
+        return /[\u4e00-\u9fff]/.test(value) ? [path] : [];
+      if (Array.isArray(value))
+        return value.flatMap((item, index) => cjkPaths(item, `${path}[${index}]`));
+      if (value && typeof value === "object")
+        return Object.entries(value).flatMap(([key, item]) =>
+          key === "code" ? [] : cjkPaths(item, `${path}.${key}`),
+        );
+      return [];
+    };
+    expect(cjkPaths(JSON.parse(raw))).toEqual([]);
     expect(snapshot.cases.every((item) => item.case_id)).toBe(true);
     expect(
       snapshot.cases.every(

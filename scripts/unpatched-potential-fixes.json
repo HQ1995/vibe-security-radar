@@ -174,7 +174,7 @@
    "confirmed": true,
    "reason": "The GHSA is Unreviewed with 'Patched versions: Unknown' and 'No known source code'; the OSV affected range is the single version v2.1.2 where introduced == last_affected == eba7d2efe, so no subsequent fixing release exists and the sensitive-data logging introduced by that commit remains.",
    "potential_fix": {
-    "approach": "Stop emitting credential material to the logger: delete or redact the line `logger.debug(`[ImageUploader] 上传凭证响应: ${JSON.stringify(authRes).substring(0, 200)}`)` in getUploadAuth() (log only a boolean such as whether authRes.data exists, never the token/credential object), and strip query parameters carrying session/msToken/cookie from `logger.debug(`[HttpClient] Request: ${method} ${fullUrl}`)` in HttpClient (log path only).",
+    "approach": "Stop emitting credential material to the logger: delete or redact the debug log in getUploadAuth() that writes the serialized upload-auth response (log only a boolean such as whether authRes.data exists, never the token/credential object), and strip query parameters carrying session/msToken/cookie from the request debug log in HttpClient (log the path only).",
     "rationale": "The CWE-532 sink is the debug logger writing the upload-authorization response (containing an upload token/credential) and auth-laden request URLs into the log. Removing or redacting those specific credential-bearing fields at the two logging sites eliminates the sensitive-information insertion while retaining non-sensitive diagnostics.",
     "reference_commit": null,
     "reference_url": null

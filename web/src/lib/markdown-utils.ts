@@ -24,23 +24,3 @@ export function stripMarkdown(text: string | null | undefined): string {
     .replace(/\n{3,}/g, "\n\n")
     .trim();
 }
-
-/** True when the text is something a visitor can read, not an internal audit note. */
-export function isPublicProse(text: string | null | undefined): boolean {
-  if (!text) return false;
-  const value = text.trim();
-  if (value.length < 24) return false;
-  if (
-    /cand=|fix=|ai=\['|\/tmp\/|sink=|source=|guard=|class_id|\\\\s\+|decomposed_shas|bug_semantics/i.test(
-      value,
-    )
-  ) {
-    return false;
-  }
-  const words = value.split(/\s+/).filter(Boolean);
-  if (words.length < 5) return false;
-  const slashes = (value.match(/\//g) ?? []).length;
-  if (slashes >= 4 && words.length < 12 && !/[.!?]\s/.test(value)) return false;
-  return /[a-z]/i.test(value);
-}
-

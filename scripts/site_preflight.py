@@ -58,8 +58,9 @@ ANNOTATION_PREFIX_RE = re.compile(
 def strip_annotation_prefix(value: object) -> str:
     return ANNOTATION_PREFIX_RE.sub("", str(value or "").strip()).strip()
 INTERNAL_PROSE_RE = re.compile(
-    r"cand=|fix=|ai=\['|/tmp/|sink=|source=|guard=|class_id|"
-    r"\\s\+|decomposed_shas|bug_semantics",
+    r"(?<![A-Za-z0-9_])(?:cand|fix|sink|source|guard)=|ai=\['|/tmp/|"
+    r"class_id|decomposed_shas|bug_semantics|introduced_with_feature|"
+    r"alias-[0-9a-f]{6,}|phantom\s+sha",
     re.I,
 )
 HUNK_HEADER_RE = re.compile(
@@ -94,17 +95,52 @@ def has_hunks(case: dict) -> bool:
     return bool(display_hunks(evidence))
 
 
-def public_explanation(value: object) -> bool:
-    """Mirror the site's compact public-prose test for diff fallbacks."""
+_TABLE_RULE_RE = re.compile(r"^\|[\s:|-]+\|$")
+_LINK_RE = re.compile(r"\[([^\]]+)\]\([^)]*\)")
+
+
+def strip_markdown(text: object) -> str:
+    """Plain reader text: the site renders prose through this same transform."""
+    lines: list[str] = []
+    for line in str(text or "").split("\n"):
+        value = line.strip()
+        if _TABLE_RULE_RE.fullmatch(value):
+            continue
+        if value.startswith("|") and value.endswith("|") and "|" in value[1:-1]:
+            lines.append(": ".join(cell.strip() for cell in value[1:-1].split("|")))
+            continue
+        lines.append(value)
+    out = "\n".join(lines)
+    out = re.sub(r"^#{1,6}\s+", "", out, flags=re.M)
+    out = re.sub(r"```[\s\S]*?```", " ", out)
+    out = re.sub(r"`([^`]+)`", r"\1", out)
+    out = re.sub(r"\*\*([^*]+)\*\*", r"\1", out)
+    out = re.sub(r"!\[[^\]]*\]\([^)]*\)", "", out)
+    out = _LINK_RE.sub(r"\1", out)
+    out = re.sub(r"^\s*[-*+]\s+", "· ", out, flags=re.M)
+    return re.sub(r"\n{3,}", "\n\n", out).strip()
+
+
+def reader_prose(value: object) -> bool:
+    """True for reader-facing prose, false for an internal audit dump.
+
+    Publish gates copy with this so the shipped payload carries no internal
+    notes; the site then renders what publish ships and needs no second filter.
+    """
     text = str(value or "").strip()
-    words = text.split()
-    if not 24 <= len(text) <= 360 or len(words) < 5:
+    if len(text) < 24 or INTERNAL_PROSE_RE.search(text):
         return False
-    if INTERNAL_PROSE_RE.search(text):
+    words = text.split()
+    if len(words) < 5:
         return False
     if text.count("/") >= 4 and len(words) < 12 and not re.search(r"[.!?]\s", text):
         return False
     return bool(re.search(r"[a-z]", text, re.I))
+
+
+def public_explanation(value: object) -> bool:
+    """Reader prose short enough to use as a diff fallback blurb."""
+    return reader_prose(value) and len(str(value or "").strip()) <= 360
 
 
 def annotation_context(case: dict) -> tuple[str, ...]:
@@ -119,6 +155,32 @@ def annotation_context(case: dict) -> tuple[str, ...]:
         )
         if str(value or "").strip()
     )
+
+
+def public_cjk_paths(value: object, path: str = "") -> list[str]:
+    """Paths of reader-facing strings that carry CJK characters.
+
+    Quoted upstream `code` is verbatim evidence, not our copy: a vulnerable
+    repository may legitimately contain non-English comments, and stripping
+    them would publish a diff that never existed. Every other field is ours and
+    must be English.
+    """
+    if isinstance(value, dict):
+        return [
+            hit
+            for key, item in value.items()
+            if key != "code"
+            for hit in public_cjk_paths(item, f"{path}.{key}" if path else str(key))
+        ]
+    if isinstance(value, list):
+        return [
+            hit
+            for index, item in enumerate(value)
+            for hit in public_cjk_paths(item, f"{path}[{index}]")
+        ]
+    if isinstance(value, str) and CJK_RE.search(value):
+        return [path or "<root>"]
+    return []
 
 
 def is_pseudo_annotation(value: object, context: tuple[str, ...]) -> bool:
@@ -246,20 +308,19 @@ def display_role(hunk: dict, candidate: list[dict], fix: list[dict]) -> str:
 
 
 def display_hunks(evidence: dict) -> list[dict]:
-    """The reader-facing hunk list, resolved once at publish time.
+    """The reader-facing hunk list.
 
-    The web component used to re-derive this list from the raw collections
-    (role labels, supplementing a role the comparison omits, dropping repeated
-    annotations), so publish-time checks and the rendered page could disagree
-    about which hunks a reader sees. Publish now ships the final list and drops
-    the raw collections; ledger rows and test fixtures still carry them, so the
-    list is derived from those when present.
+    Published cases ship the resolved list, which publish writes once and every
+    later filter edits; ledger rows and test fixtures still carry the raw
+    candidate/fix/comparison collections, so derive from those only when the
+    shipped list is absent.
     """
+    shipped = evidence.get("display_hunks")
+    if shipped:
+        return [dict(hunk) for hunk in shipped]
     candidate = list(evidence.get("candidate_hunks") or [])
     fix = list(evidence.get("fix_hunks") or [])
     comparison = list(evidence.get("comparison_hunks") or [])
-    if not (candidate or fix or comparison):
-        return [dict(hunk) for hunk in evidence.get("display_hunks") or []]
     selected = [dict(hunk) for hunk in (comparison or [*candidate, *fix])]
     if comparison:
         for role, hunks in (("candidate", candidate), ("fix", fix)):
@@ -869,9 +930,8 @@ def evaluate(
     for case in cases:
         case_id = str(case.get("case_id") or "")
         key = case_id.upper()
-        blob = json.dumps(case, ensure_ascii=False)
-        if CJK_RE.search(blob):
-            errors.append(f"{case_id}: CJK leaked into public fields")
+        for leak_path in public_cjk_paths(case):
+            errors.append(f"{case_id}: CJK leaked into public fields at {leak_path}")
         status = str(case.get("publication_status") or "")
         if status not in status_counts:
             errors.append(f"{case_id}: invalid publication_status {status!r}")

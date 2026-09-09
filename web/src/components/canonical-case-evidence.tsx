@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { ArrowRight, ChevronDown, ExternalLink } from "lucide-react";
 
-import { isPublicProse, stripMarkdown } from "@/lib/markdown-utils";
+import { stripMarkdown } from "@/lib/markdown-utils";
 import { formatPublished } from "@/lib/commit-utils";
 import { severityBadgeClass } from "@/lib/constants";
 import { Badge } from "@/components/ui/badge";
@@ -82,24 +82,16 @@ function advisoryBlurb(item: ResearchCase): string | null {
 
 /** Full advisory text, not the 500-char teaser — rendered with a manual expand. */
 function advisoryDescription(item: ResearchCase): string | null {
-  const full = stripMarkdown(item.description);
-  if (!full || !isPublicProse(full)) return null;
-  return full;
+  return stripMarkdown(item.description) || null;
 }
 
 /** Plain-language explanation of the AI-caused mechanism, when fit for visitors. */
 function publicMechanism(item: ResearchCase): string | null {
-  const text = stripMarkdown(item.mechanism);
-  if (!text || !isPublicProse(text)) return null;
-  return text;
+  return stripMarkdown(item.mechanism) || null;
 }
 
 function findingSummary(item: ResearchCase): string | null {
-  const summary = item.code_evidence?.summary;
-  if (summary && isPublicProse(summary)) return summary;
-  const blurb = advisoryBlurb(item);
-  if (blurb) return blurb;
-  return null;
+  return item.code_evidence?.summary || advisoryBlurb(item);
 }
 
 

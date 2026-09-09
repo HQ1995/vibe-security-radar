@@ -311,10 +311,11 @@ def test_canonical_ledger_code_evidence_overrides_generated_and_cached_data() ->
     )
 
     assert case["code_evidence"]["summary"] == ledger_evidence["summary"]
-    assert case["code_evidence"]["comparison_hunks"] == []
-    assert case["code_evidence"]["candidate_hunks"][0]["code"] == (
-        ledger_evidence["candidate_hunks"][0]["code"]
-    )
+    display = case["code_evidence"]["display_hunks"]
+    assert [(hunk["role"], hunk["file"]) for hunk in display] == [
+        ("candidate", "src/app.py")
+    ]
+    assert display[0]["code"] == ledger_evidence["candidate_hunks"][0]["code"]
     fallback = "A curated reader summary replaces non-canonical cached evidence."
     overlays = publish_tp_ledger.Overlays(summaries={case_id: fallback})
     assert publish_tp_ledger.ai_summary_overlay(case, overlays, canonical=True)
@@ -488,6 +489,52 @@ def test_canonical_empty_reader_copy_does_not_use_stale_overlays(empty: object) 
     )
 
     assert all(case[field] is None for field in fields)
+
+
+def test_publish_drops_internal_audit_prose_from_canonical_fields() -> None:
+    """The payload is public, so internal notes never leave publish."""
+    internal = {
+        "description": "/tmp/fp211-cross-01/pages/ghsa/GHSA-aaaa-bbbb-cccc.json",
+        "mechanism": "cand=b7b362ae427c fix=23838a995955 ai=['src/lib/engine.ts:528']",
+        "scope_statement": "session_state_shared_stateless_mode_token_cross_client",
+    }
+    case = publish_tp_ledger.build_case(
+        {**_ledger_row(), **internal}, publish_tp_ledger.Overlays()
+    )
+
+    assert all(case[field] is None for field in internal)
+
+
+def test_publish_keeps_reader_prose_in_canonical_fields() -> None:
+    prose = "The AI-linked change let untrusted input reach a privileged operation."
+    fields = ("description", "mechanism", "scope_statement")
+    case = publish_tp_ledger.build_case(
+        {**_ledger_row(), **dict.fromkeys(fields, prose)},
+        publish_tp_ledger.Overlays(),
+    )
+
+    assert all(case[field] == prose for field in fields)
+
+
+def test_reader_prose_ignores_audit_keys_hidden_inside_words() -> None:
+    assert site_preflight.reader_prose(
+        "The patch adds a guard that reads the suffix= value before it is used."
+    )
+    assert not site_preflight.reader_prose("cand=b7b362ae427c fix=23838a995955")
+    assert not site_preflight.reader_prose("/tmp/fp211-adjudicate-05/pages/ghsa/a.json")
+
+
+def test_publish_gates_prose_on_the_rendered_text_not_the_link_target() -> None:
+    """Markdown links are stripped for display, so their URLs are not prose."""
+    prose = (
+        "The AI-linked change wrote a proof file under "
+        "[proof](https://example.com/tmp/proof) while reading user input."
+    )
+    case = publish_tp_ledger.build_case(
+        {**_ledger_row(), "description": prose}, publish_tp_ledger.Overlays()
+    )
+
+    assert case["description"] == prose
 
 
 def test_hunk_specific_evidence_requires_distinct_annotations_and_all_anchors() -> None:
@@ -693,8 +740,10 @@ def test_evidence_backfill_preserves_existing_canonical_entry() -> None:
     case_id = "GHSA-1234-5678-9ABC"
     existing = {
         case_id: {
-            "comparison_hunks": [{"file": "src/app.py"}],
-            "fix_hunks": [{"file": "src/app.py"}],
+            "display_hunks": [
+                {"file": "src/app.py", "role": "candidate"},
+                {"file": "src/app.py", "role": "fix"},
+            ],
             "fix_url": "https://github.com/org/repo/commit/abc",
         }
     }
@@ -709,7 +758,9 @@ def test_evidence_backfill_preserves_existing_canonical_entry() -> None:
 
 def test_evidence_backfill_rebuilds_when_fix_hunks_missing() -> None:
     case_id = "GHSA-1234-5678-9ABC"
-    existing = {case_id: {"comparison_hunks": [{"file": "src/app.py"}]}}
+    existing = {
+        case_id: {"display_hunks": [{"file": "src/app.py", "role": "candidate"}]}
+    }
 
     # Candidate diff exists but the fix diff was never fetched: rebuild.
     assert build_missing_code_evidence.needs_evidence(case_id, existing, set())
@@ -1064,18 +1115,17 @@ def test_publisher_removes_pseudo_annotations_and_assigns_hunk_roles() -> None:
     )
 
     assert cleaned is not None
-    assert cleaned["candidate_hunks"][0]["role"] == "candidate"
-    assert cleaned["fix_hunks"][0]["role"] == "fix"
-    assert [hunk["role"] for hunk in cleaned["comparison_hunks"]] == [
-        "candidate",
-        "fix",
-        "before_after",
-    ]
     # A bare diff token is not an explanation, so the publisher drops it
     # instead of shipping the code line back to the reader as its own note.
-    assert cleaned["candidate_hunks"][0]["annotation"] == ""
-    assert cleaned["fix_hunks"][0]["annotation"] == ""
-    assert cleaned["comparison_hunks"][2]["annotation"] == before_after["annotation"]
+    assert [
+        (hunk["role"], hunk["file"], hunk["annotation"])
+        for hunk in cleaned["display_hunks"]
+    ] == [
+        ("candidate", "src/app.py", ""),
+        ("fix", "src/app.py", ""),
+        ("before_after", "src/guard.py", before_after["annotation"]),
+    ]
+    assert "candidate_hunks" not in cleaned
 
     note = "This hunk removes the unchecked call before the command can execute."
     deduped = publish_tp_ledger.scrub_evidence(
@@ -1158,7 +1208,9 @@ def test_security_fix_context_replaces_the_generic_fix_step() -> None:
     assert evidence["steps"] == [{"title": "Security fix", "detail": detail}]
     assert evidence["fix_url"] == fix_url
     assert evidence["fix_files"] == fix_files
-    assert [hunk["file"] for hunk in evidence["fix_hunks"]] == fix_files
+    assert [
+        hunk["file"] for hunk in evidence["display_hunks"] if hunk["role"] == "fix"
+    ] == fix_files
     case.update(
         {
             "publication_status": "confirmed",
@@ -1187,7 +1239,7 @@ def test_security_fix_context_replaces_the_generic_fix_step() -> None:
     assert any("displayed fix-role files exceed fix_files witness" in error for error in errors)
 
     evidence["fix_files"] = fix_files
-    evidence["fix_hunks"] = []
+    evidence["display_hunks"] = []
     errors, _, _ = site_preflight.evaluate(
         {"cases": [case], "snapshot": {"case_count": 1}}
     )
@@ -1272,13 +1324,16 @@ def test_security_fix_context_filters_only_fix_role_hunks() -> None:
         },
     )
 
-    assert [hunk["file"] for hunk in evidence["candidate_hunks"]] == ["src/app.py"]
-    assert [hunk["file"] for hunk in evidence["fix_hunks"]] == ["src/app.py"]
-    assert [hunk["file"] for hunk in evidence["comparison_hunks"]] == [
+    display = evidence["display_hunks"]
+    assert [hunk["file"] for hunk in display if hunk["role"] == "fix"] == [
+        "src/app.py"
+    ]
+    assert [hunk["file"] for hunk in display] == [
         "src/app.py",
         "src/app.py",
         "src/combined.py",
     ]
+    assert "fix_hunks" not in evidence
 
 
 def test_site_preflight_requires_a_role_and_public_role_context() -> None:
@@ -1895,11 +1950,11 @@ def test_unpatched_case_strips_and_rejects_stale_fix_claims() -> None:
     assert site_preflight.unpatched_errors(case["case_id"], case) == []
     assert case["minimum_fix_set"] == []
     assert case["fixed_release"] is None
-    assert case["code_evidence"]["fix_hunks"] == []
     assert not any(
         hunk.get("role") == "fix"
-        for hunk in case["code_evidence"].get("comparison_hunks") or []
+        for hunk in case["code_evidence"]["display_hunks"]
     )
+    assert "fix_hunks" not in case["code_evidence"]
     assert not any(
         "fix" in str(step.get("title") or "").lower()
         for step in case["code_evidence"]["steps"]

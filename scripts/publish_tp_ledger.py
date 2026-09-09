@@ -27,6 +27,9 @@ from site_preflight import (
     display_hunks,
     is_pseudo_annotation,
     public_explanation,
+    public_cjk_paths,
+    reader_prose,
+    strip_markdown,
     usable_hunk_annotation,
 )
 
@@ -60,10 +63,9 @@ class Overlays:
     unpatched_fixes: dict[str, dict] = field(default_factory=dict)
     summaries: dict[str, str] = field(default_factory=dict)
     mechanisms: dict[str, str] = field(default_factory=dict)
-    prose: dict[str, str] = field(default_factory=dict)
 
     @classmethod
-    def load(cls, rows: list[dict]) -> "Overlays":
+    def load(cls) -> "Overlays":
         """Read every overlay once from committed inputs."""
         # Curated reader-facing values (severity, CWEs, references, release
         # ranges, curated steps, dates) have no source in ledger_rows. They
@@ -77,7 +79,7 @@ class Overlays:
             # table is non-empty; fail closed here so a missing table cannot
             # publish dates nobody verified.
             raise SystemExit(f"missing advisory date table: {ADVISORY_DATES}")
-        summaries, mechanisms, prose = _load_summary_maps(rows)
+        summaries, mechanisms = _load_summary_maps()
         return cls(
             official=official,
             by_class=by_class,
@@ -87,7 +89,6 @@ class Overlays:
             unpatched_fixes=load_unpatched_fixes(),
             summaries=summaries,
             mechanisms=mechanisms,
-            prose=prose,
         )
 
 TP_STATUSES = {"AI_ROOT_CAUSE", "AI_CODE_FLAWED"}
@@ -492,17 +493,6 @@ def first_text(*values: object) -> str | None:
     return None
 
 
-def strip_cjk_tree(value):
-    """Remove Chinese characters from published JSON, including hunks and names."""
-    if isinstance(value, str):
-        return CJK_RE.sub("", value)
-    if isinstance(value, list):
-        return [strip_cjk_tree(item) for item in value]
-    if isinstance(value, dict):
-        return {key: strip_cjk_tree(item) for key, item in value.items()}
-    return value
-
-
 def public_text(*values: object) -> str | None:
     """English reader-facing copy only. Internal Chinese audit notes stay off the site."""
     for value in values:
@@ -510,6 +500,19 @@ def public_text(*values: object) -> str | None:
             continue
         text = value.strip()
         if text and not CJK_RE.search(text):
+            return text
+    return None
+
+
+def public_prose(*values: object) -> str | None:
+    """First English value that reads as prose, not an internal audit dump.
+
+    The site renders whatever publish ships, so the gate lives here once
+    instead of in a second copy of the heuristic inside the web app.
+    """
+    for value in values:
+        text = public_text(value)
+        if text and reader_prose(strip_markdown(text)):
             return text
     return None
 
@@ -557,17 +560,50 @@ def trim_mid_sentence(text: str) -> str:
     return stripped[: boundary + 1]
 
 
+_RAW_HUNK_KEYS = ("candidate_hunks", "fix_hunks", "comparison_hunks")
+
+
+def _scrub_hunk(hunk: dict, context: tuple[str, ...]) -> dict:
+    """One reader-facing hunk: public annotation, resolved file, kept role."""
+    item = dict(hunk)
+    annotation = str(item.get("annotation") or "")
+    if CJK_RE.search(annotation):
+        annotation = ""
+    annotation = trim_mid_sentence(annotation)
+    usable = usable_hunk_annotation(annotation)
+    item["annotation"] = (
+        "" if not usable or is_pseudo_annotation(usable, context) else usable
+    )
+    item["file"] = infer_hunk_file(item)
+    return item
+
+
+def _keep_display_hunks(evidence: dict, keep) -> None:
+    """Replace the reader-facing list, dropping any raw collections."""
+    evidence["display_hunks"] = [
+        hunk for hunk in display_hunks(evidence) if keep(hunk)
+    ]
+    for key in _RAW_HUNK_KEYS:
+        evidence.pop(key, None)
+
+
 def scrub_evidence(
     evidence: dict | None,
     case_context: tuple[object, ...] = (),
-    prose: dict[str, str] | None = None,
 ) -> dict | None:
+    """Normalize any evidence shape to one reader-facing `display_hunks` list.
+
+    Ledger rows and fixtures still carry the raw candidate/fix/comparison
+    collections; the committed store already ships resolved `display_hunks`.
+    Both are scrubbed here, resolved once, and reduced to `display_hunks`, so
+    every later filter and check has a single list to work with.
+    """
     if not isinstance(evidence, dict):
         return None
     cleaned = dict(evidence)
     # Provenance of how the evidence was gathered is internal; nothing reads it.
     cleaned.pop("code_evidence_source", None)
-    cleaned["summary"] = public_text(evidence.get("summary"))
+    cleaned["summary"] = public_prose(evidence.get("summary"))
     marker = evidence.get("ai_marker")
     cleaned["ai_marker"] = public_text(marker) if CJK_RE.search(str(marker or "")) else marker
     steps = []
@@ -583,11 +619,6 @@ def scrub_evidence(
             }
         )
     cleaned["steps"] = steps
-    full_summary = (
-        cleaned.get("summary")
-        if len(str(cleaned.get("summary") or "")) > 180
-        else (cleaned.get("mechanism") or cleaned.get("summary") or "")
-    )
     annotation_context = tuple(
         str(value).strip()
         for value in (
@@ -597,56 +628,31 @@ def scrub_evidence(
         )
         if str(value or "").strip()
     )
-    for key in ("candidate_hunks", "fix_hunks", "comparison_hunks"):
-        hunks = []
-        for hunk in evidence.get(key) or []:
-            item = dict(hunk)
-            annotation = str(item.get("annotation") or "")
-            if CJK_RE.search(annotation):
-                annotation = ""
-            elif (
-                len(annotation) == 180
-                and (full := (prose or {}).get(annotation[:100]))
-                and full.startswith(annotation[:100])
-            ):
-                annotation = full
-            elif (
-                len(annotation) == 180
-                and len(full_summary) > 180
-                and full_summary.startswith(annotation[:100])
-            ):
-                annotation = full_summary
-            annotation = trim_mid_sentence(annotation)
-            usable = usable_hunk_annotation(annotation)
-            item["annotation"] = (
-                ""
-                if not usable or is_pseudo_annotation(usable, annotation_context)
-                else usable
-            )
-            item["file"] = infer_hunk_file(item)
-            if key == "candidate_hunks":
-                item["role"] = "candidate"
-            elif key == "fix_hunks":
-                item["role"] = "fix"
-            hunks.append(item)
-        cleaned[key] = hunks
-    for hunk in cleaned["comparison_hunks"]:
-        hunk["role"] = comparison_hunk_role(cleaned, hunk)
+    if any(evidence.get(key) for key in _RAW_HUNK_KEYS):
+        for key in _RAW_HUNK_KEYS:
+            cleaned[key] = [
+                _scrub_hunk(hunk, annotation_context)
+                for hunk in evidence.get(key) or []
+            ]
+        for key in ("candidate_hunks", "fix_hunks"):
+            for hunk in cleaned[key]:
+                hunk["role"] = key.removesuffix("_hunks")
+        for hunk in cleaned["comparison_hunks"]:
+            hunk["role"] = comparison_hunk_role(cleaned, hunk)
+        cleaned["display_hunks"] = display_hunks(cleaned)
+    else:
+        cleaned["display_hunks"] = [
+            _scrub_hunk(hunk, annotation_context)
+            for hunk in evidence.get("display_hunks") or []
+        ]
+    for key in _RAW_HUNK_KEYS:
+        cleaned.pop(key, None)
     return cleaned
 
 
 def finalize_evidence(evidence: dict) -> None:
-    """Resolve the reader-facing hunk list once, after every filter.
-
-    Only this list ships: the raw candidate/fix/comparison collections were
-    ~5.8 MB of duplicated payload, and because they were resolved before the
-    unpatched and fix-allowlist filters, the shipped list could keep hunks
-    those filters had already dropped.
-    """
-    evidence["display_hunks"] = display_hunks(evidence)
-    for key in ("candidate_hunks", "fix_hunks", "comparison_hunks"):
-        evidence.pop(key, None)
-    if evidence["display_hunks"]:
+    """Drop a stale `unavailable_reason` once reader-facing hunks exist."""
+    if evidence.get("display_hunks"):
         evidence.pop("unavailable_reason", None)
 
 
@@ -673,17 +679,11 @@ def apply_security_fix_context(evidence: dict, context: object) -> None:
     evidence["fix_url"] = str(context.get("fix_url") or "").strip()
     evidence["fix_files"] = fix_files
     allowed = set(fix_files)
-    evidence["fix_hunks"] = [
-        hunk
-        for hunk in evidence.get("fix_hunks") or []
-        if str(hunk.get("file") or "").strip() in allowed
-    ]
-    evidence["comparison_hunks"] = [
-        hunk
-        for hunk in evidence.get("comparison_hunks") or []
-        if hunk.get("role") != "fix"
-        or str(hunk.get("file") or "").strip() in allowed
-    ]
+    _keep_display_hunks(
+        evidence,
+        lambda hunk: hunk.get("role") != "fix"
+        or str(hunk.get("file") or "").strip() in allowed,
+    )
 
 
 def normalize_fix_authorship(value: object, fixes: list[str]) -> dict | None:
@@ -824,16 +824,21 @@ def publication_issues(case: dict) -> list[str]:
     fallback = release_fallback(case)
     if fallback and (case.get("gates") or {}).get("release") != "PASS":
         issues.append(f"release_fallback:{fallback.get('reason')}")
-    for role in ("candidate_hunks", "fix_hunks"):
+    for role in ("candidate", "fix"):
         # A confirmed case must carry both hunk sets (site_preflight contract);
         # their absence keeps the case qualified, never confirmed.
         # Unpatched findings legitimately have no fix hunks.
-        if role == "fix_hunks" and unpatched:
+        if role == "fix" and unpatched:
             continue
-        if not (evidence.get(role) or []):
-            issues.append(f"missing_{role.removesuffix('_hunks')}")
-        elif any(not str(hunk.get("file") or "").strip() for hunk in evidence.get(role) or []):
-            issues.append(f"missing_{role.removesuffix('_hunks')}_file")
+        # `display_hunks` resolves both shapes: ledger rows and fixtures still
+        # carry the raw collections, published cases carry the shipped list.
+        hunks = [
+            hunk for hunk in display_hunks(evidence) if hunk.get("role") == role
+        ]
+        if not hunks:
+            issues.append(f"missing_{role}")
+        elif any(not str(hunk.get("file") or "").strip() for hunk in hunks):
+            issues.append(f"missing_{role}_file")
     return issues
 
 
@@ -887,12 +892,7 @@ def strip_unpatched_fix_claims(case: dict) -> None:
     evidence = case.get("code_evidence")
     if not isinstance(evidence, dict):
         return
-    evidence["comparison_hunks"] = [
-        hunk
-        for hunk in evidence.get("comparison_hunks") or []
-        if (hunk.get("role") or comparison_hunk_role(evidence, hunk)) != "fix"
-    ]
-    evidence["fix_hunks"] = []
+    _keep_display_hunks(evidence, lambda hunk: hunk.get("role") != "fix")
     evidence["steps"] = [
         step
         for step in evidence.get("steps") or []
@@ -1330,40 +1330,19 @@ def load_generated_evidence() -> dict[str, dict]:
     payload = load_json(GENERATED_EVIDENCE)
     if not isinstance(payload, dict):
         raise SystemExit(f"publish input is not an object: {GENERATED_EVIDENCE}")
-    evidence = {
+    return {
         str(key).upper(): value
         for key, value in payload.items()
         if isinstance(value, dict)
-        and (value.get("comparison_hunks") or value.get("candidate_hunks"))
+        and value.get("display_hunks")
     }
-    return evidence
 
 
-def _index_prose(value: object, index: dict[str, str]) -> None:
-    """Index long prose strings by their 100-char prefix for annotation recovery."""
-    if isinstance(value, dict):
-        for item in value.values():
-            _index_prose(item, index)
-    elif isinstance(value, list):
-        for item in value:
-            _index_prose(item, index)
-    elif isinstance(value, str) and len(value) > 200:
-        index[value[:100]] = value
-
-
-def _load_summary_maps(
-    rows: list[dict],
-) -> tuple[dict[str, str], dict[str, str], dict[str, str]]:
-    """Return reader summaries, mechanisms, and the truncated-prose index.
-
-    Both come from the committed curation file, which already carries every
-    shipped summary and mechanism; the ledger row only recovers prose that a
-    180-char truncation cut short.
-    """
+def _load_summary_maps() -> tuple[dict[str, str], dict[str, str]]:
+    """Return the curated reader summary and mechanism for each case id."""
     overlay = load_json(CURATION)
     summaries: dict[str, str] = {}
     mechanisms: dict[str, str] = {}
-    prose: dict[str, str] = {}
     for entry in overlay.get("cases") or []:
         if not isinstance(entry, dict):
             continue
@@ -1376,16 +1355,7 @@ def _load_summary_maps(
                 summaries[key] = str(evidence["summary"])
             if entry.get("mechanism"):
                 mechanisms[key] = str(entry["mechanism"])
-    for row in rows:
-        try:
-            _index_prose(row, prose)
-        except (json.JSONDecodeError, ValueError):
-            continue
-    for key, mechanism in mechanisms.items():
-        full = prose.get(mechanism[:100])
-        if full and full.startswith(mechanism):
-            mechanisms[key] = full
-    return summaries, mechanisms, prose
+    return summaries, mechanisms
 
 
 def load_unpatched_fixes() -> dict[str, dict]:
@@ -1648,18 +1618,18 @@ def build_case(row: dict, overlays: Overlays) -> dict:
         json.dumps(rec or {}, ensure_ascii=False)
     )
     cached_evidence = (cached or {}).get("code_evidence") or {}
-    mechanism = public_text(
+    mechanism = public_prose(
         cached.get("mechanism") if cached else None,
         cached_evidence.get("summary"),
         (rec or {}).get("bug_semantics"),
         (rec or {}).get("flaw_origin"),
     )
-    description = public_text(
+    description = public_prose(
         cached.get("description") if cached else None,
         cached_evidence.get("summary"),
         mechanism,
     )
-    scope_statement = public_text(
+    scope_statement = public_prose(
         cached.get("scope_statement") if cached else None,
     )
     language = ((cached or {}).get("repository_metadata") or {}).get("language") or ""
@@ -1673,7 +1643,7 @@ def build_case(row: dict, overlays: Overlays) -> dict:
                 overlays.generated_evidence.get(str(key).upper())
                 for key in [case_id, *aliases, row.get("class_id")]
                 if (overlays.generated_evidence.get(str(key).upper()) or {}).get(
-                    "comparison_hunks"
+                    "display_hunks"
                 )
             ),
             None,
@@ -1768,12 +1738,11 @@ def build_case(row: dict, overlays: Overlays) -> dict:
         ),
         "severity": (cached or {}).get("severity"),
         "cwes": list((cached or {}).get("cwes") or []),
-        "description": ledger_value(row, "description", description, clean=public_text),
+        "description": ledger_value(row, "description", description, clean=public_prose),
         "references": list((cached or {}).get("references") or []),
-        "mechanism_key": (cached or {}).get("mechanism_key"),
-        "mechanism": ledger_value(row, "mechanism", mechanism, clean=public_text),
+        "mechanism": ledger_value(row, "mechanism", mechanism, clean=public_prose),
         "scope_statement": ledger_value(
-            row, "scope_statement", scope_statement, clean=public_text
+            row, "scope_statement", scope_statement, clean=public_prose
         ),
         "cause_category": (cached or {}).get("cause_category")
         or cause_of(
@@ -1802,9 +1771,7 @@ def build_case(row: dict, overlays: Overlays) -> dict:
         # otherwise shadow a corrected ledger row forever. The snapshot stays as
         # the fallback for rows the ledger cannot derive.
         "fix_authorship": derive_fix_authorship(rec, list(fixes)) or (cached or {}).get("fix_authorship"),
-        "code_evidence": scrub_evidence(
-            case_evidence, (mechanism, description), overlays.prose
-        ),
+        "code_evidence": scrub_evidence(case_evidence, (mechanism, description)),
         "ir_chain": chain,
     }
     if candidate_sources:
@@ -1838,7 +1805,7 @@ def build_case(row: dict, overlays: Overlays) -> dict:
             dates=overlays.dates,
         )
     case.pop("research_status", None)
-    return strip_cjk_tree(drop_original_aliases(case))
+    return drop_original_aliases(case)
 
 def main(argv: list[str] | None = None) -> None:
     parser = argparse.ArgumentParser(
@@ -1872,7 +1839,7 @@ def main(argv: list[str] | None = None) -> None:
             file=sys.stderr,
         )
     rows = load_ledger_rows(from_export=from_export)
-    overlays = Overlays.load(rows)
+    overlays = Overlays.load()
     drop_class_ids = {
         str(item).lower()
         for item in (overlays.overrides.get("drop_class_ids") or [])
@@ -1997,13 +1964,15 @@ def main(argv: list[str] | None = None) -> None:
         }
 
     leaks = [
-        case["case_id"]
+        f"{case['case_id']}{path}"
         for case in cases
-        if CJK_RE.search(json.dumps(case, ensure_ascii=False))
+        for path in public_cjk_paths(case)
     ]
     if leaks:
         raise SystemExit(
-            f"CJK leaked into public fields: {leaks[:12]} ({len(leaks)} total)"
+            "CJK leaked into public fields: "
+            + ", ".join(leaks[:12])
+            + (f" ({len(leaks)} total)" if len(leaks) > 12 else "")
         )
     identity_errors = publication_errors(
         cases, overlays.dates, overlays.overrides

@@ -95,7 +95,6 @@ export interface ResearchCase {
   readonly cwes: readonly string[];
   readonly description: string | null;
   readonly references: readonly string[];
-  readonly mechanism_key: string | null;
   readonly mechanism: string | null;
   readonly scope_statement: string | null;
   readonly cause_category: string | null;
