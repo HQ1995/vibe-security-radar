@@ -398,6 +398,22 @@ describe("canonical case evidence", () => {
     expect(html).toContain("1b0d2d9b91");
   });
 
+  it("renders the mechanism note as plain text, not raw markdown", () => {
+    const item = structuredClone(getResearchCaseById("GHSA-9J5F-PJWJ-62R3")!);
+    Object.assign(item, {
+      mechanism:
+        "## Root cause\n\nThe `search` parameter reached **Pgsql** with no ESCAPE clause.",
+    });
+
+    const html = renderToStaticMarkup(<CanonicalCaseEvidence item={item} />);
+
+    expect(html).toContain(
+      "The search parameter reached Pgsql with no ESCAPE clause.",
+    );
+    expect(html).not.toContain("## Root cause");
+    expect(html).not.toContain("`search`");
+  });
+
   it("never presents unresolved original authorship as human", () => {
     const base = getResearchCaseById("GHSA-3WXW-XV34-2FRG");
     expect(base?.ir_chain).toBeTruthy();

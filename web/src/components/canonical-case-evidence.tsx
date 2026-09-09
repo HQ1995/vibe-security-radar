@@ -83,7 +83,7 @@ function advisoryDescription(item: ResearchCase): string | null {
 
 /** Plain-language explanation of the AI-caused mechanism, when fit for visitors. */
 function publicMechanism(item: ResearchCase): string | null {
-  const text = (item.mechanism ?? "").trim();
+  const text = stripMarkdown(item.mechanism);
   if (!text || !isPublicProse(text)) return null;
   return text;
 }
