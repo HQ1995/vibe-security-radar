@@ -1,7 +1,7 @@
 # Round 13 (Evidence-Gap 50) 独立安全复核审计报告
 
 **审计日期:** 2026-09-01  
-**审计标准:** [`docs/AUDIT-PROTOCOL.md`](file:///home/hanqing/agents/ai-slop/docs/AUDIT-PROTOCOL.md) & [`docs/DATA-SCHEMA.md`](file:///home/hanqing/agents/ai-slop/docs/DATA-SCHEMA.md)  
+**审计标准:** [`docs/AUDIT-PROTOCOL.md`](docs/AUDIT-PROTOCOL.md) & [`docs/DATA-SCHEMA.md`](docs/DATA-SCHEMA.md)  
 **审计执行方式:** 50 个完全隔离的独立子代理（Clean Subagents）对各案例从源码、Git 对象、漏洞机制（Source-to-Sink）、引入提交（BIC）、修复提交及 AI 归因进行端到端独立复核。
 
 ---
@@ -135,7 +135,7 @@
 
 审计过程中发现大量案例在修复提交 (Fix Commit) 或 PR 标题中包含 `[AI]`、`Co-authored-by: Codex` 或 `Cursor` 标记（例如 `w000`, `w003`, `w004`, `w007`, `w010`, `w026`, `w030`, `w034`, `w036`, `w037`, `w045`, `w049`）。
 
-根据 [`docs/AUDIT-PROTOCOL.md`](file:///home/hanqing/agents/ai-slop/docs/AUDIT-PROTOCOL.md) 的因果归因原则：
+根据 [`docs/AUDIT-PROTOCOL.md`](docs/AUDIT-PROTOCOL.md) 的因果归因原则：
 > *"The BIC is the smallest commit that first wrote the vulnerable lines... Judge the AI role from signals on that BIC only. Remediation commits must not attribute the introducer."*
 
 经逐个回溯原子引入提交（BIC）：

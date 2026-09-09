@@ -10,58 +10,25 @@ import CvesPage from "@/app/cves/page";
 import CveDetailPage from "@/app/cves/[id]/page";
 import HomePage from "@/app/page";
 import { CanonicalCaseEvidence } from "@/components/canonical-case-evidence";
-import { getLangIconKey } from "@/components/language-distribution-chart";
 import { getIconDimensions } from "@/components/tool-icon";
-import { ReviewPathBadge } from "@/components/review-path-badge";
 import {
   filterResearchCases,
   ResearchCaseExplorer,
 } from "@/components/research-case-explorer";
 import { ResearchCaseTable } from "@/components/research-case-table";
-import { DataFreshness } from "@/components/data-freshness";
 import { TrendChart } from "@/components/trend-chart";
-import { ToolDistributionChart } from "@/components/tool-distribution-chart";
+import { getLanguageIconKey } from "@/lib/language-icons";
 import {
   formatContributionClass,
   getAiToolLabel,
   getResearchCaseById,
+  getResearchLabels,
   getResearchSnapshot,
   getResearchCases,
 } from "@/lib/research-data";
 
-describe("ReviewPathBadge", () => {
-  it("keeps model provenance without presenting the model as an authority", () => {
-    const html = renderToStaticMarkup(
-      <ReviewPathBadge verifiedBy="claude-opus-4-6-thinking,gpt-5.4-high" />,
-    );
-
-    expect(html).toContain("block truncate");
-    expect(html).toContain("GPT-5.4 High trace");
-    expect(html).toContain("Investigation provenance:");
-    expect(html).toContain("not publication authority");
-    expect(html).not.toContain("Verified by");
-  });
-});
-
-describe("DataFreshness", () => {
-  it("shows the generation timestamp and advisory cutoff together", () => {
-    const html = renderToStaticMarkup(
-      <DataFreshness
-        generatedAt="2026-08-09T09:41:55+00:00"
-        coverageFrom="2025-05-01"
-        coverageTo="2026-03-31"
-      />,
-    );
-
-    expect(html).toContain("Aug 9, 2026");
-    expect(html).toContain("09:41 UTC");
-    expect(html).toContain("advisory coverage");
-    expect(html).toContain("Mar 31, 2026");
-  });
-});
-
 describe("server-rendered charts", () => {
-  it("renders trend and distribution data without a client chart runtime", () => {
+  it("renders trend data without a client chart runtime", () => {
     const trend = renderToStaticMarkup(
       <TrendChart
         data={[
@@ -74,21 +41,13 @@ describe("server-rendered charts", () => {
         sourceCutoff="2026-08-10T04:01:13.999999+00:00"
       />,
     );
-    const distribution = renderToStaticMarkup(
-      <ToolDistributionChart
-        data={{ claude_code: 3, github_copilot: 1, openai_codex: 1 }}
-        totalCves={5}
-      />,
-    );
 
     expect(trend).toContain("Feb 2026: 5 cases");
     expect(trend).toContain("Mar 2026: 23 cases");
     expect(trend).toContain("Disclosures over time");
     expect(trend).not.toContain("Exact GHSA dates");
     expect(trend).not.toContain("Unavailable");
-    expect(distribution).toContain("3 · 60%");
-    expect(distribution).toContain("chatgpt.png");
-    expect(trend + distribution).not.toContain("recharts");
+    expect(trend).not.toContain("recharts");
     expect(trend).not.toContain("min-w-[760px]");
   });
 });
@@ -177,16 +136,22 @@ describe("canonical case evidence", () => {
 
   it("searches and filters the full case index", () => {
     const cases = getResearchCases();
-    const html = renderToStaticMarkup(<ResearchCaseExplorer cases={cases} />);
-    const filtered = filterResearchCases(cases, {
-      query: "go-git",
-      cause: "path_link",
-      contribution: "AI_INCOMPLETE_REMEDIATION",
-      tool: "Claude",
-      language: "Go",
-      repository: "go-git/go-git",
-      month: "2026-08",
-    });
+    const html = renderToStaticMarkup(
+      <ResearchCaseExplorer cases={cases} labels={getResearchLabels()} />,
+    );
+    const filtered = filterResearchCases(
+      cases,
+      {
+        query: "go-git",
+        cause: "path_link",
+        contribution: "AI_INCOMPLETE_REMEDIATION",
+        tool: "Claude",
+        language: "Go",
+        repository: "go-git/go-git",
+        month: "2026-08",
+      },
+      getResearchLabels(),
+    );
 
     expect(JSON.stringify(CvesPage())).not.toContain('"research_status"');
     expect(html).toContain("CVE, GHSA, or repository");
@@ -206,7 +171,10 @@ describe("canonical case evidence", () => {
 
   it("renders the complete case table", () => {
     const html = renderToStaticMarkup(
-      <ResearchCaseTable cases={getResearchCases()} />,
+      <ResearchCaseTable
+        cases={getResearchCases()}
+        labels={getResearchLabels()}
+      />,
     );
 
     expect(
@@ -225,15 +193,19 @@ describe("canonical case evidence", () => {
   it("keeps every case reachable through identities, facets, and evidence", () => {
     const cases = getResearchCases();
     const search = (query: string) =>
-      filterResearchCases(cases, {
-        query,
-        cause: "",
-        contribution: "",
-        tool: "",
-        language: "",
-        repository: "",
-        month: "",
-      });
+      filterResearchCases(
+        cases,
+        {
+          query,
+          cause: "",
+          contribution: "",
+          tool: "",
+          language: "",
+          repository: "",
+          month: "",
+        },
+        getResearchLabels(),
+      );
 
     for (const item of cases) {
       expect(search(item.case_id).map(({ case_id }) => case_id)).toContain(
@@ -252,30 +224,38 @@ describe("canonical case evidence", () => {
         expect(search(value)).toContain(item);
       }
       expect(
-        filterResearchCases(cases, {
-          query: item.repository ?? item.case_id,
-          cause: item.cause_category ?? "",
-          contribution: item.contribution_class,
-          tool: getAiToolLabel(item),
-          language: item.repository_metadata.language,
-          repository: item.repository!,
-          month: item.published_at?.slice(0, 7) ?? "undated",
-        }),
+        filterResearchCases(
+          cases,
+          {
+            query: item.repository ?? item.case_id,
+            cause: item.cause_category ?? "",
+            contribution: item.contribution_class,
+            tool: getAiToolLabel(item),
+            language: item.repository_metadata.language,
+            repository: item.repository!,
+            month: item.published_at?.slice(0, 7) ?? "undated",
+          },
+          getResearchLabels(),
+        ),
       ).toContain(item);
     }
 
     expect(search("kind")).toHaveLength(0);
     expect(search("2026-08-07").length).toBeGreaterThan(0);
     expect(
-      filterResearchCases(cases, {
-        query: "",
-        cause: "",
-        contribution: "",
-        tool: "",
-        language: "",
-        repository: "",
-        month: "undated",
-      }).length,
+      filterResearchCases(
+        cases,
+        {
+          query: "",
+          cause: "",
+          contribution: "",
+          tool: "",
+          language: "",
+          repository: "",
+          month: "undated",
+        },
+        getResearchLabels(),
+      ).length,
     ).toBe(0);
     expect(formatContributionClass("AI_NEW_SURFACE_CONTRIBUTOR")).toBe(
       "New attack surface",
@@ -585,8 +565,8 @@ describe("chart icon contracts", () => {
   });
 
   it("skips unavailable language assets", () => {
-    expect(getLangIconKey("TypeScript")).toBe("typescript");
-    expect(getLangIconKey("GitHub Actions")).toBeNull();
+    expect(getLanguageIconKey("TypeScript")).toBe("typescript");
+    expect(getLanguageIconKey("GitHub Actions")).toBeNull();
   });
 
   it("preserves non-square tool icon aspect ratios", () => {

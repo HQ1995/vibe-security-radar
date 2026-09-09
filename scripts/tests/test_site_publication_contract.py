@@ -466,6 +466,25 @@ def test_invalid_canonical_research_does_not_fall_back(record: object) -> None:
             read(row)
 
 
+def test_public_projection_keeps_only_the_public_key_set() -> None:
+    """The publisher's projection, not the gate, drops internal keys."""
+    case = publish_tp_ledger.build_case(_ledger_row(), publish_tp_ledger.Overlays())
+    case["class_id"] = "alias-abcdef123456"
+    case["ledger_status"] = "AI_ROOT_CAUSE"
+    case["aliases"] = ["GHSA-1111-2222-3333", "alias-abcdef123456"]
+    case["code_evidence"] = {
+        "summary": "The change left user input able to cross the boundary.",
+        "ai_marker": {"state": "PRESENT"},
+    }
+
+    projected = site_preflight.project_public_case(case)
+
+    assert set(projected) <= site_preflight.PUBLIC_CASE_KEYS
+    assert set(projected["code_evidence"]) <= site_preflight.PUBLIC_EVIDENCE_KEYS
+    assert projected["aliases"] == ["GHSA-1111-2222-3333"]
+    assert projected["code_evidence"]["summary"].startswith("The change")
+
+
 def test_publisher_omits_internal_research_after_validation() -> None:
     row = _ledger_row()
     row["causal_research"].update(
@@ -624,6 +643,26 @@ def test_hunk_specific_evidence_requires_distinct_annotations_and_all_anchors() 
     )
     assert any("invalid unified diff" in error for error in errors)
     assert any("missing fix anchors" in error for error in errors)
+
+
+def test_displayed_hunk_without_a_note_fails_preflight() -> None:
+    case = _case()
+    hunks = [
+        *case["code_evidence"]["candidate_hunks"],
+        *case["code_evidence"]["fix_hunks"],
+    ]
+    for hunk in hunks:
+        hunk["annotation"] = (
+            "The change moves user input across the security boundary."
+        )
+    payload = {"cases": [case], "snapshot": {"case_count": 1}}
+
+    errors, _, _ = site_preflight.evaluate(payload)
+    assert not any("has no reader-facing annotation" in error for error in errors)
+
+    hunks[0]["annotation"] = ""
+    errors, _, _ = site_preflight.evaluate(payload)
+    assert any("has no reader-facing annotation" in error for error in errors)
 
 
 def test_targeted_overrides_replace_stale_mechanism_and_release_metadata() -> None:
@@ -1464,7 +1503,7 @@ def test_site_preflight_dedups_repeated_hunk_annotations_and_rejects_internal_on
 
     case["code_evidence"]["fix_hunks"][0]["annotation"] = "class_id=internal-alias"
     errors, _, _ = site_preflight.evaluate(payload)
-    assert any("annotation is not a usable annotation" in error for error in errors)
+    assert any("has no reader-facing annotation" in error for error in errors)
 
 
 def test_before_after_hunk_annotation_must_be_prose_not_the_diff_line() -> None:
@@ -1488,8 +1527,9 @@ def test_before_after_hunk_annotation_must_be_prose_not_the_diff_line() -> None:
     errors, _, _ = site_preflight.evaluate(
         {"cases": [case], "snapshot": {"case_count": 1}}
     )
-    # A missing note no longer blocks publication; the hunk ships without one.
-    assert not any("genuine annotation" in error for error in errors)
+    # Every displayed hunk needs its own reader-facing note; a bare diff line
+    # is not one, and neither is nothing at all.
+    assert any("has no reader-facing annotation" in error for error in errors)
 
     case["code_evidence"]["comparison_hunks"][0]["annotation"] = (
         "`safe(user_input)`"
@@ -1497,7 +1537,7 @@ def test_before_after_hunk_annotation_must_be_prose_not_the_diff_line() -> None:
     errors, _, _ = site_preflight.evaluate(
         {"cases": [case], "snapshot": {"case_count": 1}}
     )
-    assert any("annotation is not a usable annotation" in error for error in errors)
+    assert any("has no reader-facing annotation" in error for error in errors)
 
     case["code_evidence"]["comparison_hunks"][0]["annotation"] = (
         "The comparison shows the unsafe call being replaced by the guarded call."

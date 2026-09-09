@@ -1,7 +1,10 @@
 import type { Metadata } from "next";
 
 import { ResearchCaseExplorer } from "@/components/research-case-explorer";
-import { getResearchCases, getResearchSnapshot } from "@/lib/research-data";
+import {
+  getResearchCases,
+  getResearchLabels,
+} from "@/lib/research-data";
 
 export const metadata: Metadata = {
   title: "Findings — Vibe Security Radar",
@@ -21,10 +24,7 @@ export default function CvesPage() {
       references: [],
       code_evidence: null,
       ir_chain: null,
-      research_status: undefined,
     }));
-  const snapshot = getResearchSnapshot().snapshot;
-
   return (
     <main className="mx-auto w-full max-w-[96rem] px-4 py-10 sm:px-6 sm:py-14 2xl:px-8 min-[1920px]:max-w-[112rem] min-[2400px]:max-w-[128rem]">
       <header className="mb-8">
@@ -37,7 +37,7 @@ export default function CvesPage() {
           fix status.
         </p>
       </header>
-      <ResearchCaseExplorer cases={cases} />
+      <ResearchCaseExplorer cases={cases} labels={getResearchLabels()} />
     </main>
   );
 }

@@ -28,6 +28,7 @@ from site_preflight import (
     is_pseudo_annotation,
     public_explanation,
     public_cjk_paths,
+    project_public_case,
     reader_prose,
     strip_markdown,
     usable_hunk_annotation,
@@ -1373,8 +1374,6 @@ def first_party_date(*keys: object, dates: dict[str, str]) -> str | None:
         text = str(key or "").strip()
         if not text:
             continue
-        if re.match(r"^\d{4}-\d{2}-\d{2}", text):
-            return text[:10]
         hit = dates.get(text.upper())
         if hit:
             return hit
@@ -1709,9 +1708,12 @@ def build_case(row: dict, overlays: Overlays) -> dict:
             case_id,
             aliases,
             candidates,
-            (cached or {}).get("published_at"),
             dates=overlays.dates,
-        ),
+        )
+        # Merged-identity cases can keep a date the advisory table only holds
+        # under a sibling advisory key; publication_errors still requires the
+        # value to appear somewhere in that table.
+        or (cached or {}).get("published_at"),
         "severity": (cached or {}).get("severity"),
         "cwes": list((cached or {}).get("cwes") or []),
         "description": ledger_value(row, "description", description, clean=public_prose),
@@ -1950,21 +1952,11 @@ def main(argv: list[str] | None = None) -> None:
             "publication invariants failed:\n" + "\n".join(identity_errors[:20])
         )
 
-    # Public payload is a projection of the ledger row: official advisory IDs
-    # only (class_id and its alias-<hash> twin are internal lookup keys, used
-    # above) and no field the site never renders. site_preflight enforces the
-    # same key set on the staged file.
+    # The public payload is a projection of the ledger row; site_preflight owns
+    # the key set, so internal lookup keys (class_id, ledger_status, ai_marker,
+    # alias-<hash> twins) cannot leak by omission here.
     for case in cases:
-        case["aliases"] = [
-            item
-            for item in case["aliases"]
-            if GHSA_RE.match(item) or CVE_RE.match(item)
-        ]
-        case.pop("class_id", None)
-        case.pop("ledger_status", None)
-        evidence = case.get("code_evidence")
-        if isinstance(evidence, dict):
-            evidence.pop("ai_marker", None)
+        project_public_case(case)
 
     staged = OUT.with_suffix(".json.staging")
     staged.write_text(json.dumps(payload, indent=1, ensure_ascii=False) + "\n")

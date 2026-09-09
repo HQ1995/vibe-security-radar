@@ -4,12 +4,13 @@ import { useState } from "react";
 
 import { ResearchCaseTable } from "@/components/research-case-table";
 import { formatMonthShort } from "@/lib/month-utils";
+import type { ResearchCase } from "@/lib/research-data";
 import {
+  aiToolLabel,
+  causeCategoryLabel,
   formatContributionClass,
-  getAiToolLabel,
-  getCauseCategoryLabel,
-  type ResearchCase,
-} from "@/lib/research-data";
+  type ResearchLabels,
+} from "@/lib/research-format";
 
 export interface ResearchCaseFilters {
   readonly query: string;
@@ -38,12 +39,13 @@ function scalarValues(value: unknown): string[] {
 export function filterResearchCases(
   cases: readonly ResearchCase[],
   filters: ResearchCaseFilters,
+  labels: ResearchLabels,
 ): ResearchCase[] {
   const query = filters.query.trim().toLowerCase();
   return cases.filter((item) => {
-    const cause = getCauseCategoryLabel(item.cause_category);
+    const cause = causeCategoryLabel(item.cause_category, labels);
     const contribution = formatContributionClass(item.contribution_class);
-    const tool = getAiToolLabel(item);
+    const tool = aiToolLabel(item, labels);
     const searchable = [
       ...scalarValues(item),
       cause,
@@ -91,12 +93,14 @@ const PAGE_SIZE = 20;
 
 export function ResearchCaseExplorer({
   cases,
+  labels,
 }: {
   readonly cases: readonly ResearchCase[];
+  readonly labels: ResearchLabels;
 }) {
   const [filters, setFilters] = useState(EMPTY_FILTERS);
   const [page, setPage] = useState(1);
-  const filtered = filterResearchCases(cases, filters);
+  const filtered = filterResearchCases(cases, filters, labels);
   const pageCount = Math.ceil(filtered.length / PAGE_SIZE);
   const start = (page - 1) * PAGE_SIZE;
   const visible = filtered.slice(start, start + PAGE_SIZE);
@@ -104,7 +108,7 @@ export function ResearchCaseExplorer({
     cases.flatMap((item) => (item.cause_category ? [item.cause_category] : [])),
   );
   const contributions = unique(cases.map((item) => item.contribution_class));
-  const tools = unique(cases.map(getAiToolLabel));
+  const tools = unique(cases.map((item) => aiToolLabel(item, labels)));
   const languages = unique(
     cases
       .map((item) => item.repository_metadata.language)
@@ -152,7 +156,7 @@ export function ResearchCaseExplorer({
             <option value="">All root causes</option>
             {causes.map((cause) => (
               <option key={cause} value={cause}>
-                {getCauseCategoryLabel(cause)}
+                {causeCategoryLabel(cause, labels)}
               </option>
             ))}
           </select>
@@ -248,7 +252,7 @@ export function ResearchCaseExplorer({
 
       {filtered.length ? (
         <>
-          <ResearchCaseTable cases={visible} />
+          <ResearchCaseTable cases={visible} labels={labels} />
           {pageCount > 1 ? (
             <nav
               aria-label="Finding pages"

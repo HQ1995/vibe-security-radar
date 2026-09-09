@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import Link from "next/link";
 
 export default function AnalyticsPage() {
   useEffect(() => {
@@ -11,9 +12,9 @@ export default function AnalyticsPage() {
     <main className="mx-auto max-w-[96rem] px-4 py-16 text-sm text-muted-foreground">
       <p>
         Trends now live on the homepage.{" "}
-        <a href="/#disclosure-trend" className="text-primary hover:underline">
+        <Link href="/#disclosure-trend" className="text-primary hover:underline">
           Open the disclosure chart
-        </a>
+        </Link>
         .
       </p>
     </main>

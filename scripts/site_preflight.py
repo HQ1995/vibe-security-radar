@@ -104,6 +104,28 @@ PUBLIC_EVIDENCE_KEYS = frozenset(
         "unavailable_reason",
     }
 )
+
+
+def project_public_case(case: dict) -> dict:
+    """Reduce a built case to the public payload the site may serve.
+
+    The publisher calls this, and evaluate() rejects anything outside the same
+    key set, so the projection and its gate cannot drift apart.
+    """
+    case["aliases"] = [
+        item
+        for item in case.get("aliases") or []
+        if GHSA_RE.match(str(item)) or CVE_RE.match(str(item))
+    ]
+    for key in set(case) - PUBLIC_CASE_KEYS:
+        del case[key]
+    evidence = case.get("code_evidence")
+    if isinstance(evidence, dict):
+        for key in set(evidence) - PUBLIC_EVIDENCE_KEYS:
+            del evidence[key]
+    return case
+
+
 ANNOTATION_PREFIX_RE = re.compile(
     r"^(?:AI introduced this behavior|AI removed a constraint|The fix adds):\s*",
     re.I,
@@ -1214,11 +1236,12 @@ def evaluate(
                         )
                 if is_pseudo_annotation(hunk.get("annotation"), context):
                     errors.append(f"{case_id}: {role}[{index}] has a pseudo annotation")
-                if str(hunk.get("annotation") or "").strip() and not usable_hunk_annotation(
-                    hunk.get("annotation")
-                ):
+                # A displayed hunk with no reader-facing note ships the diff
+                # without the explanation, which is the failure this gate
+                # exists to catch; scrubbing can blank an annotation silently.
+                if not usable_hunk_annotation(hunk.get("annotation")):
                     errors.append(
-                        f"{case_id}: {role}[{index}] annotation is not a usable annotation"
+                        f"{case_id}: {role}[{index}] has no reader-facing annotation"
                     )
         displayed = [
             ("display_hunks", index, hunk)

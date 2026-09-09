@@ -2,20 +2,23 @@ import Link from "next/link";
 
 import { LanguageBadge } from "@/components/language-badge";
 import { ToolIcon } from "@/components/tool-icon";
+import type { ResearchCase } from "@/lib/research-data";
 import {
+  aiToolLabel,
+  causeCategoryLabel,
   formatCaseLabel,
   formatContributionClass,
   getAiFamilyIconKey,
-  getAiToolLabel,
-  getCauseCategoryLabel,
   preferredCaseId,
-  type ResearchCase,
-} from "@/lib/research-data";
+  type ResearchLabels,
+} from "@/lib/research-format";
 
 export function ResearchCaseTable({
   cases,
+  labels,
 }: {
   readonly cases: readonly ResearchCase[];
+  readonly labels: ResearchLabels;
 }) {
   return (
     <>
@@ -44,7 +47,7 @@ export function ResearchCaseTable({
                 <div>
                   <dt className="text-muted-foreground">Root cause</dt>
                   <dd className="mt-1">
-                    {getCauseCategoryLabel(item.cause_category)}
+                    {causeCategoryLabel(item.cause_category, labels)}
                   </dd>
                 </div>
                 <div>
@@ -68,7 +71,7 @@ export function ResearchCaseTable({
                       tool={getAiFamilyIconKey(item.ai_provenance.family)}
                       size={16}
                     />
-                    <span>{getAiToolLabel(item)}</span>
+                    <span>{aiToolLabel(item, labels)}</span>
                   </dd>
                 </div>
               </dl>
@@ -117,7 +120,7 @@ export function ResearchCaseTable({
                     />
                   </td>
                   <td className="px-4 py-4 text-sm">
-                    {getCauseCategoryLabel(item.cause_category)}
+                    {causeCategoryLabel(item.cause_category, labels)}
                   </td>
                   <td className="px-4 py-4 text-sm">
                     {formatContributionClass(item.contribution_class)}
@@ -128,7 +131,7 @@ export function ResearchCaseTable({
                         tool={getAiFamilyIconKey(item.ai_provenance.family)}
                         size={16}
                       />
-                      {getAiToolLabel(item)}
+                      {aiToolLabel(item, labels)}
                     </span>
                   </td>
                   <td className="py-4 pl-4 text-right font-mono text-xs">

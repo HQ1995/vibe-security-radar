@@ -1,5 +1,19 @@
 import researchData from "@/generated/research-data.json";
 import { stripMarkdown } from "@/lib/markdown-utils";
+import {
+  aiToolLabel,
+  causeCategoryLabel,
+  formatContributionClass,
+  type ResearchLabels,
+} from "@/lib/research-format";
+
+export {
+  formatCaseLabel,
+  formatCount,
+  formatContributionClass,
+  getAiFamilyIconKey,
+  preferredCaseId,
+} from "@/lib/research-format";
 
 export interface ResearchGateSet {
   readonly identity: string;
@@ -196,54 +210,20 @@ const snapshot = researchData as {
   readonly cases: readonly ResearchCase[];
 };
 
-const AI_FAMILY_ICON_KEYS: Readonly<Record<string, string>> = {
-  claude: "claude_code",
-  copilot: "github_copilot",
-  cursor: "cursor",
-  openai_gpt_codex: "openai_codex",
-};
-
-export function getAiFamilyIconKey(family: string | null): string {
-  return family ? (AI_FAMILY_ICON_KEYS[family] ?? "unknown_ai") : "unknown_ai";
-}
-
 export function getResearchSnapshot() {
   return snapshot;
 }
 
-export function getResearchCases(): readonly ResearchCase[] {
-  return snapshot.cases;
-}
-
-function officialIds(item: ResearchCase): {
-  readonly cve: string | null;
-  readonly ghsa: string | null;
-} {
-  const ids = [item.case_id, ...item.aliases];
+/** Reader-facing label maps; small enough to ship to the client with the index. */
+export function getResearchLabels(): ResearchLabels {
   return {
-    cve: ids.find((value) => value.toUpperCase().startsWith("CVE-")) ?? null,
-    ghsa: ids.find((value) => value.toUpperCase().startsWith("GHSA-")) ?? null,
+    causeCategories: snapshot.cause_categories,
+    aiFamilies: snapshot.ai_provenance_families,
   };
 }
 
-export function preferredCaseId(item: ResearchCase): string {
-  const { cve, ghsa } = officialIds(item);
-  return cve ?? ghsa ?? item.case_id;
-}
-
-/** Page title / in-page label: keep one ID, put the other in parentheses. */
-export function formatCaseLabel(item: ResearchCase, displayId?: string): string {
-  const shown = displayId ?? preferredCaseId(item);
-  const { cve, ghsa } = officialIds(item);
-  const other = shown.toUpperCase().startsWith("CVE-")
-    ? ghsa
-    : shown.toUpperCase().startsWith("GHSA-")
-      ? cve
-      : null;
-  if (other && other.toUpperCase() !== shown.toUpperCase()) {
-    return `${shown} (${other})`;
-  }
-  return shown;
+export function getResearchCases(): readonly ResearchCase[] {
+  return snapshot.cases;
 }
 
 export function getResearchCaseById(id: string): ResearchCase | null {
@@ -352,23 +332,11 @@ export function getRepositoryDistribution(): ResearchDistributionItem[] {
 }
 
 export function getCauseCategoryLabel(key: string | null): string {
-  return key
-    ? (snapshot.cause_categories[key]?.label ?? key)
-    : "Not classified";
+  return causeCategoryLabel(key, getResearchLabels());
 }
 
 export function getAiToolLabel(item: ResearchCase): string {
-  const family = item.ai_provenance.family
-    ? snapshot.ai_provenance_families[item.ai_provenance.family]?.label
-    : null;
-  if (item.ai_provenance.coverage === "complete" && family) return family;
-  if (item.ai_provenance.coverage === "partial" && family) {
-    return `${family} + unidentified tool`;
-  }
-  if (item.ai_provenance.coverage === "generic") {
-    return "AI-assisted; tool not identified";
-  }
-  return "Tool not identified";
+  return aiToolLabel(item, getResearchLabels());
 }
 
 export function getAiToolDistribution() {
@@ -463,22 +431,4 @@ export function getAiToolBaseRate(): {
     window: census.window,
     unavailable: false,
   };
-}
-
-export function formatCount(value: number): string {
-  return value.toLocaleString("en-US");
-}
-
-export function formatContributionClass(value: string): string {
-  return (
-    {
-      AI_DIRECT_ROOT: "Direct introduction",
-      AI_CAUSAL_CONTRIBUTOR: "Causal contribution",
-      AI_INCOMPLETE_REMEDIATION: "Incomplete remediation",
-      AI_NEW_SURFACE_CONTRIBUTOR: "New attack surface",
-      AI_ROOT_NEW_COMPONENT: "New vulnerable component",
-      AI_CODE_FLAWED: "Flawed AI-written code",
-      AI_ROOT_CAUSE: "AI root cause",
-    }[value] ?? value.replaceAll("_", " ").toLowerCase()
-  );
 }
