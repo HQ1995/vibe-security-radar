@@ -43,6 +43,7 @@ REPO_LANGUAGES = ROOT / "scripts/repo-language-map.json"
 SITE_PREFLIGHT_ALLOWLIST = ROOT / "scripts/site_preflight_allowlist.json"
 SECURITY_FIX_CONTEXTS = ROOT / "scripts/security-fix-contexts.json"
 RELEASE_FALLBACKS = ROOT / "scripts/release-fallbacks.json"
+CURATION = ROOT / "scripts/publication-curation.json"
 DATE_FALLBACK = (
     ROOT / "research/orchestrator-260814-ghsa200-canvas/sweep/ghsa-first-party-dates.json"
 )
@@ -1551,20 +1552,6 @@ def ledger_census(*, from_export: bool = False) -> dict[str, int]:
     }
 
 
-def git_head_research_data() -> dict:
-    result = subprocess.run(
-        ["git", "-C", str(ROOT), "show", "HEAD:web/src/generated/research-data.json"],
-        capture_output=True,
-        text=True,
-    )
-    if result.returncode != 0 or not result.stdout.strip():
-        return {}
-    try:
-        return json.loads(result.stdout)
-    except ValueError:
-        return {}
-
-
 def apply_case_overrides(
     case: dict,
     row: dict,
@@ -1991,12 +1978,12 @@ def main(argv: list[str] | None = None) -> None:
         )
     rows = load_ledger_rows(from_export=from_export)
     _load_summary_maps(rows)
-    # The committed snapshot is a curation input, not a cache: severity, CWEs,
-    # references, curated step titles and hunk annotations have no source in
-    # ledger_rows, so they are carried forward from the last published file.
-    # Reading HEAD (not the working tree) keeps the publish reproducible from
-    # a clean checkout; a missing snapshot degrades to ledger-only fields.
-    existing = git_head_research_data() or load_json(OUT)
+    # Curated reader-facing values (severity, CWEs, references, release ranges,
+    # curated steps, dates) have no source in ledger_rows. They live in the
+    # committed curation file, never in the previous publish output: publish
+    # stays a pure function of Neon rows plus committed inputs, so a bad run
+    # cannot feed its own mistakes back in.
+    existing = load_json(CURATION)
     cache = index_existing(existing)
     overrides = load_json(OVERRIDES)
     chains = load_ir_chains(IR_CHAINS)
