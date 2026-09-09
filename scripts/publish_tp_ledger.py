@@ -1260,7 +1260,6 @@ def load_advisory_dates() -> dict[str, str]:
 
 AI_CASE_SUMMARIES = ROOT / "research/gate-campaign-20260830/summaries-by-alias.json"
 ANNOTATION_FULLTEXTS = ROOT / "research/gate-campaign-20260830/annotation-fulltext.json"
-ROUND_ADJUDICATION = ROOT / "research/round9-top200-20260828/adjudication"
 
 
 def ai_summary_overlay(case: dict, *, canonical: bool = False) -> bool:
@@ -1361,22 +1360,10 @@ def _load_summary_maps(rows: list[dict]) -> None:
             _index_prose(row)
         except (json.JSONDecodeError, ValueError):
             continue
-    # Prose recovery for truncated hunk annotations reads local research/
-    # files only. The round9_adjudication and finalize_patches display kinds
-    # (1.9 MB per publish) are not fetched: verified output-identical.
-    for prose_path in sorted(ROUND_ADJUDICATION.glob("*.json")):
-        try:
-            _index_prose(json.loads(prose_path.read_text(encoding="utf-8")))
-        except (json.JSONDecodeError, ValueError, OSError):
-            continue
-    for patch_path in sorted(ROOT.glob("research/*/finalize-patches.jsonl")):
-        for line in patch_path.read_text(encoding="utf-8").splitlines():
-            if not line.strip():
-                continue
-            try:
-                _index_prose(json.loads(line))
-            except (json.JSONDecodeError, ValueError):
-                continue
+    # Prose recovery for truncated hunk annotations indexes ledger rows only:
+    # the round9 adjudication and finalize-patches files are local research
+    # artifacts absent from CI, and they resolve no published annotation or
+    # mechanism (verified output-identical against the committed site data).
     for key, mechanism in AI_SUMMARIES_MECHANISM.items():
         prose = ANNOTATION_PROSE.get(mechanism[:100])
         if prose and prose.startswith(mechanism):
@@ -2042,10 +2029,8 @@ def main(argv: list[str] | None = None) -> None:
             raise SystemExit(
                 f"{case['case_id']}: missing reader summary in {AI_CASE_SUMMARIES}"
             )
-        case["code_evidence"] = scrub_evidence(
-            case.get("code_evidence"),
-            (case.get("mechanism"), case.get("description")),
-        )
+        # ponytail: scrub runs once in build_case with the record's own
+        # mechanism/description; re-scrubbing here resolved nothing extra.
         evidence = case.get("code_evidence")
         reason = str(
             missing_diff_reasons.get(str(case.get("case_id") or "").upper()) or ""
