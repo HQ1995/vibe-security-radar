@@ -63,6 +63,40 @@ class Overlays:
     mechanisms: dict[str, str] = field(default_factory=dict)
     prose: dict[str, str] = field(default_factory=dict)
 
+    @classmethod
+    def load(cls, rows: list[dict]) -> "Overlays":
+        """Read every overlay once: Neon display kinds first, files as backup."""
+        # Curated reader-facing values (severity, CWEs, references, release
+        # ranges, curated steps, dates) have no source in ledger_rows. They
+        # live in committed files, never in the previous publish output:
+        # publish stays a pure function of Neon rows plus committed inputs, so
+        # a bad run cannot feed its own mistakes back in.
+        official, by_class = index_existing(load_json(CURATION))
+        chains = load_ir_chains(IR_CHAINS)
+        chain_updates = load_ir_chains(IR_CHAIN_UPDATES)
+        for chain in chain_updates.values():
+            chain["_publication_override"] = True
+        chains.update(chain_updates)
+        dates = load_advisory_dates()
+        if not dates:
+            # publication_errors only enforces date traceability when the
+            # table is non-empty; fail closed here so a missing table cannot
+            # publish dates nobody verified.
+            raise SystemExit(f"missing advisory date table: {ADVISORY_DATES}")
+        summaries, mechanisms, prose = _load_summary_maps(rows)
+        return cls(
+            official=official,
+            by_class=by_class,
+            overrides=load_json(OVERRIDES),
+            chains=chains,
+            dates=dates,
+            generated_evidence=load_generated_evidence(),
+            unpatched_fixes=load_unpatched_fixes(),
+            summaries=summaries,
+            mechanisms=mechanisms,
+            prose=prose,
+        )
+
 _DB_DISPLAY_CACHE: dict[str, dict] = {}
 _DB_DISPLAY_UNAVAILABLE = False
 
@@ -1921,40 +1955,10 @@ def main(argv: list[str] | None = None) -> None:
             file=sys.stderr,
         )
     rows = load_ledger_rows(from_export=from_export)
-    summaries, mechanisms, prose = _load_summary_maps(rows)
-    # Curated reader-facing values (severity, CWEs, references, release ranges,
-    # curated steps, dates) have no source in ledger_rows. They live in the
-    # committed curation file, never in the previous publish output: publish
-    # stays a pure function of Neon rows plus committed inputs, so a bad run
-    # cannot feed its own mistakes back in.
-    existing = load_json(CURATION)
-    cache = index_existing(existing)
-    overrides = load_json(OVERRIDES)
-    chains = load_ir_chains(IR_CHAINS)
-    chain_updates = load_ir_chains(IR_CHAIN_UPDATES)
-    for chain in chain_updates.values():
-        chain["_publication_override"] = True
-    chains.update(chain_updates)
-    dates = load_advisory_dates()
-    if not dates:
-        # publication_errors only enforces date traceability when the table is
-        # non-empty; fail closed here so a missing table cannot publish dates
-        # nobody verified.
-        raise SystemExit(f"missing advisory date table: {ADVISORY_DATES}")
-    overlays = Overlays(
-        official=cache[0],
-        by_class=cache[1],
-        overrides=overrides,
-        chains=chains,
-        dates=dates,
-        generated_evidence=load_generated_evidence(),
-        unpatched_fixes=load_unpatched_fixes(),
-        summaries=summaries,
-        mechanisms=mechanisms,
-        prose=prose,
-    )
+    overlays = Overlays.load(rows)
     drop_class_ids = {
-        str(item).lower() for item in (overrides.get("drop_class_ids") or [])
+        str(item).lower()
+        for item in (overlays.overrides.get("drop_class_ids") or [])
     }
     canonical_evidence_classes: set[str] = set()
     cases: list[dict] = []
@@ -2090,7 +2094,9 @@ def main(argv: list[str] | None = None) -> None:
         raise SystemExit(
             f"CJK leaked into public fields: {leaks[:12]} ({len(leaks)} total)"
         )
-    identity_errors = publication_errors(cases, dates, overrides)
+    identity_errors = publication_errors(
+        cases, overlays.dates, overlays.overrides
+    )
     if identity_errors:
         raise SystemExit(
             "publication invariants failed:\n" + "\n".join(identity_errors[:20])
