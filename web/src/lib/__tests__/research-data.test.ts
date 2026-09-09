@@ -229,18 +229,14 @@ describe("canonical research data", () => {
         "utf8",
       ),
     ) as {
-      missing_diff: Record<string, string>;
       missing_release: Record<string, string>;
     };
     const noVersionRange = preflightAllowlist.missing_release;
-    const noHunks = preflightAllowlist.missing_diff;
     for (const item of cases) {
       const hunks =
         item.code_evidence?.comparison_hunks?.length ||
         item.code_evidence?.candidate_hunks?.length;
-      if (!(item.case_id.toUpperCase() in noHunks)) {
-        expect(hunks, item.case_id).toBeGreaterThan(0);
-      }
+      expect(hunks, item.case_id).toBeGreaterThan(0);
       const official = [item.case_id, ...item.aliases].filter((value) =>
         /^(GHSA-|CVE-)/i.test(value),
       );

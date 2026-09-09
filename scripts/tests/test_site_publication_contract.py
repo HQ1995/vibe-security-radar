@@ -1390,7 +1390,7 @@ def test_before_after_hunk_requires_an_independent_annotation() -> None:
     assert expected not in errors
 
 
-def test_missing_diff_allowlist_reason_is_published_with_the_case() -> None:
+def test_case_without_hunks_fails_publication() -> None:
     case = _case()
     case["code_evidence"]["candidate_hunks"] = []
     case["code_evidence"]["fix_hunks"] = []
@@ -1401,23 +1401,10 @@ def test_missing_diff_allowlist_reason_is_published_with_the_case() -> None:
             "repository_metadata": {"language": "Python"},
         }
     )
-    reason = (
-        "The source commits are no longer present in the public upstream history, "
-        "so no trustworthy patch can be shown."
-    )
     payload = {"cases": [case], "snapshot": {"case_count": 1}}
-    allowlist = {"missing_diff": {case["case_id"]: reason}}
-    expected = (
-        "CVE-2026-12345: missing_diff reason is not published verbatim as "
-        "code_evidence.unavailable_reason"
-    )
 
-    errors, _, _ = site_preflight.evaluate(payload, allowlist)
-    assert expected in errors
-
-    case["code_evidence"]["unavailable_reason"] = reason
-    errors, _, _ = site_preflight.evaluate(payload, allowlist)
-    assert expected not in errors
+    errors, _, _ = site_preflight.evaluate(payload)
+    assert "CVE-2026-12345: no code comparison; add hunks" in errors
 
     case["code_evidence"]["candidate_hunks"] = [
         {
@@ -1427,7 +1414,11 @@ def test_missing_diff_allowlist_reason_is_published_with_the_case() -> None:
             "role": "candidate",
         }
     ]
-    errors, _, _ = site_preflight.evaluate(payload, allowlist)
+    case["code_evidence"]["unavailable_reason"] = (
+        "The source commits are no longer present in the public upstream history, "
+        "so no trustworthy patch can be shown."
+    )
+    errors, _, _ = site_preflight.evaluate(payload)
     assert "CVE-2026-12345: code diff exists but unavailable_reason is set" in errors
 
 

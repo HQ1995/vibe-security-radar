@@ -37,7 +37,6 @@ IR_CHAIN_UPDATES = ROOT / "research/ir-chain-origin-rereview-20260830/ir-chain-u
 ADVISORY_DATES = ROOT / "scripts/first-party-advisory-dates.json"
 GENERATED_EVIDENCE = ROOT / "scripts/generated-code-evidence.json"
 UNPATCHED_FIXES = ROOT / "scripts/unpatched-potential-fixes.json"
-SITE_PREFLIGHT_ALLOWLIST = ROOT / "scripts/site_preflight_allowlist.json"
 SECURITY_FIX_CONTEXTS = ROOT / "scripts/security-fix-contexts.json"
 RELEASE_FALLBACKS = ROOT / "scripts/release-fallbacks.json"
 CURATION = ROOT / "scripts/publication-curation.json"
@@ -1965,9 +1964,6 @@ def main(argv: list[str] | None = None) -> None:
         ]
         cases.append(case)
     cases = merge_duplicate_identities(cases)
-    missing_diff_reasons = (load_json(SITE_PREFLIGHT_ALLOWLIST) or {}).get(
-        "missing_diff"
-    ) or {}
     security_fix_contexts = load_json(SECURITY_FIX_CONTEXTS) or {}
     for case in cases:
         if not ai_summary_overlay(
@@ -1981,9 +1977,6 @@ def main(argv: list[str] | None = None) -> None:
         # ponytail: scrub runs once in build_case with the record's own
         # mechanism/description; re-scrubbing here resolved nothing extra.
         evidence = case.get("code_evidence")
-        reason = str(
-            missing_diff_reasons.get(str(case.get("case_id") or "").upper()) or ""
-        ).strip()
         if not isinstance(evidence, dict):
             evidence = {}
             case["code_evidence"] = evidence
@@ -2000,8 +1993,6 @@ def main(argv: list[str] | None = None) -> None:
             for role in ("comparison_hunks", "candidate_hunks", "fix_hunks")
         ):
             evidence.pop("unavailable_reason", None)
-        elif reason and public_explanation(reason):
-            evidence["unavailable_reason"] = reason
 
     root_cause = sum(1 for item in cases if item["ledger_status"] == "AI_ROOT_CAUSE")
     code_flawed = sum(1 for item in cases if item["ledger_status"] == "AI_CODE_FLAWED")

@@ -745,10 +745,6 @@ def evaluate(
     publication_overrides: dict | None = None,
 ) -> tuple[list[str], list[str], dict]:
     allowlist = allowlist or {}
-    diff_allow = {
-        key.upper(): reason
-        for key, reason in (allowlist.get("missing_diff") or {}).items()
-    }
     release_allow = {
         key.upper(): reason
         for key, reason in (allowlist.get("missing_release") or {}).items()
@@ -769,7 +765,6 @@ def evaluate(
     hunks = 0
     releases = 0
     status_counts = {status: 0 for status in PUBLICATION_STATUSES}
-    unused_diff_allow = set(diff_allow)
     unused_release_allow = set(release_allow)
     errors.extend(
         fix_object_witness_errors(
@@ -1196,20 +1191,8 @@ def evaluate(
                 errors.append(
                     f"{case_id}: code diff exists but unavailable_reason is set"
                 )
-        elif key in diff_allow:
-            unused_diff_allow.discard(key)
-            warnings.append(f"{case_id}: no diff ({diff_allow[key]})")
-            reason = str(evidence.get("unavailable_reason") or "").strip()
-            expected_reason = str(diff_allow[key] or "").strip()
-            if reason != expected_reason or not public_explanation(reason):
-                errors.append(
-                    f"{case_id}: missing_diff reason is not published verbatim as "
-                    "code_evidence.unavailable_reason"
-                )
         else:
-            errors.append(
-                f"{case_id}: no code comparison; add hunks or allowlist a reason"
-            )
+            errors.append(f"{case_id}: no code comparison; add hunks")
         ids = official_ids(case)
         release_gate = (case.get("gates") or {}).get("release")
         if has_release(case) or (unpatched and case.get("vulnerable_release")):
@@ -1260,10 +1243,6 @@ def evaluate(
         if snapshot.get("unknown_publication_dates"):
             pass
 
-    if unused_diff_allow:
-        errors.append(
-            "stale missing_diff allowlist: " + ", ".join(sorted(unused_diff_allow)[:12])
-        )
     if unused_release_allow:
         errors.append(
             "stale missing_release allowlist: "
