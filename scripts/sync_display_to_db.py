@@ -22,8 +22,6 @@ SOURCES = [
     ("ir_chain_updates", "research/ir-chain-origin-rereview-20260830/ir-chain-updates.jsonl", "jsonl"),
     ("advisory_dates_fallback", "research/orchestrator-260814-ghsa200-canvas/sweep/ghsa-first-party-dates.json", "json"),
     ("ai_commit_census", "research/ai-commit-census-current/ai-commit-census.json", "json"),
-    ("round9_adjudication", "research/round9-top200-20260828/adjudication", "dir-json"),
-    ("finalize_patches", "research/round9-top200-20260828/finalize-patches.jsonl", "jsonl"),
 ]
 
 
@@ -41,14 +39,8 @@ def load(kind: str, path: Path, kind_type: str) -> dict:
                 or ""
             ).upper()
             if not key:
-                key = str(abs(hash(str(sorted(row.items())))))
-            if key:
-                out[key] = row
-        return out
-    if kind_type == "dir-json":
-        out = {}
-        for fp in sorted(path.glob("*.json")):
-            out[fp.stem] = json.loads(fp.read_text(encoding="utf-8"))
+                raise SystemExit(f"{path}: row without case_id/class_id")
+            out[key] = row
         return out
     payload = json.loads(path.read_text(encoding="utf-8"))
     if not isinstance(payload, dict):
