@@ -1071,7 +1071,9 @@ def test_publisher_removes_pseudo_annotations_and_assigns_hunk_roles() -> None:
         "fix",
         "before_after",
     ]
-    assert cleaned["candidate_hunks"][0]["annotation"] == "`unsafe(user_input)`"
+    # A bare diff token is not an explanation, so the publisher drops it
+    # instead of shipping the code line back to the reader as its own note.
+    assert cleaned["candidate_hunks"][0]["annotation"] == ""
     assert cleaned["fix_hunks"][0]["annotation"] == ""
     assert cleaned["comparison_hunks"][2]["annotation"] == before_after["annotation"]
 
@@ -1367,7 +1369,7 @@ def test_site_preflight_dedups_repeated_hunk_annotations_and_rejects_internal_on
     assert any("annotation is not a usable annotation" in error for error in errors)
 
 
-def test_before_after_hunk_requires_an_independent_annotation() -> None:
+def test_before_after_hunk_annotation_must_be_prose_not_the_diff_line() -> None:
     case = _case()
     case["code_evidence"]["comparison_hunks"] = [
         {
@@ -1388,11 +1390,16 @@ def test_before_after_hunk_requires_an_independent_annotation() -> None:
     errors, _, _ = site_preflight.evaluate(
         {"cases": [case], "snapshot": {"case_count": 1}}
     )
-    expected = (
-        "CVE-2026-12345: display_hunks[0] before_after hunk has no "
-        "genuine annotation"
+    # A missing note no longer blocks publication; the hunk ships without one.
+    assert not any("genuine annotation" in error for error in errors)
+
+    case["code_evidence"]["comparison_hunks"][0]["annotation"] = (
+        "`safe(user_input)`"
     )
-    assert expected in errors
+    errors, _, _ = site_preflight.evaluate(
+        {"cases": [case], "snapshot": {"case_count": 1}}
+    )
+    assert any("annotation is not a usable annotation" in error for error in errors)
 
     case["code_evidence"]["comparison_hunks"][0]["annotation"] = (
         "The comparison shows the unsafe call being replaced by the guarded call."
@@ -1400,7 +1407,7 @@ def test_before_after_hunk_requires_an_independent_annotation() -> None:
     errors, _, _ = site_preflight.evaluate(
         {"cases": [case], "snapshot": {"case_count": 1}}
     )
-    assert expected not in errors
+    assert not any("annotation is not a usable annotation" in error for error in errors)
 
 
 def test_case_without_hunks_fails_publication() -> None:

@@ -799,18 +799,20 @@ function DiffHunk({
             </details>
           ),
         )}
-        <aside
-          aria-label="Key code note"
-          className={`border-t-4 px-4 py-3 text-sm leading-6 ${
-            label === "AI change"
-              ? "border-amber-500 bg-amber-50/70 text-amber-950"
-              : label === "Fix"
-                ? "border-emerald-600 bg-emerald-50/70 text-emerald-950"
-                : "border-primary bg-primary/[0.04] text-foreground"
-          }`}
-        >
-          {annotation}
-        </aside>
+        {annotation ? (
+          <aside
+            aria-label="Key code note"
+            className={`border-t-4 px-4 py-3 text-sm leading-6 ${
+              label === "AI change"
+                ? "border-amber-500 bg-amber-50/70 text-amber-950"
+                : label === "Fix"
+                  ? "border-emerald-600 bg-emerald-50/70 text-emerald-950"
+                  : "border-primary bg-primary/[0.04] text-foreground"
+            }`}
+          >
+            {annotation}
+          </aside>
+        ) : null}
       </div>
     </div>
   );

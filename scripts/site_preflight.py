@@ -126,11 +126,23 @@ def is_pseudo_annotation(value: object, context: tuple[str, ...]) -> bool:
     return bool(text) and (not strip_annotation_prefix(text) or text in context)
 
 
+_CODE_COMMENT_RE = re.compile(r"^(?:/{2,}|#+|/\*+|\*|--|<!--)")
+_PROSE_WORD_RE = re.compile(r"[A-Za-z]{3,}")
+
+
 def usable_hunk_annotation(value: object) -> str:
     """Return the value with its boilerplate lead-in removed when it still
-    carries a concrete code pointer or explanation; else empty."""
+    carries a reader-facing explanation; else empty.
+
+    A bare code token — the diff line repeated as its own note — explains
+    nothing the reader cannot already see, so it is dropped as noise.
+    """
     text = strip_annotation_prefix(value)
     if not text or len(text) < 8 or INTERNAL_PROSE_RE.search(text):
+        return ""
+    wrapped = re.fullmatch(r"`([\s\S]*)`", text)
+    body = (wrapped.group(1) if wrapped else text).strip()
+    if not _CODE_COMMENT_RE.match(body) and len(_PROSE_WORD_RE.findall(body)) < 4:
         return ""
     return text
 
@@ -1181,15 +1193,6 @@ def evaluate(
             if not has_reader_fallback(case, hunk_role):
                 errors.append(
                     f"{case_id}: displayed role {hunk_role!r} has no public context"
-                )
-        for role, index, hunk in displayed:
-            annotation = hunk.get("annotation")
-            if hunk.get("role") in ("before_after", "candidate", "fix") and (
-                not usable_hunk_annotation(annotation)
-            ):
-                errors.append(
-                    f"{case_id}: {role}[{index}] {hunk.get('role')} hunk has no "
-                    "genuine annotation"
                 )
         if status == "confirmed":
             if not gates or set(gates.values()) != {"PASS"}:

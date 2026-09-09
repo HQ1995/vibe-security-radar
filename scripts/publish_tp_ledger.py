@@ -40,6 +40,7 @@ UNPATCHED_FIXES = ROOT / "scripts/unpatched-potential-fixes.json"
 SECURITY_FIX_CONTEXTS = ROOT / "scripts/security-fix-contexts.json"
 RELEASE_FALLBACKS = ROOT / "scripts/release-fallbacks.json"
 CURATION = ROOT / "scripts/publication-curation.json"
+AI_COMMIT_CENSUS = ROOT / "scripts/ai-commit-census.json"
 
 
 @dataclass(frozen=True)
@@ -564,6 +565,8 @@ def scrub_evidence(
     if not isinstance(evidence, dict):
         return None
     cleaned = dict(evidence)
+    # Provenance of how the evidence was gathered is internal; nothing reads it.
+    cleaned.pop("code_evidence_source", None)
     cleaned["summary"] = public_text(evidence.get("summary"))
     marker = evidence.get("ai_marker")
     cleaned["ai_marker"] = public_text(marker) if CJK_RE.search(str(marker or "")) else marker
@@ -643,6 +646,8 @@ def finalize_evidence(evidence: dict) -> None:
     evidence["display_hunks"] = display_hunks(evidence)
     for key in ("candidate_hunks", "fix_hunks", "comparison_hunks"):
         evidence.pop(key, None)
+    if evidence["display_hunks"]:
+        evidence.pop("unavailable_reason", None)
 
 
 def apply_security_fix_context(evidence: dict, context: object) -> None:
@@ -1266,9 +1271,6 @@ def load_advisory_dates() -> dict[str, str]:
     return dates
 
 
-AI_CASE_SUMMARIES = ROOT / "research/gate-campaign-20260830/summaries-by-alias.json"
-
-
 def ai_summary_overlay(
     case: dict, overlays: Overlays, *, canonical: bool = False
 ) -> bool:
@@ -1327,7 +1329,7 @@ def ai_summary_overlay(
 def load_generated_evidence() -> dict[str, dict]:
     payload = load_json(GENERATED_EVIDENCE)
     if not isinstance(payload, dict):
-        return {}
+        raise SystemExit(f"publish input is not an object: {GENERATED_EVIDENCE}")
     evidence = {
         str(key).upper(): value
         for key, value in payload.items()
@@ -1352,27 +1354,33 @@ def _index_prose(value: object, index: dict[str, str]) -> None:
 def _load_summary_maps(
     rows: list[dict],
 ) -> tuple[dict[str, str], dict[str, str], dict[str, str]]:
-    """Return reader summaries, mechanisms, and the truncated-prose index."""
-    overlay = load_json(AI_CASE_SUMMARIES) or {}
+    """Return reader summaries, mechanisms, and the truncated-prose index.
+
+    Both come from the committed curation file, which already carries every
+    shipped summary and mechanism; the ledger row only recovers prose that a
+    180-char truncation cut short.
+    """
+    overlay = load_json(CURATION)
     summaries: dict[str, str] = {}
     mechanisms: dict[str, str] = {}
     prose: dict[str, str] = {}
-    for key, value in overlay.items():
-        if not isinstance(value, dict):
+    for entry in overlay.get("cases") or []:
+        if not isinstance(entry, dict):
             continue
-        if value.get("summary"):
-            summaries[str(key).upper()] = str(value["summary"])
-        if value.get("mechanism"):
-            mechanisms[str(key).upper()] = str(value["mechanism"])
+        evidence = entry.get("code_evidence") or {}
+        for key in (entry.get("case_id"), entry.get("class_id")):
+            if not key:
+                continue
+            key = str(key).upper()
+            if evidence.get("summary"):
+                summaries[key] = str(evidence["summary"])
+            if entry.get("mechanism"):
+                mechanisms[key] = str(entry["mechanism"])
     for row in rows:
         try:
             _index_prose(row, prose)
         except (json.JSONDecodeError, ValueError):
             continue
-    # Prose recovery for truncated hunk annotations indexes ledger rows only:
-    # the round9 adjudication and finalize-patches files are local research
-    # artifacts absent from CI, and they resolve no published annotation or
-    # mechanism (verified output-identical against the committed site data).
     for key, mechanism in mechanisms.items():
         full = prose.get(mechanism[:100])
         if full and full.startswith(mechanism):
@@ -1427,11 +1435,20 @@ def first_party_date(*keys: object, dates: dict[str, str]) -> str | None:
     return None
 
 
-def load_json(path: Path) -> dict:
+def load_json(path: Path) -> object:
+    """Load a committed publish input; a missing or malformed one is fatal.
+
+    Every caller names a committed overlay, so silently returning {} would ship
+    a degraded catalog instead of failing the build. Payload shape stays with
+    the caller: the unpatched-fix overlay is a list, the rest are objects.
+    """
     try:
-        return json.loads(path.read_text())
-    except (FileNotFoundError, ValueError):
-        return {}
+        payload = json.loads(path.read_text())
+    except FileNotFoundError:
+        raise SystemExit(f"missing publish input: {path}") from None
+    except ValueError as exc:
+        raise SystemExit(f"invalid publish input {path}: {exc}") from None
+    return payload
 
 
 def ledger_census(*, from_export: bool = False) -> dict[str, int]:
@@ -1888,7 +1905,7 @@ def main(argv: list[str] | None = None) -> None:
             in canonical_evidence_classes,
         ):
             raise SystemExit(
-                f"{case['case_id']}: missing reader summary in {AI_CASE_SUMMARIES}"
+                f"{case['case_id']}: missing reader summary in {CURATION}"
             )
         # ponytail: scrub runs once in build_case with the record's own
         # mechanism/description; re-scrubbing here resolved nothing extra.
@@ -1904,11 +1921,6 @@ def main(argv: list[str] | None = None) -> None:
             and case["unpatched"].get("confirmed") is True
         ):
             apply_security_fix_context(evidence, fix_context)
-        if any(
-            evidence.get(role)
-            for role in ("comparison_hunks", "candidate_hunks", "fix_hunks")
-        ):
-            evidence.pop("unavailable_reason", None)
         finalize_evidence(evidence)
 
     root_cause = sum(1 for item in cases if item["ledger_status"] == "AI_ROOT_CAUSE")
@@ -1961,9 +1973,7 @@ def main(argv: list[str] | None = None) -> None:
         "cases": cases,
     }
 
-    ai_commit_census = load_json(
-        ROOT / "research/ai-commit-census-current/ai-commit-census.json"
-    )
+    ai_commit_census = load_json(AI_COMMIT_CENSUS)
     if ai_commit_census.get("total_commits"):
         window = ai_commit_census.get("window") or {}
         payload["ai_commit_census"] = {
