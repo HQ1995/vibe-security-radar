@@ -21,7 +21,6 @@ OPEN = {"EVIDENCE_GAP", "BLOCKED"}
 SHA40 = re.compile(r"^[0-9a-f]{40}$")
 OFFICIAL_ID = re.compile(r"^(GHSA-[0-9A-Z]{4}-[0-9A-Z]{4}-[0-9A-Z]{4}|CVE-\d{4}-\d{4,})$", re.I)
 
-UNPATCHED = re.compile(r"\bunpatched\b", re.I)
 EXTERNAL_VCS = re.compile(
     r"\b(?:svn|subversion|cvs)\b.{0,400}\b(?:revision|changeset|r\d+)\b",
     re.I | re.S,

@@ -16,7 +16,6 @@ from verify_cache import load as cache_load, save as cache_save, fresh as cache_
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_DATA = ROOT / "web/src/generated/research-data.json"
 USER_AGENT = "vibe-security-radar-link-check"
-FORCE_ONLINE = "--force-online" in (sys.argv[1:] if len(sys.argv) > 1 else [])
 
 
 def check_url(url: str, attempts: int = 6) -> tuple[int, str]:

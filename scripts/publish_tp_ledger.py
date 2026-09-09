@@ -503,6 +503,18 @@ def public_text(*values: object) -> str | None:
     return None
 
 
+def ledger_value(row: dict, key: str, fallback, clean=None):
+    """The ledger owns a field when the key is present, even when it is empty.
+
+    Presence, not truthiness, is the contract: a canonical empty value must not
+    fall back to the committed curation snapshot, or a rejected mechanism comes
+    back. Every canonical-vs-snapshot choice routes through here.
+    """
+    if key not in row:
+        return fallback
+    return clean(row[key]) if clean else row[key]
+
+
 def infer_hunk_file(hunk: dict) -> str | None:
     file = str(hunk.get("file") or "").strip()
     if file:
@@ -1536,6 +1548,8 @@ def apply_case_overrides(
         "candidate_sources",
         "candidate_fix_edges",
     ):
+        # The case already holds the cleaned canonical value when the ledger
+        # owns the field; only fill the gap the ledger leaves.
         if field in spec and field not in row:
             case[field] = spec[field]
     if spec.get("aliases_extra"):
@@ -1621,14 +1635,24 @@ def apply_case_overrides(
 
 def build_case(
     row: dict,
-    official: dict[str, dict],
-    by_class: dict[str, dict],
-    overrides: dict,
-    chains: dict[str, dict],
-    dates: dict[str, str],
-    generated_evidence: dict[str, dict],
-    unpatched_fixes: dict[str, dict],
+    *,
+    official: dict[str, dict] | None = None,
+    by_class: dict[str, dict] | None = None,
+    overrides: dict | None = None,
+    chains: dict[str, dict] | None = None,
+    dates: dict[str, str] | None = None,
+    generated_evidence: dict[str, dict] | None = None,
+    unpatched_fixes: dict[str, dict] | None = None,
 ) -> dict:
+    # Keyword-only: these are eight overlay maps that used to be positional,
+    # so a changed signature silently shifted every argument.
+    official = official or {}
+    by_class = by_class or {}
+    overrides = overrides or {}
+    chains = chains or {}
+    dates = dates or {}
+    generated_evidence = generated_evidence or {}
+    unpatched_fixes = unpatched_fixes or {}
     recs = research_records(row)
     rec = recs[0] if recs else None
     ghsas, cves = collect_ids(row, rec)
@@ -1744,20 +1768,18 @@ def build_case(
     candidate_source_repo = (
         candidate_repo_match.group(1) if candidate_repo_match else repo
     )
-    candidate_sources = (
-        row.get("candidate_sources")
-        if "candidate_sources" in row
-        else [
+    candidate_sources = ledger_value(
+        row,
+        "candidate_sources",
+        [
             {"sha": sha, "repository": candidate_source_repo}
             for sha in candidates
         ]
         if len(candidates) > 1
-        else None
+        else None,
     )
-    candidate_fix_edges = (
-        row.get("candidate_fix_edges")
-        if "candidate_fix_edges" in row
-        else (rec or {}).get("candidate_fix_edges") or None
+    candidate_fix_edges = ledger_value(
+        row, "candidate_fix_edges", (rec or {}).get("candidate_fix_edges") or None
     )
     case = {
         "case_id": case_id,
@@ -1775,12 +1797,12 @@ def build_case(
         "carrier_set": carriers,
         "minimum_fix_set": fixes,
         "gates": gates,
-        "vulnerable_release": row.get("vulnerable_release")
-        if "vulnerable_release" in row
-        else (cached or {}).get("vulnerable_release"),
-        "fixed_release": row.get("fixed_release")
-        if "fixed_release" in row
-        else (cached or {}).get("fixed_release"),
+        "vulnerable_release": ledger_value(
+            row, "vulnerable_release", (cached or {}).get("vulnerable_release")
+        ),
+        "fixed_release": ledger_value(
+            row, "fixed_release", (cached or {}).get("fixed_release")
+        ),
         "published_at": first_party_date(
             case_id,
             aliases,
@@ -1790,11 +1812,13 @@ def build_case(
         ),
         "severity": (cached or {}).get("severity"),
         "cwes": list((cached or {}).get("cwes") or []),
-        "description": public_text(row.get("description")) if "description" in row else description,
+        "description": ledger_value(row, "description", description, clean=public_text),
         "references": list((cached or {}).get("references") or []),
         "mechanism_key": (cached or {}).get("mechanism_key"),
-        "mechanism": public_text(row.get("mechanism")) if "mechanism" in row else mechanism,
-        "scope_statement": public_text(row.get("scope_statement")) if "scope_statement" in row else scope_statement,
+        "mechanism": ledger_value(row, "mechanism", mechanism, clean=public_text),
+        "scope_statement": ledger_value(
+            row, "scope_statement", scope_statement, clean=public_text
+        ),
         "cause_category": (cached or {}).get("cause_category")
         or cause_of(
             first_text(
@@ -1832,11 +1856,11 @@ def build_case(
     case["research_status"] = " ".join(
         str((rec or {}).get(key) or "") for key in ("remaining_gap", "evidence")
     ).strip() or None
-    case["unpatched"] = (
-        row.get("unpatched")
-        if "unpatched" in row
-        else (rec or {}).get("unpatched")
-        or first_unpatched(case_id, aliases, row.get("class_id"), unpatched_fixes)
+    case["unpatched"] = ledger_value(
+        row,
+        "unpatched",
+        (rec or {}).get("unpatched")
+        or first_unpatched(case_id, aliases, row.get("class_id"), unpatched_fixes),
     )
     case = apply_case_overrides(case, row, rec, overrides, chains)
     strip_unpatched_fix_claims(case)
@@ -1926,13 +1950,13 @@ def main(argv: list[str] | None = None) -> None:
             canonical_evidence_classes.add(str(row.get("class_id") or "").lower())
         case = build_case(
             row,
-            cache[0],
-            cache[1],
-            overrides,
-            chains,
-            dates,
-            generated_evidence,
-            unpatched_fixes,
+            official=cache[0],
+            by_class=cache[1],
+            overrides=overrides,
+            chains=chains,
+            dates=dates,
+            generated_evidence=generated_evidence,
+            unpatched_fixes=unpatched_fixes,
         )
         case["aliases"] = [
             item

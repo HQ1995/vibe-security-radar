@@ -239,13 +239,8 @@ def test_publisher_uses_only_sourced_ledger_gates() -> None:
     def build(candidate: dict) -> dict:
         return publish_tp_ledger.build_case(
             candidate,
-            {case_id: cached},
-            {class_id.upper(): cached},
-            {},
-            {},
-            {},
-            {},
-            {},
+            official={case_id: cached},
+            by_class={class_id.upper(): cached},
         )
 
     assert build(row)["gates"] == publish_tp_ledger.DEFAULT_GATES
@@ -309,13 +304,9 @@ def test_canonical_ledger_code_evidence_overrides_generated_and_cached_data(
 
     case = publish_tp_ledger.build_case(
         row,
-        {case_id: cached},
-        {class_id.upper(): cached},
-        {},
-        {},
-        {},
-        {case_id: stale_evidence},
-        {},
+        official={case_id: cached},
+        by_class={class_id.upper(): cached},
+        generated_evidence={case_id: stale_evidence},
     )
 
     assert case["code_evidence"]["summary"] == ledger_evidence["summary"]
@@ -359,7 +350,10 @@ def test_canonical_ir_fields_reject_cached_and_indexed_chains(canonical: dict) -
     indexed = {cached["case_id"]: {**_ir_chain(), "_publication_override": True}}
 
     case = publish_tp_ledger.build_case(
-        row, {cached["case_id"]: cached}, {}, overrides, indexed, {}, {}, {}
+        row,
+        official={cached["case_id"]: cached},
+        overrides=overrides,
+        chains=indexed,
     )
 
     assert case["contribution_class"] == "AI_DIRECT_ROOT"
@@ -403,7 +397,7 @@ def test_canonical_ir_chain_is_not_backfilled_or_rewritten() -> None:
 
 def test_explicit_scope_and_chain_conflict_still_fails_publication() -> None:
     row = {**_ledger_row(), "site_scope": "AI_ROOT_CAUSE", "ir_chain": _ir_chain()}
-    case = publish_tp_ledger.build_case(row, {}, {}, {}, {}, {}, {}, {})
+    case = publish_tp_ledger.build_case(row)
 
     assert case["contribution_class"] == "AI_DIRECT_ROOT"
     assert case["ir_chain"] == _ir_chain()
@@ -426,7 +420,7 @@ def test_publisher_keeps_legacy_ir_fallbacks(source: str) -> None:
         indexed[cached["case_id"]] = _ir_chain()
 
     case = publish_tp_ledger.build_case(
-        row, {cached["case_id"]: cached}, {}, {}, indexed, {}, {}, {}
+        row, official={cached["case_id"]: cached}, chains=indexed
     )
 
     assert case["contribution_class"] == "AI_INCOMPLETE_REMEDIATION"
@@ -445,7 +439,7 @@ def test_publisher_uses_only_the_accepted_research_projection() -> None:
     }
     assert publish_tp_ledger.research_records(row) == [row["causal_research"]]
 
-    case = publish_tp_ledger.build_case(row, {}, {}, {}, {}, {}, {}, {})
+    case = publish_tp_ledger.build_case(row)
     evidence_case = build_missing_code_evidence.ledger_case(row)
     for result in (case, evidence_case):
         assert result["case_id"] == row["causal_research"]["case_id"]
@@ -475,7 +469,7 @@ def test_publisher_omits_internal_research_after_validation() -> None:
     )
     row["assessment_ids"] = ["private-history-marker"]
 
-    case = publish_tp_ledger.build_case(row, {}, {}, {}, {}, {}, {}, {})
+    case = publish_tp_ledger.build_case(row)
 
     assert "missing_fix" not in case["publication_issues"]
     assert "missing_fixed_release" not in case["publication_issues"]
@@ -495,8 +489,9 @@ def test_canonical_empty_reader_copy_does_not_use_stale_overlays(empty: object) 
     stale = dict.fromkeys(fields, "Stale reader copy describes a rejected mechanism.")
     cached = {**_case(), "repository": "acme/app", **stale}
     case = publish_tp_ledger.build_case(
-        row, {cached["case_id"]: cached}, {},
-        {"cases": {row["class_id"]: stale}}, {}, {}, {}, {}
+        row,
+        official={cached["case_id"]: cached},
+        overrides={"cases": {row["class_id"]: stale}},
     )
 
     assert all(case[field] is None for field in fields)
