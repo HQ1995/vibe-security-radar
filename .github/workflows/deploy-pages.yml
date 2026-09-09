@@ -27,17 +27,15 @@ jobs:
       - name: Install neon deps
         run: python -m pip install -r ../scripts/requirements-neon.txt
       - name: Publish catalog from Neon
+        # Neon free tier is metered. Push deploys build the committed
+        # generated data; only a manual dispatch republishes from Neon.
+        if: github.event_name == 'workflow_dispatch'
         run: python3 ../scripts/publish_tp_ledger.py
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           DATABASE_URL_UNPOOLED: ${{ secrets.DATABASE_URL }}
       - name: Build
         run: npm run build
-        env:
-          # postbuild tests read ir_chains DB-first; without the secret they
-          # fall back to the untracked research/ source, which CI does not have.
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
-          DATABASE_URL_UNPOOLED: ${{ secrets.DATABASE_URL }}
       - uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
