@@ -183,34 +183,63 @@ DEFAULT_GATES = {
     "release": "UNKNOWN",
     "uniqueness": "UNKNOWN",
 }
+
+# Reader-facing category copy lives here so the payload is a pure function of
+# its inputs; it used to be read back from the previous snapshot, which froze
+# these definitions at whatever a legacy pipeline had published.
 CAUSE_CATEGORIES = {
     "auth_access": {
+        "definition": (
+            "Missing, bypassed, or confused authentication, authorization, "
+            "identity, ownership, tenant, or privilege boundaries."
+        ),
         "label": "Authentication & access control",
-        "definition": "Broken authentication, authorization, tenancy, or session handling.",
     },
     "injection": {
+        "definition": (
+            "Untrusted data reaches command, shell, template, script, query, "
+            "spreadsheet, HTML, or similar execution contexts without safe "
+            "encoding or isolation."
+        ),
         "label": "Injection & unsafe execution",
-        "definition": "Untrusted input reaches an interpreter, template, command, or query.",
-    },
-    "path_link": {
-        "label": "Path & link handling",
-        "definition": "Path traversal, symlink, or link-following flaws.",
-    },
-    "ssrf_network": {
-        "label": "SSRF & network boundaries",
-        "definition": "Server-side requests or outbound connections that escape intended bounds.",
-    },
-    "resource_abuse": {
-        "label": "Resource abuse & availability",
-        "definition": "Unbounded allocation, loops, or other denial-of-service conditions.",
-    },
-    "validation_fail_open": {
-        "label": "Validation & fail-open logic",
-        "definition": "Missing, inverted, or fail-open validation of a security-relevant check.",
     },
     "other_ambiguous": {
+        "definition": (
+            "The canonical mechanism fields do not expose enough stable public "
+            "detail for a more specific cause category."
+        ),
         "label": "Other / insufficient public mechanism detail",
-        "definition": "The public advisory does not name a more specific mechanism class.",
+    },
+    "path_link": {
+        "definition": (
+            "Unsafe path construction, filesystem scope checks, archive "
+            "extraction, local file access, or symbolic-link handling."
+        ),
+        "label": "Path & link handling",
+    },
+    "resource_abuse": {
+        "definition": (
+            "Unbounded input, computation, memory, storage, retry, rate, or "
+            "loop behavior enables denial of service or disproportionate "
+            "resource use."
+        ),
+        "label": "Resource abuse & availability",
+    },
+    "ssrf_network": {
+        "definition": (
+            "Unsafe URL parsing, redirects, proxying, credential forwarding, or "
+            "destination checks allow unintended network access or "
+            "trust-boundary crossing."
+        ),
+        "label": "SSRF & network boundaries",
+    },
+    "validation_fail_open": {
+        "definition": (
+            "A security validator, denylist, signature, or schema check is "
+            "incomplete, incorrectly ordered, or allows processing after "
+            "validation cannot be established."
+        ),
+        "label": "Validation & fail-open logic",
     },
 }
 FAMILIES = {
@@ -916,18 +945,6 @@ def index_existing(existing: dict) -> tuple[dict[str, dict], dict[str, dict]]:
         for key in [case.get("case_id"), *(case.get("aliases") or [])]:
             if is_official_id(str(key or "")):
                 official.setdefault(str(key).upper(), case)
-    return official, by_class
-
-
-def merge_indexes(
-    base: tuple[dict[str, dict], dict[str, dict]],
-    extra: tuple[dict[str, dict], dict[str, dict]],
-) -> tuple[dict[str, dict], dict[str, dict]]:
-    official, by_class = ({**base[0]}, {**base[1]})
-    for key, value in extra[0].items():
-        official.setdefault(key, value)
-    for key, value in extra[1].items():
-        by_class.setdefault(key, value)
     return official, by_class
 
 
@@ -1974,11 +1991,13 @@ def main(argv: list[str] | None = None) -> None:
         )
     rows = load_ledger_rows(from_export=from_export)
     _load_summary_maps(rows)
+    # The committed snapshot is a curation input, not a cache: severity, CWEs,
+    # references, curated step titles and hunk annotations have no source in
+    # ledger_rows, so they are carried forward from the last published file.
+    # Reading HEAD (not the working tree) keeps the publish reproducible from
+    # a clean checkout; a missing snapshot degrades to ledger-only fields.
     existing = git_head_research_data() or load_json(OUT)
-    cache = merge_indexes(
-        index_existing(existing),
-        index_existing(load_json(ROOT / "web/src/generated/research-data.base84.json")),
-    )
+    cache = index_existing(existing)
     overrides = load_json(OVERRIDES)
     chains = load_ir_chains(IR_CHAINS)
     chain_updates = load_ir_chains(IR_CHAIN_UPDATES)
@@ -2108,7 +2127,7 @@ def main(argv: list[str] | None = None) -> None:
                 else "neon:ledger_rows"
             ),
         },
-        "cause_categories": existing.get("cause_categories") or CAUSE_CATEGORIES,
+        "cause_categories": CAUSE_CATEGORIES,
         "ai_provenance_families": FAMILIES,
         "cases": cases,
     }
