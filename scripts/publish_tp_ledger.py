@@ -3,13 +3,15 @@
 
 Reads AI_ROOT_CAUSE and AI_CODE_FLAWED rows from Neon ledger_rows and
 writes web/src/generated/research-data.json. The committed jsonl file is a
-recovery export, not a publish input (--from-export for offline restore).
+recovery export, not a default publish input: --from-export restores offline
+and --prefer-export uses it only while its digest matches Neon.
 Existing site evidence is reused when a public advisory ID matches; missing
 fields stay null rather than guessed.
 """
 from __future__ import annotations
 
 import argparse
+import hashlib
 import os
 import json
 import re
@@ -93,11 +95,29 @@ def _read_export_rows() -> list[dict]:
     return rows
 
 
+def export_matches_neon() -> bool:
+    """True when the local jsonl export equals the Neon snapshot digest.
+
+    The digest is computed in the database, so the freshness probe costs one
+    small query instead of a full-table transfer. A stale export must never be
+    published; callers fall back to reading Neon ledger_rows.
+    """
+    if not LEDGER.exists():
+        return False
+    sys.path.insert(0, str(ROOT / "scripts"))
+    from ledger_store import load_env, snapshot_sha256
+
+    load_env()
+    digest = hashlib.sha256(LEDGER.read_bytes()).hexdigest()
+    return digest == snapshot_sha256()
+
+
 def load_ledger_rows(*, from_export: bool = False) -> list[dict]:
     """Load ledger rows for publication.
 
-    Neon ledger_rows is the only publish input. The jsonl file is a recovery
-    export; pass from_export=True for offline restore.
+    Neon ledger_rows is the default publish input. The jsonl file is a recovery
+    export; pass from_export=True for offline restore, or gate it on
+    export_matches_neon() to publish from the backup without row egress.
     """
     if from_export:
         return _read_export_rows()
@@ -1925,13 +1945,34 @@ def main(argv: list[str] | None = None) -> None:
     parser = argparse.ArgumentParser(
         description="Publish TPs from Neon ledger_rows into research-data.json"
     )
-    parser.add_argument(
+    source = parser.add_mutually_exclusive_group()
+    source.add_argument(
         "--from-export",
         action="store_true",
         help="Read the jsonl recovery export instead of Neon (offline/backup only)",
     )
+    source.add_argument(
+        "--prefer-export",
+        action="store_true",
+        help=(
+            "Publish from the jsonl export when its sha256 matches the Neon "
+            "snapshot digest (one small probe); stale exports fall back to Neon"
+        ),
+    )
     args = parser.parse_args(argv)
-    rows = load_ledger_rows(from_export=args.from_export)
+    from_export = args.from_export
+    if args.prefer_export:
+        from_export = export_matches_neon()
+        print(
+            "prefer-export: jsonl "
+            + (
+                "matches the Neon snapshot; publishing without row egress"
+                if from_export
+                else "is stale; reading Neon ledger_rows"
+            ),
+            file=sys.stderr,
+        )
+    rows = load_ledger_rows(from_export=from_export)
     _load_summary_maps(rows)
     existing = git_head_research_data() or load_json(OUT)
     cache = merge_indexes(
@@ -2032,7 +2073,7 @@ def main(argv: list[str] | None = None) -> None:
         reverse=True,
     )
     dated = sum(1 for item in cases if item.get("published_at"))
-    census = ledger_census(from_export=args.from_export)
+    census = ledger_census(from_export=from_export)
     generated_at = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
     payload = {
         "snapshot": {
@@ -2063,7 +2104,7 @@ def main(argv: list[str] | None = None) -> None:
             "generated_at": generated_at,
             "ledger": (
                 "artifacts/funnel-account-20260817.jsonl"
-                if args.from_export
+                if from_export
                 else "neon:ledger_rows"
             ),
         },

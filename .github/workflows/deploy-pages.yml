@@ -28,9 +28,10 @@ jobs:
         run: python -m pip install -r ../scripts/requirements-neon.txt
       - name: Publish catalog from Neon
         # Neon free tier is metered. Push deploys build the committed
-        # generated data; only a manual dispatch republishes from Neon.
+        # generated data; only a manual dispatch republishes, and it reads the
+        # committed jsonl export when that still matches the Neon digest.
         if: github.event_name == 'workflow_dispatch'
-        run: python3 ../scripts/publish_tp_ledger.py
+        run: python3 ../scripts/publish_tp_ledger.py --prefer-export
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           DATABASE_URL_UNPOOLED: ${{ secrets.DATABASE_URL }}

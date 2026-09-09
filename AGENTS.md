@@ -28,8 +28,9 @@ Keep committed content in English.
   (display content) and `scripts/publish_tp_ledger.py` (generated site data).
   Check records and duplicate TPs before `finalize`; export/publish only after
   the transaction succeeds. Publish reads Neon `ledger_rows`; the jsonl file is
-  a recovery export, not a publish input. Never hand-edit exports or generated
-  site data.
+  a recovery export, and `--prefer-export` uses it only when its sha256 matches
+  the Neon snapshot digest (stale exports fall back to Neon). Never hand-edit
+  exports or generated site data.
 - In `web/`, `npm run dev` and `npm run build` use committed generated site
   data and do not read Neon. Push deploys build that committed data; only a
   manual `Deploy Pages` dispatch runs `publish_tp_ledger.py` against Neon.

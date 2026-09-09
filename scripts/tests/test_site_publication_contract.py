@@ -1057,7 +1057,12 @@ def test_site_preflight_rejects_an_unexplained_origin_gap() -> None:
     assert expected not in errors
 
 
-def test_publisher_removes_pseudo_annotations_and_assigns_hunk_roles() -> None:
+def test_publisher_removes_pseudo_annotations_and_assigns_hunk_roles(
+    monkeypatch,
+) -> None:
+    # Read committed summary overlays: the DB kind is metered and this test
+    # must behave the same with and without DATABASE_URL.
+    monkeypatch.setattr(publish_tp_ledger, "_db_display_kind", lambda kind: {})
     publish_tp_ledger._load_summary_maps([])
     summary = "The candidate change passed an unchecked value into a command runner."
     candidate = {
