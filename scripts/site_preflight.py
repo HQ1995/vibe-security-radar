@@ -221,6 +221,52 @@ def comparison_hunk_role(evidence: dict, hunk: dict) -> str | None:
     return "before_after" if not matches and added and removed else None
 
 
+def _same_display_hunk(left: dict, right: dict) -> bool:
+    return left.get("file") == right.get("file") and left.get("code") == right.get("code")
+
+
+def display_role(hunk: dict, candidate: list[dict], fix: list[dict]) -> str:
+    if hunk.get("role") == "candidate" or any(
+        _same_display_hunk(hunk, other) for other in candidate
+    ):
+        return "candidate"
+    if hunk.get("role") == "fix" or any(
+        _same_display_hunk(hunk, other) for other in fix
+    ):
+        return "fix"
+    return "before_after"
+
+
+def display_hunks(evidence: dict) -> list[dict]:
+    """The reader-facing hunk list, resolved once at publish time.
+
+    The web component used to re-derive this list from the raw collections
+    (role labels, supplementing a role the comparison omits, dropping repeated
+    annotations), so publish-time checks and the rendered page could disagree
+    about which hunks a reader sees. Publish now ships the final list.
+    """
+    candidate = list(evidence.get("candidate_hunks") or [])
+    fix = list(evidence.get("fix_hunks") or [])
+    comparison = list(evidence.get("comparison_hunks") or [])
+    selected = [dict(hunk) for hunk in (comparison or [*candidate, *fix])]
+    if comparison:
+        for role, hunks in (("candidate", candidate), ("fix", fix)):
+            if any(display_role(hunk, candidate, fix) == role for hunk in selected):
+                continue
+            for hunk in hunks:
+                if not any(_same_display_hunk(hunk, other) for other in selected):
+                    selected.append(dict(hunk))
+    seen: set[str] = set()
+    for hunk in selected:
+        hunk["role"] = display_role(hunk, candidate, fix)
+        annotation = str(hunk.get("annotation") or "").strip()
+        if annotation in seen:
+            hunk["annotation"] = ""
+        elif annotation:
+            seen.add(annotation)
+    return selected
+
+
 def has_reader_fallback(case: dict, role: str) -> bool:
     chain = case.get("ir_chain") or {}
     attempted = chain.get("attempted_remediation") or {}
@@ -1012,12 +1058,8 @@ def evaluate(
                         f"{case_id}: {role}[{index}] annotation is not a usable annotation"
                     )
         displayed = [
-            ("comparison_hunks", index, hunk)
-            for index, hunk in enumerate(evidence.get("comparison_hunks") or [])
-        ] or [
-            (role, index, hunk)
-            for role in ("candidate_hunks", "fix_hunks")
-            for index, hunk in enumerate(evidence.get(role) or [])
+            ("display_hunks", index, hunk)
+            for index, hunk in enumerate(display_hunks(evidence))
         ]
         annotation_mode = evidence.get("annotation_mode")
         if annotation_mode not in {None, "hunk_specific"}:
@@ -1126,13 +1168,6 @@ def evaluate(
                 errors.append(
                     f"{case_id}: candidate_url does not match candidate_sources"
                 )
-        displayed_annotations = [
-            str(hunk.get("annotation") or "").strip()
-            for _, _, hunk in displayed
-            if str(hunk.get("annotation") or "").strip()
-        ]
-        if len(displayed_annotations) != len(set(displayed_annotations)):
-            errors.append(f"{case_id}: displayed hunks repeat the same annotation")
         for hunk_role in displayed_roles:
             if not has_reader_fallback(case, hunk_role):
                 errors.append(

@@ -821,7 +821,6 @@ export function CanonicalCaseEvidence({
   const evidence = item.code_evidence;
   const candidateHunks = evidence?.candidate_hunks ?? [];
   const fixHunks = evidence?.fix_hunks ?? [];
-  const comparisonHunks = evidence?.comparison_hunks ?? [];
   const candidateFiles = candidateHunks.map((hunk) => hunk.file);
   const fixFiles = fixHunks.map((hunk) => hunk.file);
   const hasFix = item.minimum_fix_set.length > 0;
@@ -862,33 +861,15 @@ export function CanonicalCaseEvidence({
     item.repository,
     item.minimum_fix_set[0] ?? candidateSource.sha,
   );
-  const sameHunk = (left: ResearchCodeHunk, right: ResearchCodeHunk) =>
-    left.file === right.file && left.code === right.code;
-  const hunkRole = (hunk: ResearchCodeHunk): DiffRole =>
-    hunk.role === "candidate" ||
-    candidateHunks.some((item) => sameHunk(item, hunk))
-      ? "AI change"
-      : hunk.role === "fix" || fixHunks.some((item) => sameHunk(item, hunk))
-        ? "Fix"
-        : "Comparison";
-  const selectedHunks = comparisonHunks.length
-    ? [...comparisonHunks]
-    : [...candidateHunks, ...fixHunks];
-  if (comparisonHunks.length) {
-    for (const [role, hunks] of [
-      ["AI change", candidateHunks],
-      ["Fix", fixHunks],
-    ] as const) {
-      if (selectedHunks.some((hunk) => hunkRole(hunk) === role)) continue;
-      for (const hunk of hunks) {
-        if (!selectedHunks.some((selected) => sameHunk(selected, hunk))) {
-          selectedHunks.push(hunk);
-        }
-      }
-    }
-  }
-  const codeHunks = selectedHunks.map((hunk) => {
-    const label = hunkRole(hunk);
+  // Publish resolves the reader-facing list once (scripts/site_preflight
+  // display_hunks); the component only renders it.
+  const codeHunks = (evidence?.display_hunks ?? []).map((hunk) => {
+    const label: DiffRole =
+      hunk.role === "candidate"
+        ? "AI change"
+        : hunk.role === "fix"
+          ? "Fix"
+          : "Comparison";
     const anchors =
       label === "AI change"
         ? (evidence?.required_anchors?.candidate ?? [])

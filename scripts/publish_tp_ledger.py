@@ -24,6 +24,7 @@ from pathlib import Path
 from site_preflight import (
     AUDIT_IDENTIFIER_RE,
     comparison_hunk_role,
+    display_hunks,
     is_pseudo_annotation,
     public_explanation,
     usable_hunk_annotation,
@@ -674,17 +675,7 @@ def scrub_evidence(
         cleaned[key] = hunks
     for hunk in cleaned["comparison_hunks"]:
         hunk["role"] = comparison_hunk_role(cleaned, hunk)
-    displayed = cleaned["comparison_hunks"] or [
-        *cleaned["candidate_hunks"],
-        *cleaned["fix_hunks"],
-    ]
-    seen_annotations: set[str] = set()
-    for hunk in displayed:
-        annotation = str(hunk.get("annotation") or "").strip()
-        if annotation in seen_annotations:
-            hunk["annotation"] = ""
-        elif annotation:
-            seen_annotations.add(annotation)
+    cleaned["display_hunks"] = display_hunks(cleaned)
     return cleaned
 
 

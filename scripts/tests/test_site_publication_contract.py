@@ -1098,9 +1098,35 @@ def test_publisher_removes_pseudo_annotations_and_assigns_hunk_roles() -> None:
     )
     assert deduped is not None
     assert [
-        deduped["candidate_hunks"][0]["annotation"],
-        deduped["fix_hunks"][0]["annotation"],
-    ] == [note, ""]
+        (hunk["role"], hunk["annotation"])
+        for hunk in deduped["display_hunks"]
+    ] == [("candidate", note), ("fix", "")]
+
+
+def test_display_hunks_supplements_a_missing_comparison_role() -> None:
+    candidate = {
+        "file": "src/app.py",
+        "code": "@@ -1 +1 @@\n-old\n+unsafe(user_input)",
+        "role": "candidate",
+    }
+    fix = {
+        "file": "src/app.py",
+        "code": "@@ -1 +1 @@\n-unsafe(user_input)\n+safe(user_input)",
+        "role": "fix",
+    }
+
+    displayed = site_preflight.display_hunks(
+        {
+            "candidate_hunks": [candidate],
+            "fix_hunks": [fix],
+            "comparison_hunks": [fix],
+        }
+    )
+
+    assert [(hunk["code"], hunk["role"]) for hunk in displayed] == [
+        (fix["code"], "fix"),
+        (candidate["code"], "candidate"),
+    ]
 
 
 def test_reader_summaries_cover_public_cases_without_audit_identifiers() -> None:
@@ -1328,7 +1354,7 @@ def test_site_preflight_rejects_an_empty_hunk() -> None:
     assert "CVE-2026-12345: candidate_hunks[0] has no code" in errors
 
 
-def test_site_preflight_rejects_internal_or_repeated_hunk_annotations() -> None:
+def test_site_preflight_dedups_repeated_hunk_annotations_and_rejects_internal_ones() -> None:
     case = _case()
     note = "The unchecked value crosses the command execution boundary here."
     case["code_evidence"]["candidate_hunks"][0]["annotation"] = note
@@ -1343,8 +1369,10 @@ def test_site_preflight_rejects_internal_or_repeated_hunk_annotations() -> None:
     )
     payload = {"cases": [case], "snapshot": {"case_count": 1}}
 
+    displayed = site_preflight.display_hunks(case["code_evidence"])
+    assert [hunk["annotation"] for hunk in displayed] == [note, ""]
     errors, _, _ = site_preflight.evaluate(payload)
-    assert "CVE-2026-12345: displayed hunks repeat the same annotation" in errors
+    assert not any("repeat the same annotation" in error for error in errors)
 
     case["code_evidence"]["fix_hunks"][0]["annotation"] = "class_id=internal-alias"
     errors, _, _ = site_preflight.evaluate(payload)
@@ -1373,7 +1401,7 @@ def test_before_after_hunk_requires_an_independent_annotation() -> None:
         {"cases": [case], "snapshot": {"case_count": 1}}
     )
     expected = (
-        "CVE-2026-12345: comparison_hunks[0] before_after hunk has no "
+        "CVE-2026-12345: display_hunks[0] before_after hunk has no "
         "genuine annotation"
     )
     assert expected in errors

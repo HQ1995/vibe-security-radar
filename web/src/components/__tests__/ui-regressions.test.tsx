@@ -459,7 +459,9 @@ describe("canonical case evidence", () => {
       getResearchCaseById("GHSA-6G6R-Q6GW-W8FG")!,
     );
     const evidence = item.code_evidence!;
-    const annotated = evidence.comparison_hunks.filter((hunk) => hunk.annotation);
+    const annotated = (evidence.display_hunks ?? []).filter(
+      (hunk) => hunk.annotation,
+    );
     expect(annotated.length).toBeGreaterThan(0);
     expect(evidence.required_anchors ?? null).toBeNull();
 
@@ -474,20 +476,20 @@ describe("canonical case evidence", () => {
     const item = structuredClone(
       getResearchCaseById("GHSA-9J5F-PJWJ-62R3")!,
     );
-    Object.assign(item.code_evidence!.comparison_hunks[0], {
+    Object.assign(item.code_evidence!.display_hunks![0], {
       annotation:
         "The newly added PluginImportGuard and both causal mechanisms are visible in this hunk.",
     });
     Object.assign(item.code_evidence!, {
       required_anchors: { candidate: ["PluginImportGuard"] },
     });
-    expect(item?.code_evidence?.comparison_hunks.length).toBeGreaterThan(0);
+    expect(item?.code_evidence?.display_hunks?.length).toBeGreaterThan(0);
 
     const html = renderToStaticMarkup(<CanonicalCaseEvidence item={item!} />);
     const roleBadges = html.match(/>(?:AI change|Fix|Comparison)<\/span>/g) ?? [];
 
     expect(roleBadges).toHaveLength(
-      item!.code_evidence!.comparison_hunks.length,
+      item!.code_evidence!.display_hunks!.length,
     );
     expect(html).toContain(
       "newly added PluginImportGuard and both causal mechanisms",
@@ -497,28 +499,6 @@ describe("canonical case evidence", () => {
     expect(html).not.toContain('<details open=""');
     expect(html).not.toContain("Lines beginning with");
     expect(html).not.toContain("Why this change is shown");
-  });
-
-  it("supplements a fix-only comparison with the missing candidate hunk", () => {
-    const item = structuredClone(
-      getResearchCaseById("GHSA-49MQ-FC6Q-3H46")!,
-    );
-    const candidateHunk = item.code_evidence?.candidate_hunks[0];
-    const fixHunk = item.code_evidence?.fix_hunks[0];
-    expect(candidateHunk).toBeTruthy();
-    expect(fixHunk).toBeTruthy();
-    Object.assign(item.code_evidence!, {
-      candidate_hunks: [candidateHunk!],
-      fix_hunks: [fixHunk!],
-      comparison_hunks: [fixHunk!],
-    });
-
-    const html = renderToStaticMarkup(<CanonicalCaseEvidence item={item} />);
-
-    expect(html.match(/>AI change<\/span>/g)).toHaveLength(1);
-    expect(html.match(/>Fix<\/span>/g)).toHaveLength(1);
-    expect(html).toContain(">AI change</h3>");
-    expect(html).toContain(">Security fix</h3>");
   });
 
   it("links fix hunks to the verified canonical fix commit", () => {
