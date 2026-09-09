@@ -17,6 +17,7 @@ import json
 import re
 import subprocess
 import sys
+from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -40,6 +41,27 @@ UNPATCHED_FIXES = ROOT / "scripts/unpatched-potential-fixes.json"
 SECURITY_FIX_CONTEXTS = ROOT / "scripts/security-fix-contexts.json"
 RELEASE_FALLBACKS = ROOT / "scripts/release-fallbacks.json"
 CURATION = ROOT / "scripts/publication-curation.json"
+
+
+@dataclass(frozen=True)
+class Overlays:
+    """Every committed input publish layers on top of the Neon rows.
+
+    One object instead of nine loose maps: the caller cannot forget to load an
+    overlay, and no overlay lives in module state that a later call could
+    change under a running publish.
+    """
+
+    official: dict[str, dict] = field(default_factory=dict)
+    by_class: dict[str, dict] = field(default_factory=dict)
+    overrides: dict = field(default_factory=dict)
+    chains: dict[str, dict] = field(default_factory=dict)
+    dates: dict[str, str] = field(default_factory=dict)
+    generated_evidence: dict[str, dict] = field(default_factory=dict)
+    unpatched_fixes: dict[str, dict] = field(default_factory=dict)
+    summaries: dict[str, str] = field(default_factory=dict)
+    mechanisms: dict[str, str] = field(default_factory=dict)
+    prose: dict[str, str] = field(default_factory=dict)
 
 _DB_DISPLAY_CACHE: dict[str, dict] = {}
 _DB_DISPLAY_UNAVAILABLE = False
@@ -546,7 +568,9 @@ def trim_mid_sentence(text: str) -> str:
 
 
 def scrub_evidence(
-    evidence: dict | None, case_context: tuple[object, ...] = ()
+    evidence: dict | None,
+    case_context: tuple[object, ...] = (),
+    prose: dict[str, str] | None = None,
 ) -> dict | None:
     if not isinstance(evidence, dict):
         return None
@@ -590,10 +614,10 @@ def scrub_evidence(
                 annotation = ""
             elif (
                 len(annotation) == 180
-                and (prose := ANNOTATION_PROSE.get(annotation[:100]))
-                and prose.startswith(annotation[:100])
+                and (full := (prose or {}).get(annotation[:100]))
+                and full.startswith(annotation[:100])
             ):
-                annotation = prose
+                annotation = full
             elif (
                 len(annotation) == 180
                 and len(full_summary) > 180
@@ -878,14 +902,14 @@ def strip_unpatched_fix_claims(case: dict) -> None:
         for step in evidence.get("steps") or []
         if not re.search(r"\bfix\b", str(step.get("title") or ""), re.I)
     ]
-    for field in (
+    for key in (
         "fix_files",
         "fix_marker",
         "fix_patch_files",
         "fix_patch_sha256",
         "fix_url",
     ):
-        evidence.pop(field, None)
+        evidence.pop(key, None)
 
 
 def release_fallback(case: dict) -> dict | None:
@@ -1254,7 +1278,9 @@ def load_advisory_dates() -> dict[str, str]:
 AI_CASE_SUMMARIES = ROOT / "research/gate-campaign-20260830/summaries-by-alias.json"
 
 
-def ai_summary_overlay(case: dict, *, canonical: bool = False) -> bool:
+def ai_summary_overlay(
+    case: dict, overlays: Overlays, *, canonical: bool = False
+) -> bool:
     # Keep canonical reader copy only when it reads as public prose without audit
     # identifiers; pseudo-prose (path/SHA noise) falls through to the curated map.
     evidence = case.get("code_evidence")
@@ -1270,9 +1296,9 @@ def ai_summary_overlay(case: dict, *, canonical: bool = False) -> bool:
     keys = [case.get("case_id"), *(case.get("aliases") or []), case.get("class_id")]
     summary = next(
         (
-            AI_SUMMARIES.get(str(key or "").upper())
+            overlays.summaries.get(str(key or "").upper())
             for key in keys
-            if AI_SUMMARIES.get(str(key or "").upper())
+            if overlays.summaries.get(str(key or "").upper())
         ),
         None,
     )
@@ -1289,9 +1315,9 @@ def ai_summary_overlay(case: dict, *, canonical: bool = False) -> bool:
     evidence["summary"] = summary
     mechanism = next(
         (
-            AI_SUMMARIES_MECHANISM.get(str(key or "").upper())
+            overlays.mechanisms.get(str(key or "").upper())
             for key in keys
-            if AI_SUMMARIES_MECHANISM.get(str(key or "").upper())
+            if overlays.mechanisms.get(str(key or "").upper())
         ),
         None,
     )
@@ -1320,51 +1346,50 @@ def load_generated_evidence() -> dict[str, dict]:
     return evidence
 
 
-def _index_prose(value: object) -> None:
+def _index_prose(value: object, index: dict[str, str]) -> None:
     """Index long prose strings by their 100-char prefix for annotation recovery."""
     if isinstance(value, dict):
         for item in value.values():
-            _index_prose(item)
+            _index_prose(item, index)
     elif isinstance(value, list):
         for item in value:
-            _index_prose(item)
+            _index_prose(item, index)
     elif isinstance(value, str) and len(value) > 200:
-        ANNOTATION_PROSE[value[:100]] = value
+        index[value[:100]] = value
 
 
-def _load_summary_maps(rows: list[dict]) -> None:
-    global AI_SUMMARIES, AI_SUMMARIES_MECHANISM, ANNOTATION_PROSE
+def _load_summary_maps(
+    rows: list[dict],
+) -> tuple[dict[str, str], dict[str, str], dict[str, str]]:
+    """Return reader summaries, mechanisms, and the truncated-prose index."""
     overlay = _db_display_kind("ai_summaries")
     if not overlay:
         overlay = load_json(AI_CASE_SUMMARIES) or {}
-    AI_SUMMARIES = {}
-    AI_SUMMARIES_MECHANISM = {}
-    ANNOTATION_PROSE = {}
+    summaries: dict[str, str] = {}
+    mechanisms: dict[str, str] = {}
+    prose: dict[str, str] = {}
     for key, value in overlay.items():
         if not isinstance(value, dict):
             continue
         if value.get("summary"):
-            AI_SUMMARIES[str(key).upper()] = str(value["summary"])
+            summaries[str(key).upper()] = str(value["summary"])
         if value.get("mechanism"):
-            AI_SUMMARIES_MECHANISM[str(key).upper()] = str(value["mechanism"])
+            mechanisms[str(key).upper()] = str(value["mechanism"])
     for row in rows:
         try:
-            _index_prose(row)
+            _index_prose(row, prose)
         except (json.JSONDecodeError, ValueError):
             continue
     # Prose recovery for truncated hunk annotations indexes ledger rows only:
     # the round9 adjudication and finalize-patches files are local research
     # artifacts absent from CI, and they resolve no published annotation or
     # mechanism (verified output-identical against the committed site data).
-    for key, mechanism in AI_SUMMARIES_MECHANISM.items():
-        prose = ANNOTATION_PROSE.get(mechanism[:100])
-        if prose and prose.startswith(mechanism):
-            AI_SUMMARIES_MECHANISM[key] = prose
+    for key, mechanism in mechanisms.items():
+        full = prose.get(mechanism[:100])
+        if full and full.startswith(mechanism):
+            mechanisms[key] = full
+    return summaries, mechanisms, prose
 
-
-AI_SUMMARIES: dict[str, str] = {}
-AI_SUMMARIES_MECHANISM: dict[str, str] = {}
-ANNOTATION_PROSE: dict[str, str] = {}
 
 def load_unpatched_fixes() -> dict[str, dict]:
     payload = load_json(UNPATCHED_FIXES)
@@ -1534,7 +1559,7 @@ def apply_case_overrides(
         case["repository_metadata"] = meta
     if spec.get("advisory_url"):
         case["advisory_url"] = str(spec["advisory_url"])
-    for field in (
+    for key in (
         "severity",
         "cwes",
         "mechanism",
@@ -1549,8 +1574,8 @@ def apply_case_overrides(
     ):
         # The case already holds the cleaned canonical value when the ledger
         # owns the field; only fill the gap the ledger leaves.
-        if field in spec and field not in row:
-            case[field] = spec[field]
+        if key in spec and key not in row:
+            case[key] = spec[key]
     if spec.get("aliases_extra"):
         case["aliases"] = unique([*(case.get("aliases") or []), *spec["aliases_extra"]])
     if spec.get("drop_aliases"):
@@ -1632,26 +1657,7 @@ def apply_case_overrides(
     return drop_original_aliases(case)
 
 
-def build_case(
-    row: dict,
-    *,
-    official: dict[str, dict] | None = None,
-    by_class: dict[str, dict] | None = None,
-    overrides: dict | None = None,
-    chains: dict[str, dict] | None = None,
-    dates: dict[str, str] | None = None,
-    generated_evidence: dict[str, dict] | None = None,
-    unpatched_fixes: dict[str, dict] | None = None,
-) -> dict:
-    # Keyword-only: these are eight overlay maps that used to be positional,
-    # so a changed signature silently shifted every argument.
-    official = official or {}
-    by_class = by_class or {}
-    overrides = overrides or {}
-    chains = chains or {}
-    dates = dates or {}
-    generated_evidence = generated_evidence or {}
-    unpatched_fixes = unpatched_fixes or {}
+def build_case(row: dict, overlays: Overlays) -> dict:
     recs = research_records(row)
     rec = recs[0] if recs else None
     ghsas, cves = collect_ids(row, rec)
@@ -1659,7 +1665,7 @@ def build_case(
     aliases = unique([*ghsas, *cves, row["class_id"]])
     aliases = [item for item in aliases if item.upper() != case_id]
     repo = repo_of(row, rec)
-    class_spec = (overrides.get("cases") or {}).get(str(row["class_id"])) or {}
+    class_spec = (overlays.overrides.get("cases") or {}).get(str(row["class_id"])) or {}
     dropped_ids = {
         str(value).upper() for value in class_spec.get("drop_aliases") or []
     }
@@ -1668,8 +1674,8 @@ def build_case(
         cves,
         row["class_id"],
         repo,
-        official,
-        by_class,
+        overlays.official,
+        overlays.by_class,
         dropped_ids,
     )
     if cached and official_hit:
@@ -1713,9 +1719,9 @@ def build_case(
     else:
         case_evidence = next(
             (
-                generated_evidence.get(str(key).upper())
+                overlays.generated_evidence.get(str(key).upper())
                 for key in [case_id, *aliases, row.get("class_id")]
-                if (generated_evidence.get(str(key).upper()) or {}).get(
+                if (overlays.generated_evidence.get(str(key).upper()) or {}).get(
                     "comparison_hunks"
                 )
             ),
@@ -1807,7 +1813,7 @@ def build_case(
             aliases,
             candidates,
             (cached or {}).get("published_at"),
-            dates=dates,
+            dates=overlays.dates,
         ),
         "severity": (cached or {}).get("severity"),
         "cwes": list((cached or {}).get("cwes") or []),
@@ -1845,7 +1851,9 @@ def build_case(
         # otherwise shadow a corrected ledger row forever. The snapshot stays as
         # the fallback for rows the ledger cannot derive.
         "fix_authorship": derive_fix_authorship(rec, list(fixes)) or (cached or {}).get("fix_authorship"),
-        "code_evidence": scrub_evidence(case_evidence, (mechanism, description)),
+        "code_evidence": scrub_evidence(
+            case_evidence, (mechanism, description), overlays.prose
+        ),
         "ir_chain": chain,
     }
     if candidate_sources:
@@ -1859,9 +1867,11 @@ def build_case(
         row,
         "unpatched",
         (rec or {}).get("unpatched")
-        or first_unpatched(case_id, aliases, row.get("class_id"), unpatched_fixes),
+        or first_unpatched(
+            case_id, aliases, row.get("class_id"), overlays.unpatched_fixes
+        ),
     )
-    case = apply_case_overrides(case, row, rec, overrides, chains)
+    case = apply_case_overrides(case, row, rec, overlays.overrides, overlays.chains)
     strip_unpatched_fix_claims(case)
     case["fix_authorship"] = normalize_fix_authorship(
         case.get("fix_authorship"), list(case.get("minimum_fix_set") or [])
@@ -1874,7 +1884,7 @@ def build_case(
             case["case_id"],
             list(case.get("aliases") or []),
             list(case.get("candidate_set") or []),
-            dates=dates,
+            dates=overlays.dates,
         )
     case.pop("research_status", None)
     return strip_cjk_tree(drop_original_aliases(case))
@@ -1911,7 +1921,7 @@ def main(argv: list[str] | None = None) -> None:
             file=sys.stderr,
         )
     rows = load_ledger_rows(from_export=from_export)
-    _load_summary_maps(rows)
+    summaries, mechanisms, prose = _load_summary_maps(rows)
     # Curated reader-facing values (severity, CWEs, references, release ranges,
     # curated steps, dates) have no source in ledger_rows. They live in the
     # committed curation file, never in the previous publish output: publish
@@ -1931,8 +1941,18 @@ def main(argv: list[str] | None = None) -> None:
         # non-empty; fail closed here so a missing table cannot publish dates
         # nobody verified.
         raise SystemExit(f"missing advisory date table: {ADVISORY_DATES}")
-    generated_evidence = load_generated_evidence()
-    unpatched_fixes = load_unpatched_fixes()
+    overlays = Overlays(
+        official=cache[0],
+        by_class=cache[1],
+        overrides=overrides,
+        chains=chains,
+        dates=dates,
+        generated_evidence=load_generated_evidence(),
+        unpatched_fixes=load_unpatched_fixes(),
+        summaries=summaries,
+        mechanisms=mechanisms,
+        prose=prose,
+    )
     drop_class_ids = {
         str(item).lower() for item in (overrides.get("drop_class_ids") or [])
     }
@@ -1947,16 +1967,7 @@ def main(argv: list[str] | None = None) -> None:
             continue
         if "code_evidence" in row:
             canonical_evidence_classes.add(str(row.get("class_id") or "").lower())
-        case = build_case(
-            row,
-            official=cache[0],
-            by_class=cache[1],
-            overrides=overrides,
-            chains=chains,
-            dates=dates,
-            generated_evidence=generated_evidence,
-            unpatched_fixes=unpatched_fixes,
-        )
+        case = build_case(row, overlays)
         case["aliases"] = [
             item
             for item in case["aliases"]
@@ -1968,6 +1979,7 @@ def main(argv: list[str] | None = None) -> None:
     for case in cases:
         if not ai_summary_overlay(
             case,
+            overlays,
             canonical=str(case.get("class_id") or "").lower()
             in canonical_evidence_classes,
         ):

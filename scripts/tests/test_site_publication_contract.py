@@ -239,8 +239,9 @@ def test_publisher_uses_only_sourced_ledger_gates() -> None:
     def build(candidate: dict) -> dict:
         return publish_tp_ledger.build_case(
             candidate,
-            official={case_id: cached},
-            by_class={class_id.upper(): cached},
+            publish_tp_ledger.Overlays(
+                official={case_id: cached}, by_class={class_id.upper(): cached}
+            ),
         )
 
     assert build(row)["gates"] == publish_tp_ledger.DEFAULT_GATES
@@ -254,9 +255,7 @@ def test_publisher_uses_only_sourced_ledger_gates() -> None:
         raise AssertionError("explicit ledger gates without gates_source were accepted")
 
 
-def test_canonical_ledger_code_evidence_overrides_generated_and_cached_data(
-    monkeypatch,
-) -> None:
+def test_canonical_ledger_code_evidence_overrides_generated_and_cached_data() -> None:
     case_id = "GHSA-1111-2222-3333"
     class_id = "alias-evidence"
     ledger_evidence = {
@@ -304,9 +303,11 @@ def test_canonical_ledger_code_evidence_overrides_generated_and_cached_data(
 
     case = publish_tp_ledger.build_case(
         row,
-        official={case_id: cached},
-        by_class={class_id.upper(): cached},
-        generated_evidence={case_id: stale_evidence},
+        publish_tp_ledger.Overlays(
+            official={case_id: cached},
+            by_class={class_id.upper(): cached},
+            generated_evidence={case_id: stale_evidence},
+        ),
     )
 
     assert case["code_evidence"]["summary"] == ledger_evidence["summary"]
@@ -315,15 +316,10 @@ def test_canonical_ledger_code_evidence_overrides_generated_and_cached_data(
         ledger_evidence["candidate_hunks"][0]["code"]
     )
     fallback = "A curated reader summary replaces non-canonical cached evidence."
-    monkeypatch.setattr(
-        publish_tp_ledger,
-        "AI_SUMMARIES",
-        {case_id: fallback},
-    )
-    monkeypatch.setattr(publish_tp_ledger, "AI_SUMMARIES_MECHANISM", {})
-    assert publish_tp_ledger.ai_summary_overlay(case, canonical=True)
+    overlays = publish_tp_ledger.Overlays(summaries={case_id: fallback})
+    assert publish_tp_ledger.ai_summary_overlay(case, overlays, canonical=True)
     assert case["code_evidence"]["summary"] == ledger_evidence["summary"]
-    assert publish_tp_ledger.ai_summary_overlay(case)
+    assert publish_tp_ledger.ai_summary_overlay(case, overlays)
     assert case["code_evidence"]["summary"] == fallback
 
 
@@ -351,9 +347,11 @@ def test_canonical_ir_fields_reject_cached_and_indexed_chains(canonical: dict) -
 
     case = publish_tp_ledger.build_case(
         row,
-        official={cached["case_id"]: cached},
-        overrides=overrides,
-        chains=indexed,
+        publish_tp_ledger.Overlays(
+            official={cached["case_id"]: cached},
+            overrides=overrides,
+            chains=indexed,
+        ),
     )
 
     assert case["contribution_class"] == "AI_DIRECT_ROOT"
@@ -397,7 +395,7 @@ def test_canonical_ir_chain_is_not_backfilled_or_rewritten() -> None:
 
 def test_explicit_scope_and_chain_conflict_still_fails_publication() -> None:
     row = {**_ledger_row(), "site_scope": "AI_ROOT_CAUSE", "ir_chain": _ir_chain()}
-    case = publish_tp_ledger.build_case(row)
+    case = publish_tp_ledger.build_case(row, publish_tp_ledger.Overlays())
 
     assert case["contribution_class"] == "AI_DIRECT_ROOT"
     assert case["ir_chain"] == _ir_chain()
@@ -420,7 +418,10 @@ def test_publisher_keeps_legacy_ir_fallbacks(source: str) -> None:
         indexed[cached["case_id"]] = _ir_chain()
 
     case = publish_tp_ledger.build_case(
-        row, official={cached["case_id"]: cached}, chains=indexed
+        row,
+        publish_tp_ledger.Overlays(
+            official={cached["case_id"]: cached}, chains=indexed
+        ),
     )
 
     assert case["contribution_class"] == "AI_INCOMPLETE_REMEDIATION"
@@ -439,7 +440,7 @@ def test_publisher_uses_only_the_accepted_research_projection() -> None:
     }
     assert publish_tp_ledger.research_records(row) == [row["causal_research"]]
 
-    case = publish_tp_ledger.build_case(row)
+    case = publish_tp_ledger.build_case(row, publish_tp_ledger.Overlays())
     evidence_case = build_missing_code_evidence.ledger_case(row)
     for result in (case, evidence_case):
         assert result["case_id"] == row["causal_research"]["case_id"]
@@ -469,7 +470,7 @@ def test_publisher_omits_internal_research_after_validation() -> None:
     )
     row["assessment_ids"] = ["private-history-marker"]
 
-    case = publish_tp_ledger.build_case(row)
+    case = publish_tp_ledger.build_case(row, publish_tp_ledger.Overlays())
 
     assert "missing_fix" not in case["publication_issues"]
     assert "missing_fixed_release" not in case["publication_issues"]
@@ -490,8 +491,10 @@ def test_canonical_empty_reader_copy_does_not_use_stale_overlays(empty: object) 
     cached = {**_case(), "repository": "acme/app", **stale}
     case = publish_tp_ledger.build_case(
         row,
-        official={cached["case_id"]: cached},
-        overrides={"cases": {row["class_id"]: stale}},
+        publish_tp_ledger.Overlays(
+            official={cached["case_id"]: cached},
+            overrides={"cases": {row["class_id"]: stale}},
+        ),
     )
 
     assert all(case[field] is None for field in fields)
@@ -1046,13 +1049,7 @@ def test_site_preflight_rejects_an_unexplained_origin_gap() -> None:
     assert expected not in errors
 
 
-def test_publisher_removes_pseudo_annotations_and_assigns_hunk_roles(
-    monkeypatch,
-) -> None:
-    # Read committed summary overlays: the DB kind is metered and this test
-    # must behave the same with and without DATABASE_URL.
-    monkeypatch.setattr(publish_tp_ledger, "_db_display_kind", lambda kind: {})
-    publish_tp_ledger._load_summary_maps([])
+def test_publisher_removes_pseudo_annotations_and_assigns_hunk_roles() -> None:
     summary = "The candidate change passed an unchecked value into a command runner."
     candidate = {
         "file": "src/app.py",
