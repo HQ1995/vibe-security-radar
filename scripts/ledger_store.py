@@ -11,7 +11,6 @@ import uuid
 from collections import defaultdict
 from datetime import datetime
 from pathlib import Path
-from typing import Any
 
 from audit_envelope import violations
 

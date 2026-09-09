@@ -25,7 +25,6 @@ from site_preflight import (
     comparison_hunk_role,
     is_pseudo_annotation,
     public_explanation,
-    strip_annotation_prefix,
     usable_hunk_annotation,
 )
 
@@ -305,10 +304,6 @@ def official_ids_of(case: dict) -> list[str]:
             if is_official_id(str(value or ""))
         ]
     )
-
-
-def sha_prefix(value: str) -> str:
-    return value.lower()[:12]
 
 
 def sha_overlap(left: list[str], right: list[str]) -> bool:
