@@ -45,47 +45,42 @@ DATE_FALLBACK = (
     ROOT / "research/orchestrator-260814-ghsa200-canvas/sweep/ghsa-first-party-dates.json"
 )
 
-_DB_DISPLAY_CACHE: dict[str, dict] | None = None
-
-
-def _db_display() -> dict[str, dict] | None:
-    """Load the ledger_display table from Neon as a {kind: value} map.
-
-    Overlay only. Case rows come from ledger_rows and do not fall back to
-    jsonl. Display kinds still fall back to committed research/ files when
-    this table is missing, so a display miss cannot block a row publish.
-    """
-    global _DB_DISPLAY_CACHE
-    if _DB_DISPLAY_CACHE is not None:
-        return _DB_DISPLAY_CACHE
-    if not os.environ.get("DATABASE_URL"):
-        _DB_DISPLAY_CACHE = {}
-        return _DB_DISPLAY_CACHE
-    try:
-        sys.path.insert(0, str(ROOT / "scripts"))
-        from ledger_store import connect
-
-        out: dict[str, dict] = {}
-        with connect(direct=True) as conn:
-            rows = conn.execute(
-                "SELECT kind, value_json FROM ledger_display"
-            ).fetchall()
-        for kind, value in rows:
-            if isinstance(value, dict):
-                out[str(kind)] = value
-        _DB_DISPLAY_CACHE = out
-        return out
-    except Exception as exc:  # noqa: BLE001 - never break publication
-        print(f"ledger_display unavailable (falling back to files): {exc}", file=sys.stderr)
-        _DB_DISPLAY_CACHE = {}
-        return _DB_DISPLAY_CACHE
+_DB_DISPLAY_CACHE: dict[str, dict] = {}
+_DB_DISPLAY_UNAVAILABLE = False
 
 
 def _db_display_kind(kind: str) -> dict:
-    display = _db_display()
-    if not display:
-        return {}
-    return display.get(kind) or {}
+    """Fetch one ledger_display kind from Neon, cached per process.
+
+    Only the requested kind is fetched; the full table is ~2.4 MB and callers
+    such as the postbuild ir-chain test need a single small kind. Overlay only:
+    case rows come from ledger_rows and never fall back to jsonl, while a
+    display miss falls back to committed research/ files at the call site.
+    """
+    global _DB_DISPLAY_UNAVAILABLE
+    if kind not in _DB_DISPLAY_CACHE and not _DB_DISPLAY_UNAVAILABLE:
+        if not os.environ.get("DATABASE_URL"):
+            _DB_DISPLAY_UNAVAILABLE = True
+        else:
+            try:
+                sys.path.insert(0, str(ROOT / "scripts"))
+                from ledger_store import connect
+
+                with connect(direct=True) as conn:
+                    row = conn.execute(
+                        "SELECT value_json FROM ledger_display WHERE kind = %s",
+                        (kind,),
+                    ).fetchone()
+                if row is not None and isinstance(row[0], dict):
+                    _DB_DISPLAY_CACHE[kind] = row[0]
+            except Exception as exc:  # noqa: BLE001 - never break publication
+                print(
+                    f"ledger_display unavailable (falling back to files): {exc}",
+                    file=sys.stderr,
+                )
+                _DB_DISPLAY_UNAVAILABLE = True
+        _DB_DISPLAY_CACHE.setdefault(kind, {})
+    return _DB_DISPLAY_CACHE.get(kind) or {}
 
 TP_STATUSES = {"AI_ROOT_CAUSE", "AI_CODE_FLAWED"}
 
@@ -1328,29 +1323,22 @@ def _load_summary_maps(rows: list[dict]) -> None:
             _index_prose(row)
         except (json.JSONDecodeError, ValueError):
             continue
-    db_round9 = _db_display_kind("round9_adjudication")
-    if db_round9:
-        for value in db_round9.values():
-            _index_prose(value)
-    else:
-        for prose_path in sorted(ROUND_ADJUDICATION.glob("*.json")):
-            try:
-                _index_prose(json.loads(prose_path.read_text(encoding="utf-8")))
-            except (json.JSONDecodeError, ValueError, OSError):
+    # Prose recovery for truncated hunk annotations reads local research/
+    # files only. The round9_adjudication and finalize_patches display kinds
+    # (1.9 MB per publish) are not fetched: verified output-identical.
+    for prose_path in sorted(ROUND_ADJUDICATION.glob("*.json")):
+        try:
+            _index_prose(json.loads(prose_path.read_text(encoding="utf-8")))
+        except (json.JSONDecodeError, ValueError, OSError):
+            continue
+    for patch_path in sorted(ROOT.glob("research/*/finalize-patches.jsonl")):
+        for line in patch_path.read_text(encoding="utf-8").splitlines():
+            if not line.strip():
                 continue
-    db_patches = _db_display_kind("finalize_patches")
-    if db_patches:
-        for value in db_patches.values():
-            _index_prose(value)
-    else:
-        for patch_path in sorted(ROOT.glob("research/*/finalize-patches.jsonl")):
-            for line in patch_path.read_text(encoding="utf-8").splitlines():
-                if not line.strip():
-                    continue
-                try:
-                    _index_prose(json.loads(line))
-                except (json.JSONDecodeError, ValueError):
-                    continue
+            try:
+                _index_prose(json.loads(line))
+            except (json.JSONDecodeError, ValueError):
+                continue
     for key, mechanism in AI_SUMMARIES_MECHANISM.items():
         prose = ANNOTATION_PROSE.get(mechanism[:100])
         if prose and prose.startswith(mechanism):
