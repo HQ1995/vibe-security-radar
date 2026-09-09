@@ -857,29 +857,9 @@ def first_unpatched(
 
 
 def _is_unpatched(case: dict) -> bool:
+    """Unpatched is a reviewed record; prose keywords never suppress a gap."""
     record = case.get("unpatched")
-    if isinstance(record, dict) and record.get("confirmed") is True:
-        return True
-    blob = json.dumps(
-        {
-            "research_status": case.get("research_status"),
-            "mechanism": case.get("mechanism"),
-            "scope": case.get("scope_statement"),
-            "description": case.get("description"),
-            "references": case.get("references"),
-        },
-        ensure_ascii=False,
-    ).lower()
-    return bool(
-        re.search(r"\bunpatched\b", blob)
-        or re.search(r"\bno fix\b", blob)
-        or re.search(r"\bno fix commit\b", blob)
-        or re.search(r"\bno fixing commit\b", blob)
-        or re.search(r"\bnever fixed\b", blob)
-        or re.search(r"\bno fix released\b", blob)
-        or re.search(r"\bno fix was ever released\b", blob)
-        or re.search(r"\bvulnerability remains\b", blob)
-    )
+    return isinstance(record, dict) and record.get("confirmed") is True
 
 
 def strip_unpatched_fix_claims(case: dict) -> None:
@@ -1509,7 +1489,6 @@ def apply_case_overrides(
         "mechanism",
         "description",
         "references",
-        "scope_statement",
         "fix_authorship",
         "vulnerable_release",
         "fixed_release",
@@ -1629,9 +1608,6 @@ def build_case(row: dict, overlays: Overlays) -> dict:
         cached_evidence.get("summary"),
         mechanism,
     )
-    scope_statement = public_prose(
-        cached.get("scope_statement") if cached else None,
-    )
     language = ((cached or {}).get("repository_metadata") or {}).get("language") or ""
     if "code_evidence" in row:
         case_evidence = row.get("code_evidence")
@@ -1741,9 +1717,6 @@ def build_case(row: dict, overlays: Overlays) -> dict:
         "description": ledger_value(row, "description", description, clean=public_prose),
         "references": list((cached or {}).get("references") or []),
         "mechanism": ledger_value(row, "mechanism", mechanism, clean=public_prose),
-        "scope_statement": ledger_value(
-            row, "scope_statement", scope_statement, clean=public_prose
-        ),
         "cause_category": (cached or {}).get("cause_category")
         or cause_of(
             first_text(
@@ -1764,7 +1737,6 @@ def build_case(row: dict, overlays: Overlays) -> dict:
             ),
             "candidate_count": len(candidates),
             "named_candidate_count": len(candidates),
-            "note": public_text(marker),
         },
         # The ledger is the source of truth: a derived authorship wins over the
         # committed snapshot, which can hold a stale non-null value that would
@@ -1778,9 +1750,6 @@ def build_case(row: dict, overlays: Overlays) -> dict:
         case["candidate_sources"] = candidate_sources
     if candidate_fix_edges:
         case["candidate_fix_edges"] = candidate_fix_edges
-    case["research_status"] = " ".join(
-        str((rec or {}).get(key) or "") for key in ("remaining_gap", "evidence")
-    ).strip() or None
     case["unpatched"] = ledger_value(
         row,
         "unpatched",
@@ -1804,7 +1773,6 @@ def build_case(row: dict, overlays: Overlays) -> dict:
             list(case.get("candidate_set") or []),
             dates=overlays.dates,
         )
-    case.pop("research_status", None)
     return drop_original_aliases(case)
 
 def main(argv: list[str] | None = None) -> None:
@@ -1981,6 +1949,22 @@ def main(argv: list[str] | None = None) -> None:
         raise SystemExit(
             "publication invariants failed:\n" + "\n".join(identity_errors[:20])
         )
+
+    # Public payload is a projection of the ledger row: official advisory IDs
+    # only (class_id and its alias-<hash> twin are internal lookup keys, used
+    # above) and no field the site never renders. site_preflight enforces the
+    # same key set on the staged file.
+    for case in cases:
+        case["aliases"] = [
+            item
+            for item in case["aliases"]
+            if GHSA_RE.match(item) or CVE_RE.match(item)
+        ]
+        case.pop("class_id", None)
+        case.pop("ledger_status", None)
+        evidence = case.get("code_evidence")
+        if isinstance(evidence, dict):
+            evidence.pop("ai_marker", None)
 
     staged = OUT.with_suffix(".json.staging")
     staged.write_text(json.dumps(payload, indent=1, ensure_ascii=False) + "\n")

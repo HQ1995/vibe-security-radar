@@ -506,7 +506,7 @@ function introducedBy(chain: NonNullable<ResearchCase["ir_chain"]>): string {
 
 function caseIdentities(item: ResearchCase): Set<string> {
   return new Set(
-    [item.case_id, item.class_id, ...item.aliases]
+    [item.case_id, ...item.aliases]
       .filter((value): value is string => Boolean(value))
       .map((value) => value.toUpperCase()),
   );

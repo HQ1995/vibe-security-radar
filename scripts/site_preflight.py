@@ -49,6 +49,61 @@ LIVE_WITNESS_VERIFICATION_METHOD = (
 )
 PUBLICATION_STATUSES = ("confirmed", "qualified", "provisional")
 HUNK_ROLES = ("candidate", "fix", "before_after")
+# The published case is a projection of the ledger row. Every key here is
+# reader-facing or consumed by these checks; anything else is internal
+# metadata that must not reach the site.
+PUBLIC_CASE_KEYS = frozenset(
+    {
+        "case_id",
+        "aliases",
+        "repository",
+        "repository_metadata",
+        "contribution_class",
+        "candidate_set",
+        "candidate_sources",
+        "carrier_set",
+        "candidate_fix_edges",
+        "minimum_fix_set",
+        "publication_status",
+        "publication_issues",
+        "advisory_url",
+        "gates",
+        "vulnerable_release",
+        "fixed_release",
+        "published_at",
+        "severity",
+        "cwes",
+        "description",
+        "references",
+        "mechanism",
+        "cause_category",
+        "ai_provenance",
+        "fix_authorship",
+        "code_evidence",
+        "unpatched",
+        "ir_chain",
+    }
+)
+PUBLIC_EVIDENCE_KEYS = frozenset(
+    {
+        "display_hunks",
+        "steps",
+        "summary",
+        "required_anchors",
+        "mechanism",
+        "candidate_url",
+        "fix_url",
+        "candidate_patch_sha256",
+        "fix_patch_sha256",
+        "advisory_url",
+        "fix_marker",
+        "fix_files",
+        "fix_patch_files",
+        "candidate_patch_files",
+        "annotation_mode",
+        "unavailable_reason",
+    }
+)
 ANNOTATION_PREFIX_RE = re.compile(
     r"^(?:AI introduced this behavior|AI removed a constraint|The fix adds):\s*",
     re.I,
@@ -875,6 +930,16 @@ def evaluate(
         else {}
     )
     snapshot = payload.get("snapshot") or {}
+    # The payload ships official advisory IDs only, so a case cannot look up
+    # its own override by class_id; every declared extra GHSA counts as
+    # verified and the seen_official check below still rejects cross-case
+    # claims.
+    declared_extra_ids = {
+        str(item).upper()
+        for spec in (publication_overrides.get("cases") or {}).values()
+        if isinstance(spec, dict)
+        for item in (spec.get("aliases_extra") or [])
+    }
     errors: list[str] = []
     warnings: list[str] = []
     seen_official: dict[str, str] = {}
@@ -930,6 +995,23 @@ def evaluate(
     for case in cases:
         case_id = str(case.get("case_id") or "")
         key = case_id.upper()
+        leaked = [
+            str(item)
+            for item in case.get("aliases") or []
+            if not (GHSA_RE.match(str(item)) or CVE_RE.match(str(item)))
+        ]
+        leaked.extend(sorted(set(case) - PUBLIC_CASE_KEYS))
+        leaked.extend(
+            f"code_evidence.{name}"
+            for name in sorted(
+                set(case.get("code_evidence") or {}) - PUBLIC_EVIDENCE_KEYS
+            )
+        )
+        if leaked:
+            errors.append(
+                f"{case_id}: internal identifiers in public payload: "
+                + ", ".join(leaked)
+            )
         for leak_path in public_cjk_paths(case):
             errors.append(f"{case_id}: CJK leaked into public fields at {leak_path}")
         status = str(case.get("publication_status") or "")
@@ -1328,17 +1410,10 @@ def evaluate(
             )
         ghsas = [item for item in ids if GHSA_RE.match(item)]
         if len(ghsas) > 1:
-            verified = {
-                str(item).upper()
-                for item in (
-                    (((publication_overrides.get("cases") or {}).get(case.get("class_id")) or {}).get("aliases_extra"))
-                    or []
-                )
-            }
             unexpected = [
                 item
                 for item in ghsas
-                if item.upper() != key and item.upper() not in verified
+                if item.upper() != key and item.upper() not in declared_extra_ids
             ]
             if unexpected:
                 errors.append(f"{case_id}: multiple GHSAs {ghsas}")

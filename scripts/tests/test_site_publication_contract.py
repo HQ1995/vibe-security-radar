@@ -186,6 +186,23 @@ def test_site_preflight_rejects_a_fail_gate_on_a_published_case() -> None:
     )
 
 
+def test_site_preflight_rejects_internal_identifiers_in_public_payload() -> None:
+    case = _case()
+    case["class_id"] = "alias-abcdef123456"
+    case["aliases"] = ["GHSA-1111-2222-3333", "alias-abcdef123456"]
+    case["code_evidence"]["ai_marker"] = "Co-Authored-By: Claude"
+
+    errors, _, _ = site_preflight.evaluate(
+        {"cases": [case], "snapshot": {"case_count": 1}}
+    )
+
+    assert any(
+        case["case_id"] in error and "internal identifiers" in error
+        for error in errors
+    )
+    assert any("code_evidence.ai_marker" in error for error in errors)
+
+
 @pytest.mark.parametrize("release_gate", ["NARROW", "UNKNOWN"])
 def test_nonpass_release_gate_does_not_require_release_facts(
     release_gate: str,
@@ -463,8 +480,6 @@ def test_publisher_omits_internal_research_after_validation() -> None:
 
     case = publish_tp_ledger.build_case(row, publish_tp_ledger.Overlays())
 
-    assert "missing_fix" not in case["publication_issues"]
-    assert "missing_fixed_release" not in case["publication_issues"]
     published = json.dumps(case)
     for internal in (
         "research_status", "remaining_gap", "assessment_ids", "assessment_id",
@@ -474,11 +489,37 @@ def test_publisher_omits_internal_research_after_validation() -> None:
         assert internal not in published
 
 
+def test_unpatched_comes_from_a_record_not_from_prose() -> None:
+    """A prose phrase must not silently suppress a missing fix."""
+    row = _ledger_row()
+    row["causal_research"].update(
+        {"fix_sha": None, "remaining_gap": "Unpatched; no fix released."}
+    )
+    case = publish_tp_ledger.build_case(row, publish_tp_ledger.Overlays())
+    assert "missing_fix" in case["publication_issues"]
+    assert "missing_fixed_release" in case["publication_issues"]
+
+    case["unpatched"] = {
+        "confirmed": True,
+        "reason": "No released fix.",
+        "potential_fix": {
+            "approach": "Validate the path before use.",
+            "rationale": "Closes the traversal.",
+            "reference_commit": None,
+            "reference_url": None,
+        },
+    }
+    assert "missing_fix" not in publish_tp_ledger.publication_issues(case)
+
+
 @pytest.mark.parametrize("empty", [None, ""])
 def test_canonical_empty_reader_copy_does_not_use_stale_overlays(empty: object) -> None:
-    fields = ("description", "mechanism", "scope_statement")
+    fields = ("description", "mechanism")
     row = {**_ledger_row(), **dict.fromkeys(fields, empty)}
-    stale = dict.fromkeys(fields, "Stale reader copy describes a rejected mechanism.")
+    stale = dict.fromkeys(
+        (*fields, "scope_statement"),
+        "Stale reader copy describes a rejected mechanism.",
+    )
     cached = {**_case(), "repository": "acme/app", **stale}
     case = publish_tp_ledger.build_case(
         row,
@@ -489,6 +530,7 @@ def test_canonical_empty_reader_copy_does_not_use_stale_overlays(empty: object) 
     )
 
     assert all(case[field] is None for field in fields)
+    assert "scope_statement" not in case
 
 
 def test_publish_drops_internal_audit_prose_from_canonical_fields() -> None:
@@ -502,12 +544,13 @@ def test_publish_drops_internal_audit_prose_from_canonical_fields() -> None:
         {**_ledger_row(), **internal}, publish_tp_ledger.Overlays()
     )
 
-    assert all(case[field] is None for field in internal)
+    assert all(case[field] is None for field in ("description", "mechanism"))
+    assert "scope_statement" not in case
 
 
 def test_publish_keeps_reader_prose_in_canonical_fields() -> None:
     prose = "The AI-linked change let untrusted input reach a privileged operation."
-    fields = ("description", "mechanism", "scope_statement")
+    fields = ("description", "mechanism")
     case = publish_tp_ledger.build_case(
         {**_ledger_row(), **dict.fromkeys(fields, prose)},
         publish_tp_ledger.Overlays(),
@@ -2033,7 +2076,7 @@ def test_ir_chain_records_keep_atomic_qf5v_and_frvj_origin() -> None:
 def test_replaced_identities_publish_no_dropped_ids_or_stale_shas() -> None:
     root = Path(__file__).resolve().parents[2]
     cases = {
-        case["class_id"]: case
+        case["case_id"]: case
         for case in json.loads(
             (root / "web/src/generated/research-data.json").read_text()
         )["cases"]
@@ -2061,8 +2104,8 @@ def test_replaced_identities_publish_no_dropped_ids_or_stale_shas() -> None:
             },
         },
     }
-    for class_id, expected in replacements.items():
-        case = cases[class_id]
+    for expected in replacements.values():
+        case = cases[expected["case_id"]]
         evidence = case["code_evidence"]
         assert case["case_id"] == expected["case_id"]
         assert case["candidate_set"] == [expected["candidate"]]

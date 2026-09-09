@@ -19,7 +19,6 @@ export interface ResearchCodeHunk {
 }
 
 export interface ResearchCodeEvidence {
-  readonly ai_marker: string | null;
   readonly fix_marker?: string | null;
   readonly candidate_url: string;
   readonly fix_url: string;
@@ -61,7 +60,6 @@ export interface ResearchUnpatched {
 
 export interface ResearchCase {
   readonly case_id: string;
-  readonly class_id?: string;
   readonly aliases: readonly string[];
   readonly repository: string | null;
   readonly repository_metadata: {
@@ -70,7 +68,6 @@ export interface ResearchCase {
     readonly archived: boolean;
   };
   readonly contribution_class: string;
-  readonly ledger_status?: "AI_ROOT_CAUSE" | "AI_CODE_FLAWED";
   readonly candidate_set: readonly string[];
   readonly candidate_sources?: readonly {
     readonly sha: string;
@@ -96,14 +93,12 @@ export interface ResearchCase {
   readonly description: string | null;
   readonly references: readonly string[];
   readonly mechanism: string | null;
-  readonly scope_statement: string | null;
   readonly cause_category: string | null;
   readonly ai_provenance: {
     readonly family: string | null;
     readonly coverage: "complete" | "generic" | "partial" | "unresolved";
     readonly candidate_count: number;
     readonly named_candidate_count: number;
-    readonly note?: string;
   };
   readonly fix_authorship: {
     readonly classification: "ai_assisted" | "no_ai_marker" | "mixed";
@@ -255,9 +250,6 @@ export function getResearchCaseById(id: string): ResearchCase | null {
   const normalized = id.toUpperCase();
   return (
     snapshot.cases.find((item) => item.case_id.toUpperCase() === normalized) ??
-    snapshot.cases.find(
-      (item) => item.class_id?.toUpperCase() === normalized,
-    ) ??
     snapshot.cases.find((item) =>
       item.aliases.some((alias) => alias.toUpperCase() === normalized),
     ) ??
