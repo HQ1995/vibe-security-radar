@@ -35,17 +35,12 @@ OVERRIDES = ROOT / "scripts/tp_publication_overrides.json"
 IR_CHAINS = ROOT / "research/orchestrator-260814-irchains-sol/ir-chains.jsonl"
 IR_CHAIN_UPDATES = ROOT / "research/ir-chain-origin-rereview-20260830/ir-chain-updates.jsonl"
 ADVISORY_DATES = ROOT / "scripts/first-party-advisory-dates.json"
-ADVISORY_RELEASES = ROOT / "scripts/first-party-advisory-releases.json"
 GENERATED_EVIDENCE = ROOT / "scripts/generated-code-evidence.json"
 UNPATCHED_FIXES = ROOT / "scripts/unpatched-potential-fixes.json"
-REPO_LANGUAGES = ROOT / "scripts/repo-language-map.json"
 SITE_PREFLIGHT_ALLOWLIST = ROOT / "scripts/site_preflight_allowlist.json"
 SECURITY_FIX_CONTEXTS = ROOT / "scripts/security-fix-contexts.json"
 RELEASE_FALLBACKS = ROOT / "scripts/release-fallbacks.json"
 CURATION = ROOT / "scripts/publication-curation.json"
-DATE_FALLBACK = (
-    ROOT / "research/orchestrator-260814-ghsa200-canvas/sweep/ghsa-first-party-dates.json"
-)
 
 _DB_DISPLAY_CACHE: dict[str, dict] = {}
 _DB_DISPLAY_UNAVAILABLE = False
@@ -566,9 +561,6 @@ def scrub_evidence(
         if len(str(cleaned.get("summary") or "")) > 180
         else (cleaned.get("mechanism") or cleaned.get("summary") or "")
     )
-    fulltexts = _db_display_kind("annotation_fulltext")
-    if not fulltexts:
-        fulltexts = load_json(ANNOTATION_FULLTEXTS) or {}
     annotation_context = tuple(
         str(value).strip()
         for value in (
@@ -585,8 +577,6 @@ def scrub_evidence(
             annotation = str(item.get("annotation") or "")
             if CJK_RE.search(annotation):
                 annotation = ""
-            elif fulltext := fulltexts.get(annotation):
-                annotation = fulltext
             elif (
                 len(annotation) == 180
                 and (prose := ANNOTATION_PROSE.get(annotation[:100]))
@@ -1234,27 +1224,23 @@ def ir_chain_of(row: dict | None, fallback: dict | None) -> dict | None:
 
 
 def load_advisory_dates() -> dict[str, str]:
+    """Advisory publish dates keyed by GHSA/CVE.
+
+    Doubles as the date-traceability gate in publication_errors: every
+    published_at must appear here. Never publish a commit date in its place.
+    """
     dates: dict[str, str] = {}
-    db_dates = _db_display_kind("advisory_dates_fallback")
-    for path in (DATE_FALLBACK, ADVISORY_DATES):
-        if str(path) == str(DATE_FALLBACK) and db_dates:
-            for key, value in db_dates.items():
-                text = str(value or "")[:10]
-                if key and len(text) >= 10 and text[4] == "-":
-                    dates[str(key).upper()] = text
-            continue
-        payload = load_json(path)
-        if not isinstance(payload, dict):
-            continue
-        for key, value in payload.items():
-            text = str(value or "")[:10]
-            if key and len(text) >= 10 and text[4] == "-":
-                dates[str(key).upper()] = text
+    payload = load_json(ADVISORY_DATES)
+    if not isinstance(payload, dict):
+        return dates
+    for key, value in payload.items():
+        text = str(value or "")[:10]
+        if key and len(text) >= 10 and text[4] == "-":
+            dates[str(key).upper()] = text
     return dates
 
 
 AI_CASE_SUMMARIES = ROOT / "research/gate-campaign-20260830/summaries-by-alias.json"
-ANNOTATION_FULLTEXTS = ROOT / "research/gate-campaign-20260830/annotation-fulltext.json"
 
 
 def ai_summary_overlay(case: dict, *, canonical: bool = False) -> bool:
@@ -1369,28 +1355,6 @@ AI_SUMMARIES: dict[str, str] = {}
 AI_SUMMARIES_MECHANISM: dict[str, str] = {}
 ANNOTATION_PROSE: dict[str, str] = {}
 
-def load_repo_languages() -> dict[str, str]:
-    payload = load_json(REPO_LANGUAGES)
-    if not isinstance(payload, dict):
-        return {}
-    out: dict[str, str] = {}
-    for key, value in payload.items():
-        if key and value:
-            out[str(key).lower()] = str(value)
-    return out
-
-
-def load_advisory_releases() -> dict[str, dict]:
-    payload = load_json(ADVISORY_RELEASES)
-    if not isinstance(payload, dict):
-        return {}
-    out: dict[str, dict] = {}
-    for key, value in payload.items():
-        if isinstance(value, dict) and (value.get("vulnerable") or value.get("fixed")):
-            out[str(key).upper()] = value
-    return out
-
-
 def load_unpatched_fixes() -> dict[str, dict]:
     payload = load_json(UNPATCHED_FIXES)
     if isinstance(payload, list):
@@ -1414,17 +1378,6 @@ def load_unpatched_fixes() -> dict[str, dict]:
     }
 
 
-
-
-def release_from_advisory(value: object, kind: str) -> dict | None:
-    if not value:
-        return None
-    text = str(value).strip()
-    if not text:
-        return None
-    if SHA_RE.match(text):
-        return {"kind": "git_sha", "sha": text, "version": text, "tag": None}
-    return {"kind": kind, "version": text, "tag": None}
 
 
 def first_party_date(*keys: object, dates: dict[str, str]) -> str | None:
@@ -1673,10 +1626,8 @@ def build_case(
     overrides: dict,
     chains: dict[str, dict],
     dates: dict[str, str],
-    releases: dict[str, dict],
     generated_evidence: dict[str, dict],
     unpatched_fixes: dict[str, dict],
-    repo_languages: dict[str, str],
 ) -> dict:
     recs = research_records(row)
     rec = recs[0] if recs else None
@@ -1731,7 +1682,7 @@ def build_case(
     scope_statement = public_text(
         cached.get("scope_statement") if cached else None,
     )
-    language = ((cached or {}).get("repository_metadata") or {}).get("language") or repo_languages.get((repo or "").lower()) or ""
+    language = ((cached or {}).get("repository_metadata") or {}).get("language") or ""
     if "code_evidence" in row:
         case_evidence = row.get("code_evidence")
         if case_evidence is not None and not isinstance(case_evidence, dict):
@@ -1826,32 +1777,10 @@ def build_case(
         "gates": gates,
         "vulnerable_release": row.get("vulnerable_release")
         if "vulnerable_release" in row
-        else (cached or {}).get("vulnerable_release")
-        or release_from_advisory(
-            next(
-                (
-                    (releases.get(str(key).upper()) or {}).get("vulnerable")
-                    for key in [case_id, *aliases]
-                    if (releases.get(str(key).upper()) or {}).get("vulnerable")
-                ),
-                None,
-            ),
-            "advisory_range",
-        ),
+        else (cached or {}).get("vulnerable_release"),
         "fixed_release": row.get("fixed_release")
         if "fixed_release" in row
-        else (cached or {}).get("fixed_release")
-        or release_from_advisory(
-            next(
-                (
-                    (releases.get(str(key).upper()) or {}).get("fixed")
-                    for key in [case_id, *aliases]
-                    if (releases.get(str(key).upper()) or {}).get("fixed")
-                ),
-                None,
-            ),
-            "advisory_version",
-        ),
+        else (cached or {}).get("fixed_release"),
         "published_at": first_party_date(
             case_id,
             aliases,
@@ -1974,10 +1903,8 @@ def main(argv: list[str] | None = None) -> None:
         chain["_publication_override"] = True
     chains.update(chain_updates)
     dates = load_advisory_dates()
-    releases = load_advisory_releases()
     generated_evidence = load_generated_evidence()
     unpatched_fixes = load_unpatched_fixes()
-    repo_languages = load_repo_languages()
     drop_class_ids = {
         str(item).lower() for item in (overrides.get("drop_class_ids") or [])
     }
@@ -1999,10 +1926,8 @@ def main(argv: list[str] | None = None) -> None:
             overrides,
             chains,
             dates,
-            releases,
             generated_evidence,
             unpatched_fixes,
-            repo_languages,
         )
         case["aliases"] = [
             item

@@ -10,7 +10,6 @@ from pathlib import Path
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
-import sys
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from verify_cache import load as cache_load, save as cache_save, fresh as cache_fresh
 

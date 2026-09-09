@@ -17,10 +17,8 @@ from ledger_store import connect  # noqa: E402
 
 SOURCES = [
     ("ai_summaries", "research/gate-campaign-20260830/summaries-by-alias.json", "json"),
-    ("annotation_fulltext", "research/gate-campaign-20260830/annotation-fulltext.json", "json"),
     ("ir_chains", "research/orchestrator-260814-irchains-sol/ir-chains.jsonl", "jsonl"),
     ("ir_chain_updates", "research/ir-chain-origin-rereview-20260830/ir-chain-updates.jsonl", "jsonl"),
-    ("advisory_dates_fallback", "research/orchestrator-260814-ghsa200-canvas/sweep/ghsa-first-party-dates.json", "json"),
     ("ai_commit_census", "research/ai-commit-census-current/ai-commit-census.json", "json"),
 ]
 
