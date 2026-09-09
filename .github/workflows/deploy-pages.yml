@@ -33,6 +33,11 @@ jobs:
           DATABASE_URL_UNPOOLED: ${{ secrets.DATABASE_URL }}
       - name: Build
         run: npm run build
+        env:
+          # postbuild tests read ir_chains DB-first; without the secret they
+          # fall back to the untracked research/ source, which CI does not have.
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          DATABASE_URL_UNPOOLED: ${{ secrets.DATABASE_URL }}
       - uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
