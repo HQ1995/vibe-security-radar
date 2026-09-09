@@ -438,6 +438,22 @@ describe("canonical case evidence", () => {
     );
   });
 
+  it("shows hunk notes even when no anchor text matches the diff", () => {
+    const item = structuredClone(
+      getResearchCaseById("GHSA-6G6R-Q6GW-W8FG")!,
+    );
+    const evidence = item.code_evidence!;
+    const annotated = evidence.comparison_hunks.filter((hunk) => hunk.annotation);
+    expect(annotated.length).toBeGreaterThan(0);
+    expect(evidence.required_anchors ?? null).toBeNull();
+
+    const html = renderToStaticMarkup(<CanonicalCaseEvidence item={item} />);
+    const notes = html.match(/aria-label="Key code note"/g) ?? [];
+
+    expect(notes).toHaveLength(annotated.length);
+    expect(html).toContain(annotated[0]!.annotation.slice(0, 40));
+  });
+
   it("expands anchored key lines and folds the surrounding diff context", () => {
     const item = structuredClone(
       getResearchCaseById("GHSA-9J5F-PJWJ-62R3")!,

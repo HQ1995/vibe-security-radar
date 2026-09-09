@@ -68,20 +68,6 @@ function contributionHeadline(value: string): string {
 
 type DiffRole = "AI change" | "Fix" | "Comparison";
 
-function usefulHunkAnnotation(value: string): string | null {
-  // Mirror scripts/site_preflight.usable_hunk_annotation: strip the
-  // boilerplate lead-in and keep the concrete pointer/explanation when it
-  // is long enough to stand on its own.
-  const text = stripMarkdown(value)
-    .replace(
-      /^(?:AI introduced this behavior|AI removed a constraint|The fix adds):s*/i,
-      "",
-    )
-    .trim();
-  if (!text || text.length < 8) return null;
-  return text;
-}
-
 function advisoryBlurb(item: ResearchCase): string | null {
   const blurb = advisoryDescription(item);
   if (!blurb) return null;
@@ -703,11 +689,21 @@ function DiffHunk({
   const removed = lines.filter(
     (line) => line.startsWith("-") && !line.startsWith("---"),
   ).length;
-  const keyLines = lines.flatMap((line, index) =>
+  const anchorLines = lines.flatMap((line, index) =>
     anchors.some((anchor) => line.toLowerCase().includes(anchor.toLowerCase()))
       ? [index]
       : [],
   );
+  // Anchors pick the causal lines to expand, but a hunk whose anchor text is
+  // absent — or that carries no anchors at all — must still show its note:
+  // fall back to the first changed line.
+  const keyLines = anchorLines.length
+    ? anchorLines
+    : [
+        lines.findIndex(
+          (line) => /^[+-]/.test(line) && !/^[+-]{3}/.test(line),
+        ),
+      ].filter((index) => index >= 0);
   const keyed = Boolean(annotation && keyLines.length);
   const ranges = [...new Set([0, ...keyLines])]
     .sort((left, right) => left - right)
@@ -843,13 +839,11 @@ export function CanonicalCaseEvidence({
   const introStep = steps.length >= 3 ? steps[0] : null;
   const summary = findingSummary(item);
   const blurb = advisoryBlurb(item);
-  const hunkAnnotation = (hunk: ResearchCodeHunk) => {
-    const annotation = usefulHunkAnnotation(hunk.annotation);
-    const repeated = [evidence?.summary, item.mechanism].some(
-      (value) => annotation && stripMarkdown(value).trim() === annotation,
-    );
-    return annotation && !repeated ? annotation : null;
-  };
+  // Publish-time scrubbing (scripts/site_preflight.usable_hunk_annotation)
+  // already decides which annotations are reader-facing; the component only
+  // renders them, so the rule lives in one place.
+  const hunkAnnotation = (hunk: ResearchCodeHunk) =>
+    hunk.annotation ? stripMarkdown(hunk.annotation).trim() || null : null;
   // Authoritative tool attribution comes from ai_provenance, not from
   // parsing a Co-authored-by trailer (which can name a human co-author
   // first, mislabeling them as the AI author).
