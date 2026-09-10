@@ -20,6 +20,7 @@ from publish_tp_ledger import (
     research_records,
     scrub_evidence,
 )
+from site_preflight import clip_sentence
 
 ROOT = Path(__file__).resolve().parents[1]
 DATA = ROOT / "web/src/generated/research-data.json"
@@ -373,7 +374,9 @@ def build_case(case: dict, override: dict | None = None) -> dict | None:
             if str(cid).upper().startswith("GHSA-")
             else ""
         ),
-        "summary": (mechanism or "")[:280],
+        # A character-offset slice used to ship a sentence that stopped
+        # mid-word; cut at the last sentence boundary that fits instead.
+        "summary": clip_sentence(mechanism, 280),
         "steps": [
             *([{"title": "AI change", "detail": subject(cand_commit)}] if cand_commit else []),
             *([{"title": "Fix", "detail": subject(fix_commit)}] if fix_commit else []),
@@ -426,7 +429,9 @@ def ledger_case(row: dict, publication_overrides: dict | None = None) -> dict | 
         "class_id": row.get("class_id"),
         "aliases": [case_id, *(cves or ghsas)],
         "repository": repo_of(row, rec),
-        "mechanism": row["mechanism"] if "mechanism" in row else mechanism[:400],
+        "mechanism": row["mechanism"]
+        if "mechanism" in row
+        else clip_sentence(mechanism, 400),
         "candidate_set": candidates,
         "minimum_fix_set": fixes,
     }

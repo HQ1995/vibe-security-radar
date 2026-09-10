@@ -24,6 +24,7 @@ from pathlib import Path
 from site_preflight import (
     AUDIT_IDENTIFIER_RE,
     comparison_hunk_role,
+    complete_prose,
     display_hunks,
     is_pseudo_annotation,
     public_explanation,
@@ -1257,12 +1258,16 @@ def ai_summary_overlay(
 ) -> bool:
     # Keep canonical reader copy only when it reads as public prose without audit
     # identifiers; pseudo-prose (path/SHA noise) falls through to the curated map.
+    # A summary that stops mid-sentence is the other half of that bar: the row
+    # can only hold it because a writer sliced the note at a character offset, so
+    # the curated copy is the better reader text and wins here.
     evidence = case.get("code_evidence")
     if canonical and isinstance(evidence, dict):
         canonical = public_text(evidence.get("summary"))
         if (
             canonical
             and public_explanation(canonical)
+            and complete_prose(canonical)
             and not AUDIT_IDENTIFIER_RE.search(canonical)
             and "PR #" not in canonical
         ):

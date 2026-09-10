@@ -52,6 +52,12 @@ define the research evidence standard.
   Unavailable code needs `unavailable_reason`. Case-level prose is not a hunk annotation.
   `annotation_mode="hunk_specific"` requires distinct annotations and matching
   `required_anchors` for the displayed roles.
+- Reader copy is finished prose. A `description`, `mechanism` or evidence
+  `summary` must end a sentence; a value that stops mid-word means a writer sliced
+  the text at a character offset and the tail is lost. Length caps cut at a
+  sentence boundary (`site_preflight.clip_sentence`), never at an offset, and
+  `site_preflight.py` rejects a payload whose reader copy is a fragment or an
+  audit shorthand dump.
 - Preserve canonical field values, including explicit nulls/empty sets, over
   legacy display overrides. `publication_status` is `confirmed`, `qualified` or
   `provisional`; incomplete evidence cannot be confirmed and `confirmed` requires

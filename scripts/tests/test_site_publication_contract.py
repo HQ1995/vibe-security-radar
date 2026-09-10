@@ -602,6 +602,37 @@ def test_publish_gates_prose_on_the_rendered_text_not_the_link_target() -> None:
     assert case["description"] == prose
 
 
+def test_writers_cap_reader_copy_at_a_sentence_boundary() -> None:
+    """A length cap cut at an offset ships a sentence with no tail."""
+    clipped = "The patch added a check that stops at the credential bounda"
+    assert not site_preflight.complete_prose(clipped)
+    assert site_preflight.complete_prose(clipped + "ry and rejects the call.")
+
+    source = clipped + "ry and rejects the call. A second sentence follows."
+    capped = site_preflight.clip_sentence(source, 100)
+    assert capped == clipped + "ry and rejects the call."
+    assert site_preflight.clip_sentence("One. Two three four five.", 10) == "One."
+    # No boundary fits, so a fragment is not offered as reader copy.
+    assert site_preflight.clip_sentence(source[:40], 20) == ""
+
+
+def test_clipped_ledger_summary_falls_back_to_curated_copy() -> None:
+    """The row only holds a fragment because a writer sliced it mid-sentence."""
+    curated = "The curated copy is a finished sentence about the same change."
+    overlays = publish_tp_ledger.Overlays(summaries={"CVE-2026-12345": curated})
+    case = {
+        "case_id": "CVE-2026-12345",
+        "aliases": [],
+        "class_id": "alias-canonical",
+        "code_evidence": {
+            "summary": "The patch added a check that stops at the credential bounda"
+        },
+    }
+
+    assert publish_tp_ledger.ai_summary_overlay(case, overlays, canonical=True)
+    assert case["code_evidence"]["summary"] == curated
+
+
 def test_hunk_specific_evidence_requires_distinct_annotations_and_all_anchors() -> None:
     assert site_preflight.valid_unified_hunks(
         "@@ -1 +1 @@\n--- a removed SQL comment\n+++incremented"
