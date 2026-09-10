@@ -78,6 +78,7 @@ describe("homepage hierarchy", () => {
     expect(html).toContain("Peak advisory month");
     expect(html).toContain("Most common AI tool");
     expect(html).toContain("Most represented project");
+    expect(html).not.toContain("candidate change");
     expect(html).toContain("Media coverage");
     expect(html).toContain("Where the vulnerable code lives");
     expect(html).toContain("Repositories with the most findings");
@@ -340,6 +341,15 @@ describe("canonical case evidence", () => {
     expect(
       renderToStaticMarkup(<CanonicalCaseEvidence item={aiMarked!} />),
     ).toContain("AI-assisted fix: ChatGPT/Codex · Byron");
+  });
+
+  it("names the AI change the same way as the fix", () => {
+    const html = getResearchCases()
+      .map((item) => renderToStaticMarkup(<CanonicalCaseEvidence item={item} />))
+      .join("");
+
+    expect(html).toContain("AI-assisted change:");
+    expect(html).not.toContain("AI candidate");
   });
 
   it("explains incomplete remediation without exposing an internal mechanism key", () => {

@@ -253,8 +253,8 @@ export default function HomePage() {
             <div className="grid min-w-0 gap-8 sm:col-span-2 sm:grid-cols-2 2xl:col-span-3">
               <DistributionBars
                 eyebrow="AI tooling"
-                title="Who appears on the candidate change"
-                description={`${aiTools.coverage.complete} of ${aiTools.total} findings name a tool on every candidate commit.`}
+                title="Who appears on the AI change"
+                description={`${aiTools.coverage.complete} of ${aiTools.total} findings name a tool on every AI change.`}
                 items={aiTools.items.map((item) => ({
                   ...item,
                   iconKey: getAiFamilyIconKey(item.key),

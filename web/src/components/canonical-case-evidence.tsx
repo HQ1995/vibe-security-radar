@@ -944,13 +944,13 @@ export function CanonicalCaseEvidence({
                 title={cardStepTitle(leftStep, rootCauseTitle(item))}
                 detail={
                   leftStep?.detail ??
-                  "The candidate commit below is where the vulnerable behavior appears."
+                  "The AI-assisted change below is where the vulnerable behavior appears."
                 }
                 repository={candidateSource.repository}
                 shas={item.candidate_set}
                 sources={item.candidate_sources}
                 files={candidateFiles}
-                authorship={`AI candidate: ${candidateModel}`}
+                authorship={`AI-assisted change: ${candidateModel}`}
               />
               <ChainArrow />
               <CauseFixCard
@@ -1006,7 +1006,7 @@ export function CanonicalCaseEvidence({
             <details className="text-xs text-muted-foreground">
               <summary className="cursor-pointer">Patch fingerprints</summary>
               <p className="mt-2 break-all font-mono text-[10px] leading-5">
-                Candidate {evidence.candidate_patch_sha256}
+                AI change {evidence.candidate_patch_sha256}
                 {" · "}Fix {evidence.fix_patch_sha256}
               </p>
             </details>

@@ -20,6 +20,8 @@ Keep committed content in English.
 - Keep research, caches and worktrees local; do not commit ignored files.
 - Run checks relevant to the change. Analyzer code uses dataclasses, synchronous
   httpx and argv-only subprocesses; unit tests use fixtures, not live APIs.
+- Reader-facing copy says "AI-assisted change" and "AI-assisted fix"; the word
+  "candidate" stays internal to data fields and audit prose.
 
 ## Data and commands
 
