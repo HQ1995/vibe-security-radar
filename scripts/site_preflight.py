@@ -137,7 +137,8 @@ def strip_annotation_prefix(value: object) -> str:
 INTERNAL_PROSE_RE = re.compile(
     r"(?<![A-Za-z0-9_])(?:cand|fix|sink|source|guard)=|ai=\['|/tmp/|"
     r"class_id|decomposed_shas|bug_semantics|introduced_with_feature|"
-    r"alias-[0-9a-f]{6,}|phantom\s+sha",
+    r"alias-[0-9a-f]{6,}|phantom\s+sha|fetch_error|"
+    r"traceback \(most recent call last\)",
     re.I,
 )
 HUNK_HEADER_RE = re.compile(

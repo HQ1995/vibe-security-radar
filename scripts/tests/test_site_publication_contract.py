@@ -584,6 +584,9 @@ def test_reader_prose_ignores_audit_keys_hidden_inside_words() -> None:
     )
     assert not site_preflight.reader_prose("cand=b7b362ae427c fix=23838a995955")
     assert not site_preflight.reader_prose("/tmp/fp211-adjudicate-05/pages/ghsa/a.json")
+    assert not site_preflight.reader_prose(
+        "fetch_error: candidate: HTTP 403: error: too big or took too long to generate"
+    )
 
 
 def test_publish_gates_prose_on_the_rendered_text_not_the_link_target() -> None:
