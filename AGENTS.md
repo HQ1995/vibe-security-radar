@@ -34,9 +34,12 @@ Keep committed content in English.
   the Neon snapshot digest (stale exports fall back to Neon). Never hand-edit
   exports or generated site data.
 - In `web/`, `npm run dev` and `npm run build` use committed generated site
-  data and do not read Neon. Push deploys build that committed data; only a
-  manual `Deploy Pages` dispatch runs `publish_tp_ledger.py` against Neon.
-  Keep CI and tests off Neon: the free tier is metered.
+  data and do not read Neon. Push deploys come from the Cloudflare Pages Git
+  integration (root directory `web/`, output `out/`, build command installs
+  `pytest` then runs `npm run build`), whose build container has no Neon
+  credentials; only a manual `Deploy Pages (manual, from Neon)` dispatch runs
+  `publish_tp_ledger.py` against Neon. Keep CI and tests off Neon: the free
+  tier is metered.
   Public data must pass `scripts/site_preflight.py`; never use allowlisting as a filter.
 
 ## host-1 NUMA
