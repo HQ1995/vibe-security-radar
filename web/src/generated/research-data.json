@@ -18,7 +18,7 @@
   "coverage_from": "2025-05-01",
   "coverage_to": "2026-08-26",
   "source_cutoff": "2026-08-26",
-  "generated_at": "2026-09-10T00:50:24Z",
+  "generated_at": "2026-09-10T01:46:07Z",
   "ledger": "artifacts/funnel-account-20260817.jsonl"
  },
  "cause_categories": {
@@ -1688,9 +1688,9 @@
    "published_at": "2026-08-19",
    "severity": null,
    "cwes": [],
-   "description": "When phpMyFAQ uses PostgreSQL through the native pgsql PHP extension, public FAQ search interpolates the unauthenticated `search` parameter into `Pgsql::search()` as `(%s) ILIKE ('%%%s%%')` after `SearchDatabase::escapeLikeWildcards()`. That helper prefixes user `%` and `_` with `|`, which only disables LIKE wildcards if the SQL also declares `ESCAPE '|'`. Native `Pgsql.php` did not: after the BIC it had no matching ESCAPE clause (PostgreSQL default escape is backslash), and after the later 4.1 merge it declared `ESCAPE '='`. In both states `|` is a literal, so attacker-supplied `%`/`_` stay active wildcards, forcing maximally broad ILIKE matches and expensive sequential scans (availability DoS). Quotes are still passed through `getDb()->escape()`, so this is not quote-breaking SQL injection. The PDO sibling `PdoPgsql.php` declares `ESCAPE '|'` and is not affected.",
+   "description": "When phpMyFAQ uses PostgreSQL through the native pgsql PHP extension, public FAQ search interpolates the unauthenticated `search` parameter into `Pgsql::search()` as `(%s) ILIKE ('%%%s%%')` after `SearchDatabase::escapeLikeWildcards()`. That helper prefixes user `%` and `_` with `|`, which only disables LIKE wildcards if the SQL also declares `ESCAPE '|'`. Native `Pgsql.php` did not: the commit that introduced the `|` escaping declared no ESCAPE clause on this statement, and a later 4.1 merge left it declaring `ESCAPE '='` (PostgreSQL's default LIKE escape is backslash). In both states `|` is a literal, so attacker-supplied `%`/`_` stay active wildcards, forcing maximally broad ILIKE matches and expensive sequential scans (availability DoS). Quotes are still passed through `getDb()->escape()`, so this is not quote-breaking SQL injection. The PDO sibling `PdoPgsql.php` declares `ESCAPE '|'` and is not affected.",
    "references": [],
-   "mechanism": "When phpMyFAQ uses PostgreSQL through the native pgsql PHP extension, public FAQ search interpolates the unauthenticated `search` parameter into `Pgsql::search()` as `(%s) ILIKE ('%%%s%%')` after `SearchDatabase::escapeLikeWildcards()`. That helper prefixes user `%` and `_` with `|`, which only disables LIKE wildcards if the SQL also declares `ESCAPE '|'`. Native `Pgsql.php` did not: after the BIC it had no matching ESCAPE clause (PostgreSQL default escape is backslash), and after the later 4.1 merge it declared `ESCAPE '='`. In both states `|` is a literal, so attacker-supplied `%`/`_` stay active wildcards, forcing maximally broad ILIKE matches and expensive sequential scans (availability DoS). Quotes are still passed through `getDb()->escape()`, so this is not quote-breaking SQL injection. The PDO sibling `PdoPgsql.php` declares `ESCAPE '|'` and is not affected.",
+   "mechanism": "When phpMyFAQ uses PostgreSQL through the native pgsql PHP extension, public FAQ search interpolates the unauthenticated `search` parameter into `Pgsql::search()` as `(%s) ILIKE ('%%%s%%')` after `SearchDatabase::escapeLikeWildcards()`. That helper prefixes user `%` and `_` with `|`, which only disables LIKE wildcards if the SQL also declares `ESCAPE '|'`. Native `Pgsql.php` did not: the commit that introduced the `|` escaping declared no ESCAPE clause on this statement, and a later 4.1 merge left it declaring `ESCAPE '='` (PostgreSQL's default LIKE escape is backslash). In both states `|` is a literal, so attacker-supplied `%`/`_` stay active wildcards, forcing maximally broad ILIKE matches and expensive sequential scans (availability DoS). Quotes are still passed through `getDb()->escape()`, so this is not quote-breaking SQL injection. The PDO sibling `PdoPgsql.php` declares `ESCAPE '|'` and is not affected.",
    "cause_category": "injection",
    "ai_provenance": {
     "family": "copilot",
@@ -1732,7 +1732,7 @@
      {
       "file": "phpmyfaq/src/phpMyFAQ/Search/SearchDatabase.php",
       "code": "@@ -264,7 +264,7 @@ public function getMatchClause(string $searchTerm = ''): string\n                 }\n \n                 $where = sprintf(\n-                    \"%s%s LIKE '%%%s%%' ESCAPE '\\\\\\\\'\",\n+                    \"%s%s LIKE '%%%s%%' ESCAPE '|'\",\n                     $where,\n                     $this->matchingColumns[$j],\n                     self::escapeLikeWildcards($this->configuration->getDb()->escape($keys[$i])),\n@@ -292,6 +292,6 @@ public function disableRelevance(): void\n      */\n     protected static function escapeLikeWildcards(string $term): string\n     {\n-        return str_replace(['\\\\', '%', '_'], ['\\\\\\\\', '\\\\%', '\\\\_'], $term);\n+        return str_replace(['|', '%', '_'], ['||', '|%', '|_'], $term);\n     }\n }",
-      "annotation": "The flawed mechanism was first written by Copilot SWE-agent commit 086c8ad58f91a8e34ea27fabd1ba9ca0b2487f42 (GitHub PR 4180 rebase onto main), which changed `escapeLikeWildcards()` and the PDO/generic LIKE clauses from backslash to `|` “to work across all databases” but left native `Pgsql.php` untouched. That file already called the shared escaper while emitting `ILIKE ('%%%s%%')` with no ESCAPE clause. At the immediate parent the escaper still used `\\`, matching PostgreSQL’s default LIKE escape, so native wildcard neutralization still held. After 086c the native backend’s escaping is a no-op. Merge 8853a0fa8 later brought 4.1’s consistent `ESCAPE '='` rewrite (df54d00ce) onto main’s `|` escaper, which is the exact `'='` vs `'|'` pair in GHSA-5hx6-c293-588h / CVE-2026-76212; that merge is an aggregate overlay, not the first write. 4.1.5–4.1.7 keep matching `'='`/`'='` and do not contain this mismatch.",
+      "annotation": "The flawed mechanism was first written by Copilot SWE-agent commit 086c8ad58f91a8e34ea27fabd1ba9ca0b2487f42 (GitHub PR 4180 rebase onto main), which changed `escapeLikeWildcards()` and the PDO/generic LIKE clauses from backslash to `|` “to work across all databases” but left native `Pgsql.php` untouched. That file already called the shared escaper while emitting `ILIKE ('%%%s%%')` with no ESCAPE clause. At the immediate parent the escaper still used `\\`, matching PostgreSQL’s default LIKE escape, so native wildcard neutralization still held. After 086c the native backend’s escaping is a no-op. Merge 8853a0fa8 later brought 4.1’s consistent `ESCAPE '='` rewrite (df54d00ce) onto main’s `|` escaper, which is the exact `'='` vs `'|'` pair in GHSA-5hx6-c293-588h / CVE-2026-76212; that merge only layers 4.1’s rewrite onto main’s escaper, so the mismatch itself still originates at 086c8ad5. 4.1.5–4.1.7 keep matching `'='`/`'='` and do not contain this mismatch.",
       "role": "candidate"
      },
      {
@@ -3717,7 +3717,7 @@
     "steps": [
      {
       "title": "AI change",
-      "detail": "BIC fc358254: smart_user getUserDetails interpolates username into getent/grep shell string"
+      "detail": "smart_user getUserDetails interpolates the caller-supplied username into a getent/grep shell string (commit fc358254)."
      },
      {
       "title": "Security fix",
@@ -5154,9 +5154,9 @@
    "published_at": "2026-08-05",
    "severity": null,
    "cwes": [],
-   "description": "An authenticated caller creates a gateway secret whose auth_config.api_base is stored without scheme, host, or IP-range checks (_create_gateway_secret). A later POST to /gateway/proxy/{endpoint_name}/{path} (raw_proxy) builds a provider from that secret, then OpenAI-compatible/Anthropic _proxy send an aiohttp POST to append_to_uri_path(api_base, caller_path) and return the upstream body. _validate_webhook_url, which already rejects non-global and metadata addresses for webhooks, is never applied on this path. CreateGatewaySecret is absent from BEFORE_REQUEST_HANDLERS, so any authenticated user including read-only accounts can plant an internal/metadata api_base and read the proxy response. Typed gateway routes already used api_base as a destination before 3.13.0, but this CVE's high-impact",
+   "description": "An authenticated caller creates a gateway secret whose auth_config.api_base is stored without scheme, host, or IP-range checks (_create_gateway_secret). A later POST to /gateway/proxy/{endpoint_name}/{path} (raw_proxy) builds a provider from that secret, then OpenAI-compatible/Anthropic _proxy send an aiohttp POST to append_to_uri_path(api_base, caller_path) and return the upstream body. _validate_webhook_url, which already rejects non-global and metadata addresses for webhooks, is never applied on this path. CreateGatewaySecret is absent from BEFORE_REQUEST_HANDLERS, so any authenticated user including read-only accounts can plant an internal/metadata api_base and read the proxy response. Typed gateway routes already used api_base as a destination before 3.13.0.",
    "references": [],
-   "mechanism": "An authenticated caller creates a gateway secret whose auth_config.api_base is stored without scheme, host, or IP-range checks (_create_gateway_secret). A later POST to /gateway/proxy/{endpoint_name}/{path} (raw_proxy) builds a provider from that secret, then OpenAI-compatible/Anthropic _proxy send an aiohttp POST to append_to_uri_path(api_base, caller_path) and return the upstream body. _validate_webhook_url, which already rejects non-global and metadata addresses for webhooks, is never applied on this path. CreateGatewaySecret is absent from BEFORE_REQUEST_HANDLERS, so any authenticated user including read-only accounts can plant an internal/metadata api_base and read the proxy response. Typed gateway routes already used api_base as a destination before 3.13.0, but this CVE's high-impact",
+   "mechanism": "An authenticated caller creates a gateway secret whose auth_config.api_base is stored without scheme, host, or IP-range checks (_create_gateway_secret). A later POST to /gateway/proxy/{endpoint_name}/{path} (raw_proxy) builds a provider from that secret, then OpenAI-compatible/Anthropic _proxy send an aiohttp POST to append_to_uri_path(api_base, caller_path) and return the upstream body. _validate_webhook_url, which already rejects non-global and metadata addresses for webhooks, is never applied on this path. CreateGatewaySecret is absent from BEFORE_REQUEST_HANDLERS, so any authenticated user including read-only accounts can plant an internal/metadata api_base and read the proxy response. Typed gateway routes already used api_base as a destination before 3.13.0.",
    "cause_category": "auth_access",
    "ai_provenance": {
     "family": "claude",
@@ -5203,7 +5203,7 @@
     "reason": "GHSA-h7x2-h6g9-p789 lists patched versions None and first_patched_version null. Carrier 96b7d900e14227e0821981409d86f5fb6c59b386 is present in v3.13.0 through v3.16.0. Clone HEAD ce53bdf8a101fa031a1fce84c762c87a607ab7d9 still implements raw_proxy and stores auth_config.api_base without calling _validate_webhook_url. No post-3.15.2 commit closes this destination check.",
     "potential_fix": {
      "approach": "Reject non-http(s) and non-global/metadata api_base values in _create_gateway_secret and _update_gateway_secret by calling _validate_webhook_url (or a gateway-specific equivalent). Re-validate and pin the resolved peer at send_proxy_request/_aiohttp_post time, and reject path traversal. Add CreateGatewaySecret to BEFORE_REQUEST_HANDLERS with a dedicated create/manage permission so read-only users cannot plant a secret.",
-     "rationale": "The SSRF is the missing destination check on a user-controlled URL that the proxy then fetches. The webhook guard already encodes the required IP policy and was present on the BIC parent (06883155 mlflow/utils/validation.py:733) but unused on this path. Create-time validation plus request-time pinning closes stored-URL and DNS-rebinding gaps; the missing BEFORE_REQUEST entry is the privilege amplifier named in the advisory."
+     "rationale": "The SSRF is the missing destination check on a user-controlled URL that the proxy then fetches. The webhook guard already encodes the required IP policy and was present at the parent of the introducing commit (06883155 mlflow/utils/validation.py:733) but unused on this path. Create-time validation plus request-time pinning closes stored-URL and DNS-rebinding gaps; the missing BEFORE_REQUEST entry is the privilege amplifier named in the advisory."
     }
    },
    "advisory_url": "https://github.com/advisories/ghsa-h7x2-h6g9-p789",
@@ -32946,7 +32946,7 @@
      {
       "file": "src/gateway/server/ws-connection/message-handler.ts",
       "code": "@@ -491,6 +491,7 @@ export function attachGatewayWsMessageHandler(params: {\n           }\n           const trustedProxyAuthOk =\n             isControlUi &&\n+            role === \"operator\" &&\n             resolvedAuth.mode === \"trusted-proxy\" &&\n             authOk &&\n             authMethod === \"trusted-proxy\";\n@@ -629,6 +630,7 @@ export function attachGatewayWsMessageHandler(params: {\n \n         const trustedProxyAuthOk =\n           isControlUi &&\n+          role === \"operator\" &&\n           resolvedAuth.mode === \"trusted-proxy\" &&\n           authOk &&\n           authMethod === \"trusted-proxy\";",
-      "annotation": "connect-policy.ts shouldSkipControlUiPairing 'if (trustedProxyAuthOk) return true' + evaluateMissingDeviceIdentity trusted-proxy allow; message-handler.ts trustedProxyAuthOk predicate (isControlUi && mode==='trusted-proxy' && authOk && authMethod==='trusted-proxy', no role term). BIC 20523b918ad (2026-02-24, SidQin-cyber, 'fix(gateway): allow trusted-proxy control-ui auth to skip device pairing', Fixes #25293, Co-authored-by: Cursor <cursoragent@cursor.com>) first wrote trustedProxyAuthOk (git log -S across connect-policy.ts and message-handler.ts); parent d84659f22 contains no trustedProxyAuthOk.",
+      "annotation": "connect-policy.ts shouldSkipControlUiPairing 'if (trustedProxyAuthOk) return true' + evaluateMissingDeviceIdentity trusted-proxy allow; message-handler.ts trustedProxyAuthOk predicate (isControlUi && mode==='trusted-proxy' && authOk && authMethod==='trusted-proxy', no role term). Commit 20523b918ad (2026-02-24, SidQin-cyber, 'fix(gateway): allow trusted-proxy control-ui auth to skip device pairing', Fixes #25293, Co-authored-by: Cursor <cursoragent@cursor.com>) first wrote trustedProxyAuthOk on both files; its parent d84659f22 contains no trustedProxyAuthOk.",
       "role": "fix"
      },
      {
@@ -35007,7 +35007,7 @@
     "https://github.com/openclaw/openclaw",
     "https://github.com/openclaw/openclaw/releases/tag/v2026.2.14"
    ],
-   "mechanism": "Recover null ledger identity from GHSA+git; a shared Feishu fix can cover local-path and SSRF as distinct mechanisms, and leftover createReadStream(string) narrows reversal.",
+   "mechanism": "The Feishu media helper resolved attacker-controlled `mediaUrl` values: tilde and file-style prefixes were expanded into local filesystem paths and read straight from disk, while every other address was fetched without restriction. A tool call reachable through prompt injection could therefore name a local path such as `/etc/passwd` and have it read and uploaded. The fix deletes the local-filesystem branch and routes every supplied address through a bounded runtime loader.",
    "cause_category": "path_link",
    "ai_provenance": {
     "family": "claude",
@@ -35069,8 +35069,7 @@
     ],
     "fix_patch_files": [
      "extensions/feishu/src/media.ts"
-    ],
-    "mechanism": "Recover null ledger identity from GHSA+git; a shared Feishu fix can cover local-path and SSRF as distinct mechanisms, and leftover createReadStream(string) narrows reversal."
+    ]
    },
    "ir_chain": null,
    "unpatched": null,

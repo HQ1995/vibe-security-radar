@@ -7598,7 +7598,7 @@
     "steps": [
       {
         "title": "AI change",
-        "detail": "BIC fc358254: smart_user getUserDetails interpolates username into getent/grep shell string"
+        "detail": "smart_user getUserDetails interpolates the caller-supplied username into a getent/grep shell string (commit fc358254)."
       },
       {
         "title": "Security fix",
@@ -8759,7 +8759,7 @@
       {
         "file": "src/gateway/server/ws-connection/message-handler.ts",
         "code": "@@ -491,6 +491,7 @@ export function attachGatewayWsMessageHandler(params: {\n           }\n           const trustedProxyAuthOk =\n             isControlUi &&\n+            role === \"operator\" &&\n             resolvedAuth.mode === \"trusted-proxy\" &&\n             authOk &&\n             authMethod === \"trusted-proxy\";\n@@ -629,6 +630,7 @@ export function attachGatewayWsMessageHandler(params: {\n \n         const trustedProxyAuthOk =\n           isControlUi &&\n+          role === \"operator\" &&\n           resolvedAuth.mode === \"trusted-proxy\" &&\n           authOk &&\n           authMethod === \"trusted-proxy\";",
-        "annotation": "connect-policy.ts shouldSkipControlUiPairing 'if (trustedProxyAuthOk) return true' + evaluateMissingDeviceIdentity trusted-proxy allow; message-handler.ts trustedProxyAuthOk predicate (isControlUi && mode==='trusted-proxy' && authOk && authMethod==='trusted-proxy', no role term). BIC 20523b918ad (2026-02-24, SidQin-cyber, 'fix(gateway): allow trusted-proxy control-ui auth to skip device pairing', Fixes #25293, Co-authored-by: Cursor <cursoragent@cursor.com>) first wrote trustedProxyAuthOk (git log -S across connect-policy.ts and message-handler.ts); parent d84659f22 contains no trustedProxyAuthOk.",
+        "annotation": "connect-policy.ts shouldSkipControlUiPairing 'if (trustedProxyAuthOk) return true' + evaluateMissingDeviceIdentity trusted-proxy allow; message-handler.ts trustedProxyAuthOk predicate (isControlUi && mode==='trusted-proxy' && authOk && authMethod==='trusted-proxy', no role term). Commit 20523b918ad (2026-02-24, SidQin-cyber, 'fix(gateway): allow trusted-proxy control-ui auth to skip device pairing', Fixes #25293, Co-authored-by: Cursor <cursoragent@cursor.com>) first wrote trustedProxyAuthOk on both files; its parent d84659f22 contains no trustedProxyAuthOk.",
         "role": "fix"
       },
       {
@@ -8928,7 +8928,7 @@
       {
         "file": "phpmyfaq/src/phpMyFAQ/Search/SearchDatabase.php",
         "code": "@@ -264,7 +264,7 @@ public function getMatchClause(string $searchTerm = ''): string\n                 }\n \n                 $where = sprintf(\n-                    \"%s%s LIKE '%%%s%%' ESCAPE '\\\\\\\\'\",\n+                    \"%s%s LIKE '%%%s%%' ESCAPE '|'\",\n                     $where,\n                     $this->matchingColumns[$j],\n                     self::escapeLikeWildcards($this->configuration->getDb()->escape($keys[$i])),\n@@ -292,6 +292,6 @@ public function disableRelevance(): void\n      */\n     protected static function escapeLikeWildcards(string $term): string\n     {\n-        return str_replace(['\\\\', '%', '_'], ['\\\\\\\\', '\\\\%', '\\\\_'], $term);\n+        return str_replace(['|', '%', '_'], ['||', '|%', '|_'], $term);\n     }\n }",
-        "annotation": "The flawed mechanism was first written by Copilot SWE-agent commit 086c8ad58f91a8e34ea27fabd1ba9ca0b2487f42 (GitHub PR 4180 rebase onto main), which changed `escapeLikeWildcards()` and the PDO/generic LIKE clauses from backslash to `|` “to work across all databases” but left native `Pgsql.php` untouched. That file already called the shared escaper while emitting `ILIKE ('%%%s%%')` with no ESCAPE clause. At the immediate parent the escaper still used `\\`, matching PostgreSQL’s default LIKE escape, so native wildcard neutralization still held. After 086c the native backend’s escaping is a no-op. Merge 8853a0fa8 later brought 4.1’s consistent `ESCAPE '='` rewrite (df54d00ce) onto main’s `|` escaper, which is the exact `'='` vs `'|'` pair in GHSA-5hx6-c293-588h / CVE-2026-76212; that merge is an aggregate overlay, not the first write. 4.1.5–4.1.7 keep matching `'='`/`'='` and do not contain this mismatch.",
+        "annotation": "The flawed mechanism was first written by Copilot SWE-agent commit 086c8ad58f91a8e34ea27fabd1ba9ca0b2487f42 (GitHub PR 4180 rebase onto main), which changed `escapeLikeWildcards()` and the PDO/generic LIKE clauses from backslash to `|` “to work across all databases” but left native `Pgsql.php` untouched. That file already called the shared escaper while emitting `ILIKE ('%%%s%%')` with no ESCAPE clause. At the immediate parent the escaper still used `\\`, matching PostgreSQL’s default LIKE escape, so native wildcard neutralization still held. After 086c the native backend’s escaping is a no-op. Merge 8853a0fa8 later brought 4.1’s consistent `ESCAPE '='` rewrite (df54d00ce) onto main’s `|` escaper, which is the exact `'='` vs `'|'` pair in GHSA-5hx6-c293-588h / CVE-2026-76212; that merge only layers 4.1’s rewrite onto main’s escaper, so the mismatch itself still originates at 086c8ad5. 4.1.5–4.1.7 keep matching `'='`/`'='` and do not contain this mismatch.",
         "role": "candidate"
       },
       {
@@ -13533,7 +13533,7 @@
     "candidate_url": "https://github.com/m1heng/clawdbot-feishu/commit/4286755f26bcfdd5c704cc4eb0cabfdc1b314e68",
     "fix_url": "https://github.com/openclaw/openclaw/commit/5b4121d6011a48c71e747e3c18197f180b872c5d",
     "advisory_url": "https://github.com/advisories/ghsa-8jpq-5h99-ff5r",
-    "summary": "Recover null ledger identity from GHSA+git; a shared Feishu fix can cover local-path and SSRF as distinct mechanisms, and leftover createReadStream(string) narrows reversal.",
+    "summary": "The Feishu media sender expanded tilde and file-style mediaUrl values into local paths read straight from disk and fetched every other address without restriction, so a tool call with an attacker-influenced mediaUrl could read local files such as /etc/passwd. The fix deletes the local-filesystem branch and bounds remote fetching through a runtime loader.",
     "steps": [
       {
         "title": "AI change",
