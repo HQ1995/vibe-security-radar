@@ -2,23 +2,23 @@
  "snapshot": {
   "status": "PUBLISHED",
   "case_set": "TP_FUNNEL",
-  "case_count": 262,
-  "ai_root_cause": 205,
-  "ai_code_flawed": 57,
+  "case_count": 272,
+  "ai_root_cause": 214,
+  "ai_code_flawed": 58,
   "ledger_total": 29593,
-  "ledger_reviewed": 2539,
-  "ledger_in_progress": 5845,
-  "ledger_not_started": 21209,
-  "confirmed_cases": 201,
+  "ledger_reviewed": 2955,
+  "ledger_in_progress": 5817,
+  "ledger_not_started": 20821,
+  "confirmed_cases": 200,
   "qualified_cases": 60,
-  "provisional_cases": 1,
-  "exact_publication_dates": 262,
+  "provisional_cases": 12,
+  "exact_publication_dates": 272,
   "unknown_publication_dates": 0,
   "date_policy": "GHSA_OR_CVE_PUBLISHED_ONLY",
   "coverage_from": "2025-05-01",
   "coverage_to": "2026-08-26",
   "source_cutoff": "2026-08-26",
-  "generated_at": "2026-09-10T02:26:36Z",
+  "generated_at": "2026-09-10T05:24:48Z",
   "ledger": "artifacts/funnel-account-20260817.jsonl"
  },
  "cause_categories": {
@@ -1171,6 +1171,95 @@
    "publication_status": "confirmed"
   },
   {
+   "case_id": "GHSA-CW49-MHMJ-M3XC",
+   "aliases": [
+    "CVE-2026-77759"
+   ],
+   "repository": "roskus/prospero-flow-crm",
+   "repository_metadata": {
+    "full_name": "roskus/prospero-flow-crm",
+    "language": "PHP",
+    "archived": false
+   },
+   "contribution_class": "AI_DIRECT_ROOT",
+   "candidate_set": [
+    "e3c6897d0cdd1e61ff74ba5221dac0faa6c689f2"
+   ],
+   "carrier_set": [],
+   "minimum_fix_set": [
+    "980c35ac00e419591a8adc2d1dbcc120ea62e273"
+   ],
+   "gates": {
+    "identity": "UNKNOWN",
+    "ai_hunk": "UNKNOWN",
+    "topology": "UNKNOWN",
+    "but_for": "UNKNOWN",
+    "fix_reversal": "UNKNOWN",
+    "release": "UNKNOWN",
+    "uniqueness": "UNKNOWN"
+   },
+   "vulnerable_release": null,
+   "fixed_release": {
+    "kind": "git_tag",
+    "version": "v5.5.3",
+    "tag": "v5.5.3"
+   },
+   "published_at": "2026-08-21",
+   "severity": null,
+   "cwes": [],
+   "description": "The change added a full set of transaction endpoints written with a coding assistant. The listing endpoint scoped every query to the caller's company, but the single-transaction endpoint kept a raw primary-key lookup, so the company scope and the permission check that the sibling endpoints received were missing from exactly one handler. The route was protected only by token authentication, which proves who is calling, not which records that caller may see. An attacker holding any valid account could walk the id space and read other companies' financial records. The follow-up change adds a permission-checking request class and rewrites the lookup to filter on the caller's company id before the record is returned.",
+   "references": [],
+   "mechanism": "The route for a single transaction sat behind token authentication only, and the handler resolved the path id straight into a database lookup. Any signed-in caller from another company could therefore read a transaction by editing the id, because the query carried no company filter and the endpoint skipped the permission request class that the other transaction endpoints used.",
+   "cause_category": "injection",
+   "ai_provenance": {
+    "family": "claude",
+    "coverage": "complete",
+    "candidate_count": 1,
+    "named_candidate_count": 1
+   },
+   "fix_authorship": null,
+   "code_evidence": {
+    "candidate_url": "https://github.com/roskus/prospero-flow-crm/commit/e3c6897d0cdd1e61ff74ba5221dac0faa6c689f2",
+    "fix_url": "https://github.com/roskus/prospero-flow-crm/commit/980c35ac00e419591a8adc2d1dbcc120ea62e273",
+    "advisory_url": "https://github.com/advisories/ghsa-cw49-mhmj-m3xc",
+    "summary": "A CLI coding assistant co-authored the commit that added the transaction API, and its single-transaction endpoint fetched any record by primary key without company scoping or a permission check.",
+    "steps": [
+     {
+      "title": "AI change",
+      "detail": "The assistant-written controller for a single transaction looked the record up by path id with no company filter and no permission request."
+     },
+     {
+      "title": "Fix",
+      "detail": "A permission-checking request class and a company-scoped query now gate the endpoint, so a caller can only read records that belong to their own company."
+     }
+    ],
+    "display_hunks": [
+     {
+      "role": "candidate",
+      "file": "app/Http/Controllers/Api/Transaction/TransactionReadController.php",
+      "code": "@@ -0,0 +1,42 @@\n+<?php\n+\n+declare(strict_types=1);\n+\n+namespace App\\Http\\Controllers\\Api\\Transaction;\n+\n+use App\\Models\\Transaction;\n+use Illuminate\\Http\\JsonResponse;\n+use OpenApi\\Attributes as OAT;\n+\n+class TransactionReadController\n+{\n+    #[OAT\\Get(\n+        path: '/transaction/{id}',\n+        summary: 'Get Transaction details',\n+        security: [['bearerAuth' => []]],\n+        tags: ['Transaction'],\n+        parameters: [\n+            new OAT\\Parameter(\n+                name: 'id',\n+                in: 'path',\n+                required: true,\n+                description: 'Transaction ID',\n+                schema: new OAT\\Schema(type: 'integer')\n+            ),\n+        ],\n+        responses: [\n+            new OAT\\Response(response: 200, description: 'Transaction found'),\n+            new OAT\\Response(response: 404, description: 'Transaction not found'),\n+        ]\n+    )]\n+    public function read(int $id): JsonResponse\n+    {\n+        $transaction = Transaction::find($id);\n+\n+        if (! $transaction) {\n+            return response()->json(['message' => 'Transaction not found'], 404);\n+        }\n+\n+        return response()->json(['transaction' => $transaction], 200);\n+    }\n+}",
+      "annotation": "the handler passes the path id straight to a model lookup and returns whatever it finds, with no company filter and no authorization request."
+     },
+     {
+      "role": "fix",
+      "file": "app/Http/Controllers/Api/Transaction/TransactionReadController.php",
+      "code": "@@ -4,8 +4,10 @@\n \n namespace App\\Http\\Controllers\\Api\\Transaction;\n \n+use App\\Http\\Requests\\TransactionReadRequest;\n use App\\Models\\Transaction;\n use Illuminate\\Http\\JsonResponse;\n+use Illuminate\\Support\\Facades\\Auth;\n use OpenApi\\Attributes as OAT;\n \n class TransactionReadController\n@@ -29,9 +31,9 @@ class TransactionReadController\n             new OAT\\Response(response: 404, description: 'Transaction not found'),\n         ]\n     )]\n-    public function read(int $id): JsonResponse\n+    public function read(TransactionReadRequest $request, int $id): JsonResponse\n     {\n-        $transaction = Transaction::find($id);\n+        $transaction = Transaction::where('company_id', Auth::user()->company_id)->find($id);\n \n         if (! $transaction) {\n             return response()->json(['message' => 'Transaction not found'], 404);",
+      "annotation": "a request class that enforces the read permission and a lookup filtered by the caller's company id before a transaction is returned."
+     }
+    ],
+    "candidate_patch_sha256": "6684c8f38a7d15e121247e1b15eaa6b8f6cf99dab4a7095ea77dd261fcb3c7d3",
+    "fix_patch_sha256": "b05d23a4f8cd9a87262cfb2021f1f321f4e69719be7274cf591bc15bd2efa438"
+   },
+   "ir_chain": null,
+   "unpatched": null,
+   "advisory_url": "https://github.com/advisories/ghsa-cw49-mhmj-m3xc",
+   "publication_issues": [
+    "missing_vulnerable_release",
+    "missing_fix_authorship"
+   ],
+   "publication_status": "provisional"
+  },
+  {
    "case_id": "GHSA-WFX9-6H8H-F3GM",
    "aliases": [
     "CVE-2026-76760"
@@ -1514,6 +1603,98 @@
    "publication_status": "confirmed"
   },
   {
+   "case_id": "GHSA-GVF5-4G66-F766",
+   "aliases": [
+    "CVE-2026-77085"
+   ],
+   "repository": "n8n-io/n8n",
+   "repository_metadata": {
+    "full_name": "n8n-io/n8n",
+    "language": "TypeScript",
+    "archived": false
+   },
+   "contribution_class": "AI_NEW_SURFACE_CONTRIBUTOR",
+   "candidate_set": [
+    "b4155446838fdcccec0d21857f67ba14e8cc803b"
+   ],
+   "carrier_set": [],
+   "minimum_fix_set": [
+    "ca3d42d8386515cd9f044377a15a632cd09b62f0"
+   ],
+   "gates": {
+    "identity": "UNKNOWN",
+    "ai_hunk": "UNKNOWN",
+    "topology": "UNKNOWN",
+    "but_for": "UNKNOWN",
+    "fix_reversal": "UNKNOWN",
+    "release": "UNKNOWN",
+    "uniqueness": "UNKNOWN"
+   },
+   "vulnerable_release": {
+    "kind": "git_tag_interval",
+    "version": ">= 2.24.0, < 2.33.4 || >= 2.34.0, < 2.34.1",
+    "tag": null
+   },
+   "fixed_release": {
+    "kind": "git_tag",
+    "version": "2.33.4 / 2.34.1",
+    "tag": null
+   },
+   "published_at": "2026-08-20",
+   "severity": null,
+   "cwes": [],
+   "description": "The fallback web search tool added here gives personal agents a search capability when the model has no native one. The builder resolves the SearXNG credential stored for the agent and calls the shared search helper with the credential's API URL; that helper issues the request with the plain global fetch from the library, which never consults the instance's SSRF protection, because that protection applies to requests made through the configured HTTP helper. An authenticated user with permission to create a search credential and configure a personal agent could therefore set the API URL to an internal address, and the server would connect to it and return the result to the chat. The fix threads a policy-aware fetch implementation into the search helper so the URL is checked against the instance's SSRF settings.",
+   "references": [],
+   "mechanism": "The new tool builder reads the personal agent's web search configuration, resolves the stored SearXNG credential and calls the shared search helper with the credential's API URL. That helper issues its request with the plain global fetch used in the library, which does not consult the instance's SSRF protection, so the destination was never checked. With that protection enabled, an authenticated user who can create a search credential and attach it to a personal agent could point the URL at an internal host and have the server fetch it, with the response returned in the agent chat.",
+   "cause_category": "ssrf_network",
+   "ai_provenance": {
+    "family": "cursor",
+    "coverage": "complete",
+    "candidate_count": 1,
+    "named_candidate_count": 1
+   },
+   "fix_authorship": null,
+   "code_evidence": {
+    "candidate_url": "https://github.com/n8n-io/n8n/commit/b4155446838fdcccec0d21857f67ba14e8cc803b",
+    "fix_url": "https://github.com/n8n-io/n8n/commit/ca3d42d8386515cd9f044377a15a632cd09b62f0",
+    "advisory_url": "https://github.com/advisories/ghsa-gvf5-4g66-f766",
+    "summary": "The AI-assisted change that added fallback web search for agents passed the search credential's configured API URL into a search client that uses the plain HTTP stack, so the request skipped the instance's SSRF protection.",
+    "steps": [
+     {
+      "title": "AI change",
+      "detail": "The new fallback web search tool resolved the agent's search credential and handed its configured API URL to the shared search client."
+     },
+     {
+      "title": "Fix",
+      "detail": "The search call now receives the instance's policy-aware fetch helper, so the destination is checked against the configured SSRF protection before the request goes out."
+     }
+    ],
+    "display_hunks": [
+     {
+      "role": "candidate",
+      "file": "packages/cli/src/modules/agents/json-config/from-json-config.ts",
+      "code": "@@ -115,0 +155,33 @@ export async function buildFromJson(\n+\treturn {\n+\t\tname: WEB_SEARCH_TOOL_NAME,\n+\t\tdescription: 'Search the web for current information.',\n+\t\tsystemInstruction:\n+\t\t\t'Before using web_search, choose the smallest search plan that can answer the user. Default to one broad, high-signal query. After each search, stop if the results already contain enough credible sources to answer. Use a second search only when the first result set is insufficient or the user asked for comparison across independent source categories. Do not fan out variations of the same query, and do not search for confirmation only. Use more than two searches only when the user explicitly asks for deep research, exhaustive coverage, or multiple independent topics.',\n+\t\tinputSchema: WEB_SEARCH_INPUT_SCHEMA,\n+\t\thandler: async (input) => {\n+\t\t\tconst args = WEB_SEARCH_INPUT_SCHEMA.parse(input);\n+\t\t\tconst credential = await credentialProvider.resolve(credentialId);\n+\t\t\tconst { braveSearch, searxngSearch } = await import('@n8n/ai-utilities');\n+\n+\t\t\tif (webSearchConfig.provider === 'brave') {\n+\t\t\t\tif (typeof credential.apiKey !== 'string') {\n+\t\t\t\t\tthrow new Error('Brave Search credential is missing an API key.');\n+\t\t\t\t}\n+\t\t\t\treturn await braveSearch(credential.apiKey, args.query, {\n+\t\t\t\t\tmaxResults: args.maxResults,\n+\t\t\t\t\tincludeDomains: args.includeDomains,\n+\t\t\t\t\texcludeDomains: args.excludeDomains,\n+\t\t\t\t});\n+\t\t\t}\n+\n+\t\t\tif (typeof credential.apiUrl !== 'string') {\n+\t\t\t\tthrow new Error('SearXNG credential is missing an API URL.');\n+\t\t\t}\n+\t\t\treturn await searxngSearch(credential.apiUrl, args.query, {\n+\t\t\t\tmaxResults: args.maxResults,\n+\t\t\t\tincludeDomains: args.includeDomains,\n+\t\t\t\texcludeDomains: args.excludeDomains,\n+\t\t\t});\n+\t\t},\n+\t};\n+}",
+      "annotation": "the tool builder passes the credential's configured API URL to a search client that performs its request with the plain global fetch."
+     },
+     {
+      "role": "fix",
+      "file": "packages/cli/src/modules/agents/json-config/from-json-config.ts",
+      "code": "@@ -345,11 +349,16 @@ function buildFallbackWebSearchTool(\n \t\t\tif (typeof credential.apiUrl !== 'string') {\n \t\t\t\tthrow new Error('SearXNG credential is missing an API URL.');\n \t\t\t}\n-\t\t\treturn await searxngSearch(credential.apiUrl, args.query, {\n-\t\t\t\tmaxResults: args.maxResults,\n-\t\t\t\tincludeDomains: args.includeDomains,\n-\t\t\t\texcludeDomains: args.excludeDomains,\n-\t\t\t});\n+\t\t\treturn await searxngSearch(\n+\t\t\t\tcredential.apiUrl,\n+\t\t\t\targs.query,\n+\t\t\t\t{\n+\t\t\t\t\tmaxResults: args.maxResults,\n+\t\t\t\t\tincludeDomains: args.includeDomains,\n+\t\t\t\t\texcludeDomains: args.excludeDomains,\n+\t\t\t\t},\n+\t\t\t\twebSearchFetch,\n+\t\t\t);\n \t\t},\n \t};\n }",
+      "annotation": "the search helper receives a policy-aware fetch implementation, so the destination checks used elsewhere in the product now apply to web search."
+     }
+    ],
+    "candidate_patch_sha256": "4fdf10c0639c2d784670a31ef0547659d142b2c7fd2f2b4abf73be0944c7ceb5",
+    "fix_patch_sha256": "c10ba53286a7802c7bc95789ad5b74e38a9bd73c87a9fd7dfe3ed5d6b23aa141"
+   },
+   "ir_chain": null,
+   "unpatched": null,
+   "advisory_url": "https://github.com/advisories/ghsa-gvf5-4g66-f766",
+   "publication_issues": [
+    "missing_fix_authorship"
+   ],
+   "publication_status": "provisional"
+  },
+  {
    "case_id": "GHSA-2664-HR5V-554W",
    "aliases": [
     "CVE-2026-77083"
@@ -1789,6 +1970,98 @@
    "publication_status": "confirmed"
   },
   {
+   "case_id": "GHSA-XGX5-9HX8-GF84",
+   "aliases": [
+    "CVE-2026-74896"
+   ],
+   "repository": "jahlives/openssl_encrypt",
+   "repository_metadata": {
+    "full_name": "jahlives/openssl_encrypt",
+    "language": "Python",
+    "archived": false
+   },
+   "contribution_class": "AI_DIRECT_ROOT",
+   "candidate_set": [
+    "50bec5d3656d62b8dbbb0ce082fd67b8436677fd"
+   ],
+   "carrier_set": [],
+   "minimum_fix_set": [
+    "993cd13d581a15821cb170df14627af1f1c1b1c3"
+   ],
+   "gates": {
+    "identity": "UNKNOWN",
+    "ai_hunk": "UNKNOWN",
+    "topology": "UNKNOWN",
+    "but_for": "UNKNOWN",
+    "fix_reversal": "UNKNOWN",
+    "release": "UNKNOWN",
+    "uniqueness": "UNKNOWN"
+   },
+   "vulnerable_release": {
+    "kind": "advisory_range",
+    "version": "< 1.4.0",
+    "tag": null
+   },
+   "fixed_release": {
+    "kind": "git_tag",
+    "version": "v1.4.0",
+    "tag": "v1.4.0"
+   },
+   "published_at": "2026-08-17",
+   "severity": null,
+   "cwes": [],
+   "description": "Plugin code is scanned by the AST analyzer before the plugin is loaded. The AI-assisted change taught the visitor to flag dangerous calls such as eval, exec and compile, imports such as subprocess and socket, os functions such as system and popen, and getattr calls that resolve blocked names through __builtins__. It did not flag attribute access, so a plugin could start from any object it already held, walk through __class__, __bases__ and __subclasses__() into the loaded modules, and pick up references to subprocess or os to run commands outside the intended restrictions. The repair adds the escape-enabling dunder names to the visitor and reports attribute access, getattr targets, and __subclasses__() calls, so the traversal chain is rejected before the plugin runs.",
+   "references": [],
+   "mechanism": "The plugin manager validates plugin source before loading it, and the new AST visitor records violations for dangerous calls, forbidden imports, and getattr lookups aimed at __builtins__. Attribute access itself was only checked for those builtins names, so a plugin could chain __class__, __bases__ and __subclasses__() to walk the type hierarchy, collect references to the very functions the sandbox blocks, and call them to run system commands. The repair adds a denylist of dunder attributes and reports attribute access, getattr targets, and __subclasses__() calls.",
+   "cause_category": "auth_access",
+   "ai_provenance": {
+    "family": "claude",
+    "coverage": "complete",
+    "candidate_count": 1,
+    "named_candidate_count": 1
+   },
+   "fix_authorship": null,
+   "code_evidence": {
+    "candidate_url": "https://github.com/jahlives/openssl_encrypt/commit/50bec5d3656d62b8dbbb0ce082fd67b8436677fd",
+    "fix_url": "https://github.com/jahlives/openssl_encrypt/commit/993cd13d581a15821cb170df14627af1f1c1b1c3",
+    "advisory_url": "https://github.com/advisories/ghsa-xgx5-9hx8-gf84",
+    "summary": "An AI-assisted change replaced the plugin regex checks with an AST analyzer whose visitor lists dangerous functions and modules, so plugin code could still walk dunder attributes to reach blocked functions.",
+    "steps": [
+     {
+      "title": "AI change",
+      "detail": "The AI-assisted change moved plugin screening to an AST visitor that flagged dangerous functions, imports and getattr patterns, but no check covered dunder attribute traversal."
+     },
+     {
+      "title": "Fix",
+      "detail": "The analyzer now blocks dunder attribute names, including lookups made through getattr and __subclasses__() calls, so plugin code cannot walk the type hierarchy to reach blocked functions."
+     }
+    ],
+    "display_hunks": [
+     {
+      "role": "candidate",
+      "file": "openssl_encrypt/modules/plugin_system/plugin_ast_analyzer.py",
+      "code": "@@ -0,0 +37,28 @@\n+class DangerousPatternVisitor(ast.NodeVisitor):\n+    \"\"\"\n+    AST visitor that detects dangerous security patterns in plugin code.\n+\n+    This visitor traverses the Abstract Syntax Tree of plugin code and identifies\n+    potentially dangerous operations that could bypass sandbox restrictions.\n+    \"\"\"\n+\n+    # Functions that are always dangerous\n+    DANGEROUS_FUNCTIONS = {\n+        'eval', 'exec', 'compile', '__import__',\n+        'open',  # Checked separately for path safety\n+    }\n+\n+    # Modules that should never be imported\n+    DANGEROUS_MODULES = {\n+        'subprocess', 'os', 'socket', 'ctypes', 'multiprocessing',\n+        'importlib', '__builtin__', '__builtins__', 'sys', 'shutil',\n+        'pickle', 'shelve', 'commands', 'pty', 'fcntl', 'pwd', 'grp',\n+        'signal', 'resource', 'pipes', 'popen2', 'platform'\n+    }\n+\n+    # os module functions that are dangerous\n+    DANGEROUS_OS_FUNCTIONS = {\n+        'system', 'popen', 'spawn', 'exec', 'fork', 'kill', 'killpg',\n+        'spawnl', 'spawnle', 'spawnlp', 'spawnlpe',\n+        'spawnv', 'spawnve', 'spawnvp', 'spawnvpe'\n+    }",
+      "annotation": "the visitor enumerates the dangerous calls, imports and os functions, and nothing in it inspects the dunder attributes used for type hierarchy traversal."
+     },
+     {
+      "role": "fix",
+      "file": "openssl_encrypt/modules/plugin_system/plugin_ast_analyzer.py",
+      "code": "@@ -56,6 +56,23 @@ class DangerousPatternVisitor(ast.NodeVisitor):\n         \"__import__\",\n     }\n \n+    # Dunder attributes that enable type hierarchy traversal / sandbox escape.\n+    # Note: __init__, __new__, __del__, __dict__, __func__, __self__, __class__\n+    # are NOT included here because they are standard Python and commonly used\n+    # in legitimate plugin code.  Only attributes that enable sandbox escapes\n+    # (type hierarchy traversal, scope access, code manipulation, pickle exploits)\n+    # are blocked.\n+    DANGEROUS_DUNDER_ATTRIBUTES = {\n+        \"__mro__\",\n+        \"__subclasses__\",\n+        \"__bases__\",\n+        \"__globals__\",\n+        \"__builtins__\",\n+        \"__code__\",\n+        \"__reduce__\",\n+        \"__reduce_ex__\",\n+    }\n+\n     # Modules that should never be imported\n     # Note: 'os' and 'socket' are NOT blocked here:\n     #   - 'os' is needed for path operations; file access is restricted by sandbox allowed_paths",
+      "annotation": "an explicit list of escape-enabling dunder attributes that the visitor checks on attribute access and on getattr lookups."
+     }
+    ],
+    "candidate_patch_sha256": "69ded809381ba83f2f28ebae58e4c5dad2908189445ac9df34ee4c250dca6378",
+    "fix_patch_sha256": "f86c93b3a22c0e5ea364a16e85bc729469ea1d125a6885ef03cbf2389ee13d93"
+   },
+   "ir_chain": null,
+   "unpatched": null,
+   "advisory_url": "https://github.com/advisories/ghsa-xgx5-9hx8-gf84",
+   "publication_issues": [
+    "missing_fix_authorship"
+   ],
+   "publication_status": "provisional"
+  },
+  {
    "case_id": "GHSA-R654-XCXM-6JPC",
    "aliases": [
     "CVE-2026-74879"
@@ -1935,6 +2208,98 @@
    "advisory_url": "https://github.com/advisories/GHSA-r654-xcxm-6jpc",
    "publication_issues": [],
    "publication_status": "confirmed"
+  },
+  {
+   "case_id": "GHSA-Q9F6-Q6M5-F5H2",
+   "aliases": [
+    "CVE-2026-74870"
+   ],
+   "repository": "jahlives/openssl_encrypt",
+   "repository_metadata": {
+    "full_name": "jahlives/openssl_encrypt",
+    "language": "Python",
+    "archived": false
+   },
+   "contribution_class": "AI_DIRECT_ROOT",
+   "candidate_set": [
+    "058df1750fb08a9ca2b65ead2d993183e4d77390"
+   ],
+   "carrier_set": [],
+   "minimum_fix_set": [
+    "35c4dd5ccae10f6c7d0a9452b9007f3f882ca095"
+   ],
+   "gates": {
+    "identity": "UNKNOWN",
+    "ai_hunk": "UNKNOWN",
+    "topology": "UNKNOWN",
+    "but_for": "UNKNOWN",
+    "fix_reversal": "UNKNOWN",
+    "release": "UNKNOWN",
+    "uniqueness": "UNKNOWN"
+   },
+   "vulnerable_release": {
+    "kind": "advisory_range",
+    "version": "<= 1.4.7",
+    "tag": null
+   },
+   "fixed_release": {
+    "kind": "git_tag",
+    "version": "v1.4.8",
+    "tag": "v1.4.8"
+   },
+   "published_at": "2026-08-17",
+   "severity": null,
+   "cwes": [],
+   "description": "The change adds the FIDO2 hardware pepper plugin together with command-line tooling for it. The test command builds a security context for the registered key, calls the plugin to derive the pepper, and reports the result. On success it prints the length of the derived pepper and then the pepper bytes in hexadecimal, with nothing between the derivation and the terminal output. The pepper is the key material that derivation produces, so printing it hands the value to anyone who can read that output, including logs and session recordings that outlive the process. The fix removes the hexadecimal echo and leaves the success message and the length in place.",
+   "references": [],
+   "mechanism": "The FIDO2 test command added by this change asks the plugin for the pepper derived from the registered security key and, when that succeeds, prints the length of the derived pepper and then the pepper itself in hexadecimal. The value is the output of the hardware-bound derivation, and the success branch writes it to standard output with no redaction. Output from a command like this ends up in terminal scrollback and in captured logs, so the derived material outlives the run that produced it.",
+   "cause_category": "auth_access",
+   "ai_provenance": {
+    "family": "claude",
+    "coverage": "complete",
+    "candidate_count": 1,
+    "named_candidate_count": 1
+   },
+   "fix_authorship": null,
+   "code_evidence": {
+    "candidate_url": "https://github.com/jahlives/openssl_encrypt/commit/058df1750fb08a9ca2b65ead2d993183e4d77390",
+    "fix_url": "https://github.com/jahlives/openssl_encrypt/commit/35c4dd5ccae10f6c7d0a9452b9007f3f882ca095",
+    "advisory_url": "https://github.com/advisories/ghsa-q9f6-q6m5-f5h2",
+    "summary": "A coding assistant co-authored the commit that added the FIDO2 pepper plugin, and the test command it shipped derived the pepper from the security key and printed the value in hexadecimal.",
+    "steps": [
+     {
+      "title": "AI change",
+      "detail": "The test command added by this change printed the pepper it derived from the security key in hexadecimal, writing the value to standard output."
+     },
+     {
+      "title": "Fix",
+      "detail": "The hexadecimal echo is removed, so the command still reports success and the pepper length while the derived value stays out of stdout and captured logs."
+     }
+    ],
+    "display_hunks": [
+     {
+      "role": "candidate",
+      "file": "openssl_encrypt/modules/hsm_cli.py",
+      "code": "@@ -0,0 +214,18 @@\n+    # Create dummy security context\n+    from ..modules.plugin_system.plugin_base import PluginSecurityContext, PluginCapability\n+    context = PluginSecurityContext(\n+        plugin_id=plugin.plugin_id,\n+        capabilities=plugin.get_required_capabilities()\n+    )\n+\n+    # Test pepper derivation\n+    result = plugin.get_hsm_pepper(test_salt, context)\n+\n+    if result.success:\n+        pepper = result.data.get(\"hsm_pepper\")\n+        click.echo(f\"\\n✅ Test successful!\")\n+        click.echo(f\"Pepper length: {len(pepper)} bytes\")\n+        click.echo(f\"Pepper (hex): {pepper.hex()}\")\n+        click.echo(\"\\nYour FIDO2 credential is working correctly.\")\n+    else:\n+        click.echo(f\"\\n❌ Test failed: {result.message}\", err=True)",
+      "annotation": "the success branch of the test command prints the derived pepper in hexadecimal right after reporting its length."
+     },
+     {
+      "role": "fix",
+      "file": "openssl_encrypt/modules/hsm_cli.py",
+      "code": "@@ -225,8 +225,10 @@ def fido2_test(rp_id: Optional[str]):\n     if result.success:\n         pepper = result.data.get(\"hsm_pepper\")\n         click.echo(\"\\n✅ Test successful!\")\n+        # Do NOT print the pepper itself — it is key material / a KDF\n+        # intermediate (H1 [HSM-1]). The length + success confirm the\n+        # derivation works; the value must never reach stdout/logs.\n         click.echo(f\"Pepper length: {len(pepper)} bytes\")\n-        click.echo(f\"Pepper (hex): {pepper.hex()}\")\n         click.echo(\"\\nYour FIDO2 credential is working correctly.\")\n     else:\n         click.echo(f\"\\n❌ Test failed: {result.message}\", err=True)",
+      "annotation": "The fix removes the hexadecimal echo and leaves a note that the derived pepper must never reach standard output or logs, so only the success message and the length remain."
+     }
+    ],
+    "candidate_patch_sha256": "95a6ff9daa4468f31d45f25dcedb12a641422e9db7c04e672af7f11e7f5a8045",
+    "fix_patch_sha256": "6614d99c8a5562dd43917e8ccafd47b1de8bb94a9351e20be66c5992f250e954"
+   },
+   "ir_chain": null,
+   "unpatched": null,
+   "advisory_url": "https://github.com/advisories/ghsa-q9f6-q6m5-f5h2",
+   "publication_issues": [
+    "missing_fix_authorship"
+   ],
+   "publication_status": "provisional"
   },
   {
    "case_id": "GHSA-PJ24-VJ9G-8VG8",
@@ -2813,6 +3178,98 @@
    "publication_status": "confirmed"
   },
   {
+   "case_id": "GHSA-C472-7FXR-552C",
+   "aliases": [
+    "CVE-2026-74891"
+   ],
+   "repository": "jahlives/openssl_encrypt",
+   "repository_metadata": {
+    "full_name": "jahlives/openssl_encrypt",
+    "language": "Python",
+    "archived": false
+   },
+   "contribution_class": "AI_DIRECT_ROOT",
+   "candidate_set": [
+    "fafdfeed1b279cfe61e86cd8adc132b206eef8d4"
+   ],
+   "carrier_set": [],
+   "minimum_fix_set": [
+    "57e618d32eab5163a329a69389f1f75f81fdc90b"
+   ],
+   "gates": {
+    "identity": "UNKNOWN",
+    "ai_hunk": "UNKNOWN",
+    "topology": "UNKNOWN",
+    "but_for": "UNKNOWN",
+    "fix_reversal": "UNKNOWN",
+    "release": "UNKNOWN",
+    "uniqueness": "UNKNOWN"
+   },
+   "vulnerable_release": {
+    "kind": "advisory_range",
+    "version": "< 1.4.0",
+    "tag": null
+   },
+   "fixed_release": {
+    "kind": "git_tag",
+    "version": "v1.4.0",
+    "tag": "v1.4.0"
+   },
+   "published_at": "2026-08-17",
+   "severity": null,
+   "cwes": [],
+   "description": "The change adds a standalone keyserver and reads its configuration from environment variables. The settings class declares DATABASE_URL with a default of postgresql://keyserver:keyserver@localhost/keyserver, and the database module creates the engine from that setting as soon as the application is imported, so a server started without the variable comes up on the fixed credential pair instead of failing. Because the same user name and password sit in the source, anyone who can reach the PostgreSQL port can present them and reach the keyserver database, and a deployment that never sets the variable keeps serving on that account. The fix removes the fallback and adds a startup check that refuses to run without a database URL.",
+   "references": [],
+   "mechanism": "The settings class added by this change reads DATABASE_URL from the environment but falls back to postgresql://keyserver:keyserver@localhost/keyserver. The keyserver builds its database engine from that value at import time, so a deployment that starts without the environment variable connects to PostgreSQL as keyserver with the password keyserver, a pair written in the repository for anyone to read. That connection is the keyserver's own database account, and nothing in the startup path requires the operator to replace the pair.",
+   "cause_category": "auth_access",
+   "ai_provenance": {
+    "family": "claude",
+    "coverage": "complete",
+    "candidate_count": 1,
+    "named_candidate_count": 1
+   },
+   "fix_authorship": null,
+   "code_evidence": {
+    "candidate_url": "https://github.com/jahlives/openssl_encrypt/commit/fafdfeed1b279cfe61e86cd8adc132b206eef8d4",
+    "fix_url": "https://github.com/jahlives/openssl_encrypt/commit/57e618d32eab5163a329a69389f1f75f81fdc90b",
+    "advisory_url": "https://github.com/advisories/ghsa-c472-7fxr-552c",
+    "summary": "A coding assistant co-authored the commit that added the post-quantum keyserver, and the settings file it wrote shipped a fixed PostgreSQL user name and password as the default database URL.",
+    "steps": [
+     {
+      "title": "AI change",
+      "detail": "The settings file written for the new keyserver defaulted the database URL to a fixed PostgreSQL user name and password, so a deployment that set no environment variable connected with them."
+     },
+     {
+      "title": "Fix",
+      "detail": "The fixed credential default is removed and a startup check now rejects an empty database URL, so the server refuses to run until a real one is provided."
+     }
+    ],
+    "display_hunks": [
+     {
+      "role": "candidate",
+      "file": "server/key-server/app/config.py",
+      "code": "@@ -0,0 +19,18 @@\n+class Settings(BaseSettings):\n+    \"\"\"\n+    Server settings with environment variable support.\n+\n+    All settings can be overridden via environment variables.\n+    Example: DATABASE_URL, API_TOKEN_SALT, etc.\n+    \"\"\"\n+\n+    # Application\n+    app_name: str = \"OpenSSL Encrypt Keyserver\"\n+    version: str = \"1.0.0\"\n+    debug: bool = False\n+\n+    # Database\n+    database_url: str = os.getenv(\n+        \"DATABASE_URL\", \"postgresql://keyserver:keyserver@localhost/keyserver\"\n+    )\n+",
+      "annotation": "the new settings class declares the database URL with a default of the fixed keyserver PostgreSQL user name and password."
+     },
+     {
+      "role": "fix",
+      "file": "server/key-server/app/config.py",
+      "code": "@@ -29,10 +30,8 @@ class Settings(BaseSettings):\n     version: str = \"1.0.0\"\n     debug: bool = False\n \n-    # Database\n-    database_url: str = os.getenv(\n-        \"DATABASE_URL\", \"postgresql://keyserver:keyserver@localhost/keyserver\"\n-    )\n+    # Database - MUST be set via environment variable\n+    database_url: str = os.getenv(\"DATABASE_URL\", \"\")\n \n     # Security\n     api_token_salt: str = os.getenv(\"API_TOKEN_SALT\", \"change-me-in-production\")\n@@ -55,2 +54,25 @@ class Settings(BaseSettings):\n+def validate_settings(s: Settings) -> None:\n+    \"\"\"Validate critical settings at startup.\n+\n+    Raises:\n+        ValueError: If required settings are missing or insecure.\n+    \"\"\"\n+    if not s.database_url:\n+        if s.debug:\n+            logger.warning(\n+                \"SECURITY WARNING: DATABASE_URL not set. \"\n+                \"Using in-memory SQLite for debug mode only.\"\n+            )\n+            s.database_url = \"sqlite:///./debug_keyserver.db\"\n+        else:\n+            raise ValueError(\n+                \"DATABASE_URL environment variable is required. \"\n+                \"Example: DATABASE_URL=postgresql://user:pass@host/dbname\"\n+            )\n+\n+\n+logger = logging.getLogger(__name__)\n+\n # Global settings instance\n settings = Settings()\n+validate_settings(settings)",
+      "annotation": "The fix deletes the hardcoded default and adds a startup check that refuses to run without a database URL."
+     }
+    ],
+    "candidate_patch_sha256": "6508134ebd21546f8b9fb55b30057ce21ded49842efe544adbe17f793dc894a5",
+    "fix_patch_sha256": "13841df1eb833b2d27caae958fd7c59b6683c085f6648a8ae66adb4440773236"
+   },
+   "ir_chain": null,
+   "unpatched": null,
+   "advisory_url": "https://github.com/advisories/ghsa-c472-7fxr-552c",
+   "publication_issues": [
+    "missing_fix_authorship"
+   ],
+   "publication_status": "provisional"
+  },
+  {
    "case_id": "GHSA-9J5F-PJWJ-62R3",
    "aliases": [
     "CVE-2026-74885"
@@ -3323,124 +3780,6 @@
    "publication_status": "confirmed"
   },
   {
-   "case_id": "GHSA-24VG-MJM2-36JV",
-   "aliases": [
-    "CVE-2026-74882"
-   ],
-   "repository": "jahlives/openssl_encrypt",
-   "repository_metadata": {
-    "full_name": "jahlives/openssl_encrypt",
-    "language": "Python",
-    "archived": false
-   },
-   "contribution_class": "AI_DIRECT_ROOT",
-   "candidate_set": [
-    "f6f2e48c66e57a44ea92fc187453fe7e59c190df"
-   ],
-   "carrier_set": [],
-   "minimum_fix_set": [
-    "7462ad014ae8f5ede8769d50b9b6de412eedb89f"
-   ],
-   "gates": {
-    "identity": "PASS",
-    "ai_hunk": "PASS",
-    "topology": "PASS",
-    "but_for": "PASS",
-    "fix_reversal": "PASS",
-    "release": "PASS",
-    "uniqueness": "PASS"
-   },
-   "vulnerable_release": {
-    "kind": "advisory_range",
-    "version": "< 1.4.0",
-    "tag": null
-   },
-   "fixed_release": {
-    "kind": "advisory_version",
-    "version": "1.4.0",
-    "tag": null
-   },
-   "published_at": "2026-08-17",
-   "severity": null,
-   "cwes": [],
-   "description": "The Claude-assisted Integrity module gave its proxy configuration a default trusted list covering localhost and the entire RFC 1918 private address space, including 10.0.0.0/8, 172.16.0.0/12 and 192.168.0.0/16. IntegrityAuthHandler passes that list to ProxyAuth, which treats any caller inside those networks as a trusted reverse proxy and accepts attacker-supplied X-Client-Cert-Fingerprint headers as the client certificate identity, letting a private-network host impersonate another client and pass the integrity check. The fix narrows the default to loopback addresses only.",
-   "references": [],
-   "mechanism": "IntegrityProxyConfig.trusted_proxies in openssl_encrypt_server/config.py defaulted to RFC 1918 ranges instead of loopback. IntegrityAuthHandler passes the list to ProxyAuth, which trusts callers in those networks to declare the client certificate identity, so a private host can impersonate another client. ProxyAuth validation added in January 2026 rejects prefixes broader than /24, so the default is reachable only where that check was relaxed.",
-   "cause_category": "ssrf_network",
-   "ai_provenance": {
-    "family": "claude",
-    "coverage": "complete",
-    "candidate_count": 1,
-    "named_candidate_count": 1
-   },
-   "fix_authorship": {
-    "classification": "ai_assisted",
-    "families": [
-     "claude"
-    ],
-    "fixes": [
-     {
-      "sha": "7462ad014ae8f5ede8769d50b9b6de412eedb89f",
-      "classification": "ai_assisted",
-      "author": {
-       "name": "Tobi",
-       "email": "tobster@brain-force.ch"
-      }
-     }
-    ]
-   },
-   "code_evidence": {
-    "fix_marker": null,
-    "candidate_url": "https://github.com/jahlives/openssl_encrypt/commit/f6f2e48c66e57a44ea92fc187453fe7e59c190df",
-    "fix_url": "https://github.com/jahlives/openssl_encrypt/commit/7462ad014ae8f5ede8769d50b9b6de412eedb89f",
-    "advisory_url": "https://github.com/advisories/ghsa-24vg-mjm2-36jv",
-    "summary": "Claude-assisted proxy hardening defaulted the trusted-proxy allowlist to the entire private address space, letting callers with a spoofed X-Forwarded-For header pass the integrity gate.",
-    "steps": [
-     {
-      "title": "AI change",
-      "detail": "feat: Add Integrity module with mTLS auth and comprehensive certificate management"
-     },
-     {
-      "title": "Fix",
-      "detail": "security: Restrict default trusted proxies to localhost (GHSA-2592-7m3g-7fq6)"
-     }
-    ],
-    "display_hunks": [
-     {
-      "file": "openssl_encrypt_server/config.py",
-      "code": "@@ -80,6 +80,37 @@ class PepperConfig(BaseSettings):\n     max_peppers_per_client: int = 100\n \n \n+class IntegrityProxyConfig(BaseSettings):\n+    \"\"\"Integrity proxy mode configuration (same as Pepper)\"\"\"\n+    fingerprint_header: str = \"X-Client-Cert-Fingerprint\"\n+    dn_header: Optional[str] = \"X-Client-Cert-DN\"\n+    verify_header: Optional[str] = \"X-Client-Cert-Verify\"\n+    trusted_proxies: List[str] = [\n+        \"127.0.0.1\",\n+        \"::1\",\n+        \"10.0.0.0/8\",\n+        \"172.16.0.0/12\",\n+        \"192.168.0.0/16\"\n+    ]\n+\n+\n+class IntegrityMTLSConfig(BaseSettings):\n+    \"\"\"Integrity mTLS mode configuration\"\"\"\n+    host: str = \"0.0.0.0\"\n+    port: int = 8445\n+    cert: str = \"/certs/integrity-server.crt\"\n+    key: str = \"/certs/integrity-server.key\"\n+    client_ca: str = \"/certs/client-ca.crt\"\n+\n+\n+class IntegrityConfig(BaseSettings):\n+    \"\"\"Integrity module configuration\"\"\"\n+    enabled: bool = False  # OPT-IN by default\n+    auth_mode: Literal[\"proxy\", \"mtls\"] = \"proxy\"\n+    proxy: IntegrityProxyConfig = IntegrityProxyConfig()\n+    mtls: IntegrityMTLSConfig = IntegrityMTLSConfig()\n+\n+\n class Settings(BaseSettings):\n     \"\"\"\n     Server settings with environment variable support.\n@@ -130,6 +161,13 @@ class Settings(BaseSettings):\n     pepper_mtls_key: str = Field(default=\"/certs/pepper-server.key\", validation_alias=\"PEPPER_MTLS_KEY\")\n     pepper_mtls_client_ca: str = Field(default=\"/certs/client-ca.crt\", validation_alias=\"PEPPER_MTLS_CLIENT_CA\")\n \n+    integrity_enabled: bool = Field(default=False, validation_alias=\"INTEGRITY_ENABLED\")\n+    integrity_auth_mode: str = Field(default=\"proxy\", validation_alias=\"INTEGRITY_AUTH_MODE\")\n+    integrity_mtls_port: int = Field(default=8445, validation_alias=\"INTEGRITY_MTLS_PORT\")\n+    integrity_mtls_cert: str = Field(default=\"/certs/integrity-server.crt\", validation_alias=\"INTEGRITY_MTLS_CERT\")\n+    integrity_mtls_key: str = Field(default=\"/certs/integrity-server.key\", validation_alias=\"INTEGRITY_MTLS_KEY\")\n+    integrity_mtls_client_ca: str = Field(default=\"/certs/client-ca.crt\", validation_alias=\"INTEGRITY_MTLS_CLIENT_CA\")\n+\n     def get_cors_origins_list(self) -> List[str]:\n         \"\"\"Parse CORS origins string into list\"\"\"\n         if not self.cors_origins:\n@@ -185,6 +223,19 @@ def get_pepper_config(self) -> PepperConfig:\n             deadman_enabled=self.pepper_deadman_enabled,\n         )\n \n+    def get_integrity_config(self) -> IntegrityConfig:\n+        \"\"\"Get integrity configuration\"\"\"\n+        return IntegrityConfig(\n+            enabled=self.integrity_enabled,\n+            auth_mode=self.integrity_auth_mode,  # type: ignore\n+            mtls=IntegrityMTLSConfig(\n+                port=self.integrity_mtls_port,\n+                cert=self.integrity_mtls_cert,\n+                key=self.integrity_mtls_key,\n+                client_ca=self.integrity_mtls_client_ca\n+            ),\n+        )\n+\n     class Config:\n         env_file = \".env\"\n         case_sensitive = False",
-      "annotation": "Defines the integrity proxy settings with trusted proxies defaulting to loopback plus all RFC 1918 networks, trusting every private-network caller to supply client certificate headers.",
-      "role": "candidate"
-     },
-     {
-      "file": "openssl_encrypt_server/modules/integrity/auth.py",
-      "code": "@@ -0,0 +1,143 @@\n+#!/usr/bin/env python3\n+\"\"\"\n+Integrity Authentication Handler\n+\n+Provides mTLS-based authentication for integrity verification endpoints.\n+Uses the same ProxyAuth/MTLSAuth handlers as the pepper module.\n+\"\"\"\n+\n+import logging\n+from typing import Optional\n+\n+from fastapi import Depends, Request\n+\n+from ...core.auth.mtls import MTLSAuth\n+from ...core.auth.proxy import ProxyAuth\n+\n+logger = logging.getLogger(__name__)\n+\n+# Global auth handler instance\n+_integrity_auth_handler: Optional[\"IntegrityAuthHandler\"] = None\n+\n+\n+class IntegrityAuthHandler:\n+    \"\"\"\n+    Unified mTLS authentication handler for integrity module.\n+\n+    Delegates to ProxyAuth or MTLSAuth based on configuration.\n+    \"\"\"\n+\n+    def __init__(self, config):\n+        \"\"\"\n+        Initialize integrity auth handler.\n+\n+        Args:\n+            config: IntegrityConfig instance with auth_mode setting\n+        \"\"\"\n+        self.config = config\n+        self.auth_mode = config.auth_mode\n+\n+        if self.auth_mode == \"proxy\":\n+            # Proxy mode: Nginx terminates mTLS, passes cert fingerprint in header\n+            self.handler = ProxyAuth(\n+                fingerprint_header=config.proxy.fingerprint_header,\n+                trusted_proxies=config.proxy.trusted_proxies,\n+                dn_header=config.proxy.dn_header,\n+                verify_header=config.proxy.verify_header,\n+            )\n+            logger.info(\"Integrity auth: proxy mode\")\n+        elif self.auth_mode == \"mtls\":\n+            # Direct mTLS mode: Server terminates TLS, extracts cert from SSL context\n+            self.handler = MTLSAuth()\n+            logger.info(\"Integrity auth: direct mTLS mode\")\n+        else:\n+            raise ValueError(f\"Invalid integrity auth_mode: {self.auth_mode}\")\n+\n+    async def get_client_fingerprint(self, request: Request) -> str:\n+        \"\"\"\n+        Extract and validate client certificate fingerprint.\n+\n+        Args:\n+            request: FastAPI Request object\n+\n+        Returns:\n+            Normalized certificate fingerprint (SHA-256, 64 hex chars)\n+\n+        Raises:\n+            HTTPException: 401/403 for authentication failures\n+        \"\"\"\n+        return await self.handler.get_client_fingerprint(request)\n+\n+    async def get_client_dn(self, request: Request) -> Optional[str]:\n+        \"\"\"\n+        Extract client certificate Distinguished Name (DN).\n+\n+        Args:\n+            request: FastAPI Request object\n+\n+        Returns:\n+            Certificate DN if available, None otherwise\n+        \"\"\"\n+        return await self.handler.get_client_dn(request)\n+\n+\n+def init_integrity_auth(config):\n+    \"\"\"\n+    Initialize global integrity authentication handler.\n+\n+    Args:\n+        config: IntegrityConfig instance",
-      "annotation": "Builds the integrity authentication handler on ProxyAuth using the module's trusted proxy list, so the default proxy mode reads client certificate identity from forwarded headers for any trusted-network request.",
-      "role": "candidate"
-     },
-     {
-      "file": "openssl_encrypt_server/modules/integrity/models.py",
-      "code": "@@ -0,0 +1,97 @@\n+#!/usr/bin/env python3\n+\"\"\"\n+Integrity database models.\n+\n+Table prefix: in_ (integrity)\n+\"\"\"\n+\n+import uuid\n+from datetime import datetime, timezone\n+\n+from sqlalchemy import BigInteger, Column, DateTime, ForeignKey, Integer, String, Text\n+from sqlalchemy.dialects.postgresql import INET, JSON, UUID\n+\n+from ...core.database import Base\n+\n+\n+class INClient(Base):\n+    \"\"\"\n+    Integrity client (mTLS certificate authenticated).\n+\n+    Each client is identified by their certificate fingerprint (SHA-256).\n+    No API tokens - authentication via client certificates only.\n+    \"\"\"\n+\n+    __tablename__ = \"in_clients\"\n+\n+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)\n+    cert_fingerprint = Column(String(64), unique=True, nullable=False, index=True)\n+    cert_dn = Column(String(500), nullable=True)  # Certificate Distinguished Name\n+    name = Column(String(255), nullable=True)  # Optional display name\n+    created_at = Column(\n+        DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc)\n+    )\n+    last_seen_at = Column(DateTime(timezone=True), nullable=True)\n+    client_metadata = Column(JSON, nullable=True)  # Optional client info\n+\n+    def __repr__(self):\n+        return f\"<INClient(cert_fingerprint={self.cert_fingerprint[:16]}...)>\"\n+\n+\n+class INMetadataHash(Base):\n+    \"\"\"\n+    Metadata hash storage for integrity verification.\n+\n+    Stores SHA-256 hashes of encrypted file metadata to detect tampering.\n+    Each file is identified by a client-generated file_id (e.g., filename hash).\n+    \"\"\"\n+\n+    __tablename__ = \"in_metadata_hashes\"\n+\n+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)\n+    cert_fingerprint = Column(\n+        String(64),\n+        ForeignKey(\"in_clients.cert_fingerprint\", ondelete=\"CASCADE\"),\n+        nullable=False,\n+        index=True,\n+    )\n+    file_id = Column(String(128), nullable=False, index=True)\n+    metadata_hash = Column(String(64), nullable=False)  # SHA-256 of encrypted file metadata\n+    algorithm = Column(String(50), nullable=True)  # Algorithm used (e.g., \"symmetric-aes256\")\n+    description = Column(Text, nullable=True)  # Optional description\n+    created_at = Column(\n+        DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc)\n+    )\n+    updated_at = Column(\n+        DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc)\n+    )\n+    verified_at = Column(DateTime(timezone=True), nullable=True)  # Last successful verification\n+    verification_count = Column(BigInteger, nullable=False, default=0)\n+\n+    def __repr__(self):\n+        return f\"<INMetadataHash(file_id={self.file_id}, cert_fingerprint={self.cert_fingerprint[:8]}...)>\"\n+\n+\n+class INVerificationLog(Base):\n+    \"\"\"\n+    Integrity verification audit log.\n+\n+    Logs all verification attempts for auditing and security monitoring.\n+    Helps detect repeated integrity violations which may indicate attacks.\n+    \"\"\"\n+\n+    __tablename__ = \"in_verification_log\"\n+\n+    id = Column(BigInteger, primary_key=True, autoincrement=True)\n+    cert_fingerprint = Column(String(64), nullable=False, index=True)\n+    file_id = Column(String(128), nullable=False)\n+    result = Column(String(20), nullable=False)  # 'match', 'mismatch', 'not_found'\n+    expected_hash = Column(String(64), nullable=True)",
-      "annotation": "Defines the integrity module's client and metadata tables keyed by certificate fingerprints, persisting the identities and per-file hash records accepted through the new proxy header gate.",
-      "role": "candidate"
-     },
-     {
-      "file": "openssl_encrypt_server/config.py",
-      "code": "@@ -96,12 +96,10 @@ class IntegrityProxyConfig(BaseSettings):\n     fingerprint_header: str = \"X-Client-Cert-Fingerprint\"\n     dn_header: Optional[str] = \"X-Client-Cert-DN\"\n     verify_header: Optional[str] = \"X-Client-Cert-Verify\"\n+    # Default to localhost only. Set TRUSTED_PROXIES env var for your reverse proxy IPs.\n     trusted_proxies: List[str] = [\n         \"127.0.0.1\",\n         \"::1\",\n-        \"10.0.0.0/8\",\n-        \"172.16.0.0/12\",\n-        \"192.168.0.0/16\",\n     ]\n \n ",
-      "annotation": "Narrows the default integrity trusted proxies to loopback only and documents that deployments must list their real reverse proxy addresses, removing private-network defaults from the certificate header trust path.",
-      "role": "fix"
-     }
-    ],
-    "candidate_patch_sha256": "901a13ce229132ee9cc1f53c0bda94363bb4504896e80bba4757198a9b9942d7",
-    "fix_patch_sha256": "dc0eefdd1ad100727d9724c5c12ccb73c73aa94bf160bc0ac423821f8d51e3f3"
-   },
-   "ir_chain": null,
-   "unpatched": null,
-   "advisory_url": "https://github.com/advisories/ghsa-24vg-mjm2-36jv",
-   "publication_issues": [],
-   "publication_status": "confirmed"
-  },
-  {
    "case_id": "GHSA-76PC-MQXP-3RQ5",
    "aliases": [
     "CVE-2026-55156"
@@ -3760,6 +4099,465 @@
    "advisory_url": "https://github.com/ooples/token-optimizer-mcp/security/advisories/GHSA-49mq-fc6q-3h46",
    "publication_issues": [],
    "publication_status": "confirmed"
+  },
+  {
+   "case_id": "GHSA-6HQX-4R22-F9M2",
+   "aliases": [
+    "CVE-2026-19744"
+   ],
+   "repository": "ccyl13/pentestify",
+   "repository_metadata": {
+    "full_name": "ccyl13/pentestify",
+    "language": "Python",
+    "archived": false
+   },
+   "contribution_class": "AI_DIRECT_ROOT",
+   "candidate_set": [
+    "e421fcc5b2892cfabbbad87e20a61e9e88a6d53d"
+   ],
+   "carrier_set": [],
+   "minimum_fix_set": [
+    "272f7d6033fd93fbc858835f55d616157041f123"
+   ],
+   "gates": {
+    "identity": "UNKNOWN",
+    "ai_hunk": "UNKNOWN",
+    "topology": "UNKNOWN",
+    "but_for": "UNKNOWN",
+    "fix_reversal": "UNKNOWN",
+    "release": "UNKNOWN",
+    "uniqueness": "UNKNOWN"
+   },
+   "vulnerable_release": {
+    "kind": "git_tag_interval",
+    "version": ">= v2.2.0, < v2.3.2",
+    "tag": "v2.2.0"
+   },
+   "fixed_release": {
+    "kind": "git_tag",
+    "version": "v2.3.2",
+    "tag": "v2.3.2"
+   },
+   "published_at": "2026-08-13",
+   "severity": null,
+   "cwes": [],
+   "description": "Pentestify gained a markdown renderer for the report fields that users fill in, and the rendering path that previously escaped those values was replaced by one that does not escape quotes. The renderer protects ampersands, angle brackets and code spans, then converts [text](url) links by writing the URL into an href attribute; a quote inside that URL ends the attribute early and anything after it is treated as markup. Report content is stored and both the preview and the exported HTML are built from the converted markup with innerHTML, so a crafted link runs script for every user who opens the report. The fix encodes double and single quotes in the same step that handles the other reserved characters.",
+   "references": [],
+   "mechanism": "The new renderer escapes ampersands and angle brackets in the text that remains, but it leaves quotation marks untouched. When it converts a markdown link it writes the URL straight into an href attribute, so a URL containing a double quote closes the attribute and the rest of the URL is parsed as extra markup on the same tag. Report text is stored as written and the converted markup is inserted into the page with innerHTML, so the injected handler runs in the browser of anyone who opens the report preview or the exported HTML.",
+   "cause_category": "injection",
+   "ai_provenance": {
+    "family": "claude",
+    "coverage": "complete",
+    "candidate_count": 1,
+    "named_candidate_count": 1
+   },
+   "fix_authorship": null,
+   "code_evidence": {
+    "candidate_url": "https://github.com/ccyl13/pentestify/commit/e421fcc5b2892cfabbbad87e20a61e9e88a6d53d",
+    "fix_url": "https://github.com/ccyl13/pentestify/commit/272f7d6033fd93fbc858835f55d616157041f123",
+    "advisory_url": "https://github.com/advisories/ghsa-6hqx-4r22-f9m2",
+    "summary": "The AI-assisted change that added the MCP server also added a markdown renderer for report text, and its link conversion writes the URL into an href attribute without escaping quotes, so a stored link can run script when a report is opened.",
+    "steps": [
+     {
+      "title": "AI change",
+      "detail": "The new renderer escaped angle brackets in report text but left quotation marks as written, and it placed link URLs inside an href attribute."
+     },
+     {
+      "title": "Fix",
+      "detail": "The escape step now also encodes double and single quotes, so a URL in a link can no longer close the href attribute and inject markup."
+     }
+    ],
+    "display_hunks": [
+     {
+      "role": "candidate",
+      "file": "js/app.js",
+      "code": "@@ -500,0 +578,16 @@ const escapeHTML = (str) => {\n+    s = s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');\n+\n+    // 4. Negrita+cursiva, negrita, cursiva\n+    s = s.replace(/\\*\\*\\*(.+?)\\*\\*\\*/g, '<strong><em>$1</em></strong>');\n+    s = s.replace(/\\*\\*(.+?)\\*\\*/g, '<strong>$1</strong>');\n+    s = s.replace(/\\*([^\\s*][^*\\n]*?[^\\s*])\\*/g, '<em>$1</em>');\n+    s = s.replace(/\\*([^\\s*\\n])\\*/g, '<em>$1</em>');\n+\n+    // 5. Links [texto](url)\n+    s = s.replace(/\\[([^\\]]+)\\]\\((https?:\\/\\/[^)\\s]+)\\)/g,\n+        '<a href=\"$2\" target=\"_blank\" style=\"color:inherit;text-decoration:underline;opacity:0.85;\">$1</a>');\n+\n+    // 6. Restaurar código inline\n+    s = s.replace(/\\x01IC(\\d+)\\x01/g, (_, i) =>\n+        `<code style=\"font-family:ui-monospace,SFMono-Regular,monospace;background:rgba(128,128,128,0.15);padding:0.1em 0.4em;border-radius:3px;font-size:0.875em;word-break:break-word;\">${inlineCodes[+i]}</code>`);\n+",
+      "annotation": "the link conversion writes the URL into an href attribute, and the escape step above it never encodes quotation marks."
+     },
+     {
+      "role": "fix",
+      "file": "js/app.js",
+      "code": "@@ -588,8 +588,12 @@ function markdownToHtml(str) {\n         return `\\x01IC${inlineCodes.length - 1}\\x01`;\n     });\n \n-    // 3. Escapar HTML en el texto restante\n-    s = s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');\n+    // 3. Escapar HTML en el texto restante. Se escapan también las comillas\n+    // (dobles y simples): la URL de los links [texto](url) del paso 5 se\n+    // interpola dentro de un atributo href=\"…\", así que un `\"` sin escapar\n+    // permitiría cerrar el atributo e inyectar event handlers (XSS almacenado).\n+    s = s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')\n+         .replace(/\"/g,'&quot;').replace(/'/g,'&#39;');\n \n     // 4. Negrita+cursiva, negrita, cursiva\n     s = s.replace(/\\*\\*\\*(.+?)\\*\\*\\*/g, '<strong><em>$1</em></strong>');",
+      "annotation": "quotation marks are encoded with the other reserved characters before any link or markup conversion happens."
+     }
+    ],
+    "candidate_patch_sha256": "d34635dc21aaefae29cef58cfd5903c8d08fff4a9e0f203d4618b2391f1ad0cf",
+    "fix_patch_sha256": "f0497d42da280a42e48fdaf24673dc93a8fbb206e15182c6e89cdce522263739"
+   },
+   "ir_chain": null,
+   "unpatched": null,
+   "advisory_url": "https://github.com/advisories/ghsa-6hqx-4r22-f9m2",
+   "publication_issues": [
+    "missing_fix_authorship"
+   ],
+   "publication_status": "provisional"
+  },
+  {
+   "case_id": "GHSA-PFVM-W89X-94JW",
+   "aliases": [],
+   "repository": "sipsorcery-org/sipsorcery",
+   "repository_metadata": {
+    "full_name": "sipsorcery-org/sipsorcery",
+    "language": "C#",
+    "archived": false
+   },
+   "contribution_class": "AI_DIRECT_ROOT",
+   "candidate_set": [
+    "6edd60f593a467be6ac654c71f57284665f59df1"
+   ],
+   "carrier_set": [],
+   "minimum_fix_set": [
+    "ccb0b5a845efa2fb131fd00de4f5321bae627f29"
+   ],
+   "gates": {
+    "identity": "UNKNOWN",
+    "ai_hunk": "UNKNOWN",
+    "topology": "UNKNOWN",
+    "but_for": "UNKNOWN",
+    "fix_reversal": "UNKNOWN",
+    "release": "UNKNOWN",
+    "uniqueness": "UNKNOWN"
+   },
+   "vulnerable_release": {
+    "kind": "advisory_range",
+    "version": ">= 10.0.5, <= 10.0.13",
+    "tag": null
+   },
+   "fixed_release": {
+    "kind": "git_tag",
+    "version": "v10.0.14",
+    "tag": "v10.0.14"
+   },
+   "published_at": "2026-08-12",
+   "severity": null,
+   "cwes": [],
+   "description": "The in-process TURN relay server added in this change started its UDP receive loop from Start() as a fire-and-forget task. Each datagram was handed straight to HandleUdpDatagram, and the only catch clause for a failed parse sat outside the receive loop. A relay socket is reachable by anyone who can send to the port, so a single datagram the STUN parser rejects threw out of the loop body, unwound the loop, and left the listener stopped. Nothing supervises the task, so the UDP relay stayed down for every allocation until the server was restarted. The fix isolates processing of one datagram inside the loop and logs the failure, so the listener keeps running.",
+   "references": [],
+   "mechanism": "The new relay called HandleUdpDatagram from inside ReceiveUdpAsync, which Start() launches without awaiting. The STUN parser throws on datagrams it does not recognise, and that exception unwound past the while loop, so one malformed packet ended the loop and the UDP relay stayed down for every client until the process restarted.",
+   "cause_category": "auth_access",
+   "ai_provenance": {
+    "family": "claude",
+    "coverage": "complete",
+    "candidate_count": 1,
+    "named_candidate_count": 1
+   },
+   "fix_authorship": null,
+   "code_evidence": {
+    "candidate_url": "https://github.com/sipsorcery-org/sipsorcery/commit/6edd60f593a467be6ac654c71f57284665f59df1",
+    "fix_url": "https://github.com/sipsorcery-org/sipsorcery/commit/ccb0b5a845efa2fb131fd00de4f5321bae627f29",
+    "advisory_url": "https://github.com/sipsorcery-org/sipsorcery/security/advisories/GHSA-pfvm-w89x-94jw",
+    "summary": "A CLI coding assistant co-authored the commit that added the in-process TURN relay server, and its UDP receive loop was started fire and forget with the only exception handler outside the loop.",
+    "steps": [
+     {
+      "title": "AI change",
+      "detail": "The new relay server launched its UDP receive loop as an unsupervised background task and handled datagram failures only outside the loop."
+     },
+     {
+      "title": "Fix",
+      "detail": "Processing one datagram now runs inside its own try/catch, so a packet the parser rejects can no longer end the receive loop."
+     }
+    ],
+    "display_hunks": [
+     {
+      "role": "candidate",
+      "file": "src/net/TURN/TurnServer.cs",
+      "code": "@@ -0,0 +429,24 @@\n+\n+        private async Task ReceiveUdpAsync()\n+        {\n+            try\n+            {\n+                while (_running)\n+                {\n+                    UdpReceiveResult result;\n+                    try\n+                    {\n+                        result = await _udpSocket.ReceiveAsync().ConfigureAwait(false);\n+                    }\n+                    catch (ObjectDisposedException) { break; }\n+                    catch (SocketException) { break; }\n+\n+                    HandleUdpDatagram(result.Buffer, result.RemoteEndPoint);\n+                }\n+            }\n+            catch (ObjectDisposedException) { }\n+            catch (Exception ex)\n+            {\n+                logger.LogError(ex, \"TURN UDP receive loop error. {ErrorMessage}\", ex.Message);\n+            }\n+        }",
+      "annotation": "the loop is started fire and forget, and the only catch for a rejected datagram sits outside the while loop."
+     },
+     {
+      "role": "fix",
+      "file": "src/SIPSorcery/net/TURN/TurnServer.cs",
+      "code": "@@ -583,7 +614,21 @@ namespace SIPSorcery.Net\n                     catch (ObjectDisposedException) { break; }\n                     catch (SocketException) { break; }\n \n-                    HandleUdpDatagram(result.Buffer, result.RemoteEndPoint);\n+                    // Processing a datagram is isolated from the receive loop. The datagram is\n+                    // unauthenticated and arbitrary, and the STUN parser throws on input it does not\n+                    // recognise, so without this a single malformed datagram from anyone who can reach\n+                    // the port unwinds past the loop. The loop is started fire and forget with no\n+                    // supervision, so nothing would restart it and the UDP relay would stay down for\n+                    // every client until the process was restarted.\n+                    try\n+                    {\n+                        HandleUdpDatagram(result.Buffer, result.RemoteEndPoint);\n+                    }\n+                    catch (Exception datagramExcp)\n+                    {\n+                        logger.LogWarning(datagramExcp, \"TURN server dropped a UDP datagram from {Remote} that could not be processed. {ErrorMessage}\",\n+                            result.RemoteEndPoint, datagramExcp.Message);\n+                    }\n                 }\n             }\n             catch (ObjectDisposedException) { }",
+      "annotation": "each datagram is processed inside its own try/catch, so a parse failure is logged and the receive loop keeps running."
+     }
+    ],
+    "candidate_patch_sha256": "463e93033770e7416550fb26dfc24a431809f39804a7e13c2c4ad9e8ca395567",
+    "fix_patch_sha256": "ae84b37acc59f81623d835fbd84962a9adf50a1b940d0e2da650e364088a750b",
+    "mechanism": "The new relay called HandleUdpDatagram from inside ReceiveUdpAsync, which Start() launches without awaiting. The STUN parser throws on datagrams it does not recognise, and that exception unwound past the while loop, so one malformed packet ended the loop and the UDP relay stayed down for every client until the process restarted."
+   },
+   "ir_chain": null,
+   "unpatched": null,
+   "advisory_url": "https://github.com/sipsorcery-org/sipsorcery/security/advisories/GHSA-pfvm-w89x-94jw",
+   "publication_issues": [
+    "missing_fix_authorship"
+   ],
+   "publication_status": "provisional"
+  },
+  {
+   "case_id": "GHSA-RV36-Q8CJ-WGR9",
+   "aliases": [
+    "CVE-2026-73155"
+   ],
+   "repository": "misp/cti-transmute",
+   "repository_metadata": {
+    "full_name": "misp/cti-transmute",
+    "language": "Python",
+    "archived": false
+   },
+   "contribution_class": "AI_DIRECT_ROOT",
+   "candidate_set": [
+    "4fa058f3ea7275eb340ea751ab9908a071673f94"
+   ],
+   "carrier_set": [],
+   "minimum_fix_set": [
+    "a18c07c3dd4a74b91ad8dd23d6e84fee4bcbd457"
+   ],
+   "gates": {
+    "identity": "UNKNOWN",
+    "ai_hunk": "UNKNOWN",
+    "topology": "UNKNOWN",
+    "but_for": "UNKNOWN",
+    "fix_reversal": "UNKNOWN",
+    "release": "UNKNOWN",
+    "uniqueness": "UNKNOWN"
+   },
+   "vulnerable_release": {
+    "kind": "git_tag_interval",
+    "version": ">= v1.3, < v1.5",
+    "tag": "v1.3"
+   },
+   "fixed_release": {
+    "kind": "git_tag",
+    "version": "v1.5",
+    "tag": "v1.5"
+   },
+   "published_at": "2026-08-11",
+   "severity": null,
+   "cwes": [],
+   "description": "Comments, replies and emoji reactions arrived together in one change, and the reaction handler added there trusted whatever comment id the request carried. It validated only that the field was present and that the emoji was one of the five allowed ones, then passed both to the reaction service, which writes to the comment reaction table without consulting the visibility rules. The same change also added the helper that decides whether a comment may be seen by a given user, but that helper is applied when comments are listed, not on the reaction path. Because the handler never loads the comment or the conversion it belongs to, a signed-in user could react to a comment on a private conversion or to another user's private comment by sending its id. The fix closes the gap by loading the comment and its conversion and by requiring the visibility check before the reaction is toggled.",
+   "references": [],
+   "mechanism": "The reaction handler was added in the same change that introduced comments and their visibility rules. It reads a comment id and an emoji from the request body, checks only that the id is present and that the emoji is in the allowed list, and then calls the reaction service, which performs no authorization of its own. The visibility helper written in the same change was wired into the comment reading path only, so any signed-in user could add or remove a reaction on a comment attached to a private conversion, or on another user's private comment, simply by knowing the comment id.",
+   "cause_category": "injection",
+   "ai_provenance": {
+    "family": "claude",
+    "coverage": "complete",
+    "candidate_count": 1,
+    "named_candidate_count": 1
+   },
+   "fix_authorship": null,
+   "code_evidence": {
+    "candidate_url": "https://github.com/misp/cti-transmute/commit/4fa058f3ea7275eb340ea751ab9908a071673f94",
+    "fix_url": "https://github.com/misp/cti-transmute/commit/a18c07c3dd4a74b91ad8dd23d6e84fee4bcbd457",
+    "advisory_url": "https://github.com/advisories/ghsa-rv36-q8cj-wgr9",
+    "summary": "A coding assistant co-authored the commit that added emoji reactions to the comment system of this Python web app, and the new reaction endpoint never checked whether the caller was allowed to see the comment it changed.",
+    "steps": [
+     {
+      "title": "AI change",
+      "detail": "The reaction endpoint validated the comment id and the emoji only, so it never established that the caller could see the comment being changed."
+     },
+     {
+      "title": "Fix",
+      "detail": "The endpoint now loads the comment and its conversion and refuses the request when the caller is not allowed to see the comment."
+     }
+    ],
+    "display_hunks": [
+     {
+      "role": "candidate",
+      "file": "website/web/convert/convert.py",
+      "code": "@@ -748,0 +881,23 @@ def get_history_details():\n+@convert_blueprint.route(\"/react\", methods=['POST'])\n+@login_required\n+def react():\n+    \"\"\"Toggle an emoji reaction on a comment.\"\"\"\n+    data = request.get_json(silent=True) or {}\n+    comment_id = data.get('comment_id')\n+    emoji = data.get('emoji', '').strip()\n+\n+    allowed_emojis = ['👍', '😊', '❤️', '🎯', '⚠️']\n+    if not comment_id or emoji not in allowed_emojis:\n+        return {\"success\": False, \"message\": \"Invalid request\", \"toast_class\": \"danger\"}, 400\n+\n+    success, added = ConvertModel.react_to_comment(comment_id, current_user.id, emoji)\n+    if not success:\n+        return {\"success\": False, \"message\": \"Failed to update reaction\", \"toast_class\": \"danger\"}, 500\n+\n+    return {\n+        \"success\": True,\n+        \"added\": added,\n+        \"message\": \"Reaction added\" if added else \"Reaction removed\",\n+        \"toast_class\": \"success\"\n+    }, 200\n+",
+      "annotation": "the new reaction handler checks only that the comment id is present and the emoji is allowed, then toggles the reaction for the signed-in user."
+     },
+     {
+      "role": "fix",
+      "file": "website/web/conversions/conversions.py",
+      "code": "@@ -1279,9 +1279,16 @@ def react():\n     if not comment_id or emoji not in allowed_emojis:\n         return {\"success\": False, \"message\": \"Invalid request\", \"toast_class\": \"danger\"}, 400\n \n+    comment = comments_repo.get(comment_id)\n+    if not comment or comment.is_deleted:\n+        return {\"success\": False, \"message\": \"Comment not found\", \"toast_class\": \"danger\"}, 404\n+    conversion = conv_repo.get(comment.conversion_id)\n+    if not conversion or not access.can_see_comment(current_user, comment, conversion):\n+        return {\"success\": False, \"message\": \"Permission denied\", \"toast_class\": \"danger\"}, 403\n+\n     try:\n         added = comments_repo.toggle_reaction(comment_id, current_user.id, emoji)\n-    except Exception:  # noqa: BLE001 - e.g. reacting to a deleted comment (FK)\n+    except Exception:  # noqa: BLE001 - e.g. the comment hard-deleted mid-request (FK)\n         db.session.rollback()\n         return {\"success\": False, \"message\": \"Failed to update reaction\", \"toast_class\": \"danger\"}, 500\n ",
+      "annotation": "the comment and its conversion are loaded first, and the request is rejected with an error when the caller cannot see the comment."
+     }
+    ],
+    "candidate_patch_sha256": "e970f5ae07eb471bc1a143dacd7045ec80e26375a462ce8288f45b28ff043457",
+    "fix_patch_sha256": "ef590c5d00cef9322c27709fea85939ec92c3309d9a1219a7fa5540dce04e3b9"
+   },
+   "ir_chain": null,
+   "unpatched": null,
+   "advisory_url": "https://github.com/advisories/ghsa-rv36-q8cj-wgr9",
+   "publication_issues": [
+    "missing_fix_authorship"
+   ],
+   "publication_status": "provisional"
+  },
+  {
+   "case_id": "GHSA-75J5-9V4M-C666",
+   "aliases": [
+    "CVE-2026-73162"
+   ],
+   "repository": "misp/cti-transmute",
+   "repository_metadata": {
+    "full_name": "misp/cti-transmute",
+    "language": "Python",
+    "archived": false
+   },
+   "contribution_class": "AI_DIRECT_ROOT",
+   "candidate_set": [
+    "4fa058f3ea7275eb340ea751ab9908a071673f94"
+   ],
+   "carrier_set": [],
+   "minimum_fix_set": [
+    "c352c2329e48ccc33a2b96d5353450cfbf7e89ec"
+   ],
+   "gates": {
+    "identity": "UNKNOWN",
+    "ai_hunk": "UNKNOWN",
+    "topology": "UNKNOWN",
+    "but_for": "UNKNOWN",
+    "fix_reversal": "UNKNOWN",
+    "release": "UNKNOWN",
+    "uniqueness": "UNKNOWN"
+   },
+   "vulnerable_release": {
+    "kind": "git_tag_interval",
+    "version": ">= v1.3, < v1.5",
+    "tag": "v1.3"
+   },
+   "fixed_release": {
+    "kind": "git_tag",
+    "version": "v1.5",
+    "tag": "v1.5"
+   },
+   "published_at": "2026-08-11",
+   "severity": null,
+   "cwes": [],
+   "description": "Follows and notifications were added in one change, and the four handlers that change follow and notification state were registered as GET routes. Each handler relies on the session of the current user and performs its change as soon as it is reached: following or unfollowing another account, deleting a notification, marking one notification read, or marking all of them read. Nothing in the handlers verifies a request token or the origin of the request, and a GET route is reachable from any page the signed-in user loads, including one controlled by an attacker. A link or an image tag is therefore enough to make the browser carry out the change on behalf of the victim. The fix re-registers the routes that create or remove state as POST and DELETE requests, which a browser does not issue from an image or a plain link.",
+   "references": [],
+   "mechanism": "The follow, delete-notification, mark-as-read and mark-all-read handlers were registered as GET routes on the account blueprint. They act on the session of the signed-in user, and none of them checks a request token or the origin of the request, which is what makes the state change reachable from elsewhere. A crafted link, an embedded image or any other cross-site request that the browser of a signed-in user follows performs the action on that user's account, so an attacker can follow or unfollow accounts and remove or clear notifications without the user doing anything.",
+   "cause_category": "auth_access",
+   "ai_provenance": {
+    "family": "claude",
+    "coverage": "complete",
+    "candidate_count": 1,
+    "named_candidate_count": 1
+   },
+   "fix_authorship": null,
+   "code_evidence": {
+    "candidate_url": "https://github.com/misp/cti-transmute/commit/4fa058f3ea7275eb340ea751ab9908a071673f94",
+    "fix_url": "https://github.com/misp/cti-transmute/commit/c352c2329e48ccc33a2b96d5353450cfbf7e89ec",
+    "advisory_url": "https://github.com/advisories/ghsa-75j5-9v4m-c666",
+    "summary": "A coding assistant co-authored the commit that added follows and notifications to this Python web app, and the four new endpoints that change that state were exposed as plain GET routes, so any page could trigger them for a signed-in user.",
+    "steps": [
+     {
+      "title": "AI change",
+      "detail": "The follow, unfollow, notification delete and notification read handlers were all registered as GET routes, so a page could reach them with a link or an image."
+     },
+     {
+      "title": "Fix",
+      "detail": "The same handlers were re-registered to require POST or DELETE requests, so a plain link or image no longer reaches them."
+     }
+    ],
+    "display_hunks": [
+     {
+      "role": "candidate",
+      "file": "website/web/account/account.py",
+      "code": "@@ -227,0 +237,22 @@ def delete_user(id) -> redirect:\n+@account_blueprint.route(\"/follow\", methods=['GET'])\n+@login_required\n+def follow_user():\n+    \"\"\"Follow or unfollow a user.\"\"\"\n+    user_id = request.args.get('user_id', type=int)\n+    if not user_id:\n+        return {\"success\": False, \"message\": \"Missing user_id\", \"toast_class\": \"danger\"}, 400\n+    if user_id == current_user.id:\n+        return {\"success\": False, \"message\": \"You cannot follow yourself\", \"toast_class\": \"warning\"}, 400\n+\n+    target = AccountModel.get_user(user_id)\n+    if not target:\n+        return {\"success\": False, \"message\": \"User not found\", \"toast_class\": \"danger\"}, 404\n+\n+    already = AccountModel.is_following(current_user.id, user_id)\n+    if already:\n+        AccountModel.unfollow_user(current_user.id, user_id)\n+        return {\"success\": True, \"following\": False, \"message\": f\"You unfollowed {target.first_name}\", \"toast_class\": \"info\"}, 200\n+    else:\n+        AccountModel.follow_user(current_user.id, user_id)\n+        return {\"success\": True, \"following\": True, \"message\": f\"You are now following {target.first_name}\", \"toast_class\": \"success\"}, 200\n+",
+      "annotation": "the follow handler is a GET route that changes follow state for the signed-in user as soon as the request arrives."
+     },
+     {
+      "role": "fix",
+      "file": "website/web/account/account.py",
+      "code": "@@ -339,7 +339,7 @@ def delete_user(id) -> redirect:\n #   Follow / Unfollow     #\n ###########################\n \n-@account_blueprint.route(\"/follow\", methods=['GET'])\n+@account_blueprint.route(\"/follow\", methods=['POST'])\n @login_required\n def follow_user():\n     \"\"\"Follow or unfollow a user.\"\"\"",
+      "annotation": "The fix switches the follow route from GET to POST, so the state change can no longer be triggered by a plain link."
+     }
+    ],
+    "candidate_patch_sha256": "ba66c847e1c722884b09b4cfc2cbad4b6983645a50bc0a252500d2111c124582",
+    "fix_patch_sha256": "93a336d84f50a8fa4f6974b838a57e3f13f25c91cb73b583394e75c682e6304f"
+   },
+   "ir_chain": null,
+   "unpatched": null,
+   "advisory_url": "https://github.com/advisories/ghsa-75j5-9v4m-c666",
+   "publication_issues": [
+    "missing_fix_authorship"
+   ],
+   "publication_status": "provisional"
+  },
+  {
+   "case_id": "GHSA-W385-33FW-3FWW",
+   "aliases": [
+    "CVE-2026-72760"
+   ],
+   "repository": "misp/cti-transmute",
+   "repository_metadata": {
+    "full_name": "misp/cti-transmute",
+    "language": "Python",
+    "archived": false
+   },
+   "contribution_class": "AI_DIRECT_ROOT",
+   "candidate_set": [
+    "4fa058f3ea7275eb340ea751ab9908a071673f94"
+   ],
+   "carrier_set": [],
+   "minimum_fix_set": [
+    "4bad9f105a824979e0ae79fd6115cd7a88c84ee5"
+   ],
+   "gates": {
+    "identity": "UNKNOWN",
+    "ai_hunk": "UNKNOWN",
+    "topology": "UNKNOWN",
+    "but_for": "UNKNOWN",
+    "fix_reversal": "UNKNOWN",
+    "release": "UNKNOWN",
+    "uniqueness": "UNKNOWN"
+   },
+   "vulnerable_release": {
+    "kind": "git_tag_interval",
+    "version": ">= v1.3, < v1.5",
+    "tag": "v1.3"
+   },
+   "fixed_release": {
+    "kind": "git_tag",
+    "version": "v1.5",
+    "tag": "v1.5"
+   },
+   "published_at": "2026-08-10",
+   "severity": null,
+   "cwes": [],
+   "description": "The following list arrived in a change that also brought notifications and other account features, and its handler assembled each entry by hand instead of using the existing user serializer. That inline dictionary carried the followed account's email address to whoever called the endpoint. The route only requires a login and returns the follow list of the current user, so the disclosure is not limited to administrators or to the owners of the listed accounts: anyone with an account could read the addresses of the accounts they follow, even when those accounts never made an address public. The fix drops that key from the response, leaving the account id, the display name and the follow date, and does not touch the administrator-only serializers that still return the field.",
+   "references": [],
+   "mechanism": "The handler that lists the accounts a user follows builds each entry as an inline dictionary and puts the followed account's email address in it. The route is available to every signed-in user and is not limited to administrators, so any account can read the addresses of the accounts it follows, including users who never published one. The general user serializer already in the project was not used here and keeps its own copy of the field behind administrator-only endpoints, so this list is the exposed path. The fix removes the email key from the list entries and leaves the account id, the name and the follow date.",
+   "cause_category": "auth_access",
+   "ai_provenance": {
+    "family": "claude",
+    "coverage": "complete",
+    "candidate_count": 1,
+    "named_candidate_count": 1
+   },
+   "fix_authorship": null,
+   "code_evidence": {
+    "candidate_url": "https://github.com/misp/cti-transmute/commit/4fa058f3ea7275eb340ea751ab9908a071673f94",
+    "fix_url": "https://github.com/misp/cti-transmute/commit/4bad9f105a824979e0ae79fd6115cd7a88c84ee5",
+    "advisory_url": "https://github.com/advisories/ghsa-w385-33fw-3fww",
+    "summary": "A coding assistant co-authored the commit that added the following list to this Python web app, and the entries it returns include the email address of every account the signed-in user follows.",
+    "steps": [
+     {
+      "title": "AI change",
+      "detail": "The new following list built each entry itself and included the followed account's email address in the response to a normal signed-in user."
+     },
+     {
+      "title": "Fix",
+      "detail": "The email address was removed from the following list entries, which now return the account id, the name and the follow date."
+     }
+    ],
+    "display_hunks": [
+     {
+      "role": "candidate",
+      "file": "website/web/account/account.py",
+      "code": "@@ -227,0 +269,18 @@ def delete_user(id) -> redirect:\n+@account_blueprint.route(\"/get_following\", methods=['GET'])\n+@login_required\n+def get_following():\n+    page = request.args.get('page', 1, type=int)\n+    search = request.args.get('search', '', type=str) or None\n+    pagination = AccountModel.get_following(current_user.id, page=page, search=search)\n+    items = []\n+    for f in pagination.items:\n+        user = AccountModel.get_user(f.followed_id)\n+        if user:\n+            items.append({\n+                \"user_id\": user.id,\n+                \"name\": f\"{user.first_name} {user.last_name}\",\n+                \"email\": user.email,\n+                \"since\": f.created_at.strftime('%Y-%m-%d') if f.created_at else None\n+            })\n+    return {\"success\": True, \"list\": items, \"total_page\": pagination.pages}, 200\n+",
+      "annotation": "every entry of the following list carries the followed account's email address alongside its id and name."
+     },
+     {
+      "role": "fix",
+      "file": "website/web/account/account.py",
+      "code": "@@ -428,7 +428,6 @@ def get_following():\n             items.append({\n                 \"user_id\": user.id,\n                 \"name\": f\"{user.first_name} {user.last_name}\",\n-                \"email\": user.email,\n                 \"since\": f.created_at.strftime('%Y-%m-%d') if f.created_at else None\n             })\n     return {\"success\": True, \"list\": items, \"total_page\": pagination.pages}, 200",
+      "annotation": "The fix drops the email address from the following list, so entries return the account id, the display name and the follow date only."
+     }
+    ],
+    "candidate_patch_sha256": "ba66c847e1c722884b09b4cfc2cbad4b6983645a50bc0a252500d2111c124582",
+    "fix_patch_sha256": "76ea3556d175c5763c18dbe6a9f6c4f763a670e972eeadb3614553dcdb9e938e"
+   },
+   "ir_chain": null,
+   "unpatched": null,
+   "advisory_url": "https://github.com/advisories/ghsa-w385-33fw-3fww",
+   "publication_issues": [
+    "missing_fix_authorship"
+   ],
+   "publication_status": "provisional"
   },
   {
    "case_id": "GHSA-5XXX-QHH7-9287",
@@ -4630,7 +5428,10 @@
   },
   {
    "case_id": "GHSA-WVPP-8HX9-P66J",
-   "aliases": [],
+   "aliases": [
+    "CVE-2026-76220",
+    "GHSA-WV46-XPJ8-PW53"
+   ],
    "repository": "gitpython-developers/gitpython",
    "repository_metadata": {
     "full_name": "gitpython-developers/gitpython",
@@ -5675,7 +6476,9 @@
   },
   {
    "case_id": "GHSA-8JQH-598V-RFXC",
-   "aliases": [],
+   "aliases": [
+    "CVE-2026-67530"
+   ],
    "repository": "arnasdon/wacrm",
    "repository_metadata": {
     "full_name": "arnasdon/wacrm",
@@ -29505,7 +30308,10 @@
   },
   {
    "case_id": "GHSA-4RH7-JWG9-M28M",
-   "aliases": [],
+   "aliases": [
+    "CVE-2026-74880",
+    "GHSA-J2J2-C4GJ-7CMC"
+   ],
    "repository": "jahlives/openssl_encrypt",
    "repository_metadata": {
     "full_name": "jahlives/openssl_encrypt",
@@ -29635,7 +30441,10 @@
   },
   {
    "case_id": "GHSA-VFGX-5Q85-58Q3",
-   "aliases": [],
+   "aliases": [
+    "CVE-2026-74874",
+    "GHSA-844W-MWFP-WJWF"
+   ],
    "repository": "jahlives/openssl_encrypt",
    "repository_metadata": {
     "full_name": "jahlives/openssl_encrypt",
@@ -29893,7 +30702,10 @@
   },
   {
    "case_id": "GHSA-425G-FJHQ-5H92",
-   "aliases": [],
+   "aliases": [
+    "CVE-2026-74875",
+    "GHSA-M3PP-5F32-32H9"
+   ],
    "repository": "jahlives/openssl_encrypt",
    "repository_metadata": {
     "full_name": "jahlives/openssl_encrypt",
@@ -31370,6 +32182,98 @@
    "advisory_url": "https://github.com/openvessl/anchorr/security/advisories/GHSA-6MG4-788H-7G9G",
    "publication_issues": [],
    "publication_status": "confirmed"
+  },
+  {
+   "case_id": "GHSA-8J2W-6FMM-M587",
+   "aliases": [
+    "CVE-2026-32031"
+   ],
+   "repository": "openclaw/openclaw",
+   "repository_metadata": {
+    "full_name": "openclaw/openclaw",
+    "language": "TypeScript",
+    "archived": false
+   },
+   "contribution_class": "AI_CODE_FLAWED",
+   "candidate_set": [
+    "647d929c9d0fd114249230d939a5cb3b36dc70e7"
+   ],
+   "carrier_set": [],
+   "minimum_fix_set": [
+    "da0ba1b73a2c70f20e4519ee580c968d843e9396"
+   ],
+   "gates": {
+    "identity": "UNKNOWN",
+    "ai_hunk": "UNKNOWN",
+    "topology": "UNKNOWN",
+    "but_for": "UNKNOWN",
+    "fix_reversal": "UNKNOWN",
+    "release": "UNKNOWN",
+    "uniqueness": "UNKNOWN"
+   },
+   "vulnerable_release": {
+    "kind": "advisory_range",
+    "version": "<= 2026.2.25",
+    "tag": null
+   },
+   "fixed_release": {
+    "kind": "advisory_version",
+    "version": "2026.2.26",
+    "tag": null
+   },
+   "published_at": "2026-03-19",
+   "severity": null,
+   "cwes": [],
+   "description": "The change added a gateway authentication gate for the channel HTTP endpoints that plugins register, and the gate itself left the exposure. Before it, a request that a channel plugin could match was served without checking gateway credentials; the new check was meant to close that, but it recognized only one spelling of the prefix. Because the path was never decoded or lowercased, a request written as /API/channels/... or with an encoded slash kept the plugin route reachable without a credential. The repair decodes the path once and lowercases it before the prefix comparison, which closes the case-varied and single-encoded forms, and the commits that continued the same repair added slash normalization, fail-closed handling for malformed percent-encodings, and repeated decoding with dot-segment resolution.",
+   "references": [],
+   "mechanism": "The gateway derived the request path from new URL(req.url).pathname and compared it to the channel prefix with startsWith. That value is the exact text the client sent: percent-encoding is not decoded, letter case is not folded, and repeated or dotted segments are not resolved. Requests such as /API/channels/... or /api/channels%2F... therefore failed the prefix test and reached the plugin channel routes without a gateway credential, even though those routes were the ones the check was meant to protect.",
+   "cause_category": "injection",
+   "ai_provenance": {
+    "family": "openai_gpt_codex",
+    "coverage": "complete",
+    "candidate_count": 1,
+    "named_candidate_count": 1
+   },
+   "fix_authorship": null,
+   "code_evidence": {
+    "candidate_url": "https://github.com/openclaw/openclaw/commit/647d929c9d0fd114249230d939a5cb3b36dc70e7",
+    "fix_url": "https://github.com/openclaw/openclaw/commit/da0ba1b73a2c70f20e4519ee580c968d843e9396",
+    "advisory_url": "https://github.com/advisories/ghsa-8j2w-6fmm-m587",
+    "summary": "An AI-assisted change added gateway authentication for channel HTTP endpoints, but the check tested the raw request path against a single lowercase prefix, so differently encoded variants of the same route skipped authentication.",
+    "steps": [
+     {
+      "title": "AI change",
+      "detail": "The new guard read the request path without decoding or case folding it, so it recognized only one exact spelling of the channel prefix."
+     },
+     {
+      "title": "Fix",
+      "detail": "The path is now decoded once and lowercased before the prefix test, and follow-up commits added slash normalization, fail-closed decoding, and dot-segment resolution."
+     }
+    ],
+    "display_hunks": [
+     {
+      "role": "candidate",
+      "file": "src/gateway/server-http.ts",
+      "code": "@@ -333,6 +333,7 @@ export function createGatewayHttpServer(opts: {\n     try {\n       const configSnapshot = loadConfig();\n       const trustedProxies = configSnapshot.gateway?.trustedProxies ?? [];\n+      const requestPath = new URL(req.url ?? \"/\", \"http://localhost\").pathname;\n       if (await handleHooksRequest(req, res)) {\n         return;\n       }\n@@ -347,8 +348,26 @@ export function createGatewayHttpServer(opts: {\n       if (await handleSlackHttpRequest(req, res)) {\n         return;\n       }\n-      if (handlePluginRequest && (await handlePluginRequest(req, res))) {\n-        return;\n+      if (handlePluginRequest) {\n+        // Channel HTTP endpoints are gateway-auth protected by default.\n+        // Non-channel plugin routes remain plugin-owned and must enforce\n+        // their own auth when exposing sensitive functionality.\n+        if (requestPath.startsWith(\"/api/channels/\")) {\n+          const token = getBearerToken(req);\n+          const authResult = await authorizeGatewayConnect({\n+            auth: resolvedAuth,\n+            connectAuth: token ? { token, password: token } : null,\n+            req,\n+            trustedProxies,\n+          });\n+          if (!authResult.ok) {\n+            sendUnauthorized(res);\n+            return;\n+          }\n+        }\n+        if (await handlePluginRequest(req, res)) {\n+          return;\n+        }\n       }\n       if (openResponsesEnabled) {\n         if (",
+      "annotation": "the guard compared the raw request path against a lowercase prefix, so encoded and case-varied spellings of the channel route skipped authentication."
+     },
+     {
+      "role": "fix",
+      "file": "src/gateway/server-http.ts",
+      "code": "@@ -88,6 +88,19 @@ function isCanvasPath(pathname: string): boolean {\n   );\n }\n \n+function decodePathnameOnce(pathname: string): string {\n+  try {\n+    return decodeURIComponent(pathname);\n+  } catch {\n+    return pathname;\n+  }\n+}\n+\n+function isProtectedPluginChannelPath(pathname: string): boolean {\n+  const normalized = decodePathnameOnce(pathname).toLowerCase();\n+  return normalized === \"/api/channels\" || normalized.startsWith(\"/api/channels/\");\n+}\n+\n function isNodeWsClient(client: GatewayWsClient): boolean {\n   if (client.connect.role === \"node\") {\n     return true;\n@@ -493,7 +506,7 @@ export function createGatewayHttpServer(opts: {\n         // Channel HTTP endpoints are gateway-auth protected by default.\n         // Non-channel plugin routes remain plugin-owned and must enforce\n         // their own auth when exposing sensitive functionality.\n-        if (requestPath === \"/api/channels\" || requestPath.startsWith(\"/api/channels/\")) {\n+        if (isProtectedPluginChannelPath(requestPath)) {\n           const token = getBearerToken(req);\n           const authResult = await authorizeHttpGatewayConnect({\n             auth: resolvedAuth,",
+      "annotation": "path decoding and lowercasing before the prefix test, so the spellings that previously skipped the gate are now authenticated."
+     }
+    ],
+    "candidate_patch_sha256": "64e78909fb1b01acdc2fafac6b67cbaede42b40ca9fdcb6ad7db547735281852",
+    "fix_patch_sha256": "5b9dcad57659e58123ad9cf074b07629d9717748f024aac66b353206b6d1e948"
+   },
+   "ir_chain": null,
+   "unpatched": null,
+   "advisory_url": "https://github.com/advisories/ghsa-8j2w-6fmm-m587",
+   "publication_issues": [
+    "missing_fix_authorship"
+   ],
+   "publication_status": "provisional"
   },
   {
    "case_id": "GHSA-QPMQ-6WJC-W28Q",
