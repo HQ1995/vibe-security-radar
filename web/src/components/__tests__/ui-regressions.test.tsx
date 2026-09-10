@@ -103,7 +103,7 @@ describe("how we verify page", () => {
     expect(html).toContain("How we verify");
     expect(html).toContain("Evidence before attribution");
     expect(html).toContain("Match the advisory");
-    expect(html).toContain("Locate the AI change");
+    expect(html).toContain("Locate the AI-assisted change");
     expect(html).toContain("Prove cause and fix");
     expect(html).toContain("Confirm the release");
     expect(html).toContain(
@@ -343,13 +343,14 @@ describe("canonical case evidence", () => {
     ).toContain("AI-assisted fix: ChatGPT/Codex · Byron");
   });
 
-  it("names the AI change the same way as the fix", () => {
+  it("names the AI-assisted change the same way as the fix", () => {
     const html = getResearchCases()
       .map((item) => renderToStaticMarkup(<CanonicalCaseEvidence item={item} />))
       .join("");
 
     expect(html).toContain("AI-assisted change:");
     expect(html).not.toContain("AI candidate");
+    expect(html).not.toMatch(/>AI change</);
   });
 
   it("explains incomplete remediation without exposing an internal mechanism key", () => {
@@ -476,7 +477,8 @@ describe("canonical case evidence", () => {
     expect(item?.code_evidence?.display_hunks?.length).toBeGreaterThan(0);
 
     const html = renderToStaticMarkup(<CanonicalCaseEvidence item={item!} />);
-    const roleBadges = html.match(/>(?:AI change|Fix|Comparison)<\/span>/g) ?? [];
+    const roleBadges =
+      html.match(/>(?:AI-assisted change|Fix|Comparison)<\/span>/g) ?? [];
 
     expect(roleBadges).toHaveLength(
       item!.code_evidence!.display_hunks!.length,

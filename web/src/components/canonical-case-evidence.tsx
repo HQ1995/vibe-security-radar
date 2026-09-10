@@ -72,7 +72,7 @@ function contributionHeadline(value: string): string {
   );
 }
 
-type DiffRole = "AI change" | "Fix" | "Comparison";
+type DiffRole = "AI-assisted change" | "Fix" | "Comparison";
 
 function advisoryBlurb(item: ResearchCase): string | null {
   const blurb = advisoryDescription(item);
@@ -110,14 +110,20 @@ function whatWentWrong(item: ResearchCase): string {
 }
 
 /**
- * Prefer the audited step title, but drop the generic "AI change"/"Fix" labels —
- * those say nothing a visitor doesn't already know from the kicker.
+ * Prefer the audited step title, but drop the generic "AI-assisted change" and
+ * "Fix" labels — those say nothing a visitor doesn't already know from the kicker.
  */
 function cardStepTitle(
   step: { readonly title: string } | undefined,
   fallback: string,
 ): string {
-  const generic = new Set(["AI change", "AI fix", "Fix", "Root cause"]);
+  const generic = new Set([
+    "AI-assisted change",
+    "AI change",
+    "AI fix",
+    "Fix",
+    "Root cause",
+  ]);
   if (step?.title && !generic.has(step.title.trim())) return step.title;
   return fallback;
 }
@@ -577,12 +583,12 @@ function IncompleteRemediationFlow({
       tone="warn"
       kicker="AI tried to fix this"
       title={attempt?.changed ?? "An AI patch touched the vulnerable path."}
-      detail="The AI change was a real security patch, but it left the same advisory reachable."
+      detail="The AI-assisted change was a real security patch, but it left the same advisory reachable."
       missed={attempt?.missed ?? chain.residual_bypass}
       repository={item.repository}
       shas={attemptShas}
       files={displayFiles(item, "candidate")}
-      authorship={`Incomplete AI fix · ${getAiToolLabel(item)}`}
+      authorship={`Incomplete AI-assisted fix · ${getAiToolLabel(item)}`}
     />
   );
   const closureCard = (
@@ -795,7 +801,7 @@ function DiffHunk({
           <aside
             aria-label="Key code note"
             className={`border-t-4 px-4 py-3 text-sm leading-6 ${
-              label === "AI change"
+              label === "AI-assisted change"
                 ? "border-amber-500 bg-amber-50/70 text-amber-950"
                 : label === "Fix"
                   ? "border-emerald-600 bg-emerald-50/70 text-emerald-950"
@@ -864,12 +870,12 @@ export function CanonicalCaseEvidence({
   const codeHunks = (evidence?.display_hunks ?? []).map((hunk) => {
     const label: DiffRole =
       hunk.role === "candidate"
-        ? "AI change"
+        ? "AI-assisted change"
         : hunk.role === "fix"
           ? "Fix"
           : "Comparison";
     const anchors =
-      label === "AI change"
+      label === "AI-assisted change"
         ? (evidence?.required_anchors?.candidate ?? [])
         : label === "Fix"
           ? (evidence?.required_anchors?.fix ?? [])
@@ -880,16 +886,16 @@ export function CanonicalCaseEvidence({
     return {
       hunk,
       label,
-      ...(label === "AI change" ? candidateSource : fixSource),
+      ...(label === "AI-assisted change" ? candidateSource : fixSource),
       annotation: hunkAnnotation(hunk),
       anchors,
     };
   });
   const codeGroups = [
     {
-      label: "AI change" as const,
-      title: "AI change",
-      hunks: codeHunks.filter((item) => item.label === "AI change"),
+      label: "AI-assisted change" as const,
+      title: "AI-assisted change",
+      hunks: codeHunks.filter((item) => item.label === "AI-assisted change"),
     },
     {
       label: "Fix" as const,
@@ -926,7 +932,7 @@ export function CanonicalCaseEvidence({
           {introStep && !incomplete ? (
             <div className="grid gap-2 border-y border-border py-4 sm:grid-cols-[8rem_1fr]">
               <p className="font-mono text-[10px] font-semibold uppercase tracking-wider text-primary">
-                AI change
+                AI-assisted change
               </p>
               <p className="text-sm leading-6 text-muted-foreground">
                 {introStep.detail}
@@ -980,7 +986,7 @@ export function CanonicalCaseEvidence({
             <section key={group.label} className="space-y-3">
               <div
                 className={`border-l-4 px-4 py-2 ${
-                  group.label === "AI change"
+                  group.label === "AI-assisted change"
                     ? "border-amber-500 bg-amber-50/70"
                     : group.label === "Fix"
                       ? "border-emerald-600 bg-emerald-50/70"
@@ -1006,7 +1012,7 @@ export function CanonicalCaseEvidence({
             <details className="text-xs text-muted-foreground">
               <summary className="cursor-pointer">Patch fingerprints</summary>
               <p className="mt-2 break-all font-mono text-[10px] leading-5">
-                AI change {evidence.candidate_patch_sha256}
+                AI-assisted change {evidence.candidate_patch_sha256}
                 {" · "}Fix {evidence.fix_patch_sha256}
               </p>
             </details>

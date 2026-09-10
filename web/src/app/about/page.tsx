@@ -16,14 +16,14 @@ const STEPS = [
   },
   {
     number: "02",
-    title: "Locate the AI change",
+    title: "Locate the AI-assisted change",
     detail: "Bind AI evidence to the exact commit and relevant code hunk.",
   },
   {
     number: "03",
     title: "Prove cause and fix",
     detail:
-      "Compare the parent, AI change, and minimum fix on the same attack path.",
+      "Compare the parent, AI-assisted change, and minimum fix on the same attack path.",
   },
   {
     number: "04",
