@@ -18,7 +18,7 @@
   "coverage_from": "2025-05-01",
   "coverage_to": "2026-08-26",
   "source_cutoff": "2026-08-26",
-  "generated_at": "2026-09-10T01:46:07Z",
+  "generated_at": "2026-09-10T02:26:36Z",
   "ledger": "artifacts/funnel-account-20260817.jsonl"
  },
  "cause_categories": {
@@ -911,9 +911,9 @@
    "published_at": "2026-08-25",
    "severity": null,
    "cwes": [],
-   "description": "PraisonAI BrowserServer._handle_connection() in src/praisonai/praisonai/browser/server.py treats a Chrome-extension Origin as allowed when re.match(r\"chrome-extension://[a-z0-9]{32}\", origin) succeeds. re.match anchors only at the start, so any Origin that begins with chrome-extension:// plus 32 alphanumerics — including a 33-character id or non-alphanumeric trailing junk — is accepted. There is no second auth factor before websocket.accept(). After the handshake, the attacker can send type=start_session; _handle_start_session creates a BrowserAgent with the attacker-supplied goal and broadcasts start_automation to another connected extension websocket, enabling cookie theft, screenshots, and arbitrary browser actions. This is a distinct bypass of the GHSA-8x8f-54wf-vv92 origin gate (that",
+   "description": "The PraisonAI browser gateway checked Chrome extension origins with an unanchored pattern, so BrowserServer._handle_connection() in src/praisonai/praisonai/browser/server.py accepted any Origin that started with chrome-extension:// plus 32 alphanumeric characters. Because nothing else authenticated the caller before websocket.accept(), a page on any domain could open the debugging socket and have the server run a BrowserAgent goal the page supplied, exposing cookies, screenshots, and browser actions. The fix anchored the expression in both the CORS middleware and the handshake check.",
    "references": [],
-   "mechanism": "PraisonAI BrowserServer._handle_connection() in src/praisonai/praisonai/browser/server.py treats a Chrome-extension Origin as allowed when re.match(r\"chrome-extension://[a-z0-9]{32}\", origin) succeeds. re.match anchors only at the start, so any Origin that begins with chrome-extension:// plus 32 alphanumerics — including a 33-character id or non-alphanumeric trailing junk — is accepted. There is no second auth factor before websocket.accept(). After the handshake, the attacker can send type=start_session; _handle_start_session creates a BrowserAgent with the attacker-supplied goal and broadcasts start_automation to another connected extension websocket, enabling cookie theft, screenshots, and arbitrary browser actions. This is a distinct bypass of the GHSA-8x8f-54wf-vv92 origin gate (that",
+   "mechanism": "BrowserServer._handle_connection() matched the Origin header with re.match(r\"chrome-extension://[a-z0-9]{32}\", origin), and re.match anchors only at the start of the string. A 33-character extension identifier, or an identifier followed by extra characters, therefore passed the check, and no second authentication factor was required before websocket.accept().",
    "cause_category": "auth_access",
    "ai_provenance": {
     "family": "claude",
@@ -2260,7 +2260,7 @@
     "https://www.vulncheck.com/advisories/openssl-encrypt-before-arbitrary-code-execution-via-whirlpool",
     "https://github.com/advisories/GHSA-ccp9-5g7c-pj86"
    ],
-   "mechanism": "openssl-encrypt: Dynamic .so loading for Whirlpool uses broad glob pattern without integrity verification",
+   "mechanism": "The Whirlpool fallback added to crypt_core.py scans site-packages for native modules matching the whirlpool and py313 name pattern, takes the first hit, and executes it with ExtensionFileLoader.exec_module without verifying integrity or ownership, so a planted module runs native code whenever Whirlpool is probed.",
    "cause_category": "other_ambiguous",
    "ai_provenance": {
     "family": "claude",
@@ -2313,7 +2313,7 @@
      ]
     },
     "annotation_mode": "hunk_specific",
-    "mechanism": "openssl-encrypt: Dynamic .so loading for Whirlpool uses broad glob pattern without integrity verification"
+    "mechanism": "The Whirlpool fallback added to crypt_core.py scans site-packages for native modules matching the whirlpool and py313 name pattern, takes the first hit, and executes it with ExtensionFileLoader.exec_module without verifying integrity or ownership, so a planted module runs native code whenever Whirlpool is probed."
    },
    "ir_chain": null,
    "unpatched": {
@@ -3363,9 +3363,9 @@
    "published_at": "2026-08-17",
    "severity": null,
    "cwes": [],
-   "description": "When the Integrity module is enabled (INTEGRITY_ENABLED) in default proxy auth mode, IntegrityProxyConfig.trusted_proxies includes the entire RFC 1918 private address space (10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16) plus localhost. IntegrityAuthHandler passes that list to ProxyAuth, which treats any client IP in those networks as a trusted reverse proxy and then accepts attacker-supplied X-Client-Cert-Fingerprint (and related cert headers) as the mTLS client identity. A host on a private network can therefore impersonate any client certificate. From 2026-01-03, ProxyAuth rejected CIDR prefixes broader than /24 at initialization, so the leftover Integrity RFC 1918 defaults would fail startup unless that validation was relaxed or modified — which is the residual condition stated by CVE-2026",
+   "description": "The Claude-assisted Integrity module gave its proxy configuration a default trusted list covering localhost and the entire RFC 1918 private address space, including 10.0.0.0/8, 172.16.0.0/12 and 192.168.0.0/16. IntegrityAuthHandler passes that list to ProxyAuth, which treats any caller inside those networks as a trusted reverse proxy and accepts attacker-supplied X-Client-Cert-Fingerprint headers as the client certificate identity, letting a private-network host impersonate another client and pass the integrity check. The fix narrows the default to loopback addresses only.",
    "references": [],
-   "mechanism": "When the Integrity module is enabled (INTEGRITY_ENABLED) in default proxy auth mode, IntegrityProxyConfig.trusted_proxies includes the entire RFC 1918 private address space (10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16) plus localhost. IntegrityAuthHandler passes that list to ProxyAuth, which treats any client IP in those networks as a trusted reverse proxy and then accepts attacker-supplied X-Client-Cert-Fingerprint (and related cert headers) as the mTLS client identity. A host on a private network can therefore impersonate any client certificate. From 2026-01-03, ProxyAuth rejected CIDR prefixes broader than /24 at initialization, so the leftover Integrity RFC 1918 defaults would fail startup unless that validation was relaxed or modified — which is the residual condition stated by CVE-2026",
+   "mechanism": "IntegrityProxyConfig.trusted_proxies in openssl_encrypt_server/config.py defaulted to RFC 1918 ranges instead of loopback. IntegrityAuthHandler passes the list to ProxyAuth, which trusts callers in those networks to declare the client certificate identity, so a private host can impersonate another client. ProxyAuth validation added in January 2026 rejects prefixes broader than /24, so the default is reachable only where that check was relaxed.",
    "cause_category": "ssrf_network",
    "ai_provenance": {
     "family": "claude",
@@ -3684,7 +3684,7 @@
    "cwes": [],
    "description": "CWE-78 OS command injection in smart_user get-user-info: caller-controlled username is interpolated into a POSIX shell string executed via child_process exec/execAsync (`getent passwd \"${username}\" || grep \"^${username}:\" /etc/passwd`). Double quotes do not prevent $(...) / backtick command substitution, so an MCP client can run arbitrary commands as the server user.",
    "references": [],
-   "mechanism": "smart_user get-user-info interpolates caller username into shell string for execAsync getent/grep (CWE-78 OS command injection); fix moves to execFileSafe argv mode + assertSafeArg validation",
+   "mechanism": "The smart_user get-user-info operation builds the Unix user lookup as a getent and grep command string and interpolates the caller-supplied username into it before running that string through execAsync. Double quotes do not stop command substitution, so a crafted username reaches the shell. The fix passes the username to getent as a separate argument through execFileSafe after assertSafeArg validation.",
    "cause_category": "injection",
    "ai_provenance": {
     "family": "claude",
@@ -3751,7 +3751,6 @@
       "execFileSafe"
      ]
     },
-    "mechanism": "smart_user get-user-info interpolates caller username into shell string for execAsync getent/grep (CWE-78 OS command injection); fix moves to execFileSafe argv mode + assertSafeArg validation",
     "fix_files": [
      "src/tools/system-operations/smart-user.ts"
     ]
@@ -3804,9 +3803,9 @@
    "published_at": "2026-08-10",
    "severity": null,
    "cwes": [],
-   "description": "Repo.blame contents reads arbitrary file",
+   "description": "AI-written option screening added deny lists for archive and revision flags and applied revision checks in iter_commits and blame_incremental, but it defined no blame-specific deny list, so file-reading options reached git blame unscreened. An attacker able to influence those arguments could make the command read an arbitrary file instead of repository content, and the fix closes that route with separate blame and diff deny lists.",
    "references": [],
-   "mechanism": "Repo.blame contents reads arbitrary file",
+   "mechanism": "The incomplete hardening registered option screens for archive and revision handling but never added a blame-specific deny list, so check_unsafe_options passed contents, revision-file and order-file straight through to git blame. That omission let the command read a file chosen by the caller.",
    "cause_category": "injection",
    "ai_provenance": {
     "family": "openai_gpt_codex",
@@ -3902,7 +3901,7 @@
     ],
     "candidate_patch_sha256": "e25cab2e20877458de6a26515a25c3fd6bce0bddaf8edc7cb9b6a7d8f9c4647d",
     "fix_patch_sha256": "559c2a3b22ddf913f8e46da77b0a73bb79bb1986be9d7af19477e8d3b35e2320",
-    "mechanism": "Repo.blame contents reads arbitrary file"
+    "mechanism": "The incomplete hardening registered option screens for archive and revision handling but never added a blame-specific deny list, so check_unsafe_options passed contents, revision-file and order-file straight through to git blame. That omission let the command read a file chosen by the caller."
    },
    "ir_chain": {
     "original_advisory_ids": [
@@ -4678,7 +4677,7 @@
     "https://github.com/gitpython-developers/GitPython",
     "https://github.com/gitpython-developers/GitPython/releases/tag/3.1.58"
    ],
-   "mechanism": "GitPython: Unsafe git option guard bypass via split_single_char_options=False short-option token smuggling enables command execution",
+   "mechanism": "The check added in git/cmd.py only collected dash-prefixed values from one-letter keyword options when len(key) == 1 and split_single_char_options was true, so with splitting disabled the joined token Git parses as clustered switches never reached the forbidden-option check.",
    "cause_category": "injection",
    "ai_provenance": {
     "family": "openai_gpt_codex",
@@ -4759,7 +4758,7 @@
      ]
     },
     "annotation_mode": "hunk_specific",
-    "mechanism": "GitPython: Unsafe git option guard bypass via split_single_char_options=False short-option token smuggling enables command execution"
+    "mechanism": "The check added in git/cmd.py only collected dash-prefixed values from one-letter keyword options when len(key) == 1 and split_single_char_options was true, so with splitting disabled the joined token Git parses as clustered switches never reached the forbidden-option check."
    },
    "ir_chain": null,
    "unpatched": null,
@@ -5262,7 +5261,7 @@
     "https://github.com/gitpython-developers/GitPython",
     "https://github.com/gitpython-developers/GitPython/releases/tag/3.1.57"
    ],
-   "mechanism": "archive add-file and bundle options",
+   "mechanism": "The denylist that Repo.archive() relies on, unsafe_git_archive_options in git/repo/base.py, blocks only --exec, --output and -o, so --add-file, --add-virtual-file and --bundle-uri still reach git archive unchanged; --add-file copies a caller-chosen path, including absolute paths outside the repository, into the archive the caller receives. The fix adds all three options to the denylist and covers them in new regression tests.",
    "cause_category": "injection",
    "ai_provenance": {
     "family": "openai_gpt_codex",
@@ -5363,8 +5362,7 @@
       "title": "Fix"
      }
     ],
-    "summary": "GitPython’s AI-written `Repo.archive()` option guard uses an incomplete denylist, allowing `--add-file` and `--bundle` options to write to attacker-controlled filesystem paths.",
-    "mechanism": "archive add-file and bundle options"
+    "summary": "GitPython’s AI-written `Repo.archive()` option guard uses an incomplete denylist, allowing `--add-file` and `--bundle` options to write to attacker-controlled filesystem paths."
    },
    "ir_chain": {
     "original_advisory_ids": [
@@ -5484,7 +5482,7 @@
      {
       "file": "src/ouroboros/providers/claude_code_adapter.py",
       "code": "@@ -28,6 +28,7 @@\n \n import asyncio\n import os\n+from collections.abc import Callable\n from pathlib import Path\n \n import structlog\n@@ -46,13 +47,16 @@\n \n # Retry configuration for transient API errors\n _MAX_RETRIES = 3\n-_INITIAL_BACKOFF_SECONDS = 1.0\n+_INITIAL_BACKOFF_SECONDS = 2.0  # Increased for custom CLI startup\n _RETRYABLE_ERROR_PATTERNS = (\n     \"concurrency\",\n     \"rate\",\n     \"timeout\",\n     \"overloaded\",\n     \"temporarily\",\n+    \"empty response\",  # custom CLI startup delay\n+    \"need retry\",  # explicit retry request\n+    \"startup\",\n )\n \n \n@@ -84,6 +88,9 @@ def __init__(\n         self,\n         permission_mode: str = \"default\",\n         cli_path: str | Path | None = None,\n+        allowed_tools: list[str] | None = None,\n+        max_turns: int = 1,\n+        on_message: Callable[[str, str], None] | None = None,\n     ) -> None:\n         \"\"\"Initialize Claude Code adapter.\n \n@@ -94,26 +101,48 @@ def __init__(\n             cli_path: Path to the Claude CLI binary. If not provided,\n                 checks OUROBOROS_CLI_PATH env var, then falls back to\n                 SDK's bundled CLI.\n+            allowed_tools: List of tools to allow. None means no tools.\n+                For interview mode with codebase access, use [\"Read\", \"Glob\", \"Grep\"].\n+            max_turns: Maximum turns for the conversation. Default 1 for single response.\n+                Increase for tool use scenarios.\n+            on_message: Callback for streaming messages. Called with (type, content):\n+                - (\"thinking\", \"content\") for agent reasoning\n+                - (\"tool\", \"tool_name\") for tool usage\n         \"\"\"\n         self._permission_mode: str = permission_mode\n         self._cli_path: Path | None = self._resolve_cli_path(cli_path)\n+        self._allowed_tools: list[str] = allowed_tools or []\n+        self._max_turns: int = max_turns\n+        self._on_message: Callable[[str, str], None] | None = on_message\n         log.info(\n             \"claude_code_adapter.initialized\",\n             permission_mode=permission_mode,\n             cli_path=str(self._cli_path) if self._cli_path else None,\n         )\n \n     def _resolve_cli_path(self, cli_path: str | Path | None) -> Path | None:\n-        \"\"\"Resolve the CLI path from parameter or environment variable.\n+        \"\"\"Resolve the CLI path from parameter, config, or environment variable.\n+\n+        Priority:\n+            1. Explicit cli_path parameter\n+            2. OUROBOROS_CLI_PATH environment variable\n+            3. config.yaml orchestrator.cli_path\n+            4. None (SDK default)\n \n         Args:\n             cli_path: Explicit CLI path from constructor.\n \n         Returns:\n             Resolved Path if set and exists, None otherwise (falls back to SDK default).\n         \"\"\"\n-        # Priority: explicit parameter > environment variable > None (SDK default)\n-        path_str = str(cli_path) if cli_path else os.environ.get(\"OUROBOROS_CLI_PATH\", \"\")\n+        # Priority: explicit parameter > env var / config > SDK default\n+        if cli_path:\n+            path_str = str(cli_path)\n+        else:\n+            # Use config helper (checks env var then config.yaml)\n+            from ouroboros.config import get_cli_path\n+\n+            path_str = get_cli_path() or \"\"\n         path_str = path_str.strip()\n \n         if not path_str:\n@@ -288,14 +317,29 @@ async def _execute_single_request(\n         \"\"\"",
-      "annotation": "Original root cause: loader.py applies the project-directory .env at import with no trust boundary - load_dotenv() loads cwd .env into os.environ and spawned CLIs read those routing vars (OUROBOROS_CLI_PATH -> exec command; config-home roots -> nested-agent config; MCP/plugin roster -> spawned commands). The CVE-2026-47211 denylist (4e70b760, 'block RCE via untrusted project-directory .env') was an incomplete fix: a hand-maintained key list that missed the config-home/MCP/plugin/instruction keys, and it never covered the cwd-branch MCP roster discovery; the module-level-constant env reads (os.environ.get(_ENV_VAR)) were invisible to literal greps, so drift shipped. Fixed by completing the denylist and removing the cwd discovery branch.",
+      "annotation": "The adapter spawns the CLI named by OUROBOROS_CLI_PATH from os.environ, which the new loader made repository-controlled by auto-loading the untrusted project-directory .env. Fixed in 0.42.1 by extending the denylist of untrusted keys and dropping project-directory MCP roster discovery.",
       "role": "candidate"
      },
      {
@@ -5584,9 +5582,9 @@
    "published_at": "2026-07-31",
    "severity": null,
    "cwes": [],
-   "description": "list_vulnerabilities get-events-for-cluster timeframe DQL (now()-${timeframe})/ DQL /( fetch filter )(GHSA-pqh8-p93p-2rx7)sink: executeDql(dqlStatement)source: timeframe/additionalFilterguard",
+   "description": "The AI-written change added an optional free-form timeframe parameter to the list_vulnerabilities and get_kubernetes_events tools and interpolated the value directly into the fetch window of the DQL statements those tools execute. Nothing validated the text, so a caller could append extra query stages or break out of the query string. Any client able to invoke these MCP tools could therefore run arbitrary DQL against the connected Dynatrace environment.",
    "references": [],
-   "mechanism": "list_vulnerabilities get-events-for-cluster timeframe DQL (now()-${timeframe})/ DQL /( fetch filter )(GHSA-pqh8-p93p-2rx7)sink: executeDql(dqlStatement)source: timeframe/additionalFilterguard",
+   "mechanism": "The tool schemas accept timeframe as an unconstrained string, and list-vulnerabilities.ts and get-events-for-cluster.ts build their statements by template interpolation rather than binding the value, so the duration text becomes part of the executed query. The fix validates the timeframe against a duration pattern, rejects pipes and newlines in filters, and escapes quoted identifier values before the statement is built.",
    "cause_category": "injection",
    "ai_provenance": {
     "family": "copilot",
@@ -5660,7 +5658,6 @@
     ],
     "candidate_patch_sha256": "fb17171e91782eb3adde0963d4aad3cb37eba880cb42e60748c2a6945a7e71dd",
     "fix_patch_sha256": "66f7c0b588fa495695b62125a240bfed864b58cbf5959086afaa05c4f9c6a5e3",
-    "mechanism": "list_vulnerabilities get-events-for-cluster timeframe DQL (now()-${timeframe})/ DQL /( fetch filter )(GHSA-pqh8-p93p-2rx7)sink: executeDql(dqlStatement)source: timeframe/additionalFilterguard",
     "fix_files": [
      "src/utils/dql-sanitize.ts",
      "src/capabilities/get-events-for-cluster.ts",
@@ -5716,7 +5713,7 @@
    "published_at": "2026-07-30",
    "severity": null,
    "cwes": [],
-   "description": "WACRM is a self-hostable CRM template for WhatsApp. In 0.7.0 and earlier, the automation send_webhook action in src/lib/automations/engine.ts and its validation in src/lib/automations/validate.ts allowed an authenticated user with automation privileges to submit an arbitrary webhook URL that the server fetched without the existing isDeliverableUrl SSRF guard in src/lib/webhooks/ssrf.ts, allowing r",
+   "description": "WACRM is a self-hostable CRM for WhatsApp, and in 0.7.0 and earlier its automation send_webhook action in src/lib/automations/engine.ts fetched any account-supplied URL from the server. The action took a webhook URL and custom headers straight to fetch, so an authenticated user with automation privileges could reach private, loopback, link-local, or cloud metadata endpoints. It skipped the isDeliverableUrl check in src/lib/webhooks/ssrf.ts that the webhook delivery path already applied. The fix routes the destination through that check, refuses redirects, and adds a ten-second timeout.",
    "references": [
     "https://github.com/ArnasDon/wacrm/security/advisories/GHSA-8jqh-598v-rfxc",
     "https://github.com/CVEProject/cvelistV5/tree/main/cves/2026/67xxx/CVE-2026-67530.json",
@@ -6277,7 +6274,7 @@
     "https://github.com/fission/fission",
     "https://github.com/fission/fission/releases/tag/v1.25.0"
    ],
-   "mechanism": "Fission: SanitizeFilePath lexical HasPrefix bypass permits sibling-directory escape",
+   "mechanism": "Path confinement rested on SanitizeFilePath in pkg/utils/utils.go, whose only check was strings.HasPrefix against the safe directory, so a sibling such as /packages-extra/evil passed the /packages prefix used by the builder Clean handler and by the fetcher Fetch and Upload handlers. The fix moves every call site onto RootJoin, RootStat, RootWriteFile, RootMkdirAll, and RootRename so os.Root enforces the boundary in the kernel.",
    "cause_category": "validation_fail_open",
    "ai_provenance": {
     "family": "claude",
@@ -6343,8 +6340,7 @@
       "title": "Fix"
      }
     ],
-    "summary": "AI-written `SanitizeFilePath` used a lexical `HasPrefix` check, letting paths like `/packages-extra/evil` escape the intended safe directory boundary.",
-    "mechanism": "Fission: SanitizeFilePath lexical HasPrefix bypass permits sibling-directory escape"
+    "summary": "AI-written `SanitizeFilePath` used a lexical `HasPrefix` check, letting paths like `/packages-extra/evil` escape the intended safe directory boundary."
    },
    "ir_chain": null,
    "unpatched": null,
@@ -6635,7 +6631,7 @@
     "https://github.com/koxudaxi/datamodel-code-generator",
     "https://github.com/koxudaxi/datamodel-code-generator/releases/tag/0.62.0"
    ],
-   "mechanism": "datamodel-code-generator vulnerable to arbitrary local file read via JSON-Schema `$ref` (`file://` and `../` traversal), bypassing `--no-allow-remote-refs`",
+   "mechanism": "The JSON-Schema parser reads local $ref targets without checking that they stay under the input base directory: the file:// branch hands the URL path straight to load_data_from_path, and the relative branch joins base_path with the reference so a ../ segment escapes the tree. The remote-reference gate also exempts file:// references, so --no-allow-remote-refs never blocks them.",
    "cause_category": "path_link",
    "ai_provenance": {
     "family": "claude",
@@ -6707,7 +6703,6 @@
       "urlparse(resolved_ref).scheme"
      ]
     },
-    "mechanism": "datamodel-code-generator vulnerable to arbitrary local file read via JSON-Schema `$ref` (`file://` and `../` traversal), bypassing `--no-allow-remote-refs`",
     "fix_files": [
      "src/datamodel_code_generator/parser/jsonschema.py"
     ]
@@ -6753,9 +6748,9 @@
    "published_at": "2026-07-26",
    "severity": null,
    "cwes": [],
-   "description": "Hermes SimpleX gateway authorization is supposed to restrict agent access to SIMPLEX_ALLOWED_USERS. The adapter records the stable numeric contactId as SessionSource.user_id and copies mutable profile metadata (localDisplayName / profile.displayName) into SessionSource.user_name. After 16f0553/490c486, _is_user_authorized additionally inserts source.user_name into check_ids for platform simplex, so an allowlist entry that is a display name (the form the docs and setup prompt encourage, because the SimpleX UI does not show contactId) matches any inbound contact who asserts that name. A remote SimpleX user who can DM the bot therefore crosses the sender allowlist without possessing the allowlisted contactId and reaches the normal gateway agent/tool path. At clone HEAD the source is plugins/p",
+   "description": "The AI-written change let a SIMPLEX_ALLOWED_USERS entry match a contact's display name as well as the stable numeric contact identifier. The adapter fills the session user name from remote profile metadata, and the gateway adds that name to the set of accepted identities for the platform. Because any contact can set their profile name to an allowlisted value and message the bot, a remote user impersonates an approved sender and reaches the normal agent and tool path. The project has not merged a fix.",
    "references": [],
-   "mechanism": "Hermes SimpleX gateway authorization is supposed to restrict agent access to SIMPLEX_ALLOWED_USERS. The adapter records the stable numeric contactId as SessionSource.user_id and copies mutable profile metadata (localDisplayName / profile.displayName) into SessionSource.user_name. After 16f0553/490c486, _is_user_authorized additionally inserts source.user_name into check_ids for platform simplex, so an allowlist entry that is a display name (the form the docs and setup prompt encourage, because the SimpleX UI does not show contactId) matches any inbound contact who asserts that name. A remote SimpleX user who can DM the bot therefore crosses the sender allowlist without possessing the allowlisted contactId and reaches the normal gateway agent/tool path. At clone HEAD the source is plugins/p",
+   "mechanism": "The gateway's _is_user_authorized adds the session display name to the accepted identities for the simplex platform before comparing them with SIMPLEX_ALLOWED_USERS. Display names are attacker-controlled profile metadata rather than stable contact identifiers, so the allowlist becomes a name-matching check that any inbound contact can satisfy. Matching only the numeric contact identifier restores the intended sender boundary.",
    "cause_category": "injection",
    "ai_provenance": {
     "family": "claude",
@@ -7015,7 +7010,7 @@
     "https://github.com/gitpython-developers/GitPython",
     "https://github.com/gitpython-developers/GitPython/releases/tag/3.1.54"
    ],
-   "mechanism": "kwarg value becomes option token",
+   "mechanism": "The shared option-safety check in git/cmd.py built its candidate tokens from kwarg keys alone, so a string value passed to a single-character keyword could be split by split_single_char_options into a standalone git option and slip past the check while still reaching the command line. The fix expands _option_candidates to include those values and adds tests covering upload-pack and output arguments.",
    "cause_category": "injection",
    "ai_provenance": {
     "family": "openai_gpt_codex",
@@ -7099,8 +7094,7 @@
      }
     ],
     "candidate_patch_sha256": "74f7c407112b8bcc7c96f8d9c7329f9eb0d3e2e809d687bbba7ce45b528d3d79",
-    "fix_patch_sha256": "3f95d3563cdce315c4cafde343db5289b955dfa2deb7a21c85a5a6927b24e47b",
-    "mechanism": "kwarg value becomes option token"
+    "fix_patch_sha256": "3f95d3563cdce315c4cafde343db5289b955dfa2deb7a21c85a5a6927b24e47b"
    },
    "ir_chain": {
     "original_advisory_ids": [
@@ -7185,7 +7179,7 @@
     "https://github.com/microsoft/kiota",
     "https://github.com/microsoft/kiota/releases/tag/v1.34.0"
    ],
-   "mechanism": "Microsoft Kiota: Path traversal in generated plugin manifest static_template.file reference (percent-encoding bypass)",
+   "mechanism": "The v1.32.5 check in ExtensionResponseSemanticsStaticTemplate.IsSafeFileReference compared the raw file reference, so encoded traversal such as %2e%2e/card.json was written into the generated plugin manifest, which the AI host resolves relative to the package. The Copilot-assisted decoding change that followed was incomplete too: double encoding, an embedded NUL byte and full-width homoglyphs passed until validation failed closed.",
    "cause_category": "injection",
    "ai_provenance": {
     "family": "copilot",
@@ -7263,8 +7257,7 @@
       "title": "Fix"
      }
     ],
-    "summary": "Copilot-assisted path validation still accepted encoded traversal in OpenAPI file references, allowing generated plugin manifests to read arbitrary files.",
-    "mechanism": "Microsoft Kiota: Path traversal in generated plugin manifest static_template.file reference (percent-encoding bypass)"
+    "summary": "Copilot-assisted path validation still accepted encoded traversal in OpenAPI file references, allowing generated plugin manifests to read arbitrary files."
    },
    "ir_chain": {
     "original_advisory_ids": [
@@ -7532,7 +7525,7 @@
     "https://github.com/open-webui/open-webui",
     "https://github.com/open-webui/open-webui/releases/tag/v0.10.0"
    ],
-   "mechanism": "open-webui terminal proxy path traversal guard bypass via 9x encoded traversal",
+   "mechanism": "Claude-assisted hardening rewrote _sanitize_proxy_path() in backend/open_webui/routers/terminals.py to decode until stable but capped the loop at eight unquote() passes and accepted whatever remained, so a nine-times percent-encoded traversal was still encoded when it passed the posixpath.normpath and leading dot-dot checks. The configured terminal server then decoded it into a path outside the intended proxy prefix.",
    "cause_category": "path_link",
    "ai_provenance": {
     "family": "claude",
@@ -7593,8 +7586,7 @@
      }
     ],
     "candidate_patch_sha256": "c91cbaa87a1b8b646a00198545991afb93e6030d53648e8d86220848b772c39c",
-    "fix_patch_sha256": "729b962f87ea056aaa3971d40d4f646db2f64c42641b676a20c2c4541d9c8b03",
-    "mechanism": "open-webui terminal proxy path traversal guard bypass via 9x encoded traversal"
+    "fix_patch_sha256": "729b962f87ea056aaa3971d40d4f646db2f64c42641b676a20c2c4541d9c8b03"
    },
    "ir_chain": {
     "original_advisory_ids": [
@@ -8004,7 +7996,7 @@
     "candidate_url": "https://github.com/n8n-io/n8n/commit/d4f9223842f0584579639647e047a0f4e78a2259",
     "fix_url": "https://github.com/n8n-io/n8n/commit/2222fe3a6c886a9059f28e1b6d4bdb10ee420624",
     "advisory_url": "https://github.com/advisories/ghsa-gf29-4f56-r2jf",
-    "summary": "assertRepositoryReferenceAllowed / assertLocalRepositoryPathAllowed introduced in packages/nodes-base/nodes/Git/Git.node.ts but wired only into operation==='clone' (sourceRepository) and operation==='push' (customTargetRepository + remote origin urls); fetch/pull/pushTags operati",
+    "summary": "assertRepositoryReferenceAllowed and assertLocalRepositoryPathAllowed were added to packages/nodes-base/nodes/Git/Git.node.ts but wired only into the clone and push operations, so fetch, pull and pushTags could still use repository paths outside the intended sandbox without validation.",
     "steps": [
      {
       "title": "AI change",
@@ -8271,7 +8263,7 @@
     "candidate_url": "https://github.com/n8n-io/n8n/commit/2d9a2ec76e180b54e8091e31b1e0638c909abd99",
     "fix_url": "https://github.com/n8n-io/n8n/commit/2222fe3a6c886a9059f28e1b6d4bdb10ee420624",
     "advisory_url": "https://github.com/advisories/ghsa-6qc9-mqvw-jg7x",
-    "summary": "Vulnerable narrowing branch 'const { genericAuthType } = node.parameters; if (typeof genericAuthType === \"string\" && genericAuthType) { activeTypes.add(genericAuthType); }' in packages/cli/src/executions/pre-execution-checks/credentials-permission-checker.ts (CredentialsPermissio",
+    "summary": "n8n's credential checker added the literal genericAuthType string to its active-type set, so an expression-valued parameter never matched the credential resolved at run time and the access check was skipped for it.",
     "steps": [
      {
       "title": "AI change",
@@ -8390,7 +8382,7 @@
     "https://github.com/go-gitea/gitea",
     "https://github.com/go-gitea/gitea/releases/tag/v1.27.0"
    ],
-   "mechanism": "UUID attachment download misses write gate",
+   "mechanism": "The Copilot-assisted canAccessDraftRelease helper was wired only into routers/api/v1/repo/release.go and release_attachment.go, so ServeAttachment in routers/web/repo/attachment.go kept checking just repo-level perm.CanRead(unitType). Anyone who obtains an attachment UUID, anonymous visitors included, can still download files attached to a draft release. The fix adds the draft and CanWrite check to the web handler.",
    "cause_category": "auth_access",
    "ai_provenance": {
     "family": "copilot",
@@ -8475,8 +8467,7 @@
      }
     ],
     "candidate_patch_sha256": "4349590b6383767de9c795ff74873c81ab881a4491067bba03cb2e624e628070",
-    "fix_patch_sha256": "62186db63dfbc028b7c486b9f32e2d5e39dc310bd3ea281a21953e7a9fa5f43a",
-    "mechanism": "UUID attachment download misses write gate"
+    "fix_patch_sha256": "62186db63dfbc028b7c486b9f32e2d5e39dc310bd3ea281a21953e7a9fa5f43a"
    },
    "ir_chain": {
     "original_advisory_ids": [
@@ -8562,9 +8553,9 @@
    "published_at": "2026-07-21",
    "severity": null,
    "cwes": [],
-   "description": "CVE-2026-56443GHSA-7p4h-3gxq-x3h3PR #37118 public-only token ——Limited instance-internalowner / checkTokenPublicOnly Package reqPackageAccessTokenCanAccessRepoCheckTokenScopes sink IsPrivate()/IsPrivateLimited falsepublic-only token Limited owner CWE-863",
+   "description": "The AI-written change added TokenCanAccessRepo in services/context/api.go so that public-only tokens could not be used against private repositories, but the check denied access only when repo.IsPrivate was true. Repositories whose visibility is limited rather than public or private never satisfied that condition, so a public-only token for a limited-scope owner still reached content it was not entitled to see. The fix replaces the IsPrivate test with a !IsPublic check across the repository and packages API gates.",
    "references": [],
-   "mechanism": "CVE-2026-56443GHSA-7p4h-3gxq-x3h3PR #37118 public-only token ——Limited instance-internalowner / checkTokenPublicOnly Package reqPackageAccessTokenCanAccessRepoCheckTokenScopes sink IsPrivate()/IsPrivateLimited falsepublic-only token Limited owner CWE-863",
+   "mechanism": "TokenCanAccessRepo returns false only when the caller presents a public-only token and repo.IsPrivate is true, so repositories with limited visibility never enter the denial branch. The fix widens the predicate to !IsPublic in the repository and packages API gates.",
    "cause_category": "other_ambiguous",
    "ai_provenance": {
     "family": "openai_gpt_codex",
@@ -8650,7 +8641,8 @@
       "IsPublic()",
       "Owner.Visibility"
      ]
-    }
+    },
+    "mechanism": "TokenCanAccessRepo returns false only when the caller presents a public-only token and repo.IsPrivate is true, so repositories with limited visibility never enter the denial branch. The fix widens the predicate to !IsPublic in the repository and packages API gates."
    },
    "ir_chain": null,
    "unpatched": null,
@@ -8989,9 +8981,9 @@
    "published_at": "2026-07-20",
    "severity": null,
    "cwes": [],
-   "description": "dangling symlink write outside scope",
+   "description": "The AI-written hardening added symlink scope checks for the write path in http/resource.go and the read path in files/file.go, refusing targets that resolve outside the user's scope, but neither check handled a symlink whose target does not exist yet. A scoped user could therefore let a write follow a dangling link and land outside their own scope. The follow-up fix bounds symlink resolution with maxSymlinkHops in files/scoped.go and adds a regression test asserting that a dangling symlink is never followed for writes.",
    "references": [],
-   "mechanism": "dangling symlink write outside scope",
+   "mechanism": "The scope checks compared a symlink's resolved target, which leaves a dangling link with nothing to compare, so the link was treated as safe and the subsequent write could leave the user's scope. Bounding resolution with maxSymlinkHops and covering the dangling case in tests closes the gap.",
    "cause_category": "path_link",
    "ai_provenance": {
     "family": "claude",
@@ -9085,7 +9077,7 @@
      ]
     },
     "annotation_mode": "hunk_specific",
-    "mechanism": "dangling symlink write outside scope"
+    "mechanism": "The scope checks compared a symlink's resolved target, which leaves a dangling link with nothing to compare, so the link was treated as safe and the subsequent write could leave the user's scope. Bounding resolution with maxSymlinkHops and covering the dangling case in tests closes the gap."
    },
    "ir_chain": null,
    "unpatched": null,
@@ -9342,7 +9334,7 @@
     "https://github.com/cyberjunky/python-garminconnect",
     "https://github.com/cyberjunky/python-garminconnect/releases/tag/0.3.5"
    ],
-   "mechanism": "garminconnect Has Insecure Permission Assignment for Garmin OAuth Token Store",
+   "mechanism": "Token persistence in Client.dump() created the token directory and garmin_tokens.json with no mode argument, so under the default umask 022 the file was world-readable at 0o644. The saved payload includes the DI refresh token, which another local user could read and exchange for ongoing access to the account.",
    "cause_category": "auth_access",
    "ai_provenance": {
     "family": "claude",
@@ -9369,7 +9361,7 @@
     "candidate_url": "https://github.com/cyberjunky/python-garminconnect/commit/21aea2d95b823a15c81a3efe87566de5dcc3befc",
     "fix_url": "https://github.com/cyberjunky/python-garminconnect/commit/8256b577190b446e279c81b845d8e27d0ea1fbf5",
     "advisory_url": "https://github.com/advisories/ghsa-wjhr-76vg-2hvc",
-    "summary": "garminconnect Has Insecure Permission Assignment for Garmin OAuth Token Store",
+    "summary": "The Garmin OAuth token store was saved with process-default permissions, leaving the stored refresh token readable by any other user on the same host.",
     "steps": [
      {
       "title": "AI change",
@@ -9424,7 +9416,8 @@
       "annotation": "Registers the new token permission tests with the type checker and exempts their synthetic credential literals from the hardcoded-secret lint rule.",
       "role": "fix"
      }
-    ]
+    ],
+    "mechanism": "Token persistence in Client.dump() created the token directory and garmin_tokens.json with no mode argument, so under the default umask 022 the file was world-readable at 0o644. The saved payload includes the DI refresh token, which another local user could read and exchange for ongoing access to the account."
    },
    "ir_chain": null,
    "candidate_fix_edges": [
@@ -9630,9 +9623,9 @@
    "published_at": "2026-07-14",
    "severity": null,
    "cwes": [],
-   "description": "GHSA-j6r7-6fhx-77wx / CVE-2026-54052fixed 2.56.1CWE-639/CWE-862CVSS 9.6ENABLE_MULTI_TENANT=true HTTP workflow_versions workflowId/versionId / node credential authorization header/getVersion/deleteVersion versionId ced57abv2.56.1 workflow_versions instance_id getInstanceScopeId hash(instance API URL+key) read/list/get/delete/rollback/prune instanceId truncate WORKFLOW_VERSION_RETENTION_DAYS",
+   "description": "In ENABLE_MULTI_TENANT deployments the AI-written workflow versioning service looked versions up by workflowId or versionId alone and never checked that the row belonged to the requesting n8n instance. Stored snapshots keep full node definitions, including credential references and authorization headers, so one tenant could read, roll back or delete another tenant's version history. Version 2.56.1 scopes every operation to a tenant key derived from the n8n API URL and API key.",
    "references": [],
-   "mechanism": "GHSA-j6r7-6fhx-77wx / CVE-2026-54052fixed 2.56.1CWE-639/CWE-862CVSS 9.6ENABLE_MULTI_TENANT=true HTTP workflow_versions workflowId/versionId / node credential authorization header/getVersion/deleteVersion versionId ced57abv2.56.1 workflow_versions instance_id getInstanceScopeId hash(instance API URL+key) read/list/get/delete/rollback/prune instanceId truncate WORKFLOW_VERSION_RETENTION_DAYS",
+   "mechanism": "workflow-versioning-service.ts resolved versions through caller-supplied ids and never consulted the instance the request came from, so the tenant boundary existed in configuration but not in the query. The fix adds an instance_id column, derives it through getInstanceScopeId, filters read, list, delete, rollback and prune operations by it, and drops the global truncate.",
    "cause_category": "auth_access",
    "ai_provenance": {
     "family": "claude",
@@ -10076,7 +10069,7 @@
     "https://github.com/homeassistant-ai/ha-mcp/commit/9f5b085ad4a7b38b067c9da0dc5b45462c4d796e",
     "https://github.com/homeassistant-ai/ha-mcp"
    ],
-   "mechanism": "add-on settings UI /api/settings/* ingress stream MCP secret ingress-source add-on",
+   "mechanism": "In add-on mode settings_ui.py served the settings routes both under the MCP secret path and at the bare root of the published port, and the root-mounted handlers ran no secret, Origin or CSRF check. The fix wraps each root route with a transport peer check that answers any client other than the Supervisor ingress address with a 403.",
    "cause_category": "auth_access",
    "ai_provenance": {
     "family": "claude",
@@ -10160,7 +10153,7 @@
     ],
     "candidate_patch_sha256": "33ab30bdbbe832915530c4c97bbf231d8a14d281b631349956e21b6c0acf09fe",
     "fix_patch_sha256": "5ba593ab4b1da8cf13aade245c35f3fdad71533755e96b14bc0db59b21c09c11",
-    "mechanism": "add-on settings UI /api/settings/* ingress stream MCP secret ingress-source add-on"
+    "mechanism": "In add-on mode settings_ui.py served the settings routes both under the MCP secret path and at the bare root of the published port, and the root-mounted handlers ran no secret, Origin or CSRF check. The fix wraps each root route with a transport peer check that answers any client other than the Supervisor ingress address with a 403."
    },
    "ir_chain": null,
    "unpatched": null,
@@ -10620,9 +10613,9 @@
    "published_at": "2026-07-06",
    "severity": null,
    "cwes": [],
-   "description": "GetLogs Livewire downloadAllLogs() $this->container(Livewire ) shell docker service logs -t {$this->container} / docker logs -t {$this->container} SSH Process::run shell (CVE-2026-34599)sink: Process::run(sshCommand)source: Livewire containerguard",
+   "description": "Coolify's GetLogs Livewire component gained a downloadAllLogs() action that interpolated the public property $container into docker logs -t and docker service logs -t commands and ran them over SSH through Process::run. Because that property can be set by any authenticated team member, a crafted value escaped the shell quoting and executed arbitrary commands as root on the managed host. The fix locks the property, validates it with ValidationPatterns::isValidContainerName, and checks Server ownership before the command is built.",
    "references": [],
-   "mechanism": "GetLogs Livewire downloadAllLogs() $this->container(Livewire ) shell docker service logs -t {$this->container} / docker logs -t {$this->container} SSH Process::run shell (CVE-2026-34599)sink: Process::run(sshCommand)source: Livewire containerguard ",
+   "mechanism": "downloadAllLogs() assembled its shell command by interpolating the public Livewire property $container directly into docker logs -t and docker service logs -t strings, then executed the result through Process::run over SSH. Nothing validated that the value was a container name, and no ownership check stood between the Livewire request and the command, so shell metacharacters in the property became part of the remote command line.",
    "cause_category": "injection",
    "ai_provenance": {
     "family": "claude",
@@ -10706,8 +10699,7 @@
       "TransactionalEmails"
      ]
     },
-    "annotation_mode": "hunk_specific",
-    "mechanism": "GetLogs Livewire downloadAllLogs() $this->container(Livewire ) shell docker service logs -t {$this->container} / docker logs -t {$this->container} SSH Process::run shell (CVE-2026-34599)sink: Process::run(sshCommand)source: Livewire containerguard "
+    "annotation_mode": "hunk_specific"
    },
    "ir_chain": null,
    "unpatched": null,
@@ -10754,9 +10746,9 @@
    "published_at": "2026-07-06",
    "severity": null,
    "cwes": [],
-   "description": "app/Livewire/Settings/Updates.php cloud instance Server::findOrFail(0) commit cloud 404 server if (! isCloud()) $this->server = Server::findOrFail(0); 404 isInstanceAdmin() fix 0fed5532 mount() if (! isInstanceAdmin()) return redirect()->route('dashboard');",
+   "description": "The Claude-written change made the updates settings page tolerate a missing server row by calling Server::findOrFail(0) only on self-hosted installs, which removed the 404 that cloud users previously hit. That error had been the only barrier in front of the page, because the Livewire component never checked for instance administrator rights. Any signed-in cloud user could then open the updates page and change auto-update settings. The fix adds an instance administrator check that redirects everyone else to the dashboard.",
    "references": [],
-   "mechanism": "app/Livewire/Settings/Updates.php cloud instance Server::findOrFail(0) commit cloud 404 server if (! isCloud()) $this->server = Server::findOrFail(0); 404 isInstanceAdmin() fix 0fed5532 mount() if (! isInstanceAdmin()) return redirect()->route('dashboard');",
+   "mechanism": "The updates component in app/Livewire/Settings/Updates.php depended on a server lookup that threw on cloud installs, and that 404 was mistaken for access control. Narrowing the lookup to self-hosted installs left mount() without any isInstanceAdmin() call, so the page stayed reachable for every authenticated user until the fix added the redirect.",
    "cause_category": "other_ambiguous",
    "ai_provenance": {
     "family": "claude",
@@ -10840,7 +10832,8 @@
       "Illuminate"
      ]
     },
-    "annotation_mode": "hunk_specific"
+    "annotation_mode": "hunk_specific",
+    "mechanism": "The updates component in app/Livewire/Settings/Updates.php depended on a server lookup that threw on cloud installs, and that 404 was mistaken for access control. Narrowing the lookup to self-hosted installs left mount() without any isInstanceAdmin() call, so the page stayed reachable for every authenticated user until the fix added the redirect."
    },
    "ir_chain": null,
    "unpatched": null,
@@ -10887,9 +10880,9 @@
    "published_at": "2026-07-06",
    "severity": null,
    "cwes": [],
-   "description": "API CVE-2026-327184.0.0-beta.466 POST /api/v1/cloud-tokens/{uuid}/validate GET /api/v1/servers/{uuid}/validate api.ability:read——cloud-tokens validate provider token Hetzner/DigitalOcean API servers validate dispatch ValidateServer scope API token fix c15bcd56 api.ability:write read-only token 403",
+   "description": "A Claude-assisted commit added cloud provider validation surfaces to the Coolify API and registered POST /api/v1/cloud-tokens/{uuid}/validate under the api.ability:read ability, while every other token lifecycle route required write access. The validate handler makes outbound Hetzner and DigitalOcean API calls with the stored provider token, so a read-only API token could trigger state-changing provider work that it should never reach. The fix moves both that route and GET /api/v1/servers/{uuid}/validate to api.ability:write and adds tests asserting that read-only tokens receive 403.",
    "references": [],
-   "mechanism": "API CVE-2026-327184.0.0-beta.466 POST /api/v1/cloud-tokens/{uuid}/validate GET /api/v1/servers/{uuid}/validate api.ability:read——cloud-tokens validate provider token Hetzner/DigitalOcean API servers validate dispatch ValidateServer scope API token fix c15bcd56 api.ability:write read-only token 403",
+   "mechanism": "The POST /api/v1/cloud-tokens/{uuid}/validate route was declared with the api.ability:read ability even though the operation changes provider state, so any token that only proved read access could invoke it. Requiring api.ability:write on the route makes the requested ability match the action performed.",
    "cause_category": "validation_fail_open",
    "ai_provenance": {
     "family": "claude",
@@ -10959,6 +10952,7 @@
       "api.ability:write"
      ]
     },
+    "mechanism": "The POST /api/v1/cloud-tokens/{uuid}/validate route was declared with the api.ability:read ability even though the operation changes provider state, so any token that only proved read access could invoke it. Requiring api.ability:write on the route makes the requested ability match the action performed.",
     "fix_files": [
      "routes/api.php"
     ]
@@ -11136,9 +11130,9 @@
    "published_at": "2026-07-02",
    "severity": null,
    "cwes": [],
-   "description": "SSRF localhost-bypass (CWE-918, medium) in secureFetch/assertSecureUrl (core/src/shared/secure-fetch.ts lines 52-54): the dev-localhost exception matched only exact 'localhost' and '127.0.0.1', leaving [::1] (IPv6 loopback), 0.0.0.0, and the full 127.0.0.0/8 range reachable, so SSRF via loopback-alias hostnames bypassed the HTTPS/localhost allowlist",
+   "description": "The AI-written assertSecureUrl helper in core/src/shared/secure-fetch.ts exempted the literal hosts localhost and 127.0.0.1 from its HTTPS-only policy for local development, but matched them by exact string. Requests aimed at [::1], 0.0.0.0, or any other address in the 127.0.0.0/8 range still reached loopback services, so an attacker could steer the client at internal HTTP endpoints the policy was meant to block. The fix widens the loopback detection and rejects unparseable URLs and oversized data URIs.",
    "references": [],
-   "mechanism": "SSRF localhost-bypass (CWE-918, medium) in secureFetch/assertSecureUrl (core/src/shared/secure-fetch.ts lines 52-54): the dev-localhost exception matched only exact 'localhost' and '127.0.0.1', leaving [::1] (IPv6 loopback), 0.0.0.0, and the full 127.0.0.0/8 range reachable, so SSRF via loopback-alias hostnames bypassed the HTTPS/localhost allowlist",
+   "mechanism": "assertSecureUrl in core/src/shared/secure-fetch.ts treated the exact strings localhost and 127.0.0.1 as the whole development exception, so every other loopback spelling, including [::1], 0.0.0.0, and the rest of the 127.0.0.0/8 range, bypassed the HTTPS requirement the helper exists to enforce.",
    "cause_category": "ssrf_network",
    "ai_provenance": {
     "family": "claude",
@@ -11182,7 +11176,7 @@
      {
       "file": "tools/liquidjs-cert/main_test.go",
       "code": "@@ -0,0 +1,155 @@\n+package main\n+\n+import (\n+\t\"crypto/ecdsa\"\n+\t\"crypto/x509\"\n+\t\"encoding/pem\"\n+\t\"os\"\n+\t\"path/filepath\"\n+\t\"testing\"\n+)\n+\n+func TestGenerateCA(t *testing.T) {\n+\tkey, cert, certBytes := generateCA(365)\n+\n+\tif key == nil {\n+\t\tt.Fatal(\"CA key is nil\")\n+\t}\n+\tif cert == nil {\n+\t\tt.Fatal(\"CA cert is nil\")\n+\t}\n+\tif len(certBytes) == 0 {\n+\t\tt.Fatal(\"CA cert bytes empty\")\n+\t}\n+\tif !cert.IsCA {\n+\t\tt.Error(\"CA cert should have IsCA=true\")\n+\t}\n+\tif cert.Subject.CommonName != \"LiquidJS Dev Root CA\" {\n+\t\tt.Errorf(\"CA CN = %q, want %q\", cert.Subject.CommonName, \"LiquidJS Dev Root CA\")\n+\t}\n+}\n+\n+func TestGenerateLeaf(t *testing.T) {\n+\tcaKey, caCert, _ := generateCA(365)\n+\tleafKey, leafCertBytes := generateLeaf(caKey, caCert, \"localhost\", \"localhost,127.0.0.1\", 30)\n+\n+\tif leafKey == nil {\n+\t\tt.Fatal(\"leaf key is nil\")\n+\t}\n+\tif len(leafCertBytes) == 0 {\n+\t\tt.Fatal(\"leaf cert bytes empty\")\n+\t}\n+\n+\tleafCert, err := x509.ParseCertificate(leafCertBytes)\n+\tif err != nil {\n+\t\tt.Fatalf(\"parse leaf cert: %v\", err)\n+\t}\n+\tif leafCert.Subject.CommonName != \"localhost\" {\n+\t\tt.Errorf(\"leaf CN = %q, want %q\", leafCert.Subject.CommonName, \"localhost\")\n+\t}\n+\tif len(leafCert.DNSNames) == 0 {\n+\t\tt.Error(\"leaf cert should have DNS SANs\")\n+\t}\n+\tif len(leafCert.IPAddresses) == 0 {\n+\t\tt.Error(\"leaf cert should have IP SANs\")\n+\t}\n+\n+\t// Verify leaf is signed by CA\n+\troots := x509.NewCertPool()\n+\troots.AddCert(caCert)\n+\t_, err = leafCert.Verify(x509.VerifyOptions{Roots: roots})\n+\tif err != nil {\n+\t\tt.Errorf(\"leaf cert verification failed: %v\", err)\n+\t}\n+}\n+\n+func TestPemEncode(t *testing.T) {\n+\tdata := []byte(\"test data\")\n+\tencoded := pemEncode(\"CERTIFICATE\", data)\n+\tblock, _ := pem.Decode(encoded)\n+\tif block == nil {\n+\t\tt.Fatal(\"PEM decode returned nil\")\n+\t}\n+\tif block.Type != \"CERTIFICATE\" {\n+\t\tt.Errorf(\"PEM type = %q, want CERTIFICATE\", block.Type)\n+\t}\n+}\n+\n+func TestPemEncodeECKey(t *testing.T) {\n+\tcaKey, _, _ := generateCA(1)\n+\tencoded := pemEncodeECKey(caKey)\n+\tblock, _ := pem.Decode(encoded)\n+\tif block == nil {\n+\t\tt.Fatal(\"PEM decode returned nil\")\n+\t}\n+\tif block.Type != \"EC PRIVATE KEY\" {\n+\t\tt.Errorf(\"PEM type = %q, want EC PRIVATE KEY\", block.Type)\n+\t}\n+\t_, err := x509.ParseECPrivateKey(block.Bytes)\n+\tif err != nil {",
-      "annotation": "secure-fetch.ts created and the incomplete localhost check written in commit 30f9b76f848b681e2806ac6ebcebebb055af3999 'feat: HTTPS-only enforcement, Go cert tool, SHA-pinned actions' (2026-04-25) by Sam Caldwell — file-root commit; immediate parent a2ee52acbf594fcbda6ed7ca6afb59c1c01d5b94 does not contain core/src/shared/secure-fetch.ts (git cat-file exit=128) so the vulnerable behavior is new in this commit; pickaxe -S \"parsed.hostname === 'localhost'\" confirms only 30f9b76f (introduction) and later fix b74ddbd for a different advisory (.localhost TLD, GHSA-864j-qcr9-jrwh) touch this line",
+      "annotation": "Adds the Go test suite for the new liquidjs-cert helper, minting a CA and a leaf certificate whose SAN list is localhost,127.0.0.1 and asserting the chain verifies and PEM-encodes, which bakes the narrow localhost-only development trust model into the certificate tool.",
       "role": "candidate"
      },
      {
@@ -11231,7 +11225,7 @@
      ]
     },
     "annotation_mode": "hunk_specific",
-    "mechanism": "SSRF localhost-bypass (CWE-918, medium) in secureFetch/assertSecureUrl (core/src/shared/secure-fetch.ts lines 52-54): the dev-localhost exception matched only exact 'localhost' and '127.0.0.1', leaving [::1] (IPv6 loopback), 0.0.0.0, and the full 127.0.0.0/8 range reachable, so SSRF via loopback-alias hostnames bypassed the HTTPS/localhost allowlist"
+    "mechanism": "assertSecureUrl in core/src/shared/secure-fetch.ts treated the exact strings localhost and 127.0.0.1 as the whole development exception, so every other loopback spelling, including [::1], 0.0.0.0, and the rest of the 127.0.0.0/8 range, bypassed the HTTPS requirement the helper exists to enforce."
    },
    "ir_chain": null,
    "unpatched": null,
@@ -11306,7 +11300,7 @@
     "https://github.com/asymmetric-effort/NogginLessDom/commit/25a3cbac665fae5663f8b71c073b80c3152dbe7b",
     "https://github.com/asymmetric-effort/NogginLessDom"
    ],
-   "mechanism": "AI API (1) GHSA-322x AI ed0124d matchFileSnapshotsrc/assertions/snapshots.ts:511 filePath fs.writeFileSync/readFileSync——update fix 785e6ac projectRoot resolved.startsWith(root+sep)(2) GHSA-x4hg ReDoSAI f8ee181 checkValidity pattern `new RegExp(`^(?:${this.pattern})$`)`html-elements.ts:206 pattern/fix 25a3cba 1024 + hasNestedQuantifiers",
+   "mechanism": "checkValidity() in src/dom/html-elements.ts compiles the user-controlled pattern property straight into a regular expression with new RegExp, so a hostile pattern with nested quantifiers drives catastrophic backtracking and freezes the event loop. The fix caps patterns at 1024 characters and rejects nested quantifier shapes before compiling.",
    "cause_category": "resource_abuse",
    "ai_provenance": {
     "family": "claude",
@@ -11403,7 +11397,8 @@
       "RegExp"
      ]
     },
-    "annotation_mode": "hunk_specific"
+    "annotation_mode": "hunk_specific",
+    "mechanism": "checkValidity() in src/dom/html-elements.ts compiles the user-controlled pattern property straight into a regular expression with new RegExp, so a hostile pattern with nested quantifiers drives catastrophic backtracking and freezes the event loop. The fix caps patterns at 1024 characters and rejects nested quantifier shapes before compiling."
    },
    "ir_chain": null,
    "unpatched": null,
@@ -12755,7 +12750,7 @@
     "https://github.com/asymmetric-effort/NogginLessDom/commit/785e6ac6e124d1a89b3ccf40bbd75fc8e4cb215d",
     "https://github.com/asymmetric-effort/NogginLessDom"
    ],
-   "mechanism": "AI API (1) GHSA-322X-V876-G883 CWE-22ed0124d37f54 matchFileSnapshotsrc/assertions/snapshots.ts filePath fs.writeFileSync/mkdirSync update fix 785e6ac6e124 projectRoot (resolved.startsWith(root + path.sep))(2) GHSA-X4HG-HFWF-P9MW DoS (CWE-1333 ReDoS)f8ee181be673 HTMLInputElement checkValidity pattern pattern new RegExp('^(?:' + this.pattern + ')$') pattern fix 25a3cbac665f 1024 hasNestedQuantifiers",
+   "mechanism": "matchFileSnapshot in src/assertions/snapshots.ts wrote to the caller-supplied filePath with fs.mkdirSync and fs.writeFileSync without checking that the path stayed inside the project, so traversal or an absolute path escaped the workspace whenever snapshot update mode was active. The fix resolves the path against projectRoot, which defaults to process.cwd(), and rejects anything outside it.",
    "cause_category": "path_link",
    "ai_provenance": {
     "family": "claude",
@@ -12911,7 +12906,7 @@
     "https://github.com/openclaw/openclaw",
     "https://www.vulncheck.com/advisories/openclaw-private-network-navigation-bypass-via-browser-act-interactions"
    ],
-   "mechanism": "OpenClaw's browser act interactions could bypass private-network navigation checks",
+   "mechanism": "Only keyboard and submit interactions were wrapped in the interaction navigation check, so act paths such as selectOption, fillForm and type could still trigger a redirect to a private-network page after the URL had been checked, and a later browser evaluation read that page. The fix threads the SSRF policy through every act action and re-checks navigation before the browser operation completes.",
    "cause_category": "validation_fail_open",
    "ai_provenance": {
     "family": null,
@@ -12988,8 +12983,7 @@
      }
     ],
     "candidate_patch_sha256": "c0f4f66a14b59a17e0254d7f930ecea39cc12656994bf2d5b293d7a696a2e42f",
-    "fix_patch_sha256": "c9a03ffeb969232cf56477f9539d70999d988257453895c9a59f294f3bc319a6",
-    "mechanism": "OpenClaw's browser act interactions could bypass private-network navigation checks"
+    "fix_patch_sha256": "c9a03ffeb969232cf56477f9539d70999d988257453895c9a59f294f3bc319a6"
    },
    "ir_chain": {
     "original_advisory_ids": [
@@ -13075,7 +13069,7 @@
     "https://github.com/mlflow/mlflow/releases/tag/v3.13.0",
     "https://huntr.com/bounties/b00c3ddd-373e-492f-9bf0-41a28bb21ed5"
    ],
-   "mechanism": "MLflow: trace API endpoints lack proper authorization validators",
+   "mechanism": "Trace endpoints are registered in HANDLERS in mlflow/server/auth/__init__.py without matching _before_request authorization validators, so _find_validator returns None and any authenticated non-admin can read, search, delete or modify traces on experiments they lack permission for. Claude-coauthored handlers then widened that unvalidated surface by adding BatchGetTraceInfos, and the fix adds validators such as validate_can_batch_get_traces.",
    "cause_category": "auth_access",
    "ai_provenance": {
     "family": "claude",
@@ -13159,8 +13153,7 @@
       "title": "Fix"
      }
     ],
-    "summary": "AI-written code omitted authorization validators for trace endpoints, letting any authenticated user read, modify, or delete traces without permission.",
-    "mechanism": "MLflow: trace API endpoints lack proper authorization validators"
+    "summary": "AI-written code omitted authorization validators for trace endpoints, letting any authenticated user read, modify, or delete traces without permission."
    },
    "ir_chain": null,
    "candidate_sources": [
@@ -13576,7 +13569,7 @@
     "https://github.com/openclaw/openclaw/security/advisories/GHSA-9c3v-684m-579c",
     "https://github.com/openclaw/openclaw"
    ],
-   "mechanism": "OpenClaw MCP SSE redirects could forward Authorization headers",
+   "mechanism": "Redirect handling for MCP fetches was implemented only for the streamable HTTP transport in src/agents/mcp-transport.ts, so the SSE transport in that same file kept following redirects with the Authorization header still attached. Credentials could therefore reach a lower-trust redirect destination until the follow-up patch moved the logic into mcp-http-fetch.ts and infra/net/fetch-guard.ts, covering every transport.",
    "cause_category": "auth_access",
    "ai_provenance": {
     "family": "openai_gpt_codex",
@@ -13646,8 +13639,7 @@
       "title": "Fix"
      }
     ],
-    "summary": "AI-written code forwarded Authorization headers through MCP SSE redirects, letting lower-trust callers act beyond intended permissions.",
-    "mechanism": "OpenClaw MCP SSE redirects could forward Authorization headers"
+    "summary": "AI-written code forwarded Authorization headers through MCP SSE redirects, letting lower-trust callers act beyond intended permissions."
    },
    "ir_chain": {
     "original_advisory_ids": [
@@ -13720,9 +13712,9 @@
    "published_at": "2026-06-30",
    "severity": null,
    "cwes": [],
-   "description": "POST /api/session/import (_handle_session_import) validates the imported workspace with resolve_trusted_workspace() in the active-profile request context, then constructs Session(title, workspace, model, messages, tool_calls) with no profile argument. Session.__init__ defaults profile to None and persists that sidecar field. Canonical _profiles_match(row or 'default', active or 'default') treats a null profile as the root/default profile, so after by-id/export were gated (v0.51.443 / 2a3baa71) a default-profile caller still matches the imported row: they can GET /api/session/export by id (404 only on mismatch) and then /api/file?session_id= which reads Path(session.workspace) via get_session_for_file_ops without a separate profile denial. The imported transcript and the named profile's wor",
+   "description": "POST /api/session/import in hermes-webui validated the imported workspace with resolve_trusted_workspace() under the caller's active profile, but constructed the session without a profile argument. Session.__init__ defaults that field to None, and _profiles_match() treats a null profile as the default profile, so a default-profile caller still matched the imported row. That caller could then read the imported transcript through GET /api/session/export and the named profile's workspace files through /api/file?session_id=. The fix passes the active profile into the imported session constructor.",
    "references": [],
-   "mechanism": "POST /api/session/import (_handle_session_import) validates the imported workspace with resolve_trusted_workspace() in the active-profile request context, then constructs Session(title, workspace, model, messages, tool_calls) with no profile argument. Session.__init__ defaults profile to None and persists that sidecar field. Canonical _profiles_match(row or 'default', active or 'default') treats a null profile as the root/default profile, so after by-id/export were gated (v0.51.443 / 2a3baa71) a default-profile caller still matches the imported row: they can GET /api/session/export by id (404 only on mismatch) and then /api/file?session_id= which reads Path(session.workspace) via get_session_for_file_ops without a separate profile denial. The imported transcript and the named profile's wor",
+   "mechanism": "The import handler persisted a session without stamping the profile it was created under, so the row kept the None default. Because _profiles_match() maps a null profile to the default profile, a default-profile request passed the ownership comparison that gates session export and file access.",
    "cause_category": "auth_access",
    "ai_provenance": {
     "family": "claude",
@@ -13799,7 +13791,8 @@
      }
     ],
     "candidate_patch_sha256": "e5ae8d4e2c80e59ccad9cf5fe58561fc30d77c810645c4a418251e3fb2344edc",
-    "fix_patch_sha256": "37a8c9aee5122779329933d6d7d0d2be476fda34a5da72c0c234b01cd0356afa"
+    "fix_patch_sha256": "37a8c9aee5122779329933d6d7d0d2be476fda34a5da72c0c234b01cd0356afa",
+    "mechanism": "The import handler persisted a session without stamping the profile it was created under, so the row kept the None default. Because _profiles_match() maps a null profile to the default profile, a default-profile request passed the ownership comparison that gates session export and file access."
    },
    "ir_chain": null,
    "unpatched": null,
@@ -13859,7 +13852,7 @@
     "https://www.cve.org/CVERecord?id=CVE-2025-26074",
     "https://www.vulncheck.com/advisories/orkes-conductor-unauthenticated-rce-via-graalvm-script-evaluators"
    ],
-   "mechanism": "unreviewed GHSA-7x5q / CVE-2026-58138 names unauthenticated RCE in Conductor 3.21.21 before 3.30.2",
+   "mechanism": "The AI migration from Nashorn to GraalVM built the JavaScript context with allowHostAccess(HostAccess.ALL) and switched the Python evaluator to allowAllAccess(true), so unauthenticated expressions in INLINE, LAMBDA, DO_WHILE, and SWITCH tasks could reflect into Runtime and ProcessBuilder. The fix denies Class, ClassLoader, Method, Field, Constructor, Array, Runtime, ProcessBuilder, Process, System, Thread, and ThreadGroup.",
    "cause_category": "injection",
    "ai_provenance": {
     "family": "claude",
@@ -13936,8 +13929,7 @@
      }
     ],
     "candidate_patch_sha256": "7ea22b3736199ab39e64aaa2fe1f6c9b644b8dacadccb8662bf89d4b9728afb0",
-    "fix_patch_sha256": "0ce79b2320c3911c59bd2e4262a85bd9611e691baed15f56a77f1ef3bafeb9dd",
-    "mechanism": "unreviewed GHSA-7x5q / CVE-2026-58138 names unauthenticated RCE in Conductor 3.21.21 before 3.30.2"
+    "fix_patch_sha256": "0ce79b2320c3911c59bd2e4262a85bd9611e691baed15f56a77f1ef3bafeb9dd"
    },
    "ir_chain": null,
    "unpatched": null,
@@ -13996,7 +13988,7 @@
     "https://vuldb.com/vuln/374594",
     "https://vuldb.com/vuln/374594/cti"
    ],
-   "mechanism": "unreviewed GHSA-4pqr / CVE-2026-13591 names Mysti 0.4.0 _isTrackedConversation channel-scope",
+   "mechanism": "ChannelBridge.ts decided whether a conversation was tracked with _isTrackedConversation(sender, channelType), relying on the caller-controlled channel type instead of the channel the message arrived on, so a message could satisfy another channel's tracking rule and be treated as authorized. The fix passes the resolved channelId into the check and adds _resolveChannelType.",
    "cause_category": "other_ambiguous",
    "ai_provenance": {
     "family": "claude",
@@ -14060,8 +14052,7 @@
       "_isTrackedConversation",
       "channelId"
      ]
-    },
-    "mechanism": "unreviewed GHSA-4pqr / CVE-2026-13591 names Mysti 0.4.0 _isTrackedConversation channel-scope"
+    }
    },
    "ir_chain": null,
    "unpatched": null,
@@ -14115,9 +14106,9 @@
    "published_at": "2026-06-28",
    "severity": null,
    "cwes": [],
-   "description": "When MLflow is served with --app-name basic-auth, Flask _before_request authenticates the caller and then looks up a per-RPC validator via get_before_request_handler -> BEFORE_REQUEST_VALIDATORS -> _find_validator. Experiment-scoped label-schema CRUD was registered on MlflowService as HTTP /mlflow/label-schemas/{create,get,get-by-name,list,update,upsert,delete} (REST and ajax-api v3) and dispatched through HANDLERS in mlflow/server/handlers.py, but the protobuf request classes were never added to BEFORE_REQUEST_HANDLERS. _find_validator therefore returns None for those routes (they are not logged-model, webhook, or fail-closed trace paths). For a non-admin authenticated user the authorization branch is skipped, so create/read/list/update/delete execute in the tracking store without experim",
+   "description": "The AI-written change added a full label-schema REST surface to the tracking server, registering handlers for creating, reading, listing, updating, upserting and deleting experiment labels without adding the request classes to the basic-auth validator table. When MLflow runs with --app-name basic-auth, the before-request hook authenticates the caller and then finds no validator for those routes, so the authorization branch is skipped. Any authenticated non-admin user can read and modify labels on experiments they cannot otherwise access.",
    "references": [],
-   "mechanism": "When MLflow is served with --app-name basic-auth, Flask _before_request authenticates the caller and then looks up a per-RPC validator via get_before_request_handler -> BEFORE_REQUEST_VALIDATORS -> _find_validator. Experiment-scoped label-schema CRUD was registered on MlflowService as HTTP /mlflow/label-schemas/{create,get,get-by-name,list,update,upsert,delete} (REST and ajax-api v3) and dispatched through HANDLERS in mlflow/server/handlers.py, but the protobuf request classes were never added to BEFORE_REQUEST_HANDLERS. _find_validator therefore returns None for those routes (they are not logged-model, webhook, or fail-closed trace paths). For a non-admin authenticated user the authorization branch is skipped, so create/read/list/update/delete execute in the tracking store without experim",
+   "mechanism": "The handlers added in mlflow/server/handlers.py were registered in HANDLERS without matching entries in BEFORE_REQUEST_HANDLERS, so the auth module's _find_validator returns None for every label-schema path. The authorization step is skipped instead of failing closed, and the tracking store executes create, read, list, update and delete without any experiment permission check.",
    "cause_category": "injection",
    "ai_provenance": {
     "family": "claude",
@@ -14392,7 +14383,7 @@
     "https://github.com/scriban/scriban/security/advisories/GHSA-q6rr-fm2g-g5x8",
     "https://github.com/scriban/scriban"
    ],
-   "mechanism": "array multiplication misses loop limit",
+   "mechanism": "ScriptArray.TryEvaluate multiplied an array by an attacker-controlled integer without checking context.LoopLimit or the size of the product, so a template of a few dozen bytes could force a multi-gigabyte allocation. The fix computes the result length up front and enforces the integer ceiling and LoopLimit before allocating.",
    "cause_category": "resource_abuse",
    "ai_provenance": {
     "family": "copilot",
@@ -14472,7 +14463,7 @@
       "LoopLimit"
      ]
     },
-    "mechanism": "array multiplication misses loop limit"
+    "mechanism": "ScriptArray.TryEvaluate multiplied an array by an attacker-controlled integer without checking context.LoopLimit or the size of the product, so a template of a few dozen bytes could force a multi-gigabyte allocation. The fix computes the result length up front and enforces the integer ceiling and LoopLimit before allocating."
    },
    "ir_chain": {
     "original_advisory_ids": [
@@ -14545,9 +14536,9 @@
    "published_at": "2026-06-26",
    "severity": null,
    "cwes": [],
-   "description": "CVE-2026-48797/GHSA-f65r-h4g3-3h9h UI auth not enforced: backprop ui --auth user:pass prints 'Auth: enabled' and exports BACKPROPAGATE_UI_AUTH to the subprocess launching the Reflex backend, but backpropagate/ui_app/** never reads the env var and registers no auth middleware (no HTTP guard, no WebSocket upgrade guard), so any client reaching the bound port (incl. --share) has full training-control access (dataset upload/read, model load, train start/stop, GGUF export, HF Hub push, path traversal via user-supplied paths bypassing safe_path()). Sink: Reflex app without auth middleware; source: cli.py cmd_ui exporting auth claim with inline comment 'For Phase 1 the variable is exported but Reflex doesn't read it yet.' (cli.py:1215-1218 @v1.1.0).",
+   "description": "A Claude-assisted Gradio-to-Reflex migration dropped the authentication the previous launch enforced while keeping the command's claim that it was enabled. The CLI printed Auth: enabled and exported BACKPROPAGATE_UI_AUTH, but backpropagate/ui_app never read the variable and registered no HTTP or WebSocket authentication, so any client reaching the bound port, including through --share, had full training control and could bypass safe_path() with user-supplied paths. The fix installs an ASGI transformer that authenticates HTTP requests and WebSocket upgrades before acceptance.",
    "references": [],
-   "mechanism": "CVE-2026-48797/GHSA-f65r-h4g3-3h9h UI auth not enforced: backprop ui --auth user:pass prints 'Auth: enabled' and exports BACKPROPAGATE_UI_AUTH to the subprocess launching the Reflex backend, but backpropagate/ui_app/** never reads the env var and registers no auth middleware (no HTTP guard, no WebSocket upgrade guard), so any client reaching the bound port (incl. --share) has full training-control access (dataset upload/read, model load, train start/stop, GGUF export, HF Hub push, path traversal via user-supplied paths bypassing safe_path()). Sink: Reflex app without auth middleware; source: cli.py cmd_ui exporting auth claim with inline comment 'For Phase 1 the variable is exported but Reflex doesn't read it yet.' (cli.py:1215-1218 @v1.1.0).",
+   "mechanism": "The cmd_ui path exports BACKPROPAGATE_UI_AUTH and reports authentication as enabled, but the Reflex app in backpropagate/ui_app never reads the variable and registers no authentication middleware, so the bound port accepts every client. The fix wraps the ASGI app in basic_auth_transformer, so HTTP requests and WebSocket upgrades are authenticated before they are accepted.",
    "cause_category": "injection",
    "ai_provenance": {
     "family": "claude",
@@ -14825,7 +14816,7 @@
     "https://github.com/scriban/scriban/security/advisories/GHSA-6q7j-xr26-3h2c",
     "https://github.com/scriban/scriban"
    ],
-   "mechanism": "parser depth records error but continues recursion",
+   "mechanism": "The depth check in EnterExpression records a non-fatal parse error and sets a flag used only to suppress duplicate messages, so recursion in src/Scriban/Parsing/Parser.Expressions.cs continued past ExpressionDepthLimit until the thread stack was exhausted. .NET then raised a StackOverflowException that cannot be caught and that terminates the host process.",
    "cause_category": "resource_abuse",
    "ai_provenance": {
     "family": "copilot",
@@ -14905,7 +14896,7 @@
      }
     ],
     "summary": "The AI-written ExpressionDepthLimit guard only logged a non-fatal error instead of stopping recursive descent. A deeply nested template drives the .NET parser into an uncatchable StackOverflowException that terminates the host.",
-    "mechanism": "parser depth records error but continues recursion"
+    "mechanism": "The depth check in EnterExpression records a non-fatal parse error and sets a flag used only to suppress duplicate messages, so recursion in src/Scriban/Parsing/Parser.Expressions.cs continued past ExpressionDepthLimit until the thread stack was exhausted. .NET then raised a StackOverflowException that cannot be caught and that terminates the host process."
    },
    "ir_chain": {
     "original_advisory_ids": [
@@ -14979,9 +14970,9 @@
    "published_at": "2026-06-26",
    "severity": null,
    "cwes": [],
-   "description": "/mcp requires only read scope and dispatches mutating store_memory/delete_memory without per-tool write authorization, allowing read-only OAuth tokens to modify memories",
+   "description": "The AI-written OAuth 2.1 layer for the MCP endpoint gated /mcp behind a read scope and then dispatched store_memory and delete_memory straight to the memory backend without requiring a write grant. A client holding a read-only token could therefore create and delete stored memories, contradicting the read-only permission the token was issued under. The fix classifies both tools as writes and rejects their dispatch with HTTP 403 and JSON-RPC error -32003 unless the token carries write scope.",
    "references": [],
-   "mechanism": "/mcp requires only read scope and dispatches mutating store_memory/delete_memory without per-tool write authorization, allowing read-only OAuth tokens to modify memories",
+   "mechanism": "In src/mcp_memory_service/web/api/mcp.py the request path enforced require_read_access once for the endpoint and then handed every tool call, including store_memory and delete_memory, to the dispatcher with no per-tool scope check.",
    "cause_category": "auth_access",
    "ai_provenance": {
     "family": "claude",
@@ -15062,7 +15053,7 @@
      ]
     },
     "annotation_mode": "hunk_specific",
-    "mechanism": "/mcp requires only read scope and dispatches mutating store_memory/delete_memory without per-tool write authorization, allowing read-only OAuth tokens to modify memories",
+    "mechanism": "In src/mcp_memory_service/web/api/mcp.py the request path enforced require_read_access once for the endpoint and then handed every tool call, including store_memory and delete_memory, to the dispatcher with no per-tool scope check.",
     "fix_files": [
      "src/mcp_memory_service/web/api/mcp.py"
     ]
@@ -15130,7 +15121,7 @@
     "https://github.com/gogs/gogs",
     "https://github.com/gogs/gogs/releases/tag/v0.14.3"
    ],
-   "mechanism": "LFS OID /LocalStorage.Upload io.Copy(io.Discard, rc) '' OID fix #8333 SHA-256 OID ErrOIDMismatch",
+   "mechanism": "The Claude-assisted dedupe shortcut in internal/lfsutil/storage.go Upload drained the body with io.Copy(io.Discard, rc) and returned success whenever the OID file already existed, so the upload was never hashed against the claimed OID. serveUpload then created the per-repo (repo_id, oid) binding, letting any repository writer claim an OID owned by a private repository, and the fix streams the body through SHA-256 and returns ErrOIDMismatch.",
    "cause_category": "validation_fail_open",
    "ai_provenance": {
     "family": "claude",
@@ -15198,8 +15189,7 @@
       "ErrOIDMismatch",
       "sha256.New"
      ]
-    },
-    "mechanism": "LFS OID /LocalStorage.Upload io.Copy(io.Discard, rc) '' OID fix #8333 SHA-256 OID ErrOIDMismatch"
+    }
    },
    "ir_chain": {
     "original_advisory_ids": [
@@ -15273,9 +15263,9 @@
    "published_at": "2026-06-23",
    "severity": null,
    "cwes": [],
-   "description": "GHSA-29hf-rm4x-xxph / CVE-2026-55448: github.credential_command setting runs an arbitrary shell command via sh -c to obtain a GitHub token, and the setting is loaded from untrusted local mise.toml (settings preloaded before trust check), giving RCE when a malicious repo config sets credential_command",
+   "description": "The AI-written change added the github.credential_command setting, which mise runs through sh -c and reads a GitHub token from. Because that setting is taken from the local mise.toml while settings are preloaded, ahead of any trust check, a malicious repository can supply its own shell command and have it executed with the user's privileges when mise loads that project. The fix marks the credential command as global-only for GitHub, Forgejo and GitLab, so local project configuration can no longer define it.",
    "references": [],
-   "mechanism": "GHSA-29hf-rm4x-xxph / CVE-2026-55448: github.credential_command setting runs an arbitrary shell command via sh -c to obtain a GitHub token, and the setting is loaded from untrusted local mise.toml (settings preloaded before trust check), giving RCE when a malicious repo config sets credential_command",
+   "mechanism": "resolve_token() calls get_credential_command_token(), which runs the configured credential_command through sh -c, and the value is preloaded from the untrusted local mise.toml before the trust check runs. The fix adds a global_only flag in src/config/settings.rs and strips such settings from project configuration.",
    "cause_category": "injection",
    "ai_provenance": {
     "family": "claude",
@@ -15366,7 +15356,7 @@
      ]
     },
     "annotation_mode": "hunk_specific",
-    "mechanism": "GHSA-29hf-rm4x-xxph / CVE-2026-55448: github.credential_command setting runs an arbitrary shell command via sh -c to obtain a GitHub token, and the setting is loaded from untrusted local mise.toml (settings preloaded before trust check), giving RCE when a malicious repo config sets credential_command"
+    "mechanism": "resolve_token() calls get_credential_command_token(), which runs the configured credential_command through sh -c, and the value is preloaded from the untrusted local mise.toml before the trust check runs. The fix adds a global_only flag in src/config/settings.rs and strips such settings from project configuration."
    },
    "ir_chain": null,
    "unpatched": null,
@@ -15733,9 +15723,9 @@
    "published_at": "2026-06-19",
    "severity": null,
    "cwes": [],
-   "description": "@kozou/mcp Streamable HTTP 1) Host/Origin DNS rebinding / MCP schema 2) (chunked/ Content-Length )3) err.message 7c3ae2e3(#163) DNS-rebinding guardmaxBodyBytes 1MiB 500 dev stack loopbacksink: node http server (handleRequest/handleMcp/respondError)guard",
+   "description": "The AI-written Streamable HTTP transport for @kozou/mcp dispatched requests on the URL pathname alone and never inspected the Host or Origin header, so a page on another origin could reach a local MCP listener through DNS rebinding. The same server read request bodies without any size limit and returned err.message verbatim in its 500 responses. The fix adds Host and Origin allowlisting, a body cap of 1 MiB and generic error replies.",
    "references": [],
-   "mechanism": "@kozou/mcp Streamable HTTP 1) Host/Origin DNS rebinding / MCP schema 2) (chunked/ Content-Length )3) err.message 7c3ae2e3(#163) DNS-rebinding guardmaxBodyBytes 1MiB 500 dev stack loopbacksink: node http server (handleRequest/handleMcp/respondError)guard",
+   "mechanism": "startHttpServer.ts routed on pathname with no Host or Origin validation, and handleMcp accumulated the request body without a cap before respondError echoed err.message back to the client. The fix checks Host and Origin on every route, limits bodies to maxBodyBytes, and makes generated unauthenticated listeners bind to loopback.",
    "cause_category": "other_ambiguous",
    "ai_provenance": {
     "family": "claude",
@@ -15820,6 +15810,7 @@
      }
     ],
     "summary": "AI-written code lacked a DNS-rebinding guard and leaked err.message on oversized requests, enabling host/origin rebinding and stack info disclosure.",
+    "mechanism": "startHttpServer.ts routed on pathname with no Host or Origin validation, and handleMcp accumulated the request body without a cap before respondError echoed err.message back to the client. The fix checks Host and Origin on every route, limits bodies to maxBodyBytes, and makes generated unauthenticated listeners bind to loopback.",
     "fix_files": [
      "packages/mcp/src/startHttpServer.ts",
      "packages/kozou/src/config.ts",
@@ -15877,9 +15868,9 @@
    "published_at": "2026-06-19",
    "severity": null,
    "cwes": [],
-   "description": "/ .env loader os.environ OUROBOROS_CLI_PATH ClaudeCodeAdapter._resolve_cli_path cli_path SDK .env -> RCE _load_env_file trusted .env (trusted=False) (OUROBOROS_CLI_PATH )",
+   "description": "Claude-coauthored code in src/ouroboros/providers/claude_code_adapter.py added a _resolve_cli_path helper that honours OUROBOROS_CLI_PATH and returns the resolved file as the CLI binary. Because src/ouroboros/config/loader.py merged a project .env into os.environ with no trust distinction, a cloned repository could point that variable at a file it ships, and the Claude Agent SDK would then run that file with the user's privileges. The fix treats the project .env as untrusted and skips execution-affecting keys such as OUROBOROS_CLI_PATH, keeping the home .env trusted.",
    "references": [],
-   "mechanism": "/ .env loader os.environ OUROBOROS_CLI_PATH ClaudeCodeAdapter._resolve_cli_path cli_path SDK .env -> RCE _load_env_file trusted .env (trusted=False) (OUROBOROS_CLI_PATH )",
+   "mechanism": "_resolve_cli_path treated the existence and file type of the resolved path as sufficient, so nothing established who had chosen it before the adapter handed the value to the SDK as the binary to launch. Loading project .env values into os.environ gave an untrusted checkout the same influence over that choice as the user's own configuration.",
    "cause_category": "injection",
    "ai_provenance": {
     "family": "claude",
@@ -16157,9 +16148,9 @@
    "published_at": "2026-06-18",
    "severity": null,
    "cwes": [],
-   "description": "CVE-2026-57117/GHSA-w6h2-fr4q-xvxv compute-bridged file tools shell command injection: src/praisonai/praisonai/integrations/managed_local.py _bridge_file_tool() converts read_file/list_files/write_file into shell command strings with raw path interpolation (command = f'cat \"{filepath}\"', f'ls -la \"{directory}\"', f'cat > \"{filepath}\" << \"EOF\"\\n{content}\\nEOF') executed by compute providers via asyncio.create_subprocess_shell (local) or [\"sh\",\"-c\",command] (Docker); an attacker who controls a file-tool path argument breaks out of the quoted path (payload like missing\"; printf \"$CANARY\"; #) and runs arbitrary shell commands in the compute environment, bypassing the approval registry where execute_command is critical but read_file/list_files are not. Source: user/prompt-controlled file-tool args; sink: shell-string execution in compute provider. Introduced >=4.6.10, fixed 4.6.59.",
+   "description": "PraisonAI's compute bridge turned file tools into shell command strings. In src/praisonai/praisonai/integrations/managed_local.py, _bridge_file_tool() substituted the caller's path into cat, ls -la, and heredoc templates before asyncio.create_subprocess_shell or sh -c ran them. Because the path was never escaped, a value containing a double quote broke out of the quoted argument and ran arbitrary commands in the compute environment, and the approval registry left read_file and list_files outside the critical-command review. Version 4.6.59 replaced the raw interpolation with shlex.quote().",
    "references": [],
-   "mechanism": "CVE-2026-57117/GHSA-w6h2-fr4q-xvxv compute-bridged file tools shell command injection: src/praisonai/praisonai/integrations/managed_local.py _bridge_file_tool() converts read_file/list_files/write_file into shell command strings with raw path interpolation (command = f'cat \"{filepath}\"', f'ls -la \"{directory}\"', f'cat > \"{filepath}\" << \"EOF\"\\n{content}\\nEOF') executed by compute providers via asyncio.create_subprocess_shell (local) or [\"sh\",\"-c\",command] (Docker); an attacker who controls a file-tool path argument breaks out of the quoted path (payload like missing\"; printf \"$CANARY\"; #) and runs arbitrary shell commands in the compute environment, bypassing the approval registry where execute_command is critical but read_file/list_files are not. Source: user/prompt-controlled file-tool args; sink: shell-string execution in compute provider. Introduced >=4.6.10, fixed 4.6.59.",
+   "mechanism": "_bridge_file_tool() built each command by pasting the file path into a double-quoted template such as the cat and ls -la commands, without escaping or validating the value. A path that contained a double quote closed the quoted argument early, so the remaining text was parsed as shell syntax and executed by the compute provider.",
    "cause_category": "injection",
    "ai_provenance": {
     "family": "openai_gpt_codex",
@@ -16239,6 +16230,7 @@
       "_bridge_file_tool"
      ]
     },
+    "mechanism": "_bridge_file_tool() built each command by pasting the file path into a double-quoted template such as the cat and ls -la commands, without escaping or validating the value. A path that contained a double quote closed the quoted argument early, so the remaining text was parsed as shell syntax and executed by the compute provider.",
     "fix_files": [
      "src/praisonai/praisonai/integrations/managed_local.py"
     ]
@@ -16290,9 +16282,9 @@
    "published_at": "2026-06-18",
    "severity": null,
    "cwes": [],
-   "description": "SSRF guard _host_is_blocked/_validate_url in spider_tools.py validates literal IP encodings only and never resolves DNS; any hostname whose A/AAAA record points at loopback/private/metadata addresses passes validation and the request is issued",
+   "description": "Claude-bot code added a URL check to spider_tools.py that blocked loopback and private addresses written as literal strings but never resolved the hostname. A DNS name pointing at an internal address passed every pattern check and the scraper issued the request, allowing requests to internal services and cloud metadata addresses. The fix adds a socket.getaddrinfo resolution loop to _host_is_blocked and treats any resolved loopback, private, link-local or reserved address as blocked.",
    "references": [],
-   "mechanism": "SSRF guard _host_is_blocked/_validate_url in spider_tools.py validates literal IP encodings only and never resolves DNS; any hostname whose A/AAAA record points at loopback/private/metadata addresses passes validation and the request is issued",
+   "mechanism": "The check compares the host text only, so _validate_url and its _host_is_blocked successor never see the address that a hostname actually resolves to. Names and alternative literal encodings reach the scraper unfiltered, and the repair resolves each name with socket.getaddrinfo and rejects private, loopback, link-local and reserved results.",
    "cause_category": "ssrf_network",
    "ai_provenance": {
     "family": "claude",
@@ -16374,7 +16366,7 @@
       "socket.getaddrinfo"
      ]
     },
-    "mechanism": "SSRF guard _host_is_blocked/_validate_url in spider_tools.py validates literal IP encodings only and never resolves DNS; any hostname whose A/AAAA record points at loopback/private/metadata addresses passes validation and the request is issued"
+    "mechanism": "The check compares the host text only, so _validate_url and its _host_is_blocked successor never see the address that a hostname actually resolves to. Names and alternative literal encodings reach the scraper unfiltered, and the repair resolves each name with socket.getaddrinfo and rejects private, loopback, link-local and reserved results."
    },
    "ir_chain": null,
    "unpatched": null,
@@ -16430,7 +16422,7 @@
     "https://github.com/MervinPraison/PraisonAI/security/advisories/GHSA-pv2j-rghr-v5r9",
     "https://github.com/MervinPraison/PraisonAI"
    ],
-   "mechanism": "str.format or str.format_map field resolution -> Python sandbox object graph; invariant: blocked attributes must not be reachable through C-level format resolution",
+   "mechanism": "The execute_code sandbox validates submitted code with a static AST pass and a restricted builtins set, but in sandbox mode the text-pattern blocklist is skipped and names assembled at runtime never appear as blocked literals. str.format and str.format_map then resolve dotted field references through CPython's own attribute lookup, which bypasses the _safe_getattr wrapper that only rebinds the getattr name.",
    "cause_category": "validation_fail_open",
    "ai_provenance": {
     "family": "claude",
@@ -16520,8 +16512,7 @@
      }
     ],
     "candidate_patch_sha256": "44c6ad687cb10ed23d894bca7efdffaa27585e91cc21209d8834552e4a1ded0e",
-    "fix_patch_sha256": "992186271771265e20730b85237dc17a443332f1ae4acd0a8f8e36c79ec3bec9",
-    "mechanism": "str.format or str.format_map field resolution -> Python sandbox object graph; invariant: blocked attributes must not be reachable through C-level format resolution"
+    "fix_patch_sha256": "992186271771265e20730b85237dc17a443332f1ae4acd0a8f8e36c79ec3bec9"
    },
    "ir_chain": {
     "original_advisory_ids": [
@@ -16727,7 +16718,7 @@
     "https://github.com/MervinPraison/PraisonAI/security/advisories/GHSA-f38v-77qj-h4jq",
     "https://github.com/MervinPraison/PraisonAI"
    ],
-   "mechanism": "praisonai-platform 0.1.4 still boots on the hardcoded JWT secret dev-secret-change-me (default-open production guard)",
+   "mechanism": "The signing key in auth_service.py fell back to _DEFAULT_SECRET, the public literal dev-secret-change-me, and the refusal fired only when PLATFORM_ENV differed from dev, a value the documented entry point never sets, so the default deployment signed HS256 tokens with a key anyone could read. The fix generates an ephemeral random key outside dev.",
    "cause_category": "other_ambiguous",
    "ai_provenance": {
     "family": "cursor",
@@ -16792,7 +16783,7 @@
       "PLATFORM_JWT_SECRET"
      ]
     },
-    "mechanism": "praisonai-platform 0.1.4 still boots on the hardcoded JWT secret dev-secret-change-me (default-open production guard)"
+    "mechanism": "The signing key in auth_service.py fell back to _DEFAULT_SECRET, the public literal dev-secret-change-me, and the refusal fired only when PLATFORM_ENV differed from dev, a value the documented entry point never sets, so the default deployment signed HS256 tokens with a key anyone could read. The fix generates an ephemeral random key outside dev."
    },
    "ir_chain": {
     "original_advisory_ids": [
@@ -17282,9 +17273,9 @@
    "published_at": "2026-06-18",
    "severity": null,
    "cwes": [],
-   "description": "Mock Server RCE via embedded expression evaluation of request-derived data (GHSA-2c85-rfcc-g74j, CWE-20/502/915): MockHandler binds attacker-controlled request/requestHeaders/requestParams into the JS engine, and def/response processing (StepExecutor.processEmbeddedExpressions) recursively evaluates #(...) strings inside them; with the full Java external bridge enabled (KarateJsBase engine.setExternalBridge) a request body like #(Java.type('java.lang.Runtime')...) becomes RCE; mock server first shipped in v2.0.1",
+   "description": "The Claude-generated V2 mock server bound incoming request data, request headers, and request parameters into the Karate JavaScript engine, where the mock def and response handling recursively evaluated any embedded expression it found in them. With the full Java bridge enabled, a request body containing a Java.type('java.lang.Runtime') call executed as Java, turning an ordinary mock endpoint into remote code execution. The fix disables request-expression evaluation and Java interop by default, keeps request-derived values inert, and leaves mocks an explicit opt-in.",
    "references": [],
-   "mechanism": "Mock Server RCE via embedded expression evaluation of request-derived data (GHSA-2c85-rfcc-g74j, CWE-20/502/915): MockHandler binds attacker-controlled request/requestHeaders/requestParams into the JS engine, and def/response processing (StepExecutor.processEmbeddedExpressions) recursively evaluates #(...) strings inside them; with the full Java external bridge enabled (KarateJsBase engine.setExternalBridge) a request body like #(Java.type('java.lang.Runtime')...) becomes RCE; mock server first shipped in v2.0.1",
+   "mechanism": "MockServer's handler in karate-core/src/main/java/io/karatelabs/core/MockServer.java passed caller-supplied values into the shared script engine without marking them untrusted, and StepExecutor.processEmbeddedExpressions then evaluated the embedded expressions it found there through the Java bridge that KarateJsBase installs.",
    "cause_category": "injection",
    "ai_provenance": {
     "family": "claude",
@@ -17376,7 +17367,8 @@
       "MockHandler"
      ]
     },
-    "annotation_mode": "hunk_specific"
+    "annotation_mode": "hunk_specific",
+    "mechanism": "MockServer's handler in karate-core/src/main/java/io/karatelabs/core/MockServer.java passed caller-supplied values into the shared script engine without marking them untrusted, and StepExecutor.processEmbeddedExpressions then evaluated the embedded expressions it found there through the Java bridge that KarateJsBase installs."
    },
    "ir_chain": null,
    "unpatched": null,
@@ -17551,9 +17543,9 @@
    "published_at": "2026-06-16",
    "severity": null,
    "cwes": [],
-   "description": "macOS CVE-2026-49401GHSA-8xpq-cjcf-3wh9deny-read/write/run/ffi comparison_path Windows no-op clone APFS Unicode NFC/NFDfi/ﬁß/ss inode deny CWE-178 + Unicode",
+   "description": "Deno's permission layer compares requested paths against allow and deny rules through comparison_path in runtime/permissions/lib.rs, which the AI-written change made case-insensitive on Windows only. On macOS the comparison remained byte-for-byte, but APFS treats Unicode-normalization variants such as the fi ligature or the German sharp s as the same file, so a path written differently bypassed its deny rule for read, write, run or ffi. The fix normalizes and case-folds macOS paths before comparing them.",
    "references": [],
-   "mechanism": "macOS CVE-2026-49401GHSA-8xpq-cjcf-3wh9deny-read/write/run/ffi comparison_path Windows no-op clone APFS Unicode NFC/NFDfi/ﬁß/ss inode deny CWE-178 + Unicode",
+   "mechanism": "comparison_path in runtime/permissions/lib.rs lowercased paths under Windows and returned an unchanged comparison elsewhere, so on macOS a path in a different Unicode normalization form never equaled the denied path for the same file. The fix adds a macOS branch that NFKD-normalizes and case-folds before comparing.",
    "cause_category": "other_ambiguous",
    "ai_provenance": {
     "family": "claude",
@@ -17644,7 +17636,7 @@
      ]
     },
     "annotation_mode": "hunk_specific",
-    "mechanism": "macOS CVE-2026-49401GHSA-8xpq-cjcf-3wh9deny-read/write/run/ffi comparison_path Windows no-op clone APFS Unicode NFC/NFDfi/ﬁß/ss inode deny CWE-178 + Unicode"
+    "mechanism": "comparison_path in runtime/permissions/lib.rs lowercased paths under Windows and returned an unchanged comparison elsewhere, so on macOS a path in a different Unicode normalization form never equaled the denied path for the same file. The fix adds a macOS branch that NFKD-normalizes and case-folds before comparing."
    },
    "ir_chain": null,
    "unpatched": null,
@@ -17711,7 +17703,7 @@
     "https://github.com/vitest-dev/vitest/releases/tag/v4.1.8",
     "https://github.com/vitest-dev/vitest/releases/tag/v5.0.0-beta.4"
    ],
-   "mechanism": "Vitest Browser: Exposed Browser Mode API Can Proxy CDP and Overwrite Config Files, Leading to RCE",
+   "mechanism": "The debugger RPC path in packages/browser/src/node/rpc.ts was not gated by the allowWrite and allowExec flags that restrict the file commands, so a client could call Chrome DevTools Protocol methods like Page.setDownloadBehavior and Runtime.evaluate with both disabled. When the browser API is exposed to the network, the runner page leaks the API token and session id, and CDP can overwrite vite.config.ts so the reload executes attacker code.",
    "cause_category": "injection",
    "ai_provenance": {
     "family": "openai_gpt_codex",
@@ -17790,8 +17782,7 @@
      }
     ],
     "candidate_patch_sha256": "31c3dfceba2499b82e89dccba89309378db4e208efb901919c7230262545b3e5",
-    "fix_patch_sha256": "814ac09862ebbdc9b3853b0a3d17cfa07f8710e5b05bf6bed7369544e0dc7674",
-    "mechanism": "Vitest Browser: Exposed Browser Mode API Can Proxy CDP and Overwrite Config Files, Leading to RCE"
+    "fix_patch_sha256": "814ac09862ebbdc9b3853b0a3d17cfa07f8710e5b05bf6bed7369544e0dc7674"
    },
    "ir_chain": {
     "original_advisory_ids": [
@@ -17863,9 +17854,9 @@
    "published_at": "2026-06-12",
    "severity": null,
    "cwes": [],
-   "description": "galaxy 47bf71cc EventTemplatesController::__setBuilderConfig() galaxyTypesAvailable 'Galaxy.enabled' => trueorg_id/—— org galaxy galaxy org-only distribution=0 galaxyfix d3adfe1a orgConditionsite admin Galaxy.org_id= org distribution>0 'Galaxy.distribution' > 0 PHP 8aa2bb6d $this->Galaxy->buildConditions($this->Auth->user())",
+   "description": "The AI-written galaxy picker in EventTemplatesController::__setBuilderConfig() loaded galaxy types with an enabled-flag condition and nothing else, so the event template builder listed galaxies belonging to other organisations, including org-only entries with zero distribution. Authenticated users could therefore see and select restricted galaxy data in the template editor. The fix routes the query through $this->Galaxy->buildConditions($this->Auth->user()), after an intermediate condition whose Galaxy.distribution comparison always evaluated true.",
    "references": [],
-   "mechanism": "galaxy 47bf71cc EventTemplatesController::__setBuilderConfig() galaxyTypesAvailable 'Galaxy.enabled' => trueorg_id/—— org galaxy galaxy org-only distribution=0 galaxyfix d3adfe1a orgConditionsite admin Galaxy.org_id= org distribution>0 'Galaxy.distribution' > 0 PHP 8aa2bb6d $this->Galaxy->buildConditions($this->Auth->user())",
+   "mechanism": "The galaxy query in __setBuilderConfig() filtered on the enabled flag alone, leaving nothing to tie the returned types to the requesting user or organisation. The later fix delegates visibility to $this->Galaxy->buildConditions($this->Auth->user()).",
    "cause_category": "auth_access",
    "ai_provenance": {
     "family": "claude",
@@ -17943,7 +17934,8 @@
       "distribution"
      ]
     },
-    "annotation_mode": "hunk_specific"
+    "annotation_mode": "hunk_specific",
+    "mechanism": "The galaxy query in __setBuilderConfig() filtered on the enabled flag alone, leaving nothing to tie the returned types to the requesting user or organisation. The later fix delegates visibility to $this->Galaxy->buildConditions($this->Auth->user())."
    },
    "ir_chain": null,
    "unpatched": null,
@@ -18006,7 +17998,7 @@
     "https://vuldb.com/vuln/368870",
     "https://vuldb.com/vuln/368870/cti"
    ],
-   "mechanism": "claude-mem: The computeObservationContentHash Function is Vulnerable to Hash Collision",
+   "mechanism": "computeObservationContentHash in src/services/sqlite/observations/store.ts concatenated memorySessionId, title and narrative with no separator before hashing, so different field tuples, such as session ab with title cd versus session abc with title d, produce the same input string and therefore the same digest. The fix inserts a NUL delimiter between the three fields so each tuple maps to a distinct byte string.",
    "cause_category": "other_ambiguous",
    "ai_provenance": {
     "family": "claude",
@@ -18079,7 +18071,6 @@
       "memorySessionId || '', title || '', narrative"
      ]
     },
-    "mechanism": "claude-mem: The computeObservationContentHash Function is Vulnerable to Hash Collision",
     "fix_files": [
      "src/services/sqlite/observations/store.ts"
     ]
@@ -18411,7 +18402,7 @@
    "cwes": [],
    "description": "CNA CVE-2026-10281 / GitHub-reviewed GHSA-q6qc-xp4q-rjq5 name Enderfga claw-orchestrator EmbeddedServer missing authentication, patch d0b02a80, last affected 3.5.5, fixed 3.5.6. Parent 0a283f45 has no src/embedded-server.ts. Direct commit f82c7836 (Claude Opus 4.6) adds the server listening on 127.0.0.1 with no authToken. Fix d0b02a80 (closes #61) auto-generates a token and requires Bearer/cookie/query on every non-/health route. v3.5.5 contains f82c7836 without d0b02a80; v3.5.6 contains the fix. edd97774 only adds --host 0.0.0.0 bind after the unauthenticated server already existed; it is a negative-control bad edge, not origin.",
    "references": [],
-   "mechanism": "Claw Orchestrator has inefficient regular expression complexity via validateRegex()",
+   "mechanism": "A Claude-coauthored commit added src/embedded-server.ts, an embedded control server that listened on 127.0.0.1 and answered every non-health command route without authentication while setting a wildcard CORS origin, so any web page in a browser could drive the control surface through cross-origin requests. The fix auto-generates a 32-byte bearer token into a mode-0600 file and requires it on all non-health requests.",
    "cause_category": "auth_access",
    "ai_provenance": {
     "family": "claude",
@@ -18502,7 +18493,6 @@
       "server-token"
      ]
     },
-    "mechanism": "Claw Orchestrator has inefficient regular expression complexity via validateRegex()",
     "fix_files": [
      "bin/cli.ts",
      "src/embedded-server.ts"
@@ -18972,9 +18962,9 @@
    "published_at": "2026-05-29",
    "severity": null,
    "cwes": [],
-   "description": "Prometheus metrics exporter container binds to 0.0.0.0 (all interfaces) with no authentication: newPrometheusExporterContainer defines Command /bin/runironic-exporter with no FLASK_RUN_HOST/bind control, exposing operational metrics to adjacent networks when enabled",
+   "description": "The AI-written Prometheus exporter support created an ironic-prometheus-exporter sidecar that runs /bin/runironic-exporter and set only the metrics port, leaving the listener host to the image default of every interface. The exporter serves operational metrics without authentication, so enabling the feature exposed those metrics to any adjacent network. A later release added a bindAddress field and pinned the container to loopback by default.",
    "references": [],
-   "mechanism": "Prometheus metrics exporter container binds to 0.0.0.0 (all interfaces) with no authentication: newPrometheusExporterContainer defines Command /bin/runironic-exporter with no FLASK_RUN_HOST/bind control, exposing operational metrics to adjacent networks when enabled",
+   "mechanism": "newPrometheusExporterContainer defined the sidecar command with no bind host, so the container defaulted to 0.0.0.0 while serving unauthenticated metrics. The fix sets FLASK_RUN_HOST to 127.0.0.1, adds a bindAddress setting that must parse as an IP, and rejects loopback values while ServiceMonitor scraping is enabled.",
    "cause_category": "injection",
    "ai_provenance": {
     "family": "claude",
@@ -19065,7 +19055,7 @@
      ]
     },
     "annotation_mode": "hunk_specific",
-    "mechanism": "Prometheus metrics exporter container binds to 0.0.0.0 (all interfaces) with no authentication: newPrometheusExporterContainer defines Command /bin/runironic-exporter with no FLASK_RUN_HOST/bind control, exposing operational metrics to adjacent networks when enabled"
+    "mechanism": "newPrometheusExporterContainer defined the sidecar command with no bind host, so the container defaulted to 0.0.0.0 while serving unauthenticated metrics. The fix sets FLASK_RUN_HOST to 127.0.0.1, adds a bindAddress setting that must parse as an IP, and rejects loopback values while ServiceMonitor scraping is enabled."
    },
    "ir_chain": null,
    "unpatched": null,
@@ -19125,7 +19115,7 @@
     "https://github.com/hanxi/xiaomusic",
     "https://www.vulncheck.com/advisories/xiaomusic-path-traversal-via-get-music-endpoint"
    ],
-   "mechanism": "xiaomusic contains an unauthenticated path traversal vulnerability",
+   "mechanism": "The temp-path branch added to music_file() in xiaomusic/api/routers/file.py accepted any path beginning with the configured base, because startswith(temp_base) had no trailing separator to anchor the comparison. A request such as /music/../music_secret/file.txt matched a sibling directory and was served by the unauthenticated GET /music/{file_path:path} route; the fix appends os.sep to the temporary, music and picture bases.",
    "cause_category": "path_link",
    "ai_provenance": {
     "family": "claude",
@@ -19178,8 +19168,7 @@
      }
     ],
     "candidate_patch_sha256": "b94f7c7473e5746598aac2ee0aebb18ca7948d0566f16b52d8316559cc27601e",
-    "fix_patch_sha256": "cc20b37b6f28fd1c7e7fda7025ef2f674bf6655b899a8421ba93c32dbea62900",
-    "mechanism": "xiaomusic contains an unauthenticated path traversal vulnerability"
+    "fix_patch_sha256": "cc20b37b6f28fd1c7e7fda7025ef2f674bf6655b899a8421ba93c32dbea62900"
    },
    "ir_chain": null,
    "unpatched": null,
@@ -19786,9 +19775,9 @@
    "published_at": "2026-05-21",
    "severity": null,
    "cwes": [],
-   "description": "HTTP PowerShell + CORSGHSA-vrxg-gm77-7q5g / CVE-2026-48989fixed 0.7.5SSE streamable-http _http_middleware() OptionsMiddleware + CORSMiddleware(allow_origins=['*'], allow_methods=['*'], allow_headers=['*'])OptionsMiddleware OPTIONS Access-Control-Allow-Origin/Methods/HeadersHTTP / PowerShell Windows 470b2991 wildcard CORS --cors-origins TrustedHostMiddleware DNS rebinding",
+   "description": "Windows MCP exposes PowerShell control over its HTTP and SSE transports, and a Claude-assisted change added permissive cross-origin handling in src/windows_mcp/__main__.py. The middleware installed CORSMiddleware with wildcard origins, methods, and headers plus an OPTIONS responder that answered every preflight, letting any website send cross-origin requests to it. With no authentication on that transport, the exposed PowerShell tools were reachable. The fix released in 0.7.5 replaces the wildcard with an opt-in cors_origins list and adds TrustedHostMiddleware to block DNS rebinding.",
    "references": [],
-   "mechanism": "HTTP PowerShell + CORSGHSA-vrxg-gm77-7q5g / CVE-2026-48989fixed 0.7.5SSE streamable-http _http_middleware() OptionsMiddleware + CORSMiddleware(allow_origins=['*'], allow_methods=['*'], allow_headers=['*'])OptionsMiddleware OPTIONS Access-Control-Allow-Origin/Methods/HeadersHTTP / PowerShell Windows 470b2991 wildcard CORS --cors-origins TrustedHostMiddleware DNS rebinding",
+   "mechanism": "The middleware registered CORSMiddleware with allow_origins set to a wildcard and added an OPTIONS handler that returned successful preflight responses, so browsers were told that any origin could read responses from the local server. Because the HTTP transport also accepted unauthenticated requests, a malicious page could drive the PowerShell command tools directly.",
    "cause_category": "other_ambiguous",
    "ai_provenance": {
     "family": "claude",
@@ -20261,7 +20250,7 @@
       "role": "candidate"
      },
      {
-      "annotation": "AI string-only guard: it only handles strings via start_with?, so URI objects skip the protocol-relative '//' check and can still override the host, leaking connection-scoped headers to an attacker-controlled host.",
+      "annotation": "Adds a protocol-relative URL check to build_exclusive_url in Faraday::Connection, but the start_with? test runs only for String targets, so a URI object such as URI('//evil.com/path?token=1') skips it and can still override the connection host while connection-scoped headers such as Authorization stay attached.",
       "code": "--- a/lib/faraday/connection.rb\n+++ b/lib/faraday/connection.rb\n@@ -481,8 +481,9 @@ module Faraday\n if url && !base.path.end_with?('/')\n base.path = \"#{base.path}/\" # ensure trailing slash\n end\n- # Ensure relative url will be parsed correctly (such as `service:search` )\n- url = \"./#{url}\" if url.respond_to?(:start_with?) && !url.start_with?('http://', 'https://', '/', './', '../')\n+ # Ensure relative url will be parsed correctly (such as `service:search` or `//evil.com`)\n+ url = \"./#{url}\" if url.respond_to?(:start_with?) &&\n+ (!url.start_with?('http://', 'https://', '/', './', '../') || url.start_with?('//'))\n uri = url ? base + url : base\n if params\n uri.query = params.to_query(params_encoder || options.params_encoder)",
       "file": "lib/faraday/connection.rb",
       "role": "candidate"
@@ -20395,7 +20384,7 @@
     "https://github.com/jarrodwatts/claude-hud/commit/234d9aad919b51326a43bcf90b45ae35c23afc30",
     "https://www.vulncheck.com/advisories/claude-hud-path-traversal-via-transcript-path"
    ],
-   "mechanism": "GHSA-4524-x6pc-rr9x unreviewed cve_id=CVE-2026-47091; real repo jarrodwatts/claude-hud",
+   "mechanism": "The rewritten reader in src/transcript.ts took transcript_path straight from caller-supplied stdin JSON, so stat, cache lookup, and stream creation all followed an arbitrary path, exposing any file the process could read and caching its metadata with permissions wider than the owner's. The fix canonicalizes the path before those operations and writes cache files owner-private.",
    "cause_category": "other_ambiguous",
    "ai_provenance": {
     "family": "claude",
@@ -20472,8 +20461,7 @@
      }
     ],
     "candidate_patch_sha256": "312405a91fe18d8ff08230dea3f9ec8c65dcdaa77a1051679067fe2317a2af60",
-    "fix_patch_sha256": "224e09de6005e4c67fe1064834d3437dde151954a43dfddd36b1ceb4f35a4ded",
-    "mechanism": "GHSA-4524-x6pc-rr9x unreviewed cve_id=CVE-2026-47091; real repo jarrodwatts/claude-hud"
+    "fix_patch_sha256": "224e09de6005e4c67fe1064834d3437dde151954a43dfddd36b1ceb4f35a4ded"
    },
    "ir_chain": null,
    "unpatched": null,
@@ -21085,7 +21073,7 @@
     "https://github.com/JasperFx/marten/commit/626249656829860b9c55895b5b6046b61a2a695f",
     "https://github.com/JasperFx/marten"
    ],
-   "mechanism": "Marten has an injection vulnerability in its full-text search regConfig parameter",
+   "mechanism": "FullTextWhereFragment builds the full-text WHERE clause by string interpolation and places the caller-supplied regConfig inside the to_tsvector literal, so a value containing a single quote ends the literal and appends arbitrary PostgreSQL. The fix validates regConfig against a PostgreSQL identifier pattern at construction time and throws ArgumentException for anything else.",
    "cause_category": "injection",
    "ai_provenance": {
     "family": "claude",
@@ -21174,8 +21162,7 @@
       "_regConfigPattern",
       "ValidateRegConfig"
      ]
-    },
-    "mechanism": "Marten has an injection vulnerability in its full-text search regConfig parameter"
+    }
    },
    "ir_chain": null,
    "unpatched": null,
@@ -21384,7 +21371,7 @@
     "https://github.com/cnighswonger/claude-code-cache-fix/commit/613e4df30547f3e6baf32d161eddc828f171da17",
     "https://github.com/cnighswonger/claude-code-cache-fix"
    ],
-   "mechanism": "statusline JSON inserted into Python source",
+   "mechanism": "tools/quota-statusline.sh piped Claude Code's hook stdin into a Python triple-quoted literal through json.loads('''$input'''), so a payload containing a closing quote sequence ended the literal early and the remaining bytes ran as Python in the user's process. The fix passes the payload through the CC_INPUT environment variable and a single-quoted heredoc.",
    "cause_category": "injection",
    "ai_provenance": {
     "family": "claude",
@@ -21500,7 +21487,7 @@
      ]
     },
     "annotation_mode": "hunk_specific",
-    "mechanism": "statusline JSON inserted into Python source"
+    "mechanism": "tools/quota-statusline.sh piped Claude Code's hook stdin into a Python triple-quoted literal through json.loads('''$input'''), so a payload containing a closing quote sequence ended the literal early and the remaining bytes ran as Python in the user's process. The fix passes the payload through the CC_INPUT environment variable and a single-quoted heredoc."
    },
    "ir_chain": null,
    "unpatched": null,
@@ -21687,9 +21674,9 @@
    "published_at": "2026-05-11",
    "severity": null,
    "cwes": [],
-   "description": "NaN/inf clamp PDF GHSA-88Q9-CMP2-C2VQ, DoSColor pub enum Rgb/Gray/Cmyk pub tuple Color::rgb/gray/cmyk clamp [0,1] Color::Rgb(f64::NAN,...) format!('{:.3}', v) NaN/inf/-inf PDF tokenISO 32000-1 7.3.3conformant /~50 text/graphics/forms/annotations/layout/writer",
+   "description": "AI-generated color constructors in oxidizepdf documented a clamp to the [0,1] range but passed non-finite f64 values straight through, so a directly built Color::Rgb(f64::NAN, ...) reached the emission path unchanged. Color operators format each component with format!('{:.3}', v), which writes NaN or infinity into PDF content streams although ISO 32000-1 7.3.3 requires finite numbers, leaving consumers with a document that conformant readers reject. The fix adds a finite_or_zero helper that maps non-finite values to 0.0 before any color operator is written.",
    "references": [],
-   "mechanism": "NaN/inf clamp PDF GHSA-88Q9-CMP2-C2VQ, DoSColor pub enum Rgb/Gray/Cmyk pub tuple Color::rgb/gray/cmyk clamp [0,1] Color::Rgb(f64::NAN,...) format!('{:.3}', v) NaN/inf/-inf PDF tokenISO 32000-1 7.3.3conformant /~50 text/graphics/forms/annotations/layout/writer",
+   "mechanism": "The Color::rgb, Color::gray and Color::cmyk constructors promise a [0,1] clamp but never test whether a component is finite, and the emission path formats components directly with format!('{:.3}', v). A NaN or infinite component therefore becomes an invalid PDF number token in the output stream. The fix routes every color write through shared helpers that apply finite_or_zero first.",
    "cause_category": "resource_abuse",
    "ai_provenance": {
     "family": "claude",
@@ -21781,8 +21768,7 @@
       "write_fill_color_bytes"
      ]
     },
-    "annotation_mode": "hunk_specific",
-    "mechanism": "NaN/inf clamp PDF GHSA-88Q9-CMP2-C2VQ, DoSColor pub enum Rgb/Gray/Cmyk pub tuple Color::rgb/gray/cmyk clamp [0,1] Color::Rgb(f64::NAN,...) format!('{:.3}', v) NaN/inf/-inf PDF tokenISO 32000-1 7.3.3conformant /~50 text/graphics/forms/annotations/layout/writer"
+    "annotation_mode": "hunk_specific"
    },
    "ir_chain": null,
    "unpatched": null,
@@ -22269,7 +22255,7 @@
     "https://github.com/czlonkowski/n8n-mcp",
     "https://github.com/czlonkowski/n8n-mcp/releases/tag/v2.50.1"
    ],
-   "mechanism": "n8n-mcp affected by path traversal, redirect-following SSRF, and telemetry payload exposure",
+   "mechanism": "The AI-created src/services/n8n-api-client.ts put workflow, execution and credential identifiers into request paths without validation or encoding, so a crafted value could aim a call carrying the configured n8n key at a different same-origin endpoint and slip past the handler checks. The fix routes each identifier through encodeApiPathSegment, which rejects empty, oversized or punctuation-bearing values before encoding them.",
    "cause_category": "ssrf_network",
    "ai_provenance": {
     "family": "claude",
@@ -22425,7 +22411,7 @@
     "https://github.com/adamhathcock/sharpcompress/commit/2021a06626d0555a4d69471386e763ca5f5d5dfb",
     "https://github.com/adamhathcock/sharpcompress"
    ],
-   "mechanism": "SharpCompress has directory traversal via directory entries in WriteToDirectory (zip slip variant)",
+   "mechanism": "Copilot SWE-agent rewrote extraction so each entry is written with Path.Combine(destinationDirectory, entry.Key...) followed by Directory.CreateDirectory, without checking the combined path against the destination, so directory entries escape the target root and symlinks redirect writes outside it. The fix resolves each path with Path.GetFullPath and requires the rooted destination plus a trailing separator as its prefix.",
    "cause_category": "path_link",
    "ai_provenance": {
     "family": "copilot",
@@ -22496,8 +22482,7 @@
      }
     ],
     "candidate_patch_sha256": "c203ac64689736ef9539fe142627efac7583d88dd4f7ba01150adb283d459cb0",
-    "fix_patch_sha256": "fe818b1bdf739770221a760b7d79616bcbdaaff04c04900843816cc39251dfb1",
-    "mechanism": "SharpCompress has directory traversal via directory entries in WriteToDirectory (zip slip variant)"
+    "fix_patch_sha256": "fe818b1bdf739770221a760b7d79616bcbdaaff04c04900843816cc39251dfb1"
    },
    "ir_chain": null,
    "unpatched": null,
@@ -22544,9 +22529,9 @@
    "published_at": "2026-05-08",
    "severity": null,
    "cwes": [],
-   "description": "MCP Registry TrailingSlashMiddleware stripped trailing slashes from protocol-relative URLs (//evil.com/), resulting in open redirect via Location: //evil.com (sink: internal/api/server.go).",
+   "description": "The AI-written TrailingSlashMiddleware in internal/api/server.go trimmed the final slash with TrimSuffix and returned a 308 redirect for any non-root path. For a protocol-relative request such as a double-slash evil.com address, the stripped path became //evil.com, which browsers resolve to a different host, turning the registry canonical-url redirect into an open redirect usable for phishing or credential theft. The fix normalizes the path with path.Clean before it is written into the Location header.",
    "references": [],
-   "mechanism": "MCP Registry TrailingSlashMiddleware stripped trailing slashes from protocol-relative URLs (//evil.com/), resulting in open redirect via Location: //evil.com (sink: internal/api/server.go).",
+   "mechanism": "TrimSuffix removed only the last character of the raw request path, so //evil.com/ became the scheme-relative //evil.com that a browser reads as another host, and the middleware never passed the path through path.Clean before building the redirect.",
    "cause_category": "other_ambiguous",
    "ai_provenance": {
     "family": "claude",
@@ -22628,7 +22613,7 @@
       "path.Clean"
      ]
     },
-    "mechanism": "MCP Registry TrailingSlashMiddleware stripped trailing slashes from protocol-relative URLs (//evil.com/), resulting in open redirect via Location: //evil.com (sink: internal/api/server.go)."
+    "mechanism": "TrimSuffix removed only the last character of the raw request path, so //evil.com/ became the scheme-relative //evil.com that a browser reads as another host, and the middleware never passed the path through path.Clean before building the redirect."
    },
    "ir_chain": null,
    "unpatched": null,
@@ -22811,9 +22796,9 @@
    "published_at": "2026-05-06",
    "severity": null,
    "cwes": [],
-   "description": "icu-minify AOT compileSelect `const options: SelectOptions = {}` select formatSelect `options[value] ?? options.other` compile.tsx:192 / format.tsx:235 value toString/__proto__/constructor/hasOwnProperty/valueOf Object.prototype truthy Function`?? options.other` formatNodes Function TypeError next-intl precompile select 500DoSCWE-1321 GHSA-r27j-894h-3w3p",
+   "description": "The AI-written ahead-of-time compiler in packages/icu-minify stored ICU select options in a plain object literal in compile.tsx and looked them up with options[value] ?? options.other in format.tsx. A message value naming an inherited member such as constructor, valueOf or hasOwnProperty resolves to a truthy Function from Object.prototype, so the fallback is skipped and formatNodes calls that function, which throws. The failure surfaces as a 500 response wherever the message is rendered with precompile enabled.",
    "references": [],
-   "mechanism": "icu-minify AOT compileSelect `const options: SelectOptions = {}` select formatSelect `options[value] ?? options.other` compile.tsx:192 / format.tsx:235 value toString/__proto__/constructor/hasOwnProperty/valueOf Object.prototype truthy Function`?? options.other` formatNodes Function TypeError next-intl precompile select 500DoSCWE-1321 GHSA-r27j-894h-3w3p",
+   "mechanism": "Select option tables were built as plain object literals, so a lookup key matching an Object.prototype member resolves through the prototype chain, comes back truthy, and defeats the options[value] ?? options.other fallback meant for unknown values. The fix creates the tables with Object.create(null) and rejects __proto__, constructor and prototype path segments.",
    "cause_category": "resource_abuse",
    "ai_provenance": {
     "family": "cursor",
@@ -22905,8 +22890,7 @@
       "getSortedMessages"
      ]
     },
-    "annotation_mode": "hunk_specific",
-    "mechanism": "icu-minify AOT compileSelect `const options: SelectOptions = {}` select formatSelect `options[value] ?? options.other` compile.tsx:192 / format.tsx:235 value toString/__proto__/constructor/hasOwnProperty/valueOf Object.prototype truthy Function`?? options.other` formatNodes Function TypeError next-intl precompile select 500DoSCWE-1321 GHSA-r27j-894h-3w3p"
+    "annotation_mode": "hunk_specific"
    },
    "ir_chain": null,
    "unpatched": null,
@@ -22955,9 +22939,9 @@
    "published_at": "2026-05-06",
    "severity": null,
    "cwes": [],
-   "description": "SSRF bypass in spider_tools._validate_url: validation extracts the host only via urllib.parse.urlparse and blocks private/loopback/reserved hosts, but urlparse and requests disagree on URLs like http://127.0.0.1:6666 backslash @1.1.1.1 (urlparse sees host 1.1.1.1, requests dispatches to 127.0.0.1), so a backslash-smuggled URL passes validation and requests.get reaches an internal host",
+   "description": "The AI-written _validate_url in spider_tools.py parsed candidate URLs with urllib.parse.urlparse and blocked private, loopback and reserved hostnames. A backslash placed before the @ symbol makes urlparse report the host as 1.1.1.1 while requests dispatches the connection to 127.0.0.1, so a smuggled URL passed validation and requests.get reached an internal address. The fix rejects any URL containing a backslash or ASCII control character before parsing.",
    "references": [],
-   "mechanism": "SSRF bypass in spider_tools._validate_url: validation extracts the host only via urllib.parse.urlparse and blocks private/loopback/reserved hosts, but urlparse and requests disagree on URLs like http://127.0.0.1:6666 backslash @1.1.1.1 (urlparse sees host 1.1.1.1, requests dispatches to 127.0.0.1), so a backslash-smuggled URL passes validation and requests.get reaches an internal host",
+   "mechanism": "Validation trusted one library's reading of the authority: _validate_url took the hostname from urllib.parse.urlparse, while the request was ultimately issued by requests, and the two disagree when a backslash appears in the authority. Rejecting backslashes and ASCII control characters before parsing closes the divergence.",
    "cause_category": "ssrf_network",
    "ai_provenance": {
     "family": "claude",
@@ -23041,7 +23025,8 @@
       "Regression"
      ]
     },
-    "annotation_mode": "hunk_specific"
+    "annotation_mode": "hunk_specific",
+    "mechanism": "Validation trusted one library's reading of the authority: _validate_url took the hostname from urllib.parse.urlparse, while the request was ultimately issued by requests, and the two disagree when a backslash appears in the authority. Rejecting backslashes and ASCII control characters before parsing closes the divergence."
    },
    "ir_chain": null,
    "unpatched": null,
@@ -23518,7 +23503,7 @@
    "cwes": [],
    "description": "OS command injection (CWE-77) in the MCP tools yii_command_help and yii_execute_command: user-supplied `command` and `args` are interpolated raw into a shell command `php \"<yiiScript>\" <command> <args...>` executed via child_process exec() (shell=true) in src/yii2.ts; the only guard is a 3-entry denylist (migrate/fresh, migrate/down, cache/flush-all) using string .includes(), trivially bypassable (e.g. 'migrate/fresh; id'). getCommandHelp() has the same flaw (`php \"...\" help ${command}`). CVSS 6.3, remote (requires MCP session, PR:L); exploit published; project notified but did not respond.",
    "references": [],
-   "mechanism": "Unsanitized string interpolation of MCP tool arguments into a shell command passed to exec(); denylist approach instead of allowlist/argument-array (execFile) or escaping. Entire codebase generated in one initial commit by Claude Code. OS command injection (CWE-77) in the MCP too",
+   "mechanism": "src/yii2.ts builds a shell string such as php \"<yiiScript>\" <command> <args...> and passes it to child_process exec(), so MCP-supplied command and args values reach the shell unescaped. The only check is a three-entry denylist of destructive Yii commands matched with .includes(), which a value like migrate/fresh; id defeats because the extra command never appears in the list. getCommandHelp() interpolates its argument the same way.",
    "cause_category": "injection",
    "ai_provenance": {
     "family": "claude",
@@ -23548,8 +23533,7 @@
     "candidate_patch_sha256": "ff4c65cfcc796796cdae45ac8a0de7f3cdc549b82005b5f3b4da105e9d84ed86",
     "candidate_patch_files": [
      "src/yii2.ts"
-    ],
-    "mechanism": "Unsanitized string interpolation of MCP tool arguments into a shell command passed to exec(); denylist approach instead of allowlist/argument-array (execFile) or escaping. Entire codebase generated in one initial commit by Claude Code. OS command injection (CWE-77) in the MCP too"
+    ]
    },
    "ir_chain": null,
    "unpatched": {
@@ -23601,7 +23585,7 @@
    "cwes": [],
    "description": "CWE-77 OS command injection: unauthenticated POST /time-machine/preview in TimeMachinePreviewRequest accepts a user-supplied dev_script string which is passed to subprocess.Popen(command, shell=True, cwd=worktree_path) after only {port} substitution; a remote attacker can inject arbitrary shell commands (e.g. '; <cmd>'), executed server-side from the worktree root. CVSS 7.3 AV:N/AC:L/PR:N/UI:N.",
    "references": [],
-   "mechanism": "introducer_commit CWE-77 OS command injection: unauthenticated POST /time-machine/preview in TimeMachinePreviewRequest accepts a user-supplied dev_script string which is passed to subprocess.Popen(command, shell=True, cwd=worktree_path) after only {port} substitution; a remote at",
+   "mechanism": "The preview route reads the dev_script string from the request and passes it to subprocess.Popen with shell=True, substituting only the {port} placeholder, so shell metacharacters in the value are interpreted. The endpoint requires no authentication, so a remote caller can append arbitrary commands that run from the worktree root.",
    "cause_category": "injection",
    "ai_provenance": {
     "family": "claude",
@@ -23629,7 +23613,7 @@
      }
     ],
     "candidate_patch_sha256": "06103a8e7276230738ed93c53811e166f8214ac5d88a8a19498e41cd6d2f89cc",
-    "mechanism": "introducer_commit CWE-77 OS command injection: unauthenticated POST /time-machine/preview in TimeMachinePreviewRequest accepts a user-supplied dev_script string which is passed to subprocess.Popen(command, shell=True, cwd=worktree_path) after only {port} substitution; a remote at"
+    "mechanism": "The preview route reads the dev_script string from the request and passes it to subprocess.Popen with shell=True, substituting only the {port} placeholder, so shell metacharacters in the value are interpreted. The endpoint requires no authentication, so a remote caller can append arbitrary commands that run from the worktree root."
    },
    "ir_chain": null,
    "unpatched": {
@@ -23875,9 +23859,9 @@
    "published_at": "2026-04-30",
    "severity": null,
    "cwes": [],
-   "description": "sync SSRF validator misses IPv6 families",
+   "description": "The AI-assisted security patch added SSRFProtection.validateUrlSync in src/utils/ssrf-protection.ts to screen webhook URLs without DNS, but the helper covered only named metadata hosts, localhost names and IPv4 private ranges. Requests aimed at ::ffff:169.254.169.254, ::169.254.169.254, 2002:a9fe:a9fe:: or 64:ff9b::a9fe:a9fe passed validation and reached the HTTP client carrying the x-n8n-api-key header.",
    "references": [],
-   "mechanism": "sync SSRF validator misses IPv6 families",
+   "mechanism": "validateUrlSync screened the hostname for a small set of blocked names and IPv4 expressions, then declared the URL valid without ever classifying an IPv6 literal. The closing patch routes the hostname through isPrivateOrMappedIpv6 right before that final return, rejecting the ::/96 block along with link-local, site-local, unique-local, 6to4 and NAT64 encodings.",
    "cause_category": "ssrf_network",
    "ai_provenance": {
     "family": "claude",
@@ -24185,7 +24169,7 @@
    "cwes": [],
    "description": "CWE-22 path traversal / arbitrary file read: POST /api/agent-output accepts JSON {outputFile: string}, normalizes it, requires absolute path, and returns the file's content. Comment explicitly states arbitrary absolute paths are allowed (SDK output_file may live outside cwd). Only guard is isFile() (rejects directories); any readable file on the host (e.g. /etc/passwd, .env, keys) can be exfiltrated remotely. No fix was ever released; HEAD b185aa7ff0d864581257008077b4010fca1747bf (the CVE's 'up to' commit) still contains the identical code.",
    "references": [],
-   "mechanism": "AI-generated tutorial code: whole 04-agent-teams app including the vulnerable route was added in one commit, and the same commit's README/CLAUDE.md disclose that the tutorial content was written by Claude Code. CWE-22 path traversal / arbitrary file read: POST /api/agent-output a",
+   "mechanism": "The POST /api/agent-output route added with the 04-agent-teams tutorial accepts an outputFile string, normalizes it, requires an absolute path and returns that file's contents, with isFile() as the only check and a comment stating that arbitrary absolute paths are allowed. Nothing confines the path to the project directory, so any readable host file can be returned.",
    "cause_category": "path_link",
    "ai_provenance": {
     "family": "claude",
@@ -24224,8 +24208,7 @@
       "role": "candidate"
      }
     ],
-    "candidate_patch_sha256": "ffb7d0b622176cffdb6c78901f8ac8794b3ceb7e5c74ae9d278618d96365c00d",
-    "mechanism": "AI-generated tutorial code: whole 04-agent-teams app including the vulnerable route was added in one commit, and the same commit's README/CLAUDE.md disclose that the tutorial content was written by Claude Code. CWE-22 path traversal / arbitrary file read: POST /api/agent-output a"
+    "candidate_patch_sha256": "ffb7d0b622176cffdb6c78901f8ac8794b3ceb7e5c74ae9d278618d96365c00d"
    },
    "ir_chain": null,
    "unpatched": {
@@ -24423,9 +24406,9 @@
    "published_at": "2026-04-25",
    "severity": null,
    "cwes": [],
-   "description": "n8n-MCP: Sensitive MCP tool-call arguments logged on authenticated requests in HTTP mode",
+   "description": "The AI change in src/mcp/server.ts expanded initialize logging to record client identity, capabilities, and protocol negotiation, and in the same pass began serializing complete tool-call argument objects, including the raw parameters of each request, into its log output. On authenticated HTTP requests those lines carry caller-supplied secrets, so anyone who can read the logs can recover them. The fix replaces the values with metadata-only summaries produced by summarizeToolCallArgs in src/utils/redaction.ts.",
    "references": [],
-   "mechanism": "n8n-MCP: Sensitive MCP tool-call arguments logged on authenticated requests in HTTP mode",
+   "mechanism": "Tool-call logging emitted whole argument objects as plaintext, so any credential a caller placed in an argument was persisted verbatim in the log stream. The redaction helper summarizeToolCallArgs now reports only type, key names, nesting, and size, never the values.",
    "cause_category": "auth_access",
    "ai_provenance": {
     "family": "claude",
@@ -24510,7 +24493,7 @@
      ]
     },
     "annotation_mode": "hunk_specific",
-    "mechanism": "n8n-MCP: Sensitive MCP tool-call arguments logged on authenticated requests in HTTP mode",
+    "mechanism": "Tool-call logging emitted whole argument objects as plaintext, so any credential a caller placed in an argument was persisted verbatim in the log stream. The redaction helper summarizeToolCallArgs now reports only type, key names, nesting, and size, never the values.",
     "fix_files": [
      "src/mcp/server.ts",
      "src/utils/redaction.ts"
@@ -24565,9 +24548,9 @@
    "published_at": "2026-04-23",
    "severity": null,
    "cwes": [],
-   "description": "HTTP GHSA-pfm2-2mhg-8wpx / CVE-2026-41495fixed 2.47.11CWE-532POST /mcp logger.info('POST /mcp request received - DETAILED DEBUG') req.headers Authorization bearer token x-n8n-key API key JSON-RPC bodyContentJSON.stringify(req.body, null, 2) params/payload handleRequest bodyContent401 SIEM//ops ef9a8562v2.47.11 DETAILED DEBUG handleRequest summarizeMcpBody jsonrpc/method/id/hasParams debug headers redactHeadersauthorization/proxy-authorization/cookie/set-cookie/x-n8n-key/x-n8n-url -> [REDACTED] src/utils/redaction.ts",
+   "description": "The AI-written POST /mcp handler recorded a DETAILED DEBUG log line for every request that included req.headers and the whole JSON-RPC body through JSON.stringify(req.body, null, 2). Because the record was written before the caller was authenticated, bearer tokens, x-n8n-key API keys, and request parameters were persisted even for requests that came back with an authorization error, exposing them to anyone with log or monitoring access. The fix removes pre-authentication request logging, replaces the body dump with a metadata summary, and redacts sensitive headers.",
    "references": [],
-   "mechanism": "HTTP GHSA-pfm2-2mhg-8wpx / CVE-2026-41495fixed 2.47.11CWE-532POST /mcp logger.info('POST /mcp request received - DETAILED DEBUG') req.headers Authorization bearer token x-n8n-key API key JSON-RPC bodyContentJSON.stringify(req.body, null, 2) params/payload handleRequest bodyContent401 SIEM//ops ef9a8562v2.47.11 DETAILED DEBUG handleRequest summarizeMcpBody jsonrpc/method/id/hasParams debug headers redactHeadersauthorization/proxy-authorization/cookie/set-cookie/x-n8n-key/x-n8n-url -> [REDACTED] src/utils/redaction.ts",
+   "mechanism": "The handler in src/http-server-single-session.ts logged request headers and the stringified body at info level before verifying the caller, so a request rejected with HTTP 401 still wrote its Authorization bearer token and x-n8n-key values into the application log.",
    "cause_category": "auth_access",
    "ai_provenance": {
     "family": "claude",
@@ -24652,6 +24635,7 @@
      ]
     },
     "annotation_mode": "hunk_specific",
+    "mechanism": "The handler in src/http-server-single-session.ts logged request headers and the stringified body at info level before verifying the caller, so a request rejected with HTTP 401 still wrote its Authorization bearer token and x-n8n-key values into the application log.",
     "fix_files": [
      "src/http-server-single-session.ts",
      "src/utils/redaction.ts"
@@ -24715,7 +24699,7 @@
     "https://github.com/ddev/ddev",
     "https://github.com/ddev/ddev/releases/tag/v1.25.2"
    ],
-   "mechanism": "DDEV has ZipSlip path traversal in tar and zip archive extraction",
+   "mechanism": "Untar and Unzip in pkg/archive/archive.go resolve each entry with filepath.Join(dest, file.Name) and write it without checking that the result stays inside the extraction root, so an entry with ../ segments lands outside the destination. The AI-written change added a tar symlink branch creating os.Symlink(file.Linkname, fullPath) with no containment check, and the fix rejects escaping paths and rebases absolute link targets under the destination.",
    "cause_category": "path_link",
    "ai_provenance": {
     "family": "claude",
@@ -24788,8 +24772,7 @@
      }
     ],
     "candidate_patch_sha256": "a61fac2750eac074c9ef433bf3e05c389d921d5349a3e815f253809735270cf3",
-    "fix_patch_sha256": "0e6f7aae5e68edf60bef0a66ed29b620614ea6cf9da82505d9a66ac51c9ae1d5",
-    "mechanism": "DDEV has ZipSlip path traversal in tar and zip archive extraction"
+    "fix_patch_sha256": "0e6f7aae5e68edf60bef0a66ed29b620614ea6cf9da82505d9a66ac51c9ae1d5"
    },
    "ir_chain": null,
    "unpatched": null,
@@ -25129,7 +25112,7 @@
    "cwes": [],
    "description": "Additive dotenv reload on profile switch leaves prior profile secrets in os.environ; invariant: switching profiles must drop previously loaded profile keys before loading the next .env.",
    "references": [],
-   "mechanism": "profile _reload_dotenv (os.environ[k]=v) profile env key profile A .env ( API key) profile B profile sink: os.environsource: profile .env guard key",
+   "mechanism": "_reload_dotenv in api/profiles.py copies each profile's dotenv values into the process environment with an os.environ[k] = v loop and never removes the keys it set earlier, so activating profile B leaves profile A's API keys in place. The fix records the keys each reload applied and clears them before loading the next profile.",
    "cause_category": "auth_access",
    "ai_provenance": {
     "family": "claude",
@@ -25219,7 +25202,7 @@
     ],
     "candidate_patch_sha256": "75313680f9fa186d89334fac542966699273eec5f523e29f20f3d7f7c51a0bee",
     "fix_patch_sha256": "ecadce21ab6c9aeffc07e4bedf4a338eb0de8899072c45555a2199e8e03ca00f",
-    "mechanism": "profile _reload_dotenv (os.environ[k]=v) profile env key profile A .env ( API key) profile B profile sink: os.environsource: profile .env guard key",
+    "mechanism": "_reload_dotenv in api/profiles.py copies each profile's dotenv values into the process environment with an os.environ[k] = v loop and never removes the keys it set earlier, so activating profile B leaves profile A's API keys in place. The fix records the keys each reload applied and clears them before loading the next profile.",
     "fix_files": [
      "api/profiles.py",
      "api/onboarding.py"
@@ -25409,7 +25392,7 @@
     "https://github.com/openclaw/openclaw",
     "https://www.vulncheck.com/advisories/openclaw-dns-rebinding-ssrf-via-hostname-validation-bypass"
    ],
-   "mechanism": "OpenClaw: Browser SSRF hostname validation could be bypassed by DNS rebinding",
+   "mechanism": "src/browser/cdp.ts accepted a direct websocket CDP URL and handed it to WebSocket without the pinned-hostname resolution applied by the HTTP discovery path, so the address the policy approved and the address Chromium dialled could diverge. The fix routes CDP requests through assertCdpEndpointAllowed and makes strict navigation reject non-IP hostnames unless they match an exact or wildcard allowlist.",
    "cause_category": "ssrf_network",
    "ai_provenance": {
     "family": "claude",
@@ -25486,8 +25469,7 @@
      }
     ],
     "candidate_patch_sha256": "9cc43d9c875845efe5b0f7a8d76f196d0185bba1200ea661193e480ad5d26383",
-    "fix_patch_sha256": "c00cdb6a505ba792176c05df321defaeaa10790b2e3c986023494f3a634fa6c8",
-    "mechanism": "OpenClaw: Browser SSRF hostname validation could be bypassed by DNS rebinding"
+    "fix_patch_sha256": "c00cdb6a505ba792176c05df321defaeaa10790b2e3c986023494f3a634fa6c8"
    },
    "ir_chain": null,
    "unpatched": null,
@@ -25548,7 +25530,7 @@
     "https://github.com/openclaw/openclaw",
     "https://www.vulncheck.com/advisories/openclaw-second-hop-ssrf-via-cdp-json-version-websocket-url"
    ],
-   "mechanism": "OpenClaw: CDP /json/version WebSocket URL could pivot to untrusted second-hop targets",
+   "mechanism": "The direct-WebSocket branch added to src/browser/cdp.ts assigned any ws:// or wss:// URL to wsUrl without running the SSRF policy, and isWebSocketUrl accepts a URL on any host, so a CDP /json/version response could point webSocketDebuggerUrl at an untrusted target and pivot the connection there. The fix runs assertCdpEndpointAllowed against the direct and discovered endpoints before connecting.",
    "cause_category": "other_ambiguous",
    "ai_provenance": {
     "family": "claude",
@@ -25636,8 +25618,7 @@
       "title": "Fix"
      }
     ],
-    "summary": "AI-written code trusted a CDP `/json/version` `webSocketDebuggerUrl` without re-validating its host, allowing a second-hop SSRF-style pivot to untrusted targets.",
-    "mechanism": "OpenClaw: CDP /json/version WebSocket URL could pivot to untrusted second-hop targets"
+    "summary": "AI-written code trusted a CDP `/json/version` `webSocketDebuggerUrl` without re-validating its host, allowing a second-hop SSRF-style pivot to untrusted targets."
    },
    "ir_chain": null,
    "unpatched": null,
@@ -26877,9 +26858,9 @@
    "published_at": "2026-04-10",
    "severity": null,
    "cwes": [],
-   "description": "GHSA-hm2h-wwwh-g49x: PUT /user (UpdateUser, can change admin password/email) is protected only by middleware.RequireScopes(authModel.ScopeProfileRead); the read-only profile:read scope is attached to a write operation, so a scoped access token issued for profile:read can change the admin password and escalate to an unrestricted session",
+   "description": "The AI-written scoped access token feature protected PUT /user with middleware.RequireScopes(authModel.ScopeProfileRead). That route is the profile update endpoint and can change the administrator password and email address, so a token deliberately issued with the read-only profile:read scope was accepted for a write. Anyone holding such a token could change the admin credential and escalate to an unrestricted session.",
    "references": [],
-   "mechanism": "GHSA-hm2h-wwwh-g49x: PUT /user (UpdateUser, can change admin password/email) is protected only by middleware.RequireScopes(authModel.ScopeProfileRead); the read-only profile:read scope is attached to a write operation, so a scoped access token issued for profile:read can change the admin password and escalate to an unrestricted session",
+   "mechanism": "internal/router/user.go attached the read-only ScopeProfileRead constant to a mutating endpoint, assuming that any valid scope was an adequate gate for it. The fix introduces the ScopeProfileWrite constant and requires it for PUT /user, for OAuth binding and for passkey registration.",
    "cause_category": "auth_access",
    "ai_provenance": {
     "family": "cursor",
@@ -26966,7 +26947,7 @@
       "RequireScopes_ProfileWriteAllowsAccess"
      ]
     },
-    "mechanism": "GHSA-hm2h-wwwh-g49x: PUT /user (UpdateUser, can change admin password/email) is protected only by middleware.RequireScopes(authModel.ScopeProfileRead); the read-only profile:read scope is attached to a write operation, so a scoped access token issued for profile:read can change the admin password and escalate to an unrestricted session"
+    "mechanism": "internal/router/user.go attached the read-only ScopeProfileRead constant to a mutating endpoint, assuming that any valid scope was an adequate gate for it. The fix introduces the ScopeProfileWrite constant and requires it for PUT /user, for OAuth binding and for passkey registration."
    },
    "ir_chain": null,
    "unpatched": null,
@@ -27015,9 +26996,9 @@
    "published_at": "2026-04-10",
    "severity": null,
    "cwes": [],
-   "description": "gcloud argument injection: deploy.py builds '--set-env-vars' f-string OPENAI_MODEL_NAME=...,OPENAI_API_KEY=...,OPENAI_API_BASE=... from env values with no comma validation; a comma in any value makes gcloud parse trailing text as extra KEY=VALUE pairs, injecting arbitrary env vars into the deployed Cloud Run service",
+   "description": "In src/praisonai/praisonai/deploy.py, a Claude-authored change moved the Cloud Run deploy command into argument-list form but still built a single comma-joined --set-env-vars value from OPENAI_MODEL_NAME, OPENAI_API_KEY, and OPENAI_API_BASE. Nothing rejected commas in those values, and gcloud splits the argument on commas, so text after a comma became extra KEY=VALUE pairs. Whoever controls one of those settings could inject arbitrary environment variables into the deployed service. The fix writes the values to a mode-0600 temporary file and passes it with --env-vars-file.",
    "references": [],
-   "mechanism": "gcloud argument injection: deploy.py builds '--set-env-vars' f-string OPENAI_MODEL_NAME=...,OPENAI_API_KEY=...,OPENAI_API_BASE=... from env values with no comma validation; a comma in any value makes gcloud parse trailing text as extra KEY=VALUE pairs, injecting arbitrary env vars into the deployed Cloud Run service",
+   "mechanism": "deploy.py interpolated environment-derived values into the --set-env-vars argument without rejecting commas, and gcloud treats every comma in that argument as a separator between KEY=VALUE pairs. The values were also passed inline on the command line, which exposed the API key in the process list until the fix moved them into a temporary file.",
    "cause_category": "injection",
    "ai_provenance": {
     "family": "claude",
@@ -27100,7 +27081,7 @@
       "tempfile.mkstemp"
      ]
     },
-    "mechanism": "gcloud argument injection: deploy.py builds '--set-env-vars' f-string OPENAI_MODEL_NAME=...,OPENAI_API_KEY=...,OPENAI_API_BASE=... from env values with no comma validation; a comma in any value makes gcloud parse trailing text as extra KEY=VALUE pairs, injecting arbitrary env vars into the deployed Cloud Run service"
+    "mechanism": "deploy.py interpolated environment-derived values into the --set-env-vars argument without rejecting commas, and gcloud treats every comma in that argument as a separator between KEY=VALUE pairs. The values were also passed inline on the command line, which exposed the API key in the process list until the fix moved them into a temporary file."
    },
    "ir_chain": null,
    "unpatched": null,
@@ -27149,9 +27130,9 @@
    "published_at": "2026-04-10",
    "severity": null,
    "cwes": [],
-   "description": "CVE-2026-40162/GHSA-8hw4-fhww-273g ( 2.1.0 ): files/tasks.py assemble_file checksum local_path = Path(tempdir, checksum) open('wb') chunk checksum ; '../..' checksum , checksum-mismatch (, write-before-checksum-mismatch) 29e46f37 tempfile.TemporaryFile ,",
+   "description": "The new bundle assembly code derived each entry's temporary file path from the checksum supplied by the caller, so a value containing parent-directory segments such as ../.. wrote outside the temporary directory while chunks were still appended before the content was verified against the submitted checksum. An authenticated user could place attacker-controlled content at a path relative to the server's temporary directory. The fix writes reconstructed files through anonymous temporary handles instead.",
    "references": [],
-   "mechanism": "CVE-2026-40162/GHSA-8hw4-fhww-273g ( 2.1.0 ): files/tasks.py assemble_file checksum local_path = Path(tempdir, checksum) open('wb') chunk checksum ; '../..' checksum , checksum-mismatch (, write-before-checksum-mismatch) 29e46f37 tempfile.TemporaryFile ,",
+   "mechanism": "files/tasks.py assemble_file built local_path = Path(tempdir, checksum) and opened it for writing, treating the caller-supplied checksum as a filename with no validation or normalization, so a value containing parent-directory segments escaped the temporary directory. The chunk writes happened before the content was verified against the checksum, and the repair uses tempfile.TemporaryFile rather than checksum-derived names.",
    "cause_category": "other_ambiguous",
    "ai_provenance": {
     "family": null,
@@ -27291,7 +27272,7 @@
     "https://github.com/czlonkowski/n8n-mcp",
     "https://github.com/czlonkowski/n8n-mcp/releases/tag/v2.47.6"
    ],
-   "mechanism": "n8n-mcp has unauthenticated session termination and information disclosure in HTTP transport",
+   "mechanism": "Claude Code added GET /mcp and DELETE /mcp handlers in src/http-server-single-session.ts that only checked for the mcp-session-id header, so an unauthenticated caller could terminate active sessions. The same change exposed session ids, session counts and token metadata through /health and added an unauthenticated test route, and the fix requires rate-limited bearer authentication, drops the test route and reduces /health to liveness.",
    "cause_category": "auth_access",
    "ai_provenance": {
     "family": "claude",
@@ -27359,7 +27340,6 @@
     ],
     "candidate_patch_sha256": "4a46babdf6055f91120f6015dc2464df83c1f4d60bd6865458f08117e8cceb80",
     "fix_patch_sha256": "e0eb5489703c35b59b93b471d3bdda72061f7bc2735627da359c02f1fa36403d",
-    "mechanism": "n8n-mcp has unauthenticated session termination and information disclosure in HTTP transport",
     "fix_files": [
      "src/http-server-single-session.ts"
     ]
@@ -27713,7 +27693,7 @@
     "https://github.com/sgbett/bsv-ruby-sdk",
     "https://github.com/sgbett/bsv-ruby-sdk/releases/tag/v0.8.2"
    ],
-   "mechanism": "ARC failure states accepted as success",
+   "mechanism": "The broadcaster added to lib/bsv/network/arc.rb classified only REJECTED and DOUBLE_SPEND_ATTEMPTED as failures, so ARC responses whose txStatus was INVALID, MALFORMED or MINED_IN_STALE_BLOCK, or whose extraInfo contained ORPHAN, were handed back to callers as successful broadcasts. The fix broadens that predicate and switches the request to the JSON envelope the endpoint expects.",
    "cause_category": "validation_fail_open",
    "ai_provenance": {
     "family": "claude",
@@ -27796,8 +27776,7 @@
       "ORPHAN_MARKER",
       "MAX_UINT64"
      ]
-    },
-    "mechanism": "ARC failure states accepted as success"
+    }
    },
    "ir_chain": null,
    "unpatched": null,
@@ -27941,9 +27920,9 @@
    "published_at": "2026-04-08",
    "severity": null,
    "cwes": [],
-   "description": "CVE-2026-39888/GHSA-qf73-2hrx-xprp sandbox escape via exception frame traversal in execute_code (subprocess mode): src/praisonai-agents/praisonaiagents/tools/python_tools.py _execute_code_sandboxed() writes a subprocess wrapper whose inline blocked_attrs has only 11 attribute names (__subclasses__, __bases__, __mro__, __globals__, __code__, __class__, __dict__, __builtins__, __import__, __loader__, __spec__) while the direct-mode _blocked_attrs has 30+; the frame-traversal chain __traceback__ -> tb_frame -> f_back -> f_builtins is absent from the subprocess list, so code like `except ZeroDivisionError as e: _p = e.__traceback__.tb_frame.f_back; _x = _p.f_builtins[\"exec\"]; _x(\"import subprocess; ...\")` escapes to real builtins and runs arbitrary commands in the subprocess (bypassing AST blocklist, _safe_getattr which only covers explicit getattr() calls, and exec-by-name check via _x alias). Sink: subprocess wrapper AST blocklist; source: user/LLM-supplied code to execute_code. Affected all sandbox-mode versions through 1.5.113, fixed 1.5.115.",
+   "description": "AI-generated sandbox code for execute_code wrote a subprocess wrapper whose inline blocked_attrs list held only eleven names while the direct-mode list held more than thirty. The frame-traversal chain from __traceback__ through tb_frame and f_back to f_builtins was missing from the subprocess list, so submitted code could reach the real builtins and run arbitrary commands in the subprocess, bypassing the AST blocklist and the check that looks for exec by name. Version 1.5.115 aligned the subprocess list with the full direct-mode list.",
    "references": [],
-   "mechanism": "CVE-2026-39888/GHSA-qf73-2hrx-xprp sandbox escape via exception frame traversal in execute_code (subprocess mode): src/praisonai-agents/praisonaiagents/tools/python_tools.py _execute_code_sandboxed() writes a subprocess wrapper whose inline blocked_attrs has only 11 attribute names (__subclasses__, __bases__, __mro__, __globals__, __code__, __class__, __dict__, __builtins__, __import__, __loader__, __spec__) while the direct-mode _blocked_attrs has 30+; the frame-traversal chain __traceback__ -> tb_frame -> f_back -> f_builtins is absent from the subprocess list, so code like `except ZeroDivisionError as e: _p = e.__traceback__.tb_frame.f_back; _x = _p.f_builtins[\"exec\"]; _x(\"import subprocess; ...\")` escapes to real builtins and runs arbitrary commands in the subprocess (bypassing AST blocklist, _safe_getattr which only covers explicit getattr() calls, and exec-by-name check via _x alias). Sink: subprocess wrapper AST blocklist; source: user/LLM-supplied code to execute_code. Affected all sandbox-mode versions through 1.5.113, fixed 1.5.115.",
+   "mechanism": "_execute_code_sandboxed writes a subprocess wrapper whose inline blocked_attrs omits __traceback__, tb_frame and f_builtins, so an exception object exposes the caller's frame and the real builtins behind it. The wrapper also screens only attribute names that appear literally in the submitted source, so the same access works when the name is reached through an alias.",
    "cause_category": "injection",
    "ai_provenance": {
     "family": "claude",
@@ -28065,9 +28044,9 @@
    "published_at": "2026-04-08",
    "severity": null,
    "cwes": [],
-   "description": "Vulnerability in czlonkowski/n8n-mcp: n8n-mcp has authenticated SSRF via instance-URL header in multi-tenant HTTP mode (sink: src/http-server-single-session.ts)",
+   "description": "The AI-written multi-tenant HTTP server read the n8n instance address from the caller-supplied X-N8n-Url header and used it to build the instance context that the n8n API client calls. Nothing validated where that URL pointed, so any caller able to authenticate to the server could direct its requests at internal services, cloud metadata endpoints, or localhost services. The fix checks the header URL with existing webhook SSRF protection, adds a synchronous validator that blocks metadata hosts, private ranges, and credential-bearing URLs, and normalizes the base URL again in the API client.",
    "references": [],
-   "mechanism": "Vulnerability in czlonkowski/n8n-mcp: n8n-mcp has authenticated SSRF via instance-URL header in multi-tenant HTTP mode (sink: src/http-server-single-session.ts)",
+   "mechanism": "In src/http-server-single-session.ts, the value of X-N8n-Url was accepted verbatim when building instance context and handed to the n8n API client, with no protocol, host, or private-address validation before the outbound request was made.",
    "cause_category": "ssrf_network",
    "ai_provenance": {
     "family": "claude",
@@ -28163,7 +28142,7 @@
       "validateInstanceContext"
      ]
     },
-    "mechanism": "Vulnerability in czlonkowski/n8n-mcp: n8n-mcp has authenticated SSRF via instance-URL header in multi-tenant HTTP mode (sink: src/http-server-single-session.ts)",
+    "mechanism": "In src/http-server-single-session.ts, the value of X-N8n-Url was accepted verbatim when building instance context and handed to the n8n API client, with no protocol, host, or private-address validation before the outbound request was made.",
     "fix_files": [
      "src/http-server-single-session.ts",
      "src/utils/ssrf-protection.ts",
@@ -28227,7 +28206,7 @@
     "https://github.com/openclaw/openclaw",
     "https://github.com/openclaw/openclaw/releases/tag/v2026.3.31"
    ],
-   "mechanism": "OpenClaw: Image pixel-limit guard can fail open on sips and allow decompression-bomb DoS",
+   "mechanism": "The pixel ceiling in src/media/image-ops.ts was applied only when sharp decoded the file, and the sips fallback could both skip the limit and swallow limit errors in the catch in optimizeImageToJpeg, so an oversized image still reached decode. The fix adds MAX_IMAGE_INPUT_PIXELS of 25M, enforces it through header-only metadata readers before decode, passes limitInputPixels to sharp, and rethrows pixel-limit failures through isPixelLimitError.",
    "cause_category": "resource_abuse",
    "ai_provenance": {
     "family": "claude",
@@ -28298,8 +28277,7 @@
       "limitInputPixels",
       "isPixelLimitError"
      ]
-    },
-    "mechanism": "OpenClaw: Image pixel-limit guard can fail open on sips and allow decompression-bomb DoS"
+    }
    },
    "ir_chain": null,
    "unpatched": null,
@@ -28867,7 +28845,7 @@
     "https://github.com/openclaw/openclaw",
     "https://github.com/openclaw/openclaw/releases/tag/v2026.3.31"
    ],
-   "mechanism": "OpenClaw: Heartbeat context inheritance bypasses sandbox via senderIsOwner escalation",
+   "mechanism": "A heartbeat assembled for a completed async exec event inherited the owner identity of the conversation it came from, so resolveCommandAuthorization treated the follow-up as owner-approved and skipped the sandbox and authorization checks. The fix adds ForceSenderIsOwnerFalse to MsgContext, sets it from hasExecCompletion on the heartbeat, and forces senderIsOwner to false whenever it is present.",
    "cause_category": "validation_fail_open",
    "ai_provenance": {
     "family": "claude",
@@ -28945,8 +28923,7 @@
       "ForceSenderIsOwnerFalse",
       "hasExecCompletion"
      ]
-    },
-    "mechanism": "OpenClaw: Heartbeat context inheritance bypasses sandbox via senderIsOwner escalation"
+    }
    },
    "ir_chain": null,
    "unpatched": null,
@@ -29565,9 +29542,9 @@
    "published_at": "2026-04-01",
    "severity": null,
    "cwes": [],
-   "description": "openssl_encrypt accepted refresh tokens as URL query parameters in /refresh endpoints (Query(...)), exposing secret tokens in HTTP logs, browser history, and Referer headers (sink: openssl_encrypt_server/modules/telemetry/routes.py).",
+   "description": "The AI-written unified server accepted refresh tokens as Query parameters on the /refresh endpoints in openssl_encrypt_server/modules/telemetry/routes.py, so the token was carried in the URL rather than the request body. URLs are recorded by default, so the credential was copied into HTTP access logs, browser history and Referer headers sent to any third-party site the page requests. Anyone who reads those records can exchange the token for fresh access tokens, and the fix moves refresh token handling into a typed RefreshRequest body.",
    "references": [],
-   "mechanism": "openssl_encrypt accepted refresh tokens as URL query parameters in /refresh endpoints (Query(...)), exposing secret tokens in HTTP logs, browser history, and Referer headers (sink: openssl_encrypt_server/modules/telemetry/routes.py).",
+   "mechanism": "FastAPI read the refresh token from refresh_token: str = Query(...) on the /refresh route, and query strings are logged and forwarded as a matter of course, exposing the secret in access logs, browser history and Referer headers. The fix reads the token from a RefreshRequest model in the POST body instead.",
    "cause_category": "other_ambiguous",
    "ai_provenance": {
     "family": "claude",
@@ -29648,7 +29625,7 @@
      ]
     },
     "annotation_mode": "hunk_specific",
-    "mechanism": "openssl_encrypt accepted refresh tokens as URL query parameters in /refresh endpoints (Query(...)), exposing secret tokens in HTTP logs, browser history, and Referer headers (sink: openssl_encrypt_server/modules/telemetry/routes.py)."
+    "mechanism": "FastAPI read the refresh token from refresh_token: str = Query(...) on the /refresh route, and query strings are logged and forwarded as a matter of course, exposing the secret in access logs, browser history and Referer headers. The fix reads the token from a RefreshRequest model in the POST body instead."
    },
    "ir_chain": null,
    "unpatched": null,
@@ -29697,9 +29674,9 @@
    "published_at": "2026-03-31",
    "severity": null,
    "cwes": [],
-   "description": "openssl_encrypt used Python random module (Mersenne Twister seeded with 32-bit hash) for steganography pixel and sample selection, allowing deterministic brute-forcing of hidden payload locations (sink: openssl_encrypt/plugins/steganography/core/utils.py).",
+   "description": "The AI-written steganography plugin selected the pixels and samples that carry a hidden payload with Python's random module, seeding the Mersenne Twister from a 32-bit hash of the password. That leaves the placement space small enough to enumerate, so an attacker who suspects a payload can replay candidate seeds and work out where the bits were written. The fix derives the ordering from an HMAC-SHA256 based CSPRNG instead.",
    "references": [],
-   "mechanism": "openssl_encrypt used Python random module (Mersenne Twister seeded with 32-bit hash) for steganography pixel and sample selection, allowing deterministic brute-forcing of hidden payload locations (sink: openssl_encrypt/plugins/steganography/core/utils.py).",
+   "mechanism": "generate_pseudorandom_sequence built its index sequence with random.seed() and random.sample() from the standard pseudo-random generator, so payload placement was reproducible from a 32-bit seed rather than unpredictable. The fix calls SteganographyUtils.crypto_seeded_shuffle and crypto_seeded_shuffle_np, which are keyed on shuffle_key.",
    "cause_category": "other_ambiguous",
    "ai_provenance": {
     "family": "claude",
@@ -29786,7 +29763,7 @@
      ]
     },
     "annotation_mode": "hunk_specific",
-    "mechanism": "openssl_encrypt used Python random module (Mersenne Twister seeded with 32-bit hash) for steganography pixel and sample selection, allowing deterministic brute-forcing of hidden payload locations (sink: openssl_encrypt/plugins/steganography/core/utils.py)."
+    "mechanism": "generate_pseudorandom_sequence built its index sequence with random.seed() and random.sample() from the standard pseudo-random generator, so payload placement was reproducible from a 32-bit seed rather than unpredictable. The fix calls SteganographyUtils.crypto_seeded_shuffle and crypto_seeded_shuffle_np, which are keyed on shuffle_key."
    },
    "ir_chain": null,
    "unpatched": null,
@@ -29833,9 +29810,9 @@
    "published_at": "2026-03-31",
    "severity": null,
    "cwes": [],
-   "description": "openssl_encrypt TOTP rate limiter used an in-memory defaultdict(list) stored in a class variable, which was not shared across workers and was lost on process restarts, allowing attackers to bypass rate limits (sink: openssl_encrypt_server/modules/pepper/totp.py).",
+   "description": "openssl_encrypt's TOTP verification gained rate limiting through an in-memory defaultdict(list) held as a class variable in openssl_encrypt_server/modules/pepper/totp.py. Attempt timestamps and lockout deadlines lived inside a single process, so each extra worker and every restart started with an empty history. An attacker could spread guesses across workers or wait for a restart to keep submitting codes past the intended limit. The fix moves limiter storage behind a backend interface and adds a database implementation with its own table and expired-entry cleanup.",
    "references": [],
-   "mechanism": "openssl_encrypt TOTP rate limiter used an in-memory defaultdict(list) stored in a class variable, which was not shared across workers and was lost on process restarts, allowing attackers to bypass rate limits (sink: openssl_encrypt_server/modules/pepper/totp.py).",
+   "mechanism": "The limiter recorded attempts in process memory and kept that dictionary on the class rather than in shared storage, so the count was per worker and disappeared on restart. Lockout decisions compared only the current process's timestamps, so requests that landed on a different worker were treated as fresh.",
    "cause_category": "resource_abuse",
    "ai_provenance": {
     "family": "claude",
@@ -29904,7 +29881,7 @@
      ]
     },
     "annotation_mode": "hunk_specific",
-    "mechanism": "openssl_encrypt TOTP rate limiter used an in-memory defaultdict(list) stored in a class variable, which was not shared across workers and was lost on process restarts, allowing attackers to bypass rate limits (sink: openssl_encrypt_server/modules/pepper/totp.py)."
+    "mechanism": "The limiter recorded attempts in process memory and kept that dictionary on the class rather than in shared storage, so the count was per worker and disappeared on restart. Lockout decisions compared only the current process's timestamps, so requests that landed on a different worker were treated as fresh."
    },
    "ir_chain": null,
    "unpatched": null,
@@ -30146,7 +30123,7 @@
     "https://github.com/openclaw/openclaw",
     "https://www.vulncheck.com/advisories/openclaw-pre-authentication-rate-limit-bypass-in-webhook-token-validation"
    ],
-   "mechanism": "pre-auth Synology token guessing lacks rate limit",
+   "mechanism": "The Synology Chat webhook handler returned invalid-token rejections without any throttling, so a caller could guess weak webhook secrets as fast as the endpoint answered. The fix adds a dedicated invalid-token limiter that tracks failures per key for up to 5,000 keys, locks a caller after a dozen failures per minute, and leaves the per-account budget for valid traffic.",
    "cause_category": "resource_abuse",
    "ai_provenance": {
     "family": "claude",
@@ -30214,8 +30191,7 @@
       "PREAUTH_MAX_REQUESTS_PER_MINUTE",
       "recordFailure"
      ]
-    },
-    "mechanism": "pre-auth Synology token guessing lacks rate limit"
+    }
    },
    "ir_chain": null,
    "unpatched": null,
@@ -30427,9 +30403,9 @@
    "published_at": "2026-03-27",
    "severity": null,
    "cwes": [],
-   "description": "SSRF in opt-in clerkFrontendApiProxy: proxy target URL built with new URL(targetPath, fapiBaseUrl), so a request path like /__clerk//evil.com/steal resolves protocol-relatively to attacker-controlled host; proxy then forwards Clerk-Secret-Key header to that host (leak of secret key)",
+   "description": "The AI-coauthored frontend API proxy helper resolved its upstream target against the Clerk Frontend API base URL, so a path beginning with a double slash, such as /__clerk//evil.com/steal, became a protocol-relative reference to an attacker-controlled host. The proxy forwarded the request together with the application's Clerk secret key header, exposing that key to the attacker's host. The behavior is reachable only when the opt-in clerkFrontendApiProxy feature is enabled, and the fix in @clerk/backend 3.2.3 builds the target by concatenation and verifies the host before forwarding.",
    "references": [],
-   "mechanism": "SSRF in opt-in clerkFrontendApiProxy: proxy target URL built with new URL(targetPath, fapiBaseUrl), so a request path like /__clerk//evil.com/steal resolves protocol-relatively to attacker-controlled host; proxy then forwards Clerk-Secret-Key header to that host (leak of secret key)",
+   "mechanism": "packages/backend/src/proxy.ts derived the upstream URL with new URL(targetPath, fapiBaseUrl), and the URL parser treats a leading pair of slashes as an authority, so the request path replaced the host instead of staying under the Frontend API base. The fix concatenates the trusted base URL with the path and confirms that the parsed host still matches the Frontend API host before sending the request that carries the Clerk secret key.",
    "cause_category": "ssrf_network",
    "ai_provenance": {
     "family": "claude",
@@ -30521,8 +30497,7 @@
       "clerkFrontendApiProxy"
      ]
     },
-    "annotation_mode": "hunk_specific",
-    "mechanism": "SSRF in opt-in clerkFrontendApiProxy: proxy target URL built with new URL(targetPath, fapiBaseUrl), so a request path like /__clerk//evil.com/steal resolves protocol-relatively to attacker-controlled host; proxy then forwards Clerk-Secret-Key header to that host (leak of secret key)"
+    "annotation_mode": "hunk_specific"
    },
    "ir_chain": null,
    "unpatched": null,
@@ -31588,7 +31563,7 @@
     "https://github.com/openclaw/openclaw/releases/tag/v2026.3.12",
     "https://www.vulncheck.com/advisories/openclaw-forged-event-injection-via-feishu-webhook-verification-token"
    ],
-   "mechanism": "OpenClaw: Feishu webhook mode accepted forged events when only `verificationToken` was configured",
+   "mechanism": "Claude-assisted sync added extensions/feishu/src/monitor.ts with a webhook HTTP server, but neither the monitor nor config-schema.ts required an encrypt key, so deployments that configured only verificationToken accepted forged inbound events with no cryptographic verification boundary. The fix makes encryptKey mandatory for webhook connection mode, enforces it at startup and rejects deliveries that lack a valid signature.",
    "cause_category": "other_ambiguous",
    "ai_provenance": {
     "family": "claude",
@@ -31718,8 +31693,7 @@
       "title": "Fix"
      }
     ],
-    "summary": "AI-written code allowed Feishu webhook deployments with only verificationToken to accept forged events, enabling unauthenticated injection.",
-    "mechanism": "OpenClaw: Feishu webhook mode accepted forged events when only `verificationToken` was configured"
+    "summary": "AI-written code allowed Feishu webhook deployments with only verificationToken to accept forged events, enabling unauthenticated injection."
    },
    "ir_chain": null,
    "unpatched": null,
@@ -32235,7 +32209,7 @@
     "https://github.com/qhkm/zeptoclaw",
     "https://github.com/qhkm/zeptoclaw/releases/tag/v0.7.6"
    ],
-   "mechanism": "ZeptoClaw: Path boundary checks bypass via symlink, TOCTOU, and hardlink",
+   "mechanism": "The pdf_read tool added in src/tools/pdf_read.rs relied on validate_path_in_workspace, which canonicalised only components that already existed, so dangling symlinks, hardlink aliases, or a component replaced after the check could carry file operations past the workspace boundary. The fix hardens check_symlink_escape in src/security/path.rs and re-checks resolved paths via revalidate_path and check_hardlink_write.",
    "cause_category": "path_link",
    "ai_provenance": {
     "family": "claude",
@@ -32308,8 +32282,7 @@
       "revalidate_path",
       "hardlink"
      ]
-    },
-    "mechanism": "ZeptoClaw: Path boundary checks bypass via symlink, TOCTOU, and hardlink"
+    }
    },
    "ir_chain": null,
    "unpatched": null,
@@ -32352,7 +32325,7 @@
    "published_at": "2026-03-09",
    "severity": null,
    "cwes": [],
-   "description": "The sensitive-data logging was introduced at the advisory-pinned release commit eba7d2efe0a5f37670ffe2f0f2ff91677cb9d735 (v2.1.2, the ONLY version in the OSV affected range, 'introduced' == 'last_affected' == eba7d2efe): commit message is '🤖 Generated with Claude Code' + Co-Autho",
+   "description": "The Claude-generated release converted the console logging to the project logger and added new debug lines that record the upload credential response in ImageUploader.getUploadAuth() and the fully expanded request URL in HttpClient.request(). The logged URL carries signed query parameters and cookie-derived tokens, and the logger masks only the context keys it recognises, so neither value is redacted. Anyone with access to the server logs can recover live upload credentials and signed request links. No fix has been released.",
    "references": [],
    "mechanism": "The sensitive-data logging entered with the AI-written change released in v2.1.2, the only version inside the affected range, and persisted for that entire version.",
    "cause_category": "auth_access",
@@ -32589,7 +32562,7 @@
     "https://github.com/qhkm/zeptoclaw",
     "https://github.com/qhkm/zeptoclaw/blob/fe2ef07cfec5bb46b42cdd65f52b9230c03e9270/src/security/shell.rs#L218-L243"
    ],
-   "mechanism": "zeptoclaw has Shell allowlist-blocklist bypass via command/argument injection and file name wildcards",
+   "mechanism": "The allowlist added in src/security/shell.rs compared only the first whitespace-delimited token of the command, so arguments and filename globs still reached blocked commands, and the is_empty() short-circuit made an empty allowlist accept everything even in Strict mode. The fix allows intervening flags in inline-code patterns such as python -P -c and python -Bc, and matches wildcard filenames with literal-path regexes.",
    "cause_category": "injection",
    "ai_provenance": {
     "family": "claude",
@@ -32655,8 +32628,7 @@
       "title": "Fix"
      }
     ],
-    "summary": "Claude-coauthored shell restrictions were incomplete, so command arguments and filename wildcards could still execute blocked commands in Strict mode.",
-    "mechanism": "zeptoclaw has Shell allowlist-blocklist bypass via command/argument injection and file name wildcards"
+    "summary": "Claude-coauthored shell restrictions were incomplete, so command arguments and filename wildcards could still execute blocked commands in Strict mode."
    },
    "ir_chain": {
     "original_advisory_ids": [
@@ -32751,7 +32723,7 @@
     "https://github.com/openclaw/openclaw",
     "https://www.vulncheck.com/advisories/openclaw-sandbox-boundary-bypass-via-image-tool-workspaceonly-bypass"
    ],
-   "mechanism": "OpenClaw's image tool bypasses tools.fs.workspaceOnly on sandbox mount paths and exfiltrates out-of-workspace images",
+   "mechanism": "The sandboxed image tool resolved mounted paths without applying tools.fs.workspaceOnly, so resolveSandboxedImagePath could load images outside the workspace even though read, write and edit enforced the same restriction. Those bytes then reached vision model providers, turning the bypass into exfiltration. The fix threads workspaceOnly into image-tool construction and asserts sandbox-root containment with assertSandboxPath.",
    "cause_category": "validation_fail_open",
    "ai_provenance": {
     "family": "claude",
@@ -32817,8 +32789,7 @@
       "workspaceOnly",
       "resolveSandboxedImagePath"
      ]
-    },
-    "mechanism": "OpenClaw's image tool bypasses tools.fs.workspaceOnly on sandbox mount paths and exfiltrates out-of-workspace images"
+    }
    },
    "ir_chain": null,
    "unpatched": null,
@@ -33438,7 +33409,7 @@
     "https://github.com/openclaw/openclaw",
     "https://www.vulncheck.com/advisories/openclaw-authentication-bypass-in-http-gateway-routes-via-tokenless-tailscale-auth"
    ],
-   "mechanism": "OpenClaw's gateway tokenless Tailscale auth applied to HTTP routes",
+   "mechanism": "The new OpenResponses /v1/responses handler reused authorizeGatewayConnect without restricting the tokenless Tailscale header path, so HTTP callers on a trusted network could bypass token and password requirements when auth.allowTailscale was enabled. The fix adds an allowTailscaleHeaderAuth option that defaults to false and is set true only on the Control UI websocket path.",
    "cause_category": "auth_access",
    "ai_provenance": {
     "family": "claude",
@@ -33528,8 +33499,7 @@
       "authorizeGatewayBearerRequestOrReply",
       "authorizeCanvasRequest"
      ]
-    },
-    "mechanism": "OpenClaw's gateway tokenless Tailscale auth applied to HTTP routes"
+    }
    },
    "ir_chain": null,
    "unpatched": null,
@@ -33591,7 +33561,7 @@
     "https://github.com/openclaw/openclaw",
     "https://www.vulncheck.com/advisories/openclaw-insecure-control-ui-authentication-over-plaintext-http"
    ],
-   "mechanism": "OpenClaw has an opt-in insecure Control UI auth over plaintext HTTP could allow privileged access",
+   "mechanism": "message-handler.ts skipped the required device identity check whenever the handshake carried an auth token, so a token-only Control UI connection could be accepted even when the gateway was served over plaintext HTTP with gateway.controlUi.allowInsecureAuth enabled. The fix ties the control-ui exemption to the explicit device-auth disable flag, so allowInsecureAuth alone can no longer satisfy the handshake without a paired device.",
    "cause_category": "auth_access",
    "ai_provenance": {
     "family": "claude",
@@ -33656,8 +33626,7 @@
      }
     ],
     "candidate_patch_sha256": "b94c5c5ced25b9bce426afccf67da47d98569efd9eb060e7500c7277aaa1278b",
-    "fix_patch_sha256": "a55cf7f65c9ee927890cf7a9a50519f225e903746f277a82a853816ad7c9fddc",
-    "mechanism": "OpenClaw has an opt-in insecure Control UI auth over plaintext HTTP could allow privileged access"
+    "fix_patch_sha256": "a55cf7f65c9ee927890cf7a9a50519f225e903746f277a82a853816ad7c9fddc"
    },
    "ir_chain": null,
    "unpatched": null,
@@ -33717,7 +33686,7 @@
     "https://github.com/openclaw/openclaw",
     "https://www.vulncheck.com/advisories/openclaw-denial-of-service-via-inbound-media-download-byte-limit-bypass"
    ],
-   "mechanism": "OpenClaw's inbound media downloads could exceed configured byte limits before rejection across multiple channels",
+   "mechanism": "Claude Code added Telegram sticker support in src/telegram/bot/delivery.ts that called fetchRemoteMedia without maxBytes and passed a limit only to saveMediaBuffer after the payload was already buffered, so a remote sender could force oversized downloads and memory pressure. The fix routes several channel attachment downloads, including the Teams and BlueBubbles paths, through fetchRemoteMedia so the size cap is enforced during the fetch.",
    "cause_category": "other_ambiguous",
    "ai_provenance": {
     "family": "claude",
@@ -33793,8 +33762,7 @@
       "resolveRequestUrl",
       "fetchRemoteMedia"
      ]
-    },
-    "mechanism": "OpenClaw's inbound media downloads could exceed configured byte limits before rejection across multiple channels"
+    }
    },
    "ir_chain": null,
    "unpatched": null,
@@ -34450,7 +34418,7 @@
     "https://github.com/openclaw/openclaw/security/advisories/GHSA-q447-rj3r-2cgh",
     "https://github.com/openclaw/openclaw"
    ],
-   "mechanism": "OpenClaw affected by denial of service via unbounded webhook request body buffering",
+   "mechanism": "The Feishu webhook monitor added with the upstream sync in extensions/feishu/src/monitor.ts buffers callback request bodies without any byte or time limit, because the http.createServer() handler delegates to Lark.adaptDefault with only autoChallenge enabled. The fix routes those handlers through installRequestBodyLimitGuard in src/infra/http-body.ts with a one-megabyte cap and a thirty-second timeout.",
    "cause_category": "resource_abuse",
    "ai_provenance": {
     "family": "claude",
@@ -34527,8 +34495,7 @@
      }
     ],
     "candidate_patch_sha256": "34c90fc164f85ddc3d072ca3aec155c85128145a10408768039aa0f8b7cced1f",
-    "fix_patch_sha256": "32c88321dbc2c67cee7eefa209374858197c3d24f16e5d31fc60d5a8ae4ca3b3",
-    "mechanism": "OpenClaw affected by denial of service via unbounded webhook request body buffering"
+    "fix_patch_sha256": "32c88321dbc2c67cee7eefa209374858197c3d24f16e5d31fc60d5a8ae4ca3b3"
    },
    "ir_chain": null,
    "unpatched": null,
@@ -34588,7 +34555,7 @@
     "https://github.com/openclaw/openclaw",
     "https://github.com/openclaw/openclaw/releases/tag/v2026.2.14"
    ],
-   "mechanism": "OpenClaw: Process Safety - Unvalidated PID Kill via SIGKILL in Process Cleanup",
+   "mechanism": "The suspended-process sweep added in src/agents/cli-runner/helpers.ts piped ps aux through grep and awk and then ran kill -9 on every matched PID without checking that the process belonged to the current run, and cli-runner.ts invoked that sweep at the start of every CLI agent run. The fix enumerates ps -axww pid and ppid rows and signals only entries whose parent PID equals process.pid.",
    "cause_category": "validation_fail_open",
    "ai_provenance": {
     "family": "claude",
@@ -34665,8 +34632,7 @@
      }
     ],
     "candidate_patch_sha256": "78b6c08bcde1b2867072edf375b231bf6e22d35472c50078d43b70afd4323e21",
-    "fix_patch_sha256": "6bf2457a3fd7858ad23d7dcb1001efe0edf7557309435603cef1cf4181120f83",
-    "mechanism": "OpenClaw: Process Safety - Unvalidated PID Kill via SIGKILL in Process Cleanup"
+    "fix_patch_sha256": "6bf2457a3fd7858ad23d7dcb1001efe0edf7557309435603cef1cf4181120f83"
    },
    "ir_chain": null,
    "unpatched": null,
@@ -35116,9 +35082,9 @@
    "published_at": "2026-02-17",
    "severity": null,
    "cwes": [],
-   "description": "OpenClaw authorization bypass: a gateway client scoped only to operator.write can approve/deny pending exec approvals via the /approve chat command. exec.approval.resolve is correctly scoped for direct RPC, but the /approve command path invoked it via an internal privileged gateway client with only isAuthorizedSender checked (sink: src/auto-reply/reply/commands-approve.ts handleApproveCommand).",
+   "description": "A gateway client holding only the operator.write scope could approve or deny pending exec approvals through the /approve chat command in OpenClaw. The exec.approval.resolve method was scoped correctly for direct RPC, but handleApproveCommand in src/auto-reply/reply/commands-approve.ts reached the same operation through an internal privileged gateway client and checked only isAuthorizedSender. The fix carries the originating scopes into command handling and rejects gateway-originated approval requests unless the client holds operator.approvals or operator.admin.",
    "references": [],
-   "mechanism": "OpenClaw authorization bypass: a gateway client scoped only to operator.write can approve/deny pending exec approvals via the /approve chat command. exec.approval.resolve is correctly scoped for direct RPC, but the /approve command path invoked it via an internal privileged gateway client with only isAuthorizedSender checked (sink: src/auto-reply/reply/commands-approve.ts handleApproveCommand).",
+   "mechanism": "handleApproveCommand in src/auto-reply/reply/commands-approve.ts resolves exec approvals through an internal privileged client and verifies only isAuthorizedSender, so the caller's gateway scope is never compared with the operator.approvals or operator.admin requirement that exec.approval.resolve enforces on the direct RPC path.",
    "cause_category": "injection",
    "ai_provenance": {
     "family": "claude",
@@ -35213,7 +35179,8 @@
       "operator.approvals",
       "isInternalMessageChannel"
      ]
-    }
+    },
+    "mechanism": "handleApproveCommand in src/auto-reply/reply/commands-approve.ts resolves exec approvals through an internal privileged client and verifies only isAuthorizedSender, so the caller's gateway scope is never compared with the operator.approvals or operator.admin requirement that exec.approval.resolve enforces on the direct RPC path."
    },
    "ir_chain": null,
    "unpatched": null,
@@ -35391,7 +35358,7 @@
     "https://github.com/pypa/advisory-database/tree/main/vulns/langroid/PYSEC-2026-383.yaml",
     "https://pypi.org/project/langroid"
    ],
-   "mechanism": "TableChatAgent pandas_eval sanitize_command/CommandValidator dunder df.add_prefix(\"malicious#\").T.groupby(by=df.__init__.__globals__['__builtins__']['eval']) __init__/__globals__/__builtins__ sanitizer visit_Call/ visit_Attribute fix #966 visit_Attribute dunder/",
+   "mechanism": "In langroid/utils/pandas_utils.py, the command sanitizer's _literal_ok helper returned False rather than raising UnsafeCommandError for an invalid literal, and attribute lookups were never rejected, so an expression such as df.__init__.__globals__['__builtins__']['eval'] survived validation and exposed a builtin that executes code.",
    "cause_category": "injection",
    "ai_provenance": {
     "family": "copilot",
@@ -35466,7 +35433,7 @@
      ]
     },
     "annotation_mode": "hunk_specific",
-    "mechanism": "TableChatAgent pandas_eval sanitize_command/CommandValidator dunder df.add_prefix(\"malicious#\").T.groupby(by=df.__init__.__globals__['__builtins__']['eval']) __init__/__globals__/__builtins__ sanitizer visit_Call/ visit_Attribute fix #966 visit_Attribute dunder/"
+    "mechanism": "In langroid/utils/pandas_utils.py, the command sanitizer's _literal_ok helper returned False rather than raising UnsafeCommandError for an invalid literal, and attribute lookups were never rejected, so an expression such as df.__init__.__globals__['__builtins__']['eval'] survived validation and exposed a builtin that executes code."
    },
    "ir_chain": null,
    "unpatched": null,
@@ -35530,7 +35497,7 @@
     "https://github.com/maziggy/bambuddy/blob/main/CHANGELOG.md",
     "https://github.com/maziggy/bambuddy/releases/tag/v0.1.7"
    ],
-   "mechanism": "Bambuddy Uses Hardcoded Secret Key + Many API Endpoints do not Require Authentication",
+   "mechanism": "The hardcoded JWT secret in backend/app/core/auth.py lets anyone forge a token for any user, and most routes accepted requests with no authentication check at all. The AI-written change added a POST /{printer_id}/debug/simulate-print-complete route that runs the full print-completion path without a permission check. The fix adds RequirePermissionIfAuthEnabled(Permission.PRINTERS_CONTROL) to the printer and camera routes.",
    "cause_category": "auth_access",
    "ai_provenance": {
     "family": "claude",
@@ -35606,8 +35573,7 @@
       "title": "Fix"
      }
     ],
-    "summary": "AI-written code hardcoded a JWT secret and left API routes unauthenticated, allowing attackers to forge tokens and access protected endpoints.",
-    "mechanism": "Bambuddy Uses Hardcoded Secret Key + Many API Endpoints do not Require Authentication"
+    "summary": "AI-written code hardcoded a JWT secret and left API routes unauthenticated, allowing attackers to forge tokens and access protected endpoints."
    },
    "ir_chain": null,
    "unpatched": null,
@@ -35658,9 +35624,9 @@
    "published_at": "2026-02-02",
    "severity": null,
    "cwes": [],
-   "description": "gatewayUrl token exfiltration and RCE",
+   "description": "The Claude-coauthored Control UI read a gatewayUrl query parameter in applySettingsFromUrl and committed it to live settings, so opening a crafted link re-pointed the running app at a gateway of the attacker's choosing without any prompt. The UI then authenticated to that server with the stored gateway token, handing it to the attacker. The fix stores the proposed URL as pendingGatewayUrl and connects only after the user approves it in a confirmation dialog that shows the target.",
    "references": [],
-   "mechanism": "OpenClaw: Agent gateway config mutations could change protected operator settings",
+   "mechanism": "applySettingsFromUrl applied the gatewayUrl parameter immediately and then cleaned it out of the address bar, so the app reconnected before the user could see or reject the change. The fix holds the value in pendingGatewayUrl and connects only after explicit confirmation.",
    "cause_category": "ssrf_network",
    "ai_provenance": {
     "family": "claude",
@@ -35750,7 +35716,7 @@
       "handleGatewayUrlConfirm"
      ]
     },
-    "mechanism": "OpenClaw: Agent gateway config mutations could change protected operator settings",
+    "mechanism": "applySettingsFromUrl applied the gatewayUrl parameter immediately and then cleaned it out of the address bar, so the app reconnected before the user could see or reject the change. The fix holds the value in pendingGatewayUrl and connects only after explicit confirmation.",
     "fix_files": [
      "ui/src/ui/app-render.ts",
      "ui/src/ui/app-settings.ts",
@@ -36211,7 +36177,7 @@
    "cwes": [
     "CWE-22"
    ],
-   "description": "n8n-workflows Main Commit ee25413 allows attackers to execute a directory traversal via the download_workflow function within api_server.py",
+   "description": "The AI-written api_server.py built workflow paths by joining the request-supplied filename onto the workflows directory with os.path.join, so get_workflow_detail, download_workflow and get_workflow_diagram accepted names containing path separators. A caller could send a relative name with ../ segments and read files anywhere the server process can reach, not just the workflow definitions under workflows. The fix resolves requests by collecting only the .json files under workflows with rglob and matching the requested name against the basename.",
    "references": [
     "https://nvd.nist.gov/vuln/detail/CVE-2025-55526",
     "https://github.com/Zie619/n8n-workflows/issues/48"
@@ -36347,7 +36313,7 @@
     "https://github.com/tailot/taylored/commit/fdf67a6fba0deae30912905a79fb5a9e83751a79",
     "https://github.com/tailot/taylored"
    ],
-   "mechanism": "Taylor has race condition in /get-patch that allows purchase token replay",
+   "mechanism": "The /get-patch handler in templates/backend-in-a-box/index.js checked and consumed the purchase token in two separate statements, a SELECT that inspected token_used_at and a later UPDATE that set it, so two simultaneous requests could both pass the check before either write landed. The fix combines both steps into one conditional UPDATE that requires token_used_at to still be null and rejects the request when this.changes is zero.",
    "cause_category": "other_ambiguous",
    "ai_provenance": {
     "family": null,
@@ -36418,8 +36384,7 @@
      }
     ],
     "candidate_patch_sha256": "c8159b3e75b9874c8d680516386c363526cb9107f40b722b6a26408a3f9c7130",
-    "fix_patch_sha256": "dbc538bdd088bcbf8ff09cf1b3843d2492736759a499d61184bf3aaf4b9d2d8a",
-    "mechanism": "Taylor has race condition in /get-patch that allows purchase token replay"
+    "fix_patch_sha256": "dbc538bdd088bcbf8ff09cf1b3843d2492736759a499d61184bf3aaf4b9d2d8a"
    },
    "ir_chain": null,
    "unpatched": null,

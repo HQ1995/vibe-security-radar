@@ -310,7 +310,7 @@
     "candidate_url": "https://github.com/coollabsio/coolify/commit/acff543e09ae5c7f8da78e5a092ebb1e57f24dc0",
     "fix_url": "https://github.com/coollabsio/coolify/commit/0fed553207383f384b93cba24d28122065fa67d5",
     "advisory_url": "",
-    "summary": "app/Livewire/Settings/Updates.php cloud instance Server::findOrFail(0) commit cloud 404 server if (! isCloud()) $this->server = Server::findOrFail(0); 404 isInstanceAdmin() fix 0fed5532 mount() if (! isInstanceAdmin()) return redirect()->route('dashboard');",
+    "summary": "Claude-written code removed the cloud 404 on the updates settings page without adding an instance administrator check, letting any signed-in user change auto-update settings.",
     "steps": [
       {
         "title": "AI change",
@@ -375,7 +375,7 @@
     "candidate_url": "https://github.com/coollabsio/coolify/commit/bbb2aa9ad4e0c14517d32272b5e6d83318fde493",
     "fix_url": "https://github.com/coollabsio/coolify/commit/f267a28cb2badc7e712c4592af4d79d090fe5063",
     "advisory_url": "",
-    "summary": "GetLogs Livewire downloadAllLogs() $this->container(Livewire ) shell docker service logs -t {$this->container} / docker logs -t {$this->container} SSH Process::run shell (CVE-2026-34599)sink: Process::run(sshCommand)source: Livewire containerguard",
+    "summary": "An AI-written Coolify log-download action placed a user-settable Livewire property into an SSH shell command without validation, letting authenticated team members run commands as root.",
     "steps": [
       {
         "title": "AI change",
@@ -584,7 +584,7 @@
     "candidate_url": "https://github.com/czlonkowski/n8n-mcp/commit/3fec6813f3ee370f70553a71394eb15d5448c602",
     "fix_url": "https://github.com/czlonkowski/n8n-mcp/commit/59b665bda36797823df238aeaf20adb862c9f451",
     "advisory_url": "",
-    "summary": "n8n-MCP: Sensitive MCP tool-call arguments logged on authenticated requests in HTTP mode",
+    "summary": "n8n-MCP recorded entire MCP tool-call arguments for authenticated HTTP requests, exposing any secrets passed in those arguments to readers of the logs.",
     "steps": [
       {
         "title": "AI change",
@@ -1186,7 +1186,7 @@
       {
         "file": "src/ouroboros/providers/claude_code_adapter.py",
         "code": "@@ -28,6 +28,7 @@\n \n import asyncio\n import os\n+from collections.abc import Callable\n from pathlib import Path\n \n import structlog\n@@ -46,13 +47,16 @@\n \n # Retry configuration for transient API errors\n _MAX_RETRIES = 3\n-_INITIAL_BACKOFF_SECONDS = 1.0\n+_INITIAL_BACKOFF_SECONDS = 2.0  # Increased for custom CLI startup\n _RETRYABLE_ERROR_PATTERNS = (\n     \"concurrency\",\n     \"rate\",\n     \"timeout\",\n     \"overloaded\",\n     \"temporarily\",\n+    \"empty response\",  # custom CLI startup delay\n+    \"need retry\",  # explicit retry request\n+    \"startup\",\n )\n \n \n@@ -84,6 +88,9 @@ def __init__(\n         self,\n         permission_mode: str = \"default\",\n         cli_path: str | Path | None = None,\n+        allowed_tools: list[str] | None = None,\n+        max_turns: int = 1,\n+        on_message: Callable[[str, str], None] | None = None,\n     ) -> None:\n         \"\"\"Initialize Claude Code adapter.\n \n@@ -94,26 +101,48 @@ def __init__(\n             cli_path: Path to the Claude CLI binary. If not provided,\n                 checks OUROBOROS_CLI_PATH env var, then falls back to\n                 SDK's bundled CLI.\n+            allowed_tools: List of tools to allow. None means no tools.\n+                For interview mode with codebase access, use [\"Read\", \"Glob\", \"Grep\"].\n+            max_turns: Maximum turns for the conversation. Default 1 for single response.\n+                Increase for tool use scenarios.\n+            on_message: Callback for streaming messages. Called with (type, content):\n+                - (\"thinking\", \"content\") for agent reasoning\n+                - (\"tool\", \"tool_name\") for tool usage\n         \"\"\"\n         self._permission_mode: str = permission_mode\n         self._cli_path: Path | None = self._resolve_cli_path(cli_path)\n+        self._allowed_tools: list[str] = allowed_tools or []\n+        self._max_turns: int = max_turns\n+        self._on_message: Callable[[str, str], None] | None = on_message\n         log.info(\n             \"claude_code_adapter.initialized\",\n             permission_mode=permission_mode,\n             cli_path=str(self._cli_path) if self._cli_path else None,\n         )\n \n     def _resolve_cli_path(self, cli_path: str | Path | None) -> Path | None:\n-        \"\"\"Resolve the CLI path from parameter or environment variable.\n+        \"\"\"Resolve the CLI path from parameter, config, or environment variable.\n+\n+        Priority:\n+            1. Explicit cli_path parameter\n+            2. OUROBOROS_CLI_PATH environment variable\n+            3. config.yaml orchestrator.cli_path\n+            4. None (SDK default)\n \n         Args:\n             cli_path: Explicit CLI path from constructor.\n \n         Returns:\n             Resolved Path if set and exists, None otherwise (falls back to SDK default).\n         \"\"\"\n-        # Priority: explicit parameter > environment variable > None (SDK default)\n-        path_str = str(cli_path) if cli_path else os.environ.get(\"OUROBOROS_CLI_PATH\", \"\")\n+        # Priority: explicit parameter > env var / config > SDK default\n+        if cli_path:\n+            path_str = str(cli_path)\n+        else:\n+            # Use config helper (checks env var then config.yaml)\n+            from ouroboros.config import get_cli_path\n+\n+            path_str = get_cli_path() or \"\"\n         path_str = path_str.strip()\n \n         if not path_str:\n@@ -288,14 +317,29 @@ async def _execute_single_request(\n         \"\"\"",
-        "annotation": "Original root cause: loader.py applies the project-directory .env at import with no trust boundary - load_dotenv() loads cwd .env into os.environ and spawned CLIs read those routing vars (OUROBOROS_CLI_PATH -> exec command; config-home roots -> nested-agent config; MCP/plugin roster -> spawned commands). The CVE-2026-47211 denylist (4e70b760, 'block RCE via untrusted project-directory .env') was an incomplete fix: a hand-maintained key list that missed the config-home/MCP/plugin/instruction keys, and it never covered the cwd-branch MCP roster discovery; the module-level-constant env reads (os.environ.get(_ENV_VAR)) were invisible to literal greps, so drift shipped. Fixed by completing the denylist and removing the cwd discovery branch.",
+        "annotation": "The adapter spawns the CLI named by OUROBOROS_CLI_PATH from os.environ, which the new loader made repository-controlled by auto-loading the untrusted project-directory .env. Fixed in 0.42.1 by extending the denylist of untrusted keys and dropping project-directory MCP roster discovery.",
         "role": "candidate"
       },
       {
@@ -1514,7 +1514,7 @@
     "candidate_url": "https://github.com/doobidoo/mcp-memory-service/commit/75fd1f0bfa683aec55c917e321ab3498932acfc1",
     "fix_url": "",
     "advisory_url": "https://github.com/advisories/ghsa-2r68-g678-7qr3",
-    "summary": "/mcp requires only read scope and dispatches mutating store_memory/delete_memory without per-tool write authorization, allowing read-only OAuth tokens to modify memories",
+    "summary": "A read-only OAuth token could still create and delete memories because the MCP endpoint checked only read scope before dispatching the write tools.",
     "steps": [
       {
         "title": "AI change",
@@ -1780,7 +1780,7 @@
     "candidate_url": "https://github.com/erlichliu/claude-agent-sdk-master/commit/6ba1ca5c3ef7179de75484e33b504ae7f43f79eb",
     "fix_url": "",
     "advisory_url": "https://github.com/advisories/ghsa-47r4-p7wr-42hw",
-    "summary": "AI-generated tutorial code: whole 04-agent-teams app including the vulnerable route was added in one commit, and the same commit's README/CLAUDE.md disclose that the tutorial content was written by Claude Code. CWE-22 path traversal / arbitrary file read: POST /api/agent-output a",
+    "summary": "AI-written tutorial code in 04-agent-teams added POST /api/agent-output, which accepts any absolute path and returns the file's contents, exposing files such as /etc/passwd and .env to remote read.",
     "steps": [
       {
         "title": "AI change",
@@ -1910,7 +1910,7 @@
     "candidate_url": "https://github.com/jahlives/openssl_encrypt/commit/8170b3e0be064cdaddbc8ef51c17e21c42d2d3f4",
     "fix_url": "https://github.com/jahlives/openssl_encrypt/commit/4b2adb05cde8a7ee03cdd271755da3b377c68011",
     "advisory_url": "https://github.com/advisories/ghsa-4rh7-jwg9-m28m",
-    "summary": "openssl_encrypt accepted refresh tokens as URL query parameters in /refresh endpoints (Query(...)), exposing secret tokens in HTTP logs, browser history, and Referer headers (sink: openssl_encrypt_server/modules/telemetry/routes.py).",
+    "summary": "Refresh tokens travelled in the URL of the /refresh endpoints, so the long-lived credentials were written into HTTP logs, browser history and Referer headers where other parties could collect them.",
     "steps": [
       {
         "title": "AI change",
@@ -2392,7 +2392,7 @@
     "candidate_url": "https://github.com/n8n-io/n8n/commit/2d9a2ec76e180b54e8091e31b1e0638c909abd99",
     "fix_url": "https://github.com/n8n-io/n8n/commit/f69dfc6dd2178a14ea1624d2e1d403c2e755042f",
     "advisory_url": "https://github.com/advisories/ghsa-6qc9-mqvw-jg7x",
-    "summary": "Vulnerable narrowing branch 'const { genericAuthType } = node.parameters; if (typeof genericAuthType === \"string\" && genericAuthType) { activeTypes.add(genericAuthType); }' in packages/cli/src/executions/pre-execution-checks/credentials-permission-checker.ts (CredentialsPermissio",
+    "summary": "n8n's credential checker added the literal genericAuthType string to its active-type set, so an expression-valued parameter never matched the credential resolved at run time and the access check was skipped for it.",
     "steps": [
       {
         "title": "AI change",
@@ -2595,7 +2595,7 @@
     "candidate_url": "https://github.com/metal3-io/ironic-standalone-operator/commit/9e8bc88bdd6ee6b23c02980a2a79b8c3e1f4ab05",
     "fix_url": "https://github.com/metal3-io/ironic-standalone-operator/commit/fc0edf3efe727dad26362e2711866f3c3247c5dd",
     "advisory_url": "https://github.com/advisories/ghsa-7cwm-fpfh-rrch",
-    "summary": "Prometheus metrics exporter container binds to 0.0.0.0 (all interfaces) with no authentication: newPrometheusExporterContainer defines Command /bin/runironic-exporter with no FLASK_RUN_HOST/bind control, exposing operational metrics to adjacent networks when enabled",
+    "summary": "The AI-written exporter container bound unauthenticated Prometheus metrics to every interface, exposing operational data to adjacent networks until a configurable bind address was added.",
     "steps": [
       {
         "title": "AI change",
@@ -2843,7 +2843,7 @@
     "candidate_url": "https://github.com/bzsanti/oxidizepdf/commit/fa55d0d67be2f44d4c4253df177f160ada3e245b",
     "fix_url": "https://github.com/bzsanti/oxidizepdf/commit/ca19f8b732a0e220112d516d719c3a9e0b353dd0",
     "advisory_url": "https://github.com/advisories/ghsa-88q9-cmp2-c2vq",
-    "summary": "NaN/inf clamp PDF GHSA-88Q9-CMP2-C2VQ, DoSColor pub enum Rgb/Gray/Cmyk pub tuple Color::rgb/gray/cmyk clamp [0,1] Color::Rgb(f64::NAN,...) format!('{:.3}', v) NaN/inf/-inf PDF tokenISO 32000-1 7.3.3conformant /~50 text/graphics/forms/annotations/layout/writer",
+    "summary": "AI-generated PDF color emission never rejected non-finite f64 values, so NaN and infinity were written as invalid number tokens, producing non-conformant documents and a denial of service for consumers.",
     "steps": [
       {
         "title": "AI change",
@@ -3113,7 +3113,7 @@
     "candidate_url": "https://github.com/bugsink/bugsink/commit/358e4c5c585ddfb0ff983d5f40ddf5ab3f407e1c",
     "fix_url": "https://github.com/bugsink/bugsink/commit/29e46f3737b15f6045073fb145ec936499e232f6",
     "advisory_url": "https://github.com/advisories/ghsa-8hw4-fhww-273g",
-    "summary": "CVE-2026-40162/GHSA-8hw4-fhww-273g ( 2.1.0 ): files/tasks.py assemble_file checksum local_path = Path(tempdir, checksum) open('wb') chunk checksum ; '../..' checksum , checksum-mismatch (, write-before-checksum-mismatch) 29e46f37 tempfile.TemporaryFile ,",
+    "summary": "Checksum-derived temporary file names in bundle assembly let an authenticated user write attacker-controlled content outside the temp directory, and chunks were written before the checksum was verified.",
     "steps": [
       {
         "title": "AI change",
@@ -3178,7 +3178,7 @@
     "candidate_url": "https://github.com/denoland/deno/commit/2bb06663c1d7ee6532f6737d721ea1adb89fd884",
     "fix_url": "https://github.com/denoland/deno/commit/35532a32cd05526a04201bbbcc6a3dfe539fe353",
     "advisory_url": "https://github.com/advisories/ghsa-8xpq-cjcf-3wh9",
-    "summary": "macOS CVE-2026-49401GHSA-8xpq-cjcf-3wh9deny-read/write/run/ffi comparison_path Windows no-op clone APFS Unicode NFC/NFDfi/ﬁß/ss inode deny CWE-178 + Unicode",
+    "summary": "Deno's macOS permission checks compared paths byte-for-byte, so a path named in a different Unicode normalization form addressed the same APFS file without matching the deny rule that should have blocked it.",
     "steps": [
       {
         "title": "AI change",
@@ -4176,7 +4176,7 @@
     "candidate_url": "https://github.com/cnighswonger/claude-code-cache-fix/commit/7b9322a86a5cae3230c30943bd659d7f67b0387c",
     "fix_url": "https://github.com/cnighswonger/claude-code-cache-fix/commit/613e4df30547f3e6baf32d161eddc828f171da17",
     "advisory_url": "https://github.com/advisories/ghsa-g3xq-3gmv-qq8g",
-    "summary": "statusline JSON inserted into Python source",
+    "summary": "The AI-written status-line helper embedded raw stdin in a quoted Python literal, so a crafted directory name ran arbitrary code whenever the status line redrew.",
     "steps": [
       {
         "title": "AI change",
@@ -4247,7 +4247,7 @@
     "candidate_url": "https://github.com/artmin96/yii2-mcp-server/commit/0e5631269b3e519e7710fb6f4b2a02b81b948dd6",
     "fix_url": "",
     "advisory_url": "https://github.com/advisories/ghsa-gc8w-x73w-p4rh",
-    "summary": "Unsanitized string interpolation of MCP tool arguments into a shell command passed to exec(); denylist approach instead of allowlist/argument-array (execFile) or escaping. Entire codebase generated in one initial commit by Claude Code. OS command injection (CWE-77) in the MCP too",
+    "summary": "An MCP server generated entirely by Claude Code interpolated caller-supplied command and argument values into shell strings run through child_process exec(), leaving command injection open to any client with an MCP session.",
     "steps": [
       {
         "title": "AI change",
@@ -4274,7 +4274,7 @@
     "candidate_url": "https://github.com/n8n-io/n8n/commit/d4f9223842f0584579639647e047a0f4e78a2259",
     "fix_url": "https://github.com/n8n-io/n8n/commit/f69dfc6dd2178a14ea1624d2e1d403c2e755042f",
     "advisory_url": "https://github.com/advisories/ghsa-gf29-4f56-r2jf",
-    "summary": "assertRepositoryReferenceAllowed / assertLocalRepositoryPathAllowed introduced in packages/nodes-base/nodes/Git/Git.node.ts but wired only into operation==='clone' (sourceRepository) and operation==='push' (customTargetRepository + remote origin urls); fetch/pull/pushTags operati",
+    "summary": "assertRepositoryReferenceAllowed and assertLocalRepositoryPathAllowed were added to packages/nodes-base/nodes/Git/Git.node.ts but wired only into the clone and push operations, so fetch, pull and pushTags could still use repository paths outside the intended sandbox without validation.",
     "steps": [
       {
         "title": "AI change",
@@ -4610,7 +4610,7 @@
     "candidate_url": "https://github.com/jahlives/openssl_encrypt/commit/1b6f732232018609189c863a165a11aaa89db250",
     "fix_url": "https://github.com/jahlives/openssl_encrypt/commit/2749bc0949b34a5921a35fb4a3f1856fc51916de",
     "advisory_url": "https://github.com/advisories/ghsa-h45m-mgcp-q388",
-    "summary": "openssl_encrypt TOTP rate limiter used an in-memory defaultdict(list) stored in a class variable, which was not shared across workers and was lost on process restarts, allowing attackers to bypass rate limits (sink: openssl_encrypt_server/modules/pepper/totp.py).",
+    "summary": "A Claude-written TOTP rate limiter kept attempt timestamps in a per-process class variable, so limits reset across workers and restarts and attackers could keep guessing codes.",
     "steps": [
       {
         "title": "AI change",
@@ -4863,7 +4863,7 @@
     "candidate_url": "https://github.com/jahlives/openssl_encrypt/commit/cb07e5f88a98f4459a5f828142e740c024810692",
     "fix_url": "https://github.com/jahlives/openssl_encrypt/commit/963d0d1278b722ea134272f9df65fddcd3e6ab47",
     "advisory_url": "https://github.com/advisories/ghsa-j48q-4c78-rhf9",
-    "summary": "openssl-encrypt: Dynamic .so loading for Whirlpool uses broad glob pattern without integrity verification",
+    "summary": "The AI-written Python 3.13 Whirlpool fallback trusts whichever matching native module it finds first in site-packages, so planting a shared library that fits the wildcard pattern yields arbitrary code execution the next time Whirlpool is probed.",
     "steps": [
       {
         "title": "AI change",
@@ -5117,7 +5117,7 @@
     "candidate_url": "https://github.com/eyal-gor/p_69_branch_monkey_mcp/commit/aefdbf80576e4906e82835a62b713f9f24585f52",
     "fix_url": "",
     "advisory_url": "https://github.com/advisories/ghsa-m2h4-j4p2-4j7c",
-    "summary": "introducer_commit CWE-77 OS command injection: unauthenticated POST /time-machine/preview in TimeMachinePreviewRequest accepts a user-supplied dev_script string which is passed to subprocess.Popen(command, shell=True, cwd=worktree_path) after only {port} substitution; a remote at",
+    "summary": "The AI-written preview endpoint passes a caller-supplied dev_script to subprocess.Popen with shell=True and no authentication, letting a remote attacker run arbitrary commands from the worktree root.",
     "steps": [
       {
         "title": "AI change",
@@ -6415,7 +6415,7 @@
     "candidate_url": "https://github.com/jahlives/openssl_encrypt/commit/5f60678d7da2eef6404355ecdad28148cb1a37f7",
     "fix_url": "https://github.com/jahlives/openssl_encrypt/commit/09e96e090417d34d2f533f6810d3cd4f77810101",
     "advisory_url": "https://github.com/advisories/ghsa-vfgx-5q85-58q3",
-    "summary": "openssl_encrypt used Python random module (Mersenne Twister seeded with 32-bit hash) for steganography pixel and sample selection, allowing deterministic brute-forcing of hidden payload locations (sink: openssl_encrypt/plugins/steganography/core/utils.py).",
+    "summary": "The AI-written steganography code hid payloads at positions chosen by a Mersenne Twister seeded with a 32-bit password hash, letting an attacker brute-force where the data was written.",
     "steps": [
       {
         "title": "AI change",
@@ -7092,7 +7092,7 @@
     "candidate_url": "https://github.com/gitpython-developers/gitpython/commit/e8d0fbf774d1f6baa3b481adfe48bd262e43b453",
     "fix_url": "https://github.com/gitpython-developers/gitpython/commit/96a888f4d782cb2f80452148e48e60ce4af6d541",
     "advisory_url": "https://github.com/advisories/ghsa-wvpp-8hx9-p66j",
-    "summary": "GitPython: Unsafe git option guard bypass via split_single_char_options=False short-option token smuggling enables command execution",
+    "summary": "GitPython's new short-option validation skipped every value glued to a one-character flag, letting a crafted keyword argument reach Git as extra command switches without being checked.",
     "steps": [
       {
         "title": "AI change",
@@ -7274,7 +7274,7 @@
     "candidate_url": "https://github.com/langroid/langroid/commit/752285a5861491a8d4999ff9a6cacce858a19086",
     "fix_url": "https://github.com/langroid/langroid/commit/30abbc1a854dee22fbd2f8b2f575dfdabdb603ea",
     "advisory_url": "https://github.com/advisories/ghsa-x34r-63hx-w57f",
-    "summary": "TableChatAgent pandas_eval sanitize_command/CommandValidator dunder df.add_prefix(\"malicious#\").T.groupby(by=df.__init__.__globals__['__builtins__']['eval']) __init__/__globals__/__builtins__ sanitizer visit_Call/ visit_Attribute fix #966 visit_Attribute dunder/",
+    "summary": "Langroid's pandas command sanitizer failed open on invalid literals and allowed dunder attribute access, so a crafted DataFrame expression escaped the validator and reached a builtin that runs arbitrary code.",
     "steps": [
       {
         "title": "AI change",
@@ -7538,7 +7538,7 @@
       {
         "file": "tools/liquidjs-cert/main_test.go",
         "code": "@@ -0,0 +1,155 @@\n+package main\n+\n+import (\n+\t\"crypto/ecdsa\"\n+\t\"crypto/x509\"\n+\t\"encoding/pem\"\n+\t\"os\"\n+\t\"path/filepath\"\n+\t\"testing\"\n+)\n+\n+func TestGenerateCA(t *testing.T) {\n+\tkey, cert, certBytes := generateCA(365)\n+\n+\tif key == nil {\n+\t\tt.Fatal(\"CA key is nil\")\n+\t}\n+\tif cert == nil {\n+\t\tt.Fatal(\"CA cert is nil\")\n+\t}\n+\tif len(certBytes) == 0 {\n+\t\tt.Fatal(\"CA cert bytes empty\")\n+\t}\n+\tif !cert.IsCA {\n+\t\tt.Error(\"CA cert should have IsCA=true\")\n+\t}\n+\tif cert.Subject.CommonName != \"LiquidJS Dev Root CA\" {\n+\t\tt.Errorf(\"CA CN = %q, want %q\", cert.Subject.CommonName, \"LiquidJS Dev Root CA\")\n+\t}\n+}\n+\n+func TestGenerateLeaf(t *testing.T) {\n+\tcaKey, caCert, _ := generateCA(365)\n+\tleafKey, leafCertBytes := generateLeaf(caKey, caCert, \"localhost\", \"localhost,127.0.0.1\", 30)\n+\n+\tif leafKey == nil {\n+\t\tt.Fatal(\"leaf key is nil\")\n+\t}\n+\tif len(leafCertBytes) == 0 {\n+\t\tt.Fatal(\"leaf cert bytes empty\")\n+\t}\n+\n+\tleafCert, err := x509.ParseCertificate(leafCertBytes)\n+\tif err != nil {\n+\t\tt.Fatalf(\"parse leaf cert: %v\", err)\n+\t}\n+\tif leafCert.Subject.CommonName != \"localhost\" {\n+\t\tt.Errorf(\"leaf CN = %q, want %q\", leafCert.Subject.CommonName, \"localhost\")\n+\t}\n+\tif len(leafCert.DNSNames) == 0 {\n+\t\tt.Error(\"leaf cert should have DNS SANs\")\n+\t}\n+\tif len(leafCert.IPAddresses) == 0 {\n+\t\tt.Error(\"leaf cert should have IP SANs\")\n+\t}\n+\n+\t// Verify leaf is signed by CA\n+\troots := x509.NewCertPool()\n+\troots.AddCert(caCert)\n+\t_, err = leafCert.Verify(x509.VerifyOptions{Roots: roots})\n+\tif err != nil {\n+\t\tt.Errorf(\"leaf cert verification failed: %v\", err)\n+\t}\n+}\n+\n+func TestPemEncode(t *testing.T) {\n+\tdata := []byte(\"test data\")\n+\tencoded := pemEncode(\"CERTIFICATE\", data)\n+\tblock, _ := pem.Decode(encoded)\n+\tif block == nil {\n+\t\tt.Fatal(\"PEM decode returned nil\")\n+\t}\n+\tif block.Type != \"CERTIFICATE\" {\n+\t\tt.Errorf(\"PEM type = %q, want CERTIFICATE\", block.Type)\n+\t}\n+}\n+\n+func TestPemEncodeECKey(t *testing.T) {\n+\tcaKey, _, _ := generateCA(1)\n+\tencoded := pemEncodeECKey(caKey)\n+\tblock, _ := pem.Decode(encoded)\n+\tif block == nil {\n+\t\tt.Fatal(\"PEM decode returned nil\")\n+\t}\n+\tif block.Type != \"EC PRIVATE KEY\" {\n+\t\tt.Errorf(\"PEM type = %q, want EC PRIVATE KEY\", block.Type)\n+\t}\n+\t_, err := x509.ParseECPrivateKey(block.Bytes)\n+\tif err != nil {",
-        "annotation": "secure-fetch.ts created and the incomplete localhost check written in commit 30f9b76f848b681e2806ac6ebcebebb055af3999 'feat: HTTPS-only enforcement, Go cert tool, SHA-pinned actions' (2026-04-25) by Sam Caldwell — file-root commit; immediate parent a2ee52acbf594fcbda6ed7ca6afb59c1c01d5b94 does not contain core/src/shared/secure-fetch.ts (git cat-file exit=128) so the vulnerable behavior is new in this commit; pickaxe -S \"parsed.hostname === 'localhost'\" confirms only 30f9b76f (introduction) and later fix b74ddbd for a different advisory (.localhost TLD, GHSA-864j-qcr9-jrwh) touch this line",
+        "annotation": "Adds the Go test suite for the new liquidjs-cert helper, minting a CA and a leaf certificate whose SAN list is localhost,127.0.0.1 and asserting the chain verifies and PEM-encodes, which bakes the narrow localhost-only development trust model into the certificate tool.",
         "role": "candidate"
       },
       {
@@ -7594,7 +7594,7 @@
     "fix_marker": null,
     "candidate_url": "https://github.com/ooples/token-optimizer-mcp/commit/fc3582544f6df4a14dcd3015edc835780f746aff",
     "fix_url": "https://github.com/ooples/token-optimizer-mcp/commit/b4ee96dac799cbfba0a9f9c17844ce9d613cbcc7",
-    "summary": "smart_user get-user-info interpolates caller username into shell string for execAsync getent/grep (CWE-78 OS command injection); fix moves to execFileSafe argv mode + assertSafeArg validation",
+    "summary": "AI-written smart_user get-user-info interpolated the caller-supplied username into a getent and grep string executed through execAsync, letting command substitution in a crafted username run arbitrary commands as the server user.",
     "steps": [
       {
         "title": "AI change",
@@ -7660,7 +7660,7 @@
     "candidate_url": "https://github.com/openclaw/openclaw/commit/8d74578ceb0c3b913555dff6265821eb0fc09749",
     "fix_url": "https://github.com/openclaw/openclaw/commit/0ed4f8a72bb140045962e97ab01c94c076b758a4",
     "advisory_url": "https://github.com/advisories/ghsa-w85g-3h6x-4xh2",
-    "summary": "OpenClaw: Image pixel-limit guard can fail open on sips and allow decompression-bomb DoS",
+    "summary": "OpenClaw through 2026.3.28 could decode oversized images without a pixel limit on its sips path, allowing a decompression bomb to exhaust memory and deny service.",
     "steps": [
       {
         "detail": "feat: native image injection for vision-capable models",
@@ -7718,7 +7718,7 @@
     "candidate_url": "https://github.com/openclaw/openclaw/commit/01d568c9f54585d2df3002e1090067c9dd621e43",
     "fix_url": "https://github.com/openclaw/openclaw/commit/a30214a624946fc5c85c9558a27c1580172374fd",
     "advisory_url": "https://github.com/advisories/ghsa-g5cg-8x5w-7jpm",
-    "summary": "OpenClaw: Heartbeat context inheritance bypasses sandbox via senderIsOwner escalation",
+    "summary": "Owner approval from the originating conversation carried into heartbeats built for exec completions, letting an untrusted sender reach owner-only authorization without passing the sandbox checks.",
     "steps": [
       {
         "detail": "feat(discord): add exec approval forwarding to DMs",
@@ -7765,7 +7765,7 @@
     "candidate_url": "https://github.com/openclaw/openclaw/commit/03586e3d0057b5975090d50dadcc5bc95b51f977",
     "fix_url": "https://github.com/openclaw/openclaw/commit/0b4d07337467f4d40a0cc1ced83d45ceaec0863c",
     "advisory_url": "https://github.com/advisories/ghsa-mf5g-6r6f-ghhm",
-    "summary": "pre-auth Synology token guessing lacks rate limit",
+    "summary": "The AI-written Synology Chat webhook auth rejected bad tokens without a rate limit, letting an unauthenticated attacker brute-force weak webhook secrets.",
     "steps": [
       {
         "detail": "feat(channels): add Synology Chat native channel (#23012)",
@@ -7811,7 +7811,7 @@
     "candidate_url": "https://github.com/openclaw/openclaw/commit/8d74578ceb0c3b913555dff6265821eb0fc09749",
     "fix_url": "https://github.com/openclaw/openclaw/commit/dd9d9c1c609dcb4579f9e57bd7b5c879d0146b53",
     "advisory_url": "https://github.com/advisories/ghsa-q6qf-4p5j-r25g",
-    "summary": "OpenClaw's image tool bypasses tools.fs.workspaceOnly on sandbox mount paths and exfiltrates out-of-workspace images",
+    "summary": "The sandboxed image tool ignored tools.fs.workspaceOnly for mounted paths and could forward out-of-workspace file bytes to vision model providers.",
     "steps": [
       {
         "detail": "feat: native image injection for vision-capable models",
@@ -7882,7 +7882,7 @@
     "candidate_url": "https://github.com/openclaw/openclaw/commit/f4b03599f0fb9c2f76e8dbe5fde13948d68dbc3f",
     "fix_url": "https://github.com/openclaw/openclaw/commit/356d61aacfa5b0f1d5830716ec59d70682a3e7b8",
     "advisory_url": "https://github.com/advisories/ghsa-hff7-ccv5-52f8",
-    "summary": "OpenClaw's gateway tokenless Tailscale auth applied to HTTP routes",
+    "summary": "The AI-written HTTP gateway handler inherited the tokenless Tailscale authentication meant for the Control UI websocket, so HTTP routes accepted forwarded headers in place of a token or password.",
     "steps": [
       {
         "detail": "feat(gateway): add OpenResponses /v1/responses endpoint",
@@ -7941,7 +7941,7 @@
     "candidate_url": "https://github.com/openclaw/openclaw/commit/506bed5aed40820565b7db66a963b8163968208f",
     "fix_url": "https://github.com/openclaw/openclaw/commit/73d93dee64127a26f1acd09d0403b794cdeb4f5c",
     "advisory_url": "https://github.com/advisories/ghsa-rxxp-482v-7mrh",
-    "summary": "OpenClaw's inbound media downloads could exceed configured byte limits before rejection across multiple channels",
+    "summary": "AI-written channel ingestion buffered remote media before applying the configured size cap, so a remote sender could force oversized downloads and memory pressure.",
     "steps": [
       {
         "detail": "feat(telegram): add sticker support with vision caching",
@@ -7992,7 +7992,7 @@
     "candidate_url": "https://github.com/koxudaxi/datamodel-code-generator/commit/f6d4cbd3440a84e801566fa758ab2bf483322082",
     "fix_url": "https://github.com/koxudaxi/datamodel-code-generator/commit/2ff4a72b4550a2b2069754c5b075b1655067e5fb",
     "advisory_url": "https://github.com/advisories/ghsa-8359-h9fx-j6v9",
-    "summary": "datamodel-code-generator vulnerable to arbitrary local file read via JSON-Schema `$ref` (`file://` and `../` traversal), bypassing `--no-allow-remote-refs`",
+    "summary": "A crafted schema can point a $ref at any path the process user can read, through a file:// URI or an escaped relative reference, and the generator returns values from schema-shaped files verbatim.",
     "steps": [
       {
         "detail": "Add --allow-remote-refs to disable HTTP fetching of $ref by default (#3051)",
@@ -8245,7 +8245,7 @@
     "candidate_url": "https://github.com/sgbett/bsv-ruby-sdk/commit/a1f2e62cb3dc48014c1770ec44d61811ae4b7105",
     "fix_url": "https://github.com/sgbett/bsv-ruby-sdk/commit/db97de475518eef752ed52b25f49f09cbe24c187",
     "advisory_url": "https://github.com/advisories/ghsa-9hfr-gw99-8rhx",
-    "summary": "ARC failure states accepted as success",
+    "summary": "Two rejection statuses were all the AI-written ARC client recognised, so transactions that were invalid, malformed, stale or orphaned came back to applications as accepted broadcasts.",
     "steps": [
       {
         "detail": "feat(network): add ARC broadcaster with injectable HTTP client",
@@ -8440,7 +8440,7 @@
     "candidate_url": "https://github.com/DeepMyst/Mysti/commit/94e14d9d30e2b9bf0b9d67ae6d459dbf263b9d99",
     "fix_url": "https://github.com/DeepMyst/Mysti/commit/9b4aff0f106db424aa45a35aa89dd0b8f2eb9a48",
     "advisory_url": "https://github.com/advisories/ghsa-4pqr-v6c3-x77j",
-    "summary": "unreviewed GHSA-4pqr / CVE-2026-13591 names Mysti 0.4.0 _isTrackedConversation channel-scope",
+    "summary": "A conversation was considered tracked based on the channel type carried with the message, so messages from one channel were accepted as parts of another channel's thread.",
     "steps": [
       {
         "detail": "v0.3.0: Add Cursor, OpenClaw, Manus providers; autonomous mode; @-mentions; brainstorm strategies; compaction; animated GIF demos",
@@ -8581,7 +8581,7 @@
     "candidate_url": "https://github.com/MervinPraison/PraisonAI/commit/179cab02dbec0c1e9b601507a65908e079876004",
     "fix_url": "https://github.com/MervinPraison/PraisonAI/commit/e0fb8e7dd1ee6759c18ed07f436c21dbd9c20747",
     "advisory_url": "https://github.com/advisories/ghsa-f38v-77qj-h4jq",
-    "summary": "praisonai-platform 0.1.4 still boots on the hardcoded JWT secret dev-secret-change-me (default-open production guard)",
+    "summary": "praisonai-platform ships a hardcoded signing secret behind a production check that never triggers, letting unauthenticated attackers forge tokens and be accepted as any user.",
     "steps": [
       {
         "detail": "refactor: harden input validation and access controls",
@@ -8695,7 +8695,7 @@
     "candidate_url": "https://github.com/qhkm/zeptoclaw/commit/fe70dcd422adbd1e95c90b097489380bf84c4c55",
     "fix_url": "https://github.com/qhkm/zeptoclaw/commit/f50c17e11ae3e2d40c96730abac41974ef2ee2a8",
     "advisory_url": "https://github.com/advisories/ghsa-2m67-cxxq-c3h8",
-    "summary": "ZeptoClaw: Path boundary checks bypass via symlink, TOCTOU, and hardlink",
+    "summary": "The AI-added pdf_read tool validated its path once before opening the file, so links and aliases that resolved later could still lead a read or write outside the workspace.",
     "steps": [
       {
         "detail": "feat(tools): add pdf_read tool, feature-gated with --features tool-pdf",
@@ -11402,7 +11402,7 @@
         "role": "candidate"
       },
       {
-        "annotation": "AI string-only guard: it only handles strings via start_with?, so URI objects skip the protocol-relative '//' check and can still override the host, leaking connection-scoped headers to an attacker-controlled host.",
+        "annotation": "Adds a protocol-relative URL check to build_exclusive_url in Faraday::Connection, but the start_with? test runs only for String targets, so a URI object such as URI('//evil.com/path?token=1') skips it and can still override the connection host while connection-scoped headers such as Authorization stay attached.",
         "code": "--- a/lib/faraday/connection.rb\n+++ b/lib/faraday/connection.rb\n@@ -481,8 +481,9 @@ module Faraday\n if url && !base.path.end_with?('/')\n base.path = \"#{base.path}/\" # ensure trailing slash\n end\n- # Ensure relative url will be parsed correctly (such as `service:search` )\n- url = \"./#{url}\" if url.respond_to?(:start_with?) && !url.start_with?('http://', 'https://', '/', './', '../')\n+ # Ensure relative url will be parsed correctly (such as `service:search` or `//evil.com`)\n+ url = \"./#{url}\" if url.respond_to?(:start_with?) &&\n+ (!url.start_with?('http://', 'https://', '/', './', '../') || url.start_with?('//'))\n uri = url ? base + url : base\n if params\n uri.query = params.to_query(params_encoder || options.params_encoder)",
         "file": "lib/faraday/connection.rb",
         "role": "candidate"
@@ -12973,7 +12973,7 @@
     "candidate_url": "https://github.com/gitpython-developers/gitpython/commit/701ce32fe5ba8cb622c0e0342a376a6beb47d738",
     "fix_url": "https://github.com/gitpython-developers/gitpython/commit/e8d0fbf774d1f6baa3b481adfe48bd262e43b453",
     "advisory_url": "https://github.com/advisories/ghsa-r9mr-m37c-5fr3",
-    "summary": "kwarg value becomes option token",
+    "summary": "The AI-written git option check inspected only keyword names, so an option token smuggled inside a short-option value passed validation and could execute arbitrary commands.",
     "steps": [
       {
         "title": "AI change",
@@ -13181,7 +13181,7 @@
     "candidate_url": "https://github.com/ddev/ddev/commit/93f80ea4470c9984ae2b95662008b589ed8f35d9",
     "fix_url": "https://github.com/ddev/ddev/commit/05cbe299770a590b89bfc8dddab33e61b4302e43",
     "advisory_url": "https://github.com/advisories/ghsa-x2xq-qhjf-5mvg",
-    "summary": "DDEV has ZipSlip path traversal in tar and zip archive extraction",
+    "summary": "Archive extraction joined entry names onto the destination and wrote the result without a containment check, so a malicious tar or zip could place files outside the target directory.",
     "steps": [
       {
         "title": "AI change",
@@ -13291,7 +13291,7 @@
     "candidate_url": "https://github.com/adamhathcock/sharpcompress/commit/8b95e0a76d6b387533175730e2895ccd16772d07",
     "fix_url": "https://github.com/adamhathcock/sharpcompress/commit/2021a06626d0555a4d69471386e763ca5f5d5dfb",
     "advisory_url": "https://github.com/advisories/ghsa-6c8g-7p36-r338",
-    "summary": "SharpCompress has directory traversal via directory entries in WriteToDirectory (zip slip variant)",
+    "summary": "Copilot SWE-agent added per-entry archive extraction that never verified the resolved path, so a crafted archive can write files outside the destination folder, including through directory entries and symlinks.",
     "steps": [
       {
         "title": "AI change",
@@ -13343,7 +13343,7 @@
     "candidate_url": "https://github.com/hanxi/xiaomusic/commit/ac32a09a6a84e5be7777f63701f101a19fa792bb",
     "fix_url": "https://github.com/hanxi/xiaomusic/commit/88404da7a283f2c0a796a4cd16bbb6e6aa1f4722",
     "advisory_url": "https://github.com/advisories/ghsa-5j8p-5rrj-8wjg",
-    "summary": "xiaomusic contains an unauthenticated path traversal vulnerability",
+    "summary": "A missing trailing separator in the containment test let the public music endpoint return files from sibling directories that merely shared a name prefix.",
     "steps": [
       {
         "title": "AI change",
@@ -13475,7 +13475,7 @@
     "candidate_url": "https://github.com/openclaw/openclaw/commit/75602014dbc5088b80e9b236146dfe5fdcc59e20",
     "fix_url": "https://github.com/openclaw/openclaw/commit/121c452d666d4749744dc2089287d0227aae2ed3",
     "advisory_url": "https://github.com/advisories/ghsa-xq94-r468-qwgj",
-    "summary": "OpenClaw: Browser SSRF hostname validation could be bypassed by DNS rebinding",
+    "summary": "The AI-written browser code validated navigation hostnames against a resolution performed outside Chromium, letting DNS rebinding aim the browser at an internal address under a restrictive policy.",
     "steps": [
       {
         "title": "AI change",
@@ -13573,7 +13573,7 @@
     "candidate_url": "https://github.com/homeassistant-ai/ha-mcp/commit/d8623e6d4ba5b3b2090a992013a8910652a4f7b8",
     "fix_url": "https://github.com/homeassistant-ai/ha-mcp/commit/9f5b085ad4a7b38b067c9da0dc5b45462c4d796e",
     "advisory_url": "https://github.com/advisories/ghsa-q855-8rh5-jfgq",
-    "summary": "add-on settings UI /api/settings/* ingress stream MCP secret ingress-source add-on",
+    "summary": "The AI-written settings UI exposed the same per-tool controls at the bare root of the published add-on port without authentication, so any client that could reach port 9583 could change tool visibility, feature flags and backups.",
     "steps": [
       {
         "title": "AI change",
@@ -13619,7 +13619,7 @@
     "candidate_url": "https://github.com/openclaw/openclaw/commit/079af0d0b02ca2c722f90b6c4e38e27ba16227b4",
     "fix_url": "https://github.com/openclaw/openclaw/commit/40a292619e1f2be3a3b1db663d7494c9c2dc0abf",
     "advisory_url": "https://github.com/advisories/ghsa-3cvx-236h-m9fj",
-    "summary": "OpenClaw has an opt-in insecure Control UI auth over plaintext HTTP could allow privileged access",
+    "summary": "A token alone could stand in for a paired device during the Control UI handshake, so on deployments that enabled insecure auth over plaintext HTTP a leaked or intercepted credential was enough for high-privilege access.",
     "steps": [
       {
         "title": "AI change",
@@ -13791,7 +13791,7 @@
     "candidate_url": "https://github.com/openclaw/openclaw/commit/b0c67ea0b5ae60a8f53b883ecfbc18da3ebbb517",
     "fix_url": "https://github.com/openclaw/openclaw/commit/3cbcba10cf30c2ffb898f0d8c7dfb929f15f8930",
     "advisory_url": "https://github.com/advisories/ghsa-q447-rj3r-2cgh",
-    "summary": "OpenClaw affected by denial of service via unbounded webhook request body buffering",
+    "summary": "Webhook handlers added by the Claude-coauthored Feishu sync read request bodies straight into memory with nothing bounding their size, leaving the service open to remote denial of service through memory exhaustion.",
     "steps": [
       {
         "title": "AI change",
@@ -14005,7 +14005,7 @@
     "candidate_url": "https://github.com/vitest-dev/vitest/commit/3a30e8712af30db1b29e8cd62817a885ceb428e3",
     "fix_url": "https://github.com/vitest-dev/vitest/commit/385a1aefd4c2bfa5e7d58bf7c6834c929969f2c7",
     "advisory_url": "https://github.com/advisories/ghsa-g8mr-85jm-7xhm",
-    "summary": "Vitest Browser: Exposed Browser Mode API Can Proxy CDP and Overwrite Config Files, Leading to RCE",
+    "summary": "Vitest's CDP bridge stayed reachable regardless of the write and exec restrictions, so an exposed browser API let a remote client overwrite vite.config.ts and run code when Vitest reloaded it.",
     "steps": [
       {
         "title": "AI change",
@@ -14099,7 +14099,7 @@
     "candidate_url": "https://github.com/jarrodwatts/claude-hud/commit/26a3e984e442382f83297b545626f7293f4379b4",
     "fix_url": "https://github.com/jarrodwatts/claude-hud/commit/234d9aad919b51326a43bcf90b45ae35c23afc30",
     "advisory_url": "https://github.com/advisories/ghsa-4524-x6pc-rr9x",
-    "summary": "GHSA-4524-x6pc-rr9x unreviewed cve_id=CVE-2026-47091; real repo jarrodwatts/claude-hud",
+    "summary": "Claude HUD through 0.0.12 read whatever file a caller named in transcript_path on stdin because the rewritten transcript reader never checked that path before stat and cache lookup.",
     "steps": [
       {
         "title": "AI change",
@@ -14209,7 +14209,7 @@
     "candidate_url": "https://github.com/tailot/taylored/commit/57b7634391959dbbdb39b387ac4dc68157cd58a1",
     "fix_url": "https://github.com/tailot/taylored/commit/fdf67a6fba0deae30912905a79fb5a9e83751a79",
     "advisory_url": "https://github.com/advisories/ghsa-vh5j-5fhq-9xwg",
-    "summary": "Taylor has race condition in /get-patch that allows purchase token replay",
+    "summary": "A valid purchase token could be redeemed twice and download the paid patch repeatedly because the endpoint read the token state and marked it used in two statements that concurrent requests could interleave.",
     "steps": [
       {
         "title": "AI change",
@@ -14261,7 +14261,7 @@
     "candidate_url": "https://github.com/gitpython-developers/gitpython/commit/701ce32fe5ba8cb622c0e0342a376a6beb47d738",
     "fix_url": "https://github.com/gitpython-developers/gitpython/commit/1b0d2d9b91575f7db44ef4ff58ac37fc9335e5f6",
     "advisory_url": "https://github.com/advisories/ghsa-5xxx-qhh7-9287",
-    "summary": "Repo.blame contents reads arbitrary file",
+    "summary": "Repo.blame still accepted contents, revision-file and order-file flags, so the AI-written option hardening left an arbitrary file read in place until blame-specific deny lists were added.",
     "steps": [
       {
         "title": "AI change",
@@ -14319,7 +14319,7 @@
     "candidate_url": "https://github.com/go-gitea/gitea/commit/1eced4a7c099459af42412bb32a83241650c0f8f",
     "fix_url": "https://github.com/go-gitea/gitea/commit/ab10e37acf7fabf7829a485cc3e13d118638a856",
     "advisory_url": "https://github.com/advisories/ghsa-q9pg-jj6x-j9p6",
-    "summary": "UUID attachment download misses write gate",
+    "summary": "The draft release permission helper was applied only to Gitea's API routes, so the UUID-based web download route stayed open to anyone who obtained the identifier.",
     "steps": [
       {
         "title": "AI change",
@@ -14371,7 +14371,7 @@
     "candidate_url": "https://github.com/cyberjunky/python-garminconnect/commit/21aea2d95b823a15c81a3efe87566de5dcc3befc",
     "fix_url": "https://github.com/cyberjunky/python-garminconnect/commit/8256b577190b446e279c81b845d8e27d0ea1fbf5",
     "advisory_url": "https://github.com/advisories/ghsa-wjhr-76vg-2hvc",
-    "summary": "garminconnect Has Insecure Permission Assignment for Garmin OAuth Token Store",
+    "summary": "The Garmin OAuth token store was saved with process-default permissions, leaving the stored refresh token readable by any other user on the same host.",
     "steps": [
       {
         "title": "AI change",
@@ -14544,7 +14544,7 @@
     "candidate_url": "https://github.com/openclaw/openclaw/commit/e0b8ddc1a55185aff1cf9e0e095014d2e4f1d894",
     "fix_url": "https://github.com/openclaw/openclaw/commit/3d93174c4398088066a1de9372ea1103cd713df1",
     "advisory_url": "https://github.com/advisories/ghsa-2hfg-4fh4-qp7f",
-    "summary": "OpenClaw's browser act interactions could bypass private-network navigation checks",
+    "summary": "Browser act interactions could move the tab onto a private-network target that the initial policy check would have refused, letting a caller with browser evaluation read a page the navigation rules had blocked.",
     "steps": [
       {
         "title": "AI change",
@@ -14660,7 +14660,7 @@
     "candidate_url": "https://github.com/conductor-oss/conductor/commit/840ec19c1f68f46b1c9c6a68e6bfa0d9481c3434",
     "fix_url": "https://github.com/conductor-oss/conductor/commit/87a7d96aabbb706d6e84f812b93da5165028d18f",
     "advisory_url": "https://github.com/advisories/ghsa-7x5q-8f6h-rjrc",
-    "summary": "unreviewed GHSA-7x5q / CVE-2026-58138 names unauthenticated RCE in Conductor 3.21.21 before 3.30.2",
+    "summary": "Unsandboxed GraalVM evaluation in Conductor 3.21.21 before 3.30.2 let unauthenticated callers reach operating-system commands through malicious JavaScript or Python expressions in inline workflow definitions.",
     "steps": [
       {
         "title": "AI change",
@@ -14718,7 +14718,7 @@
     "candidate_url": "https://github.com/mervinpraison/praisonai/commit/179cab02dbec0c1e9b601507a65908e079876004",
     "fix_url": "https://github.com/mervinpraison/praisonai/commit/2adfe7e8323f6deec66925cf15a885b6238895e9",
     "advisory_url": "https://github.com/advisories/ghsa-pv2j-rghr-v5r9",
-    "summary": "str.format or str.format_map field resolution -> Python sandbox object graph; invariant: blocked attributes must not be reachable through C-level format resolution",
+    "summary": "AI-written sandbox code skipped the text-pattern blocklist and screened only static AST names, so dunder attributes assembled at runtime and resolved through str.format reached the object graph the sandbox meant to hide.",
     "steps": [
       {
         "title": "AI change",
@@ -14828,7 +14828,7 @@
     "candidate_url": "https://github.com/nesquena/hermes-webui/commit/d2b27f6f1edb83634730f93dc8f19721d877bd07",
     "fix_url": "https://github.com/nesquena/hermes-webui/commit/88dc8bbe26a6055161d3251b70f5cd3d3c5831b0",
     "advisory_url": "https://github.com/advisories/ghsa-vvfr-g83f-8qcv",
-    "summary": "profile _reload_dotenv (os.environ[k]=v) profile env key profile A .env ( API key) profile B profile sink: os.environsource: profile .env guard key",
+    "summary": "Switching profiles leaves the previous profile's secrets installed in the process environment, so work done under the new profile can still read the old profile's API keys.",
     "steps": [
       {
         "title": "AI change",
@@ -14930,7 +14930,7 @@
     "candidate_url": "https://github.com/openclaw/openclaw/commit/bb6d608d12b75a473ecf285bb64815a460144308",
     "fix_url": "https://github.com/openclaw/openclaw/commit/6084d13b956119e3cf95daaf9a1cae1670ea3557",
     "advisory_url": "https://github.com/advisories/ghsa-jfv4-h8mc-jcp8",
-    "summary": "OpenClaw: Process Safety - Unvalidated PID Kill via SIGKILL in Process Cleanup",
+    "summary": "OpenClaw cleanup killed every process whose command line matched a pattern, with no ownership check, so users on a shared host could have unrelated processes terminated.",
     "steps": [
       {
         "title": "AI change",
