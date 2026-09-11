@@ -826,6 +826,7 @@ def test_identity_replacement_does_not_reuse_a_dropped_by_class_cache() -> None:
     cached, official_hit = publish_tp_ledger.find_cached(
         ["GHSA-4444-5555-6666"],
         [],
+        [],
         "alias-example",
         "acme/app",
         {},

@@ -39,6 +39,11 @@ avoid GitHub API requests while rate-limited.
    distinct. Placeholder identities (*@localhost, test@test.com, generic Test <...>) are
    not named-human proof and are not commit-object AI attribution; leave EVIDENCE_GAP
    unless a positive marker or recovered named identity closes the case.
+
+   On the BIC side write ai_on_bic as a boolean; omit the field when the marker is
+   not established, so an absent read and a negative read stay distinguishable.
+   Never write "no", "none" or "unknown" as its value: a non-empty string reads as
+   true downstream.
 5. **Evidence:** Retain a per-case report and primary-source snapshots with exact
    SHAs, paths/hunks, URLs and capture dates. Explain comparisons, counterevidence,
    uncertainties and their effect on conclusions. Complete available decisive

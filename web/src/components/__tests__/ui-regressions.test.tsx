@@ -331,7 +331,7 @@ describe("canonical case evidence", () => {
 
   it("shows audited fix authorship without unknown labels", () => {
     const humanMarked = getResearchCaseById("GHSA-8359-H9FX-J6V9");
-    const aiMarked = getResearchCaseById("GHSA-5XXX-QHH7-9287");
+    const aiMarked = getResearchCaseById("GHSA-GWMJ-HF32-5V8V");
 
     expect(humanMarked).not.toBeNull();
     expect(aiMarked).not.toBeNull();
@@ -340,7 +340,7 @@ describe("canonical case evidence", () => {
     ).toContain("Fix by Koudai Aono · no AI marker found");
     expect(
       renderToStaticMarkup(<CanonicalCaseEvidence item={aiMarked!} />),
-    ).toContain("AI-assisted fix: ChatGPT/Codex · Byron");
+    ).toContain("AI-assisted fix: ChatGPT/Codex · Dotta");
   });
 
   it("names the AI-assisted change the same way as the fix", () => {
@@ -373,20 +373,21 @@ describe("canonical case evidence", () => {
   });
 
   it("renders the GitPython incomplete-fix chain as original, AI attempt, and later fix", () => {
-    const item = getResearchCaseById("GHSA-3WXW-XV34-2FRG");
+    const item = getResearchCaseById("GHSA-3RP5-JJMW-4WV2");
     expect(item).not.toBeNull();
 
     const html = renderToStaticMarkup(<CanonicalCaseEvidence item={item!} />);
 
     expect(html).toContain("Original flaw");
     expect(html).toContain("Earlier advisory");
-    expect(html).toContain("GHSA-3F7W-8RR8-F37F");
+    expect(html).toContain("CVE-2026-42215");
     expect(html).toContain("This advisory");
     expect(html).toContain("AI tried to fix this");
-    expect(html).toContain("positional");
+    expect(html).toContain("Did not reject an unquoted closing bracket");
     expect(html).toContain("Fixed again");
-    expect(html).toContain("3af0c2516c");
-    expect(html).toContain("1b0d2d9b91");
+    expect(html).toContain("3fd37230e7");
+    expect(html).toContain("54538428f7");
+    expect(html).toContain("1ed1b924f4");
   });
 
   it("renders the mechanism note as plain text, not raw markdown", () => {
@@ -406,7 +407,7 @@ describe("canonical case evidence", () => {
   });
 
   it("never presents unresolved original authorship as human", () => {
-    const base = getResearchCaseById("GHSA-3WXW-XV34-2FRG");
+    const base = getResearchCaseById("GHSA-3RP5-JJMW-4WV2");
     expect(base?.ir_chain).toBeTruthy();
 
     for (const originalAuthorKind of [null, "UNKNOWN"] as const) {
@@ -554,7 +555,7 @@ describe("canonical case evidence", () => {
   });
 
   it("shows release facts in the case facts card without not-recorded rows", () => {
-    const withRelease = getResearchCaseById("GHSA-5XXX-QHH7-9287");
+    const withRelease = getResearchCaseById("GHSA-3RP5-JJMW-4WV2");
     const withoutRelease = getResearchCaseById("GHSA-C7RR-QHWX-6Q49");
     expect(withRelease?.vulnerable_release).toBeTruthy();
     expect(withoutRelease?.vulnerable_release).toBeNull();

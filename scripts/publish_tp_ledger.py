@@ -421,9 +421,10 @@ def ids_from_text(text: str) -> tuple[list[str], list[str]]:
     return unique(GHSA_RE.findall(text or "")), unique(CVE_RE.findall(text or ""))
 
 
-def collect_ids(row: dict, rec: dict | None) -> tuple[list[str], list[str]]:
+def collect_ids(row: dict, rec: dict | None) -> tuple[list[str], list[str], list[str]]:
     ghsas: list[str] = []
     cves: list[str] = []
+    weak: list[str] = []
     identity = row.get("advisory_identity") or {}
     for value in identity.get("member_ids") or []:
         g, c = ids_from_text(str(value))
@@ -439,13 +440,16 @@ def collect_ids(row: dict, rec: dict | None) -> tuple[list[str], list[str]]:
             g, c = ids_from_text(str(value or ""))
             ghsas.extend(g)
             cves.extend(c)
-        # Prose may mention sibling advisories in the same repo. Those are
-        # not aliases of this case; CVEs are only taken when none is known yet.
-        if not cves:
-            for key in ("bug_semantics", "evidence", "reasoning", "flaw_origin"):
-                _, c = ids_from_text(str(rec.get(key) or ""))
-                cves.extend(c)
-    ghsas, cves = unique(ghsas), unique(cves)
+        # Prose may mention sibling advisories in the same repo. A CVE mined
+        # from prose is a weak pointer: it may locate this row's published
+        # page, but it never becomes an alias, and it is only consulted after
+        # the row's own official ids and its published page both miss. A
+        # sibling's id inside the alias set is how one advisory's page
+        # absorbed another's.
+        for key in ("bug_semantics", "evidence", "reasoning", "flaw_origin"):
+            _, c = ids_from_text(str(rec.get(key) or ""))
+            weak.extend(c)
+    ghsas, cves, weak = unique(ghsas), unique(cves), unique(weak)
     # One GHSA is one advisory. Extra GHSAs in squash case_id strings are
     # sibling bugs, not aliases of this case.
     if len(ghsas) > 1:
@@ -455,7 +459,7 @@ def collect_ids(row: dict, rec: dict | None) -> tuple[list[str], list[str]]:
             if primary:
                 preferred = primary[0]
         ghsas = [preferred or ghsas[0]]
-    return ghsas, cves
+    return ghsas, cves, weak
 
 
 def collect_shas(rec: dict | None, *keys: str) -> list[str]:
@@ -950,6 +954,7 @@ def index_existing(existing: dict) -> tuple[dict[str, dict], dict[str, dict]]:
 def find_cached(
     ghsas: list[str],
     cves: list[str],
+    weak: list[str],
     class_id: str,
     repo: str | None,
     official: dict[str, dict],
@@ -957,6 +962,10 @@ def find_cached(
     dropped_ids: set[str] | None = None,
 ) -> tuple[dict | None, bool]:
     for key in unique([*ghsas, *cves]):
+        hit = official.get(key.upper())
+        if hit and repo_matches(hit, repo):
+            return hit, True
+    for key in unique(weak):
         hit = official.get(key.upper())
         if hit and repo_matches(hit, repo):
             return hit, True
@@ -1092,10 +1101,12 @@ def merge_duplicate_identities(cases: list[dict]) -> list[dict]:
             winner["case_id"] = ghsas[0]
         elif cves:
             winner["case_id"] = cves[0]
+        # Keep every official id of the cluster: dropping the second GHSA
+        # would make that advisory unresolvable on the site (alias gap).
         winner["aliases"] = [
             item
             for item in unique(
-                [*cves, *ghsas[:1], str(winner.get("class_id") or "")]
+                [*cves, *ghsas, str(winner.get("class_id") or "")]
             )
             if item.upper() != winner["case_id"].upper()
         ]
@@ -1564,7 +1575,7 @@ def apply_case_overrides(
 def build_case(row: dict, overlays: Overlays) -> dict:
     recs = research_records(row)
     rec = recs[0] if recs else None
-    ghsas, cves = collect_ids(row, rec)
+    ghsas, cves, weak = collect_ids(row, rec)
     case_id = (ghsas[0] if ghsas else cves[0] if cves else row["class_id"]).upper()
     aliases = unique([*ghsas, *cves, row["class_id"]])
     aliases = [item for item in aliases if item.upper() != case_id]
@@ -1576,6 +1587,7 @@ def build_case(row: dict, overlays: Overlays) -> dict:
     cached, official_hit = find_cached(
         ghsas,
         cves,
+        weak,
         row["class_id"],
         repo,
         overlays.official,
@@ -1583,8 +1595,11 @@ def build_case(row: dict, overlays: Overlays) -> dict:
         dropped_ids,
     )
     if cached and official_hit:
-        if GHSA_RE.match(str(cached.get("case_id") or "")):
-            case_id = str(cached["case_id"]).upper()
+        cached_id = str(cached.get("case_id") or "").upper()
+        # A row with no GHSA of its own keeps its published page's id even
+        # when that id is the CVE mined from prose: the page is the case.
+        if GHSA_RE.match(cached_id) or (CVE_RE.match(cached_id) and not ghsas):
+            case_id = cached_id
         cached_cves = [
             alias
             for alias in [cached.get("case_id"), *(cached.get("aliases") or [])]

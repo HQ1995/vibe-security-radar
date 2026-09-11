@@ -418,8 +418,8 @@ def ledger_case(row: dict, publication_overrides: dict | None = None) -> dict | 
     candidates, fixes = public_shas(rec, None, row=row)
     if not candidates and not fixes:
         return None
-    ghsas, cves = collect_ids(row, rec)
-    case_id = (ghsas or cves or [row.get("class_id")])[0]
+    ghsas, cves, weak = collect_ids(row, rec)
+    case_id = (ghsas or cves or weak or [row.get("class_id")])[0]
     mechanism = " ".join(
         str(rec.get(key) or "")
         for key in ("flaw_origin", "bug_semantics", "reasoning")

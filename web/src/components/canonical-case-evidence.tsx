@@ -165,7 +165,11 @@ function fixAuthorship(item: ResearchCase): string {
     )
     .join(" + ");
   if (record.classification === "ai_assisted") {
-    return `AI-assisted fix: ${families} · ${authors}`;
+    // An unnamed agent co-author (no tool family in the map) shows the author
+    // alone; a bare separator with nothing in front of it is a bug on the page.
+    return families
+      ? `AI-assisted fix: ${families} · ${authors}`
+      : `AI-assisted fix: ${authors}`;
   }
   if (record.classification === "mixed") {
     return `Mixed fix set: ${families} + unmarked commit · ${authors}`;
