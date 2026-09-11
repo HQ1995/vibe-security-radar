@@ -29,6 +29,24 @@ audits. Leases last 24h unless `--hours` overrides; an expired claim reads `STAL
 takeover records `supersedes`. Keep each case's report in the batch's research
 directory and `done` it with the verdict.
 
+## Handing a case to a worker
+
+This file is the method, not the assignment. A spawned worker also needs, in its own prompt:
+
+- scope, case ids (or `pick --scope <batch> --limit N`) and its `--slot`;
+- the neutral evidence: advisory URL, local checkout, primary patch/raw/PR pages;
+- its output directory (`research/<batch>/<case>/`) for the report and snapshots;
+- boundaries: no ledger writes, no `web/`, no other agent's files; report an evidence gap
+  instead of guessing;
+- close-out: `claims.py done --class-id <id> --owner <agent> --result <verdict>`.
+
+### Independent re-audit
+
+Same assignment in a different `--slot` and output directory, plus the blind rule: do not read
+the first pass's report, dossier or ledger verdict until your own verdict is written down. Then
+compare and state agreement or disagreement, the decisive evidence, and what evidence would flip
+your verdict. Re-derive the classification or report the gap; a copied verdict is not a result.
+
 1. **Cause:** Explain trigger → vulnerable code → security impact, including
    preconditions and counterevidence. Separate distinct mechanisms.
 2. **BIC:** Find the smallest original introducing change and compare its immediate
