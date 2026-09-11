@@ -2,23 +2,23 @@
  "snapshot": {
   "status": "PUBLISHED",
   "case_set": "TP_FUNNEL",
-  "case_count": 282,
-  "ai_root_cause": 224,
+  "case_count": 284,
+  "ai_root_cause": 226,
   "ai_code_flawed": 58,
   "ledger_total": 29593,
-  "ledger_reviewed": 2971,
-  "ledger_in_progress": 5801,
+  "ledger_reviewed": 2973,
+  "ledger_in_progress": 5799,
   "ledger_not_started": 20821,
   "confirmed_cases": 221,
-  "qualified_cases": 61,
+  "qualified_cases": 63,
   "provisional_cases": 0,
-  "exact_publication_dates": 282,
+  "exact_publication_dates": 284,
   "unknown_publication_dates": 0,
   "date_policy": "GHSA_OR_CVE_PUBLISHED_ONLY",
   "coverage_from": "2025-05-01",
   "coverage_to": "2026-08-26",
   "source_cutoff": "2026-08-26",
-  "generated_at": "2026-09-11T21:20:03Z",
+  "generated_at": "2026-09-11T22:07:40Z",
   "ledger": "artifacts/funnel-account-20260817.jsonl"
  },
  "cause_categories": {
@@ -24769,6 +24769,136 @@
    "publication_status": "confirmed"
   },
   {
+   "case_id": "GHSA-JRM4-4PCF-4763",
+   "aliases": [
+    "CVE-2026-44218"
+   ],
+   "repository": "jo-jo98/ciguard",
+   "repository_metadata": {
+    "full_name": "jo-jo98/ciguard",
+    "language": "Python",
+    "archived": false
+   },
+   "contribution_class": "AI_DIRECT_ROOT",
+   "candidate_set": [
+    "967c66b82254210c003e8f33940f3d31e36a3dba"
+   ],
+   "carrier_set": [],
+   "minimum_fix_set": [
+    "17a119fe43dd956ef463c1c575a463ffd9a8d95b"
+   ],
+   "gates": {
+    "ai_hunk": "NARROW",
+    "but_for": "PASS",
+    "fix_reversal": "PASS",
+    "identity": "PASS",
+    "release": "PASS",
+    "topology": "PASS",
+    "uniqueness": "PASS"
+   },
+   "vulnerable_release": {
+    "kind": "advisory_range",
+    "version": "0.1.0-0.8.1"
+   },
+   "fixed_release": {
+    "kind": "advisory_version",
+    "tag": "v0.8.2",
+    "version": "0.8.2"
+   },
+   "published_at": "2026-05-05",
+   "severity": "LOW",
+   "cwes": [
+    "CWE-269",
+    "CWE-269: IMPROPER PRIVILEGE MANAGEMENT"
+   ],
+   "description": "CWE-269 improper privilege management: the published container image inherited the default root user because the Dockerfile had no USER directive, so the analysis process ran as root. The advisory records a defence-in-depth gap: without a container-runtime escape in the chain the finding is not directly exploitable, but any future escape primitive would land on the host with root privileges instead of an unprivileged account. Version 0.8.2 fixed it by creating a dedicated account and switching the image to it.",
+   "references": [
+    "https://github.com/Jo-Jo98/ciguard/security/advisories/GHSA-jrm4-4pcf-4763",
+    "https://nvd.nist.gov/vuln/detail/CVE-2026-44218",
+    "https://github.com/Jo-Jo98/ciguard",
+    "https://github.com/Jo-Jo98/ciguard/releases/tag/v0.8.2"
+   ],
+   "mechanism": "ciguard's published container image never dropped the default root user, because the Dockerfile written for the first release carried no USER directive. The analyser needs no privileges, so running as root only widens the impact of an unrelated container-runtime flaw.",
+   "cause_category": "auth_access",
+   "ai_provenance": {
+    "family": "claude",
+    "coverage": "complete",
+    "candidate_count": 1,
+    "named_candidate_count": 1
+   },
+   "fix_authorship": {
+    "classification": "ai_assisted",
+    "families": [
+     "claude"
+    ],
+    "fixes": [
+     {
+      "sha": "17a119fe43dd956ef463c1c575a463ffd9a8d95b",
+      "classification": "ai_assisted",
+      "author": {
+       "name": "Jo.Moore",
+       "email": "jmoore.cpo@gmail.com"
+      }
+     }
+    ]
+   },
+   "code_evidence": {
+    "fix_marker": null,
+    "candidate_url": "https://github.com/Jo-Jo98/ciguard/commit/967c66b82254210c003e8f33940f3d31e36a3dba",
+    "fix_url": "https://github.com/Jo-Jo98/ciguard/commit/17a119fe43dd956ef463c1c575a463ffd9a8d95b",
+    "advisory_url": "https://github.com/advisories/ghsa-jrm4-4pcf-4763",
+    "summary": "The first ciguard release shipped a Dockerfile written with no USER directive, so the published analysis image ran as root: the tool needs no privileges, and a later container-runtime escape would land with host root privileges.",
+    "steps": [
+     {
+      "title": "AI change",
+      "detail": "Initial commit — ciguard 0.1.0 ships the container image"
+     },
+     {
+      "title": "Security fix",
+      "detail": "Creates a dedicated unprivileged account in the image, gives it ownership of the writable report and policy mounts, and switches the container to that account, so the analyser no longer runs as root."
+     }
+    ],
+    "required_anchors": {
+     "candidate": [
+      "FROM python:3.12-slim",
+      "CMD",
+      "pip install --no-cache-dir"
+     ],
+     "fix": [
+      "groupadd",
+      "USER ciguard",
+      "chown -R ciguard:ciguard"
+     ]
+    },
+    "annotation_mode": "hunk_specific",
+    "candidate_patch_sha256": "64c9f583151cceb03992cf1e2d7f72007bde269311893c19964b5b48750aeb0b",
+    "fix_patch_sha256": "07084530145bd833a378c5620493a5ba746189fb22c514c52d2a15eb4cba1e1f",
+    "display_hunks": [
+     {
+      "file": "Dockerfile",
+      "code": "@@ -0,0 +1,25 @@\n+FROM python:3.12-slim\n+\n+LABEL org.opencontainers.image.title=\"ciguard\"\n+LABEL org.opencontainers.image.description=\"Static security auditor for CI/CD pipelines\"\n+LABEL org.opencontainers.image.source=\"https://github.com/Jo-Jo98/ciguard\"\n+LABEL org.opencontainers.image.licenses=\"Apache-2.0\"\n+\n+WORKDIR /app\n+\n+# Install package + deps via pyproject.toml so the `ciguard` CLI entry point\n+# is available on PATH and the package is importable as `ciguard`.\n+COPY pyproject.toml README.md LICENSE ./\n+COPY src/ ./src/\n+COPY policies/ ./policies/\n+RUN pip install --no-cache-dir .\n+\n+# Output volumes\n+RUN mkdir -p /reports /policies-mount\n+\n+EXPOSE 8080\n+\n+# Default: run the web server. Override for CLI use, e.g.:\n+#   docker run --rm -v $PWD:/work ghcr.io/jo-jo98/ciguard \\\n+#     ciguard scan --input /work/.gitlab-ci.yml --output /work/report.html\n+CMD [\"uvicorn\", \"ciguard.web.app:app\", \"--host\", \"0.0.0.0\", \"--port\", \"8080\"]",
+      "annotation": "Builds the published image from a plain base and ends with the server command, so the container never drops the default root user before the analyser runs.",
+      "role": "candidate"
+     },
+     {
+      "file": "Dockerfile",
+      "code": "@@ -14,9 +14,15 @@ COPY src/ ./src/\n COPY policies/ ./policies/\n RUN pip install --no-cache-dir .\n \n-# Output volumes\n+# Output volumes (writable by the non-root user we'll switch to below)\n RUN mkdir -p /reports /policies-mount\n \n+# Run as a non-root user (defence-in-depth against container-runtime CVEs).\n+# Port 8080 is fine for non-root since it's >1024.\n+RUN groupadd -r ciguard && useradd -r -g ciguard -d /home/ciguard -m -s /usr/sbin/nologin ciguard \\\n+    && chown -R ciguard:ciguard /reports /policies-mount /app\n+USER ciguard\n+\n EXPOSE 8080\n \n # Default: run the web server. Override for CLI use, e.g.:",
+      "annotation": "Adds a dedicated system account, hands it the writable mount points and switches the image to that user, so a container-runtime escape no longer lands as host root.",
+      "role": "fix"
+     }
+    ],
+    "mechanism": "ciguard's published container image never dropped the default root user, because the Dockerfile written for the first release carried no USER directive. The analyser needs no privileges, so running as root only widens the impact of an unrelated container-runtime flaw.",
+    "fix_files": [
+     "Dockerfile"
+    ]
+   },
+   "ir_chain": null,
+   "unpatched": null,
+   "advisory_url": "https://github.com/advisories/ghsa-jrm4-4pcf-4763",
+   "publication_issues": [],
+   "publication_status": "qualified"
+  },
+  {
    "case_id": "GHSA-8CXW-CC62-Q28V",
    "aliases": [
     "CVE-2026-44220"
@@ -24911,6 +25041,140 @@
    "advisory_url": "https://github.com/advisories/ghsa-8cxw-cc62-q28v",
    "publication_issues": [],
    "publication_status": "confirmed"
+  },
+  {
+   "case_id": "GHSA-7WW3-XVF5-CXWM",
+   "aliases": [],
+   "repository": "jo-jo98/ciguard",
+   "repository_metadata": {
+    "full_name": "jo-jo98/ciguard",
+    "language": "Python",
+    "archived": false
+   },
+   "contribution_class": "AI_DIRECT_ROOT",
+   "candidate_set": [
+    "967c66b82254210c003e8f33940f3d31e36a3dba"
+   ],
+   "carrier_set": [],
+   "minimum_fix_set": [
+    "17a119fe43dd956ef463c1c575a463ffd9a8d95b"
+   ],
+   "gates": {
+    "ai_hunk": "NARROW",
+    "but_for": "PASS",
+    "fix_reversal": "PASS",
+    "identity": "PASS",
+    "release": "PASS",
+    "topology": "PASS",
+    "uniqueness": "PASS"
+   },
+   "vulnerable_release": {
+    "kind": "advisory_range",
+    "version": "0.1.0-0.8.1"
+   },
+   "fixed_release": {
+    "kind": "advisory_version",
+    "tag": "v0.8.2",
+    "version": "0.8.2"
+   },
+   "published_at": "2026-05-05",
+   "severity": "LOW",
+   "cwes": [
+    "CWE-693",
+    "CWE-693: PROTECTION MECHANISM FAILURE"
+   ],
+   "description": "CWE-693 protection mechanism failure: the bundled web UI served its responses without the standard defence-in-depth HTTP headers, so a hosted deployment would lose a layer against script injection, framing and cross-origin loading. The advisory records the local-only deployment as minimally affected and treats the hosted deployment planned for the project as the real exposure. Version 0.8.2 added a security-headers middleware.",
+   "references": [
+    "https://github.com/Jo-Jo98/ciguard/security/advisories/GHSA-7ww3-xvf5-cxwm",
+    "https://github.com/Jo-Jo98/ciguard",
+    "https://github.com/Jo-Jo98/ciguard/releases/tag/v0.8.2"
+   ],
+   "mechanism": "The FastAPI web UI written for ciguard's first release mounted no security-header middleware, so every response went out without Content-Security-Policy, X-Frame-Options, the cross-origin headers, Permissions-Policy or X-Content-Type-Options.",
+   "cause_category": "other_ambiguous",
+   "ai_provenance": {
+    "family": "claude",
+    "coverage": "complete",
+    "candidate_count": 1,
+    "named_candidate_count": 1
+   },
+   "fix_authorship": {
+    "classification": "ai_assisted",
+    "families": [
+     "claude"
+    ],
+    "fixes": [
+     {
+      "sha": "17a119fe43dd956ef463c1c575a463ffd9a8d95b",
+      "classification": "ai_assisted",
+      "author": {
+       "name": "Jo.Moore",
+       "email": "jmoore.cpo@gmail.com"
+      }
+     }
+    ]
+   },
+   "code_evidence": {
+    "fix_marker": null,
+    "candidate_url": "https://github.com/Jo-Jo98/ciguard/commit/967c66b82254210c003e8f33940f3d31e36a3dba",
+    "fix_url": "https://github.com/Jo-Jo98/ciguard/commit/17a119fe43dd956ef463c1c575a463ffd9a8d95b",
+    "advisory_url": "https://github.com/advisories/ghsa-7ww3-xvf5-cxwm",
+    "summary": "The first ciguard release shipped its web UI without security-header middleware, so responses carried no Content-Security-Policy, X-Frame-Options or related headers and a hosted deployment would lose those defence layers.",
+    "steps": [
+     {
+      "title": "AI change",
+      "detail": "Initial commit — ciguard 0.1.0 ships the web UI"
+     },
+     {
+      "title": "Security fix",
+      "detail": "Adds a security-headers middleware that stamps Content-Security-Policy, X-Frame-Options, Referrer-Policy, Permissions-Policy and the cross-origin headers on every response, and registers it on the application."
+     }
+    ],
+    "required_anchors": {
+     "candidate": [
+      "app = FastAPI(",
+      "docs_url=\"/api/docs\"",
+      "Jinja2Templates"
+     ],
+     "fix": [
+      "SecurityHeadersMiddleware",
+      "X-Frame-Options",
+      "Content-Security-Policy"
+     ]
+    },
+    "annotation_mode": "hunk_specific",
+    "candidate_patch_sha256": "7e9b6ed58ceafc8e0061a20f7b8df4ffe83cef9db711328a02cc89dccfd217cf",
+    "fix_patch_sha256": "4a50832fd9efea1c3c860f95bf613e0a036d9b1578d2013c4b782f52057c0382",
+    "display_hunks": [
+     {
+      "file": "src/ciguard/web/app.py",
+      "code": "@@ -0,0 +1,151 @@\n+\n+# Allow running as `python -m src.web.app` from the project root\n+sys.path.insert(0, str(Path(__file__).parent.parent.parent))\n+\n+from fastapi import FastAPI, File, HTTPException, Request, UploadFile\n+from fastapi.responses import HTMLResponse, JSONResponse\n+from fastapi.templating import Jinja2Templates\n+\n+from ciguard.analyzer.engine import AnalysisEngine\n+from ciguard.parser.gitlab_parser import GitLabCIParser\n+from ciguard.reporter.html_report import HTMLReporter\n+from ciguard.web.scan_store import get_store\n+\n+# ---------------------------------------------------------------------------\n+# App setup\n+# ---------------------------------------------------------------------------\n+\n+TEMPLATES_DIR = Path(__file__).parent / \"templates\"\n+templates = Jinja2Templates(directory=str(TEMPLATES_DIR))\n+\n+app = FastAPI(\n+    title=\"ciguard\",\n+    description=\"CI/CD Pipeline Security Auditor\",\n+    version=\"0.3.0\",\n+    docs_url=\"/api/docs\",\n+    redoc_url=\"/api/redoc\",\n+)\n+\n+_parser = GitLabCIParser()\n+_engine = AnalysisEngine()\n+_reporter = HTMLReporter()\n+\n+\n+# ---------------------------------------------------------------------------\n+# API routes\n+# ---------------------------------------------------------------------------\n+\n+@app.get(\"/api/health\", tags=[\"api\"])\n+def api_health():\n+    \"\"\"Health check — returns 200 when the service is ready.\"\"\"\n+    return {\"status\": \"ok\", \"version\": \"0.3.0\", \"scans_in_memory\": len(get_store())}\n+\n+\n+@app.post(\"/api/scan\", tags=[\"api\"])\n+async def api_scan(file: UploadFile = File(..., description=\"The .gitlab-ci.yml file to scan\")):\n+    \"\"\"Upload and scan a GitLab CI pipeline file.\n+\n+    Returns a ``scan_id`` and high-level summary. Use\n+    ``GET /api/report/{scan_id}`` for the full JSON report.\n+    \"\"\"\n+    if not file.filename:\n+        raise HTTPException(status_code=400, detail=\"No filename provided.\")\n+\n+    content = await file.read()\n+\n+    if len(content) > GitLabCIParser.MAX_FILE_BYTES:\n+        raise HTTPException(\n+            status_code=413,\n+            detail=f\"File too large. Maximum is {GitLabCIParser.MAX_FILE_BYTES // 1024} KB.\",\n+        )",
+      "annotation": "Starts the FastAPI application and its report routes with no security-header middleware registered, so responses leave without the defence-in-depth header set.",
+      "role": "candidate"
+     },
+     {
+      "file": "src/ciguard/web/security_headers.py",
+      "code": "@@ -0,0 +1,55 @@\n+\"\"\"HTTP security headers middleware (added v0.8.2).\n+\n+Sets the standard set of defence-in-depth headers per the OWASP Secure\n+Headers Project. Per-path CSP carve-out for `/api/docs` because FastAPI's\n+auto-generated Swagger UI loads scripts/styles from the jsdelivr CDN.\n+\n+The Web UI is intended for local-only deployment, but adding these\n+headers does no harm in that context and provides correct posture if a\n+user ever fronts ciguard with nginx + LetsEncrypt for a tiny private\n+team. Future PRD Slice 9 (GitHub App) and Slice 12+ (hosted dashboard)\n+will carry the same middleware forward.\n+\"\"\"\n+from __future__ import annotations\n+\n+from starlette.middleware.base import BaseHTTPMiddleware\n+from starlette.requests import Request\n+from starlette.responses import Response\n+\n+\n+class SecurityHeadersMiddleware(BaseHTTPMiddleware):\n+    async def dispatch(self, request: Request, call_next) -> Response:\n+        response = await call_next(request)\n+        response.headers[\"X-Content-Type-Options\"] = \"nosniff\"\n+        response.headers[\"X-Frame-Options\"] = \"DENY\"\n+        response.headers[\"Referrer-Policy\"] = \"no-referrer\"\n+        response.headers[\"Permissions-Policy\"] = \"interest-cohort=()\"\n+        response.headers[\"Cross-Origin-Opener-Policy\"] = \"same-origin\"\n+        response.headers[\"Cross-Origin-Resource-Policy\"] = \"same-origin\"\n+        # COEP intentionally NOT set to require-corp: Swagger UI's\n+        # cross-origin assets would break, and we have no SharedArrayBuffer\n+        # use that would benefit from it.\n+\n+        # Per-path CSP. The Swagger UI at /api/docs needs jsdelivr.\n+        if request.url.path.startswith(\"/api/docs\") or request.url.path.startswith(\"/api/redoc\"):\n+            response.headers[\"Content-Security-Policy\"] = (\n+                \"default-src 'self'; \"\n+                \"script-src 'self' https://cdn.jsdelivr.net 'unsafe-inline'; \"\n+                \"style-src 'self' https://cdn.jsdelivr.net 'unsafe-inline'; \"\n+                \"img-src 'self' data: https://fastapi.tiangolo.com; \"\n+                \"font-src 'self' data:; \"\n+                \"connect-src 'self'\"\n+            )\n+        else:\n+            response.headers[\"Content-Security-Policy\"] = (\n+                \"default-src 'self'; \"\n+                \"script-src 'self'; \"\n+                \"style-src 'self' 'unsafe-inline'; \"\n+                \"img-src 'self' data:; \"\n+                \"font-src 'self' data:; \"\n+                \"connect-src 'self'\"\n+            )\n+        return response\n+\n+\n+__all__ = [\"SecurityHeadersMiddleware\"]",
+      "annotation": "Adds the middleware that stamps the OWASP defence-in-depth header set on every response, with a narrower CSP carve-out for the generated documentation pages.",
+      "role": "fix"
+     },
+     {
+      "file": "src/ciguard/web/app.py",
+      "code": "@@ -32,6 +32,7 @@ from ciguard.parser.gitlab_parser import GitLabCIParser\n from ciguard.parser.jenkinsfile import JenkinsfileParser, looks_like_jenkinsfile\n from ciguard.reporter.html_report import HTMLReporter\n from ciguard.web.scan_store import get_store\n+from ciguard.web.security_headers import SecurityHeadersMiddleware\n \n # ---------------------------------------------------------------------------\n # App setup\n@@ -47,6 +48,7 @@ app = FastAPI(\n     docs_url=\"/api/docs\",\n     redoc_url=\"/api/redoc\",\n )\n+app.add_middleware(SecurityHeadersMiddleware)\n \n _parser = GitLabCIParser()\n _engine = AnalysisEngine()",
+      "annotation": "Registers the new middleware on the running application, so the header set covers every route including uploads and report downloads.",
+      "role": "fix"
+     }
+    ],
+    "mechanism": "The FastAPI web UI written for ciguard's first release mounted no security-header middleware, so every response went out without Content-Security-Policy, X-Frame-Options, the cross-origin headers, Permissions-Policy or X-Content-Type-Options.",
+    "fix_files": [
+     "src/ciguard/web/app.py",
+     "src/ciguard/web/security_headers.py"
+    ]
+   },
+   "ir_chain": null,
+   "unpatched": null,
+   "advisory_url": "https://github.com/advisories/ghsa-7ww3-xvf5-cxwm",
+   "publication_issues": [],
+   "publication_status": "qualified"
   },
   {
    "case_id": "GHSA-64CV-VXPR-J6VC",

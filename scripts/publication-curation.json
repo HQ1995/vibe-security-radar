@@ -19207,6 +19207,142 @@
    "code_evidence": {
     "summary": "An AI-assisted change added a Synology Chat channel in which every account inherited the channel-level webhook path, so accounts that did not set their own path resolved to the same address and one account's route took over the traffic of the others under the wrong sender rules."
    }
+  },
+  {
+   "class_id": "alias-06725de6a87deb43bb1e0984",
+   "case_id": "GHSA-JRM4-4PCF-4763",
+   "aliases": [
+    "CVE-2026-44218",
+    "alias-06725de6a87deb43bb1e0984"
+   ],
+   "repository": "Jo-Jo98/ciguard",
+   "repository_metadata": {
+    "full_name": "Jo-Jo98/ciguard",
+    "language": "Python",
+    "archived": false
+   },
+   "mechanism": "ciguard's published container image never dropped the default root user, because the Dockerfile written for the first release carried no USER directive. The analyser needs no privileges, so running as root only widens the impact of an unrelated container-runtime flaw.",
+   "description": "CWE-269 improper privilege management: the published container image inherited the default root user because the Dockerfile had no USER directive, so the analysis process ran as root. The advisory records a defence-in-depth gap: without a container-runtime escape in the chain the finding is not directly exploitable, but any future escape primitive would land on the host with root privileges instead of an unprivileged account. Version 0.8.2 fixed it by creating a dedicated account and switching the image to it.",
+   "candidate_set": [
+    "967c66b82254210c003e8f33940f3d31e36a3dba"
+   ],
+   "published_at": "2026-05-05",
+   "cause_category": "auth_access",
+   "ai_provenance": {
+    "family": "claude",
+    "coverage": "complete",
+    "candidate_count": 1,
+    "named_candidate_count": 1,
+    "note": "The project's own PRD lists the slice that wrote the Dockerfile as Claude Code development, and the fix commit carries a Claude co-author trailer."
+   },
+   "code_evidence": {
+    "summary": "The first ciguard release shipped a Dockerfile written with no USER directive, so the published analysis image ran as root: the tool needs no privileges, and a later container-runtime escape would land with host root privileges.",
+    "candidate_url": "https://github.com/Jo-Jo98/ciguard/commit/967c66b82254210c003e8f33940f3d31e36a3dba",
+    "fix_url": "https://github.com/Jo-Jo98/ciguard/commit/17a119fe43dd956ef463c1c575a463ffd9a8d95b"
+   },
+   "severity": "LOW",
+   "cwes": [
+    "CWE-269",
+    "CWE-269: IMPROPER PRIVILEGE MANAGEMENT"
+   ],
+   "references": [
+    "https://github.com/Jo-Jo98/ciguard/security/advisories/GHSA-jrm4-4pcf-4763",
+    "https://nvd.nist.gov/vuln/detail/CVE-2026-44218",
+    "https://github.com/Jo-Jo98/ciguard",
+    "https://github.com/Jo-Jo98/ciguard/releases/tag/v0.8.2"
+   ],
+   "vulnerable_release": {
+    "kind": "advisory_range",
+    "version": "0.1.0-0.8.1"
+   },
+   "fixed_release": {
+    "kind": "advisory_version",
+    "version": "0.8.2",
+    "tag": "v0.8.2"
+   },
+   "fix_authorship": {
+    "classification": "ai_assisted",
+    "families": [
+     "claude"
+    ],
+    "fixes": [
+     {
+      "sha": "17a119fe43dd956ef463c1c575a463ffd9a8d95b",
+      "classification": "ai_assisted",
+      "author": {
+       "name": "Jo.Moore",
+       "email": "jmoore.cpo@gmail.com"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "class_id": "alias-5894b3201dac1fb635ff1c72",
+   "case_id": "GHSA-7WW3-XVF5-CXWM",
+   "aliases": [
+    "alias-5894b3201dac1fb635ff1c72"
+   ],
+   "repository": "Jo-Jo98/ciguard",
+   "repository_metadata": {
+    "full_name": "Jo-Jo98/ciguard",
+    "language": "Python",
+    "archived": false
+   },
+   "mechanism": "The FastAPI web UI written for ciguard's first release mounted no security-header middleware, so every response went out without Content-Security-Policy, X-Frame-Options, the cross-origin headers, Permissions-Policy or X-Content-Type-Options.",
+   "description": "CWE-693 protection mechanism failure: the bundled web UI served its responses without the standard defence-in-depth HTTP headers, so a hosted deployment would lose a layer against script injection, framing and cross-origin loading. The advisory records the local-only deployment as minimally affected and treats the hosted deployment planned for the project as the real exposure. Version 0.8.2 added a security-headers middleware.",
+   "candidate_set": [
+    "967c66b82254210c003e8f33940f3d31e36a3dba"
+   ],
+   "published_at": "2026-05-05",
+   "cause_category": "other_ambiguous",
+   "ai_provenance": {
+    "family": "claude",
+    "coverage": "complete",
+    "candidate_count": 1,
+    "named_candidate_count": 1,
+    "note": "The project's own PRD lists the slice that wrote the web UI as Claude Code development, and the fix commit carries a Claude co-author trailer."
+   },
+   "code_evidence": {
+    "summary": "The first ciguard release shipped its web UI without security-header middleware, so responses carried no Content-Security-Policy, X-Frame-Options or related headers and a hosted deployment would lose those defence layers.",
+    "candidate_url": "https://github.com/Jo-Jo98/ciguard/commit/967c66b82254210c003e8f33940f3d31e36a3dba",
+    "fix_url": "https://github.com/Jo-Jo98/ciguard/commit/17a119fe43dd956ef463c1c575a463ffd9a8d95b"
+   },
+   "severity": "LOW",
+   "cwes": [
+    "CWE-693",
+    "CWE-693: PROTECTION MECHANISM FAILURE"
+   ],
+   "references": [
+    "https://github.com/Jo-Jo98/ciguard/security/advisories/GHSA-7ww3-xvf5-cxwm",
+    "https://github.com/Jo-Jo98/ciguard",
+    "https://github.com/Jo-Jo98/ciguard/releases/tag/v0.8.2"
+   ],
+   "vulnerable_release": {
+    "kind": "advisory_range",
+    "version": "0.1.0-0.8.1"
+   },
+   "fixed_release": {
+    "kind": "advisory_version",
+    "version": "0.8.2",
+    "tag": "v0.8.2"
+   },
+   "fix_authorship": {
+    "classification": "ai_assisted",
+    "families": [
+     "claude"
+    ],
+    "fixes": [
+     {
+      "sha": "17a119fe43dd956ef463c1c575a463ffd9a8d95b",
+      "classification": "ai_assisted",
+      "author": {
+       "name": "Jo.Moore",
+       "email": "jmoore.cpo@gmail.com"
+      }
+     }
+    ]
+   }
   }
  ]
 }
