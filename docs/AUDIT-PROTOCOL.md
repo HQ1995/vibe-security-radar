@@ -39,13 +39,13 @@ file, so every picker reads the same batch.
 
 This file is the method, not the assignment. A spawned worker also needs, in its own prompt:
 
-- scope, case ids (or `pick --scope <batch> --limit N`) and its `--slot`;
- its scope, its batch file (class_id lines or a round's `assessments-*.jsonl`), case ids and `--slot`;
+- its scope, batch file (class_id lines or a round's `assessments-*.jsonl`), case ids or
+  `pick --scope <batch> --limit N`, and its `--slot`;
 - the neutral evidence: advisory URL, local checkout, primary patch/raw/PR pages;
 - its output directory (`research/<batch>/<case>/`) for the report and snapshots;
 - boundaries: no ledger writes, no `web/`, no other agent's files; report an evidence gap
   instead of guessing;
-- close-out: `claims.py done --class-id <id> --owner <agent> --result <verdict>`.
+- close-out: `claims.py done --class-id <id> --owner <agent> --slot <slot> --result <verdict>`.
 
 ### Independent re-audit
 
