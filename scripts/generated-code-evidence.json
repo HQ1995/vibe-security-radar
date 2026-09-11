@@ -15375,5 +15375,38 @@
   ],
   "candidate_patch_sha256": "03894bcc9d177bf905eb06b76ddb5f5f11fbdb8da59bd2900dd34062932d1b92",
   "fix_patch_sha256": "57054f0f0375f223b90185204ffcbea8b6253e337a4cbbbbd1bf30f4fedaeb0d"
+ },
+ "GHSA-83P6-2P5W-42RC": {
+  "candidate_url": "https://github.com/n8n-io/n8n/commit/0a5d656dee6dcc0840dbf9b3fde67ceef996f315",
+  "fix_url": "https://github.com/n8n-io/n8n/commit/2222fe3a6c886a9059f28e1b6d4bdb10ee420624",
+  "advisory_url": "https://github.com/advisories/ghsa-83p6-2p5w-42rc",
+  "summary": "The AI-assisted change that added the expression runtime's host bridge gave the isolate an array-element callback that never checked the index it was handed, so a crafted expression could climb through the array's prototype to a host built-in and pollute it in the main n8n process.",
+  "steps": [
+   {
+    "title": "AI change",
+    "detail": "The new bridge registered the isolate's array-element callback, which read the requested entry after checking only that the target was an array."
+   },
+   {
+    "title": "Fix",
+    "detail": "The callback now returns nothing for keys that are not non-negative integer indices and for entries that are functions, so the prototype chain is no longer reachable from the isolate."
+   }
+  ],
+  "display_hunks": [
+   {
+    "role": "candidate",
+    "file": "packages/@n8n/expression-runtime/src/bridge/isolated-vm-bridge.ts",
+    "code": "@@ -0,0 +310,18 @@\n+\t\t// Callback 2: Get array element at index\n+\t\t// Used by array proxy when accessing numeric indices\n+\t\tconst getArrayElement = new ivm.Reference((path: string[], index: number) => {\n+\t\t\tfunction inner() {\n+\t\t\t\tconsole.log('getArrayElement');\n+\t\t\t\tconsole.log('path', path);\n+\t\t\t\tconsole.log('index', index);\n+\t\t\t\t// Navigate to array\n+\t\t\t\tlet arr: unknown = data;\n+\t\t\t\tfor (const key of path) {\n+\t\t\t\t\tarr = (arr as Record<string, unknown>)?.[key];\n+\t\t\t\t}\n+\n+\t\t\t\tif (!Array.isArray(arr)) {\n+\t\t\t\t\treturn undefined;\n+\t\t\t\t}\n+\n+\t\t\t\tconst element = arr[index];",
+    "annotation": "The added callback navigates the workflow data to an array and reads the index it receives, so any key the caller passes is looked up on the live array object."
+   },
+   {
+    "role": "fix",
+    "file": "packages/@n8n/expression-runtime/src/bridge/isolated-vm-bridge.ts",
+    "code": "@@ -400,8 +400,21 @@ export class IsolatedVmBridge implements RuntimeBridge {\n \t\t\t\t\treturn undefined;\n \t\t\t\t}\n \n+\t\t\t\t// Only genuine array indices are reachable; anything else (e.g.\n+\t\t\t\t// 'constructor', '__lookupGetter__') would read off the prototype\n+\t\t\t\t// chain and could leak a host function reference across the boundary.\n+\t\t\t\tif (!Number.isInteger(index) || index < 0) {\n+\t\t\t\t\treturn undefined;\n+\t\t\t\t}\n+\n \t\t\t\tconst element = arr[index];\n \n+\t\t\t\t// Functions are never reachable through the data surface \u2014 mirror the\n+\t\t\t\t// guard in getValueAtPath so a host callable can't cross the boundary.\n+\t\t\t\tif (typeof element === 'function') {\n+\t\t\t\t\treturn undefined;\n+\t\t\t\t}\n+\n \t\t\t\t// Dates have no enumerable own keys; pass through instead of\n \t\t\t\t// marshaling as an empty object.\n \t\t\t\tif (element instanceof Date) {",
+    "annotation": "The repaired callback now rejects keys that are not non-negative integers and refuses to return functions, cutting off the prototype-chain path to a host built-in."
+   }
+  ],
+  "ai_marker": "Co-authored-by: Claude Sonnet 4.6 <noreply@anthropic.com>",
+  "candidate_patch_sha256": "8f94cc4287f84e05bb5bea7e239ea42c0aa6475d99ccb33ca7ad5a6d967c7e2f",
+  "fix_patch_sha256": "f0c55a3a8bad338ea61533608faa3aac20dc2403578b410d1577b26d05a5aac6"
  }
 }

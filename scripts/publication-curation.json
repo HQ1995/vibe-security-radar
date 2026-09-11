@@ -19330,6 +19330,25 @@
    "code_evidence": {
     "summary": "The QQBot channel shipped with a pre-dispatch slash command path that marked every command as authorized, so commands requiring an explicit allow-list check ran without one and the private-chat-only policy was not applied."
    }
+  },
+  {
+   "class_id": "alias-c276d3d9aee61e12054b7fc7",
+   "case_id": "GHSA-83P6-2P5W-42RC",
+   "aliases": [
+    "CVE-2026-72769",
+    "alias-c276d3d9aee61e12054b7fc7"
+   ],
+   "repository": "n8n-io/n8n",
+   "repository_metadata": {
+    "full_name": "n8n-io/n8n",
+    "language": "TypeScript",
+    "archived": false
+   },
+   "mechanism": "The new bridge registers three host callbacks that isolate-side code calls synchronously, one of them for reading an element of workflow data by array path and index. That callback walks the path, confirms the target is an array, and then reads the index it was given, so a string that is not an element key resolves against the array's prototype chain instead of its own properties and comes back as a reference to a host built-in the isolate was never meant to reach. Prototypes are shared with the main n8n process, so an expression that writes to the built-in's prototype changes behaviour for unrelated code, which is the denial of service the advisory describes.",
+   "description": "This bridge is the boundary between the isolated expression runtime and the n8n host process. Its array-element callback exists so isolate-side proxies can fetch individual entries of workflow data, and it read whatever index it was handed after checking only that the value it had navigated to was an array. Nothing rejected keys that are not real indices, so strings such as 'constructor' or '__lookupGetter__' followed the array's prototype chain rather than its elements and handed the isolate a host built-in. Because prototypes are shared with the main process, a write from an expression reached unrelated code in the same instance. The repaired build rejects any index that is not a non-negative integer and refuses to return functions, which closes that route. Both self-hosted and cloud instances running the isolated-vm expression engine were affected.",
+   "code_evidence": {
+    "summary": "The AI-assisted change that added the expression runtime's host bridge gave the isolate an array-element callback that never checked the index it was handed, so a crafted expression could climb through the array's prototype to a host built-in and pollute it in the main n8n process."
+   }
   }
  ]
 }

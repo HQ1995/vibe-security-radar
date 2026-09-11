@@ -2,24 +2,24 @@
  "snapshot": {
   "status": "PUBLISHED",
   "case_set": "TP_FUNNEL",
-  "case_count": 272,
-  "ai_root_cause": 214,
+  "case_count": 273,
+  "ai_root_cause": 215,
   "ai_code_flawed": 58,
   "ledger_total": 29593,
-  "ledger_reviewed": 2967,
-  "ledger_in_progress": 5805,
+  "ledger_reviewed": 2973,
+  "ledger_in_progress": 5799,
   "ledger_not_started": 20821,
-  "confirmed_cases": 211,
+  "confirmed_cases": 212,
   "qualified_cases": 61,
   "provisional_cases": 0,
-  "exact_publication_dates": 272,
+  "exact_publication_dates": 273,
   "unknown_publication_dates": 0,
   "date_policy": "GHSA_OR_CVE_PUBLISHED_ONLY",
   "coverage_from": "2025-05-01",
   "coverage_to": "2026-08-26",
   "source_cutoff": "2026-08-26",
-  "generated_at": "2026-09-11T16:26:57Z",
-  "ledger": "neon:ledger_rows"
+  "generated_at": "2026-09-11T17:23:03Z",
+  "ledger": "artifacts/funnel-account-20260817.jsonl"
  },
  "cause_categories": {
   "auth_access": {
@@ -4481,6 +4481,112 @@
    "ir_chain": null,
    "unpatched": null,
    "advisory_url": "https://github.com/advisories/ghsa-rv36-q8cj-wgr9",
+   "publication_issues": [],
+   "publication_status": "confirmed"
+  },
+  {
+   "case_id": "GHSA-83P6-2P5W-42RC",
+   "aliases": [
+    "CVE-2026-72769"
+   ],
+   "repository": "n8n-io/n8n",
+   "repository_metadata": {
+    "full_name": "n8n-io/n8n",
+    "language": "TypeScript",
+    "archived": false
+   },
+   "contribution_class": "AI_DIRECT_ROOT",
+   "candidate_set": [
+    "0a5d656dee6dcc0840dbf9b3fde67ceef996f315"
+   ],
+   "carrier_set": [],
+   "minimum_fix_set": [
+    "2222fe3a6c886a9059f28e1b6d4bdb10ee420624"
+   ],
+   "gates": {
+    "ai_hunk": "PASS",
+    "but_for": "PASS",
+    "fix_reversal": "PASS",
+    "identity": "PASS",
+    "release": "PASS",
+    "topology": "PASS",
+    "uniqueness": "PASS"
+   },
+   "vulnerable_release": {
+    "kind": "advisory_range",
+    "version": "< 1.123.67 || >= 2.31.0, < 2.31.5 || >= 2.32.0, < 2.32.1",
+    "tag": null
+   },
+   "fixed_release": {
+    "kind": "advisory_version",
+    "version": "1.123.67 / 2.31.5 / 2.32.1",
+    "tag": null
+   },
+   "published_at": "2026-08-11",
+   "severity": null,
+   "cwes": [],
+   "description": "This bridge is the boundary between the isolated expression runtime and the n8n host process. Its array-element callback exists so isolate-side proxies can fetch individual entries of workflow data, and it read whatever index it was handed after checking only that the value it had navigated to was an array. Nothing rejected keys that are not real indices, so strings such as 'constructor' or '__lookupGetter__' followed the array's prototype chain rather than its elements and handed the isolate a host built-in. Because prototypes are shared with the main process, a write from an expression reached unrelated code in the same instance. The repaired build rejects any index that is not a non-negative integer and refuses to return functions, which closes that route. Both self-hosted and cloud instances running the isolated-vm expression engine were affected.",
+   "references": [],
+   "mechanism": "The new bridge registers three host callbacks that isolate-side code calls synchronously, one of them for reading an element of workflow data by array path and index. That callback walks the path, confirms the target is an array, and then reads the index it was given, so a string that is not an element key resolves against the array's prototype chain instead of its own properties and comes back as a reference to a host built-in the isolate was never meant to reach. Prototypes are shared with the main n8n process, so an expression that writes to the built-in's prototype changes behaviour for unrelated code, which is the denial of service the advisory describes.",
+   "cause_category": "auth_access",
+   "ai_provenance": {
+    "family": "claude",
+    "coverage": "complete",
+    "candidate_count": 1,
+    "named_candidate_count": 1
+   },
+   "fix_authorship": {
+    "classification": "ai_assisted",
+    "families": [
+     "claude",
+     "cursor"
+    ],
+    "fixes": [
+     {
+      "sha": "2222fe3a6c886a9059f28e1b6d4bdb10ee420624",
+      "classification": "ai_assisted",
+      "author": {
+       "name": "n8n-assistant[bot]",
+       "email": "100856346+n8n-assistant[bot]@users.noreply.github.com"
+      }
+     }
+    ]
+   },
+   "code_evidence": {
+    "candidate_url": "https://github.com/n8n-io/n8n/commit/0a5d656dee6dcc0840dbf9b3fde67ceef996f315",
+    "fix_url": "https://github.com/n8n-io/n8n/commit/2222fe3a6c886a9059f28e1b6d4bdb10ee420624",
+    "advisory_url": "https://github.com/advisories/ghsa-83p6-2p5w-42rc",
+    "summary": "The AI-assisted change that added the expression runtime's host bridge gave the isolate an array-element callback that never checked the index it was handed, so a crafted expression could climb through the array's prototype to a host built-in and pollute it in the main n8n process.",
+    "steps": [
+     {
+      "title": "AI change",
+      "detail": "The new bridge registered the isolate's array-element callback, which read the requested entry after checking only that the target was an array."
+     },
+     {
+      "title": "Fix",
+      "detail": "The callback now returns nothing for keys that are not non-negative integer indices and for entries that are functions, so the prototype chain is no longer reachable from the isolate."
+     }
+    ],
+    "display_hunks": [
+     {
+      "role": "candidate",
+      "file": "packages/@n8n/expression-runtime/src/bridge/isolated-vm-bridge.ts",
+      "code": "@@ -0,0 +310,18 @@\n+\t\t// Callback 2: Get array element at index\n+\t\t// Used by array proxy when accessing numeric indices\n+\t\tconst getArrayElement = new ivm.Reference((path: string[], index: number) => {\n+\t\t\tfunction inner() {\n+\t\t\t\tconsole.log('getArrayElement');\n+\t\t\t\tconsole.log('path', path);\n+\t\t\t\tconsole.log('index', index);\n+\t\t\t\t// Navigate to array\n+\t\t\t\tlet arr: unknown = data;\n+\t\t\t\tfor (const key of path) {\n+\t\t\t\t\tarr = (arr as Record<string, unknown>)?.[key];\n+\t\t\t\t}\n+\n+\t\t\t\tif (!Array.isArray(arr)) {\n+\t\t\t\t\treturn undefined;\n+\t\t\t\t}\n+\n+\t\t\t\tconst element = arr[index];",
+      "annotation": "The added callback navigates the workflow data to an array and reads the index it receives, so any key the caller passes is looked up on the live array object."
+     },
+     {
+      "role": "fix",
+      "file": "packages/@n8n/expression-runtime/src/bridge/isolated-vm-bridge.ts",
+      "code": "@@ -400,8 +400,21 @@ export class IsolatedVmBridge implements RuntimeBridge {\n \t\t\t\t\treturn undefined;\n \t\t\t\t}\n \n+\t\t\t\t// Only genuine array indices are reachable; anything else (e.g.\n+\t\t\t\t// 'constructor', '__lookupGetter__') would read off the prototype\n+\t\t\t\t// chain and could leak a host function reference across the boundary.\n+\t\t\t\tif (!Number.isInteger(index) || index < 0) {\n+\t\t\t\t\treturn undefined;\n+\t\t\t\t}\n+\n \t\t\t\tconst element = arr[index];\n \n+\t\t\t\t// Functions are never reachable through the data surface — mirror the\n+\t\t\t\t// guard in getValueAtPath so a host callable can't cross the boundary.\n+\t\t\t\tif (typeof element === 'function') {\n+\t\t\t\t\treturn undefined;\n+\t\t\t\t}\n+\n \t\t\t\t// Dates have no enumerable own keys; pass through instead of\n \t\t\t\t// marshaling as an empty object.\n \t\t\t\tif (element instanceof Date) {",
+      "annotation": "The repaired callback now rejects keys that are not non-negative integers and refuses to return functions, cutting off the prototype-chain path to a host built-in."
+     }
+    ],
+    "candidate_patch_sha256": "8f94cc4287f84e05bb5bea7e239ea42c0aa6475d99ccb33ca7ad5a6d967c7e2f",
+    "fix_patch_sha256": "f0c55a3a8bad338ea61533608faa3aac20dc2403578b410d1577b26d05a5aac6"
+   },
+   "ir_chain": null,
+   "unpatched": null,
+   "advisory_url": "https://github.com/advisories/ghsa-83p6-2p5w-42rc",
    "publication_issues": [],
    "publication_status": "confirmed"
   },

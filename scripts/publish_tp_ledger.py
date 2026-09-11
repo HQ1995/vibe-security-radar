@@ -499,6 +499,23 @@ def first_text(*values: object) -> str | None:
     return None
 
 
+def ai_marker_text(value: object) -> str | None:
+    """Marker text from either ledger shape: the marker string, or the tri-state
+    block whose evidence describes it. Only a present marker is an AI marker;
+    ABSENT/UNKNOWN returns None so the row keeps its previous treatment
+    (fix-side trailers must not decide the family)."""
+    if isinstance(value, str):
+        return value
+    if not isinstance(value, dict):
+        return None
+    if str(value.get("state") or "").upper() not in {"PRESENT", "AI"}:
+        return None
+    evidence = value.get("evidence")
+    if isinstance(evidence, list):
+        return first_text(*evidence)
+    return first_text(evidence)
+
+
 def public_text(*values: object) -> str | None:
     """English reader-facing copy only. Internal Chinese audit notes stay off the site."""
     for value in values:
@@ -1609,8 +1626,8 @@ def build_case(row: dict, overlays: Overlays) -> dict:
         aliases = unique([*ghsas, *cves, row["class_id"]])
         aliases = [item for item in aliases if item.upper() != case_id]
     marker = first_text(
-        (rec or {}).get("ai_marker"),
-        ((cached or {}).get("code_evidence") or {}).get("ai_marker"),
+        ai_marker_text((rec or {}).get("ai_marker")),
+        ai_marker_text(((cached or {}).get("code_evidence") or {}).get("ai_marker")),
     )
     family = detect_family(marker) or detect_family(
         json.dumps(rec or {}, ensure_ascii=False)
