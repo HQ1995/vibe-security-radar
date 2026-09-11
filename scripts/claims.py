@@ -244,6 +244,8 @@ def main(argv=None) -> int:
                 print(f"{event['class_id']} slot {event['slot']} claimed by {event['owner']} until {event['lease_until']}")
             if not events:
                 print("no unclaimed open cases", file=sys.stderr)
+            elif len(events) < args.limit:
+                print(f"picked {len(events)} of {args.limit}; the rest are held or not open", file=sys.stderr)
         elif args.cmd == "list":
             for (class_id, slot), cur in sorted(state(load(args.claims_file)).items()):
                 if args.owner and cur.get("owner") != args.owner:
