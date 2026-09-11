@@ -27,8 +27,9 @@ pickers never receive the same case. Records go to the append-only
 site, committed by the leader with the batch. `--scope` is the batch label and `--slot`
 (default `main`) the auditor, so one batch in several slots means several independent
 audits. Leases last 24h unless `--hours` overrides; an expired claim reads `STALE` and a
-takeover records `supersedes`. Keep each case's report in the batch's research
-directory and `done` it with the verdict.
+takeover records `supersedes`. `first_claimed_at` survives both and is how long a case
+has been in flight. Keep each case's report in the batch's research directory and
+`done` it with the verdict.
 
 A batch is a file: `class_id` lines, or a round's `assessments-*.jsonl`, whose rows carry
 `class_id`. That path plus `--scope` is the identifier to hand a worker; membership lives in the

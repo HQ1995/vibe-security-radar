@@ -41,6 +41,7 @@ def state(events: list[dict], at: str | None = None) -> dict[tuple[str, str], di
         slot = event.get("slot", DEFAULT_SLOT)
         cur = out.setdefault((event["class_id"], slot), {"class_id": event["class_id"], "slot": slot})
         if event["action"] == "CLAIM":
+            cur.setdefault("first_claimed_at", event["ts"])
             cur.update({
                 "state": "ACTIVE",
                 "owner": event["owner"],
@@ -257,7 +258,8 @@ def main(argv=None) -> int:
                 if not args.all and cur["state"] in ("DONE", "RELEASED"):
                     continue
                 print("\t".join([class_id, slot, cur["state"], cur.get("owner", ""),
-                                 cur.get("lease_until", ""), cur.get("scope", ""), cur.get("next_question", "")]))
+                                 cur.get("lease_until", ""), cur.get("first_claimed_at", ""),
+                                 cur.get("scope", ""), cur.get("next_question", "")]))
         else:
             action = "DONE" if args.cmd == "done" else "RELEASED"
             event = close(args.claims_file, args.class_id, _owner(args), action, slot=args.slot, result=args.result)

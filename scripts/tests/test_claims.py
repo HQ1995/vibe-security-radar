@@ -39,6 +39,16 @@ def test_pick_is_disjoint_and_slots_stay_independent(tmp_path):
         claims.claim(log, "a", "w4")
 
 
+def test_first_claim_time_survives_refresh_and_takeover(tmp_path):
+    ledger, log = _case(tmp_path)
+    claims.claim(log, "a", "w1")
+    first = claims.state(claims.load(log))[("a", "main")]["first_claimed_at"]
+    claims.claim(log, "a", "w1", hours=-1)  # refresh, lease already over
+    claims.claim(log, "a", "w2")            # takeover of the expired claim
+    row = claims.state(claims.load(log))[("a", "main")]
+    assert (row["owner"], row["first_claimed_at"]) == ("w2", first)
+
+
 def test_active_claim_cannot_be_stolen_but_expired_lease_can(tmp_path):
     ledger, log = _case(tmp_path)
     claims.claim(log, "a", "w1", hours=1)
