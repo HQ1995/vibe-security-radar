@@ -1,5 +1,6 @@
 """Claim ledger keeps parallel agents disjoint per slot and honours leases."""
 import json
+import subprocess
 import sys
 from pathlib import Path
 
@@ -57,3 +58,30 @@ def test_close_requires_owner_and_records_history(tmp_path):
     claims.close(log, "a", "w1", "DONE", result="AI_ROOT_CAUSE")
     assert claims.state(claims.load(log))[("a", "main")]["state"] == "DONE"
     assert claims.claim(log, "a", "w2")["prev"] == "DONE:w1"
+
+
+CHILD = """
+import json, sys
+sys.path.insert(0, sys.argv[1])
+import claims
+events = claims.pick(sys.argv[2], sys.argv[3], sys.argv[4], limit=2, scope="race")
+print(json.dumps([event["class_id"] for event in events]))
+"""
+
+
+def test_concurrent_pick_is_atomic_across_processes(tmp_path):
+    """Two picks racing for the same slot must not hand out the same case."""
+    ledger, log = _case(tmp_path)
+    scripts = str(Path(__file__).resolve().parents[1])
+    procs = [
+        subprocess.Popen([sys.executable, "-c", CHILD, scripts, str(log), str(ledger), owner],
+                         stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        for owner in ("w1", "w2")
+    ]
+    groups = []
+    for proc in procs:
+        out, err = proc.communicate()
+        assert proc.returncode == 0, err
+        groups.append(json.loads(out))
+    taken = [case for group in groups for case in group]
+    assert sorted(taken) == ["a", "b", "d"]  # every open case claimed exactly once

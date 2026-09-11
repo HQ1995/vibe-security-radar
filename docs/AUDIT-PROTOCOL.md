@@ -8,6 +8,27 @@ this protocol, the linked schema and primary sources. Save independent findings
 before reading prior verdicts. Prefer local Git and GitHub patch/raw/PR pages;
 avoid GitHub API requests while rate-limited.
 
+## Claiming cases
+
+Claim before working a case; one writer per `(class_id, slot)`.
+
+```bash
+python3 scripts/claims.py pick  --owner <agent> --scope <batch> --limit N  # next N unclaimed cases
+python3 scripts/claims.py claim --class-id <id> --owner <agent>            # one known case
+python3 scripts/claims.py list  --scope <batch>                            # who holds what
+python3 scripts/claims.py done  --class-id <id> --owner <agent> --result <verdict>
+python3 scripts/claims.py release --class-id <id> --owner <agent>          # hand back
+```
+
+`pick` claims the next unclaimed cases in ledger order and is atomic, so concurrent
+pickers never receive the same case. Records go to the append-only
+`artifacts/claims/claims.jsonl`: coordination data, never exported to the ledger or the
+site, committed by the leader with the batch. `--scope` is the batch label and `--slot`
+(default `main`) the auditor, so one batch in several slots means several independent
+audits. Leases last 24h unless `--hours` overrides; an expired claim reads `STALE` and a
+takeover records `supersedes`. Keep each case's report in the batch's research
+directory and `done` it with the verdict.
+
 1. **Cause:** Explain trigger → vulnerable code → security impact, including
    preconditions and counterevidence. Separate distinct mechanisms.
 2. **BIC:** Find the smallest original introducing change and compare its immediate

@@ -11,13 +11,9 @@ Keep committed content in English.
   through each case's causal chain and follow-up; record the next decisive question.
 - Claim a case before working it: `python3 scripts/claims.py pick --owner <agent>
   --scope <batch> --limit N` (or `claim --class-id X`), then `done` once the result
-  is recorded or `release` to hand it back. A claim is keyed by `class_id` +
-  `--slot` (default `main`); `--scope` is the agent-independent batch label, so two
-  agents can independently audit the same batch with the same scope in different
-  slots without overwriting each other. Claims live in the append-only
-  `artifacts/claims/claims.jsonl` (coordination data any agent may append; never
-  exported to the ledger or the site). Expired leases show as `STALE` and may be
-  taken over; `list` shows who holds what, and `done` history preserves ownership.
+  is recorded or `release` to hand it back. Claims live in the append-only
+  `artifacts/claims/claims.jsonl`: coordination data, never exported to the ledger
+  or the site. Scope, slot and lease semantics: [Audit protocol](docs/AUDIT-PROTOCOL.md).
 - Reuse neutral primary evidence for blind review; hide prior judgments.
 - Before fanning out a new runner/profile, run one harmless multi-turn check.
 - In the existing run index, separate execution status, research acceptance,
