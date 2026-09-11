@@ -76,6 +76,16 @@ def open_rows(ledger: Path, statuses=OPEN_STATUSES):
                 yield row
 
 
+def class_id_file(path: Path) -> set[str]:
+    """Read a batch identifier: plain class_id lines or a jsonl with a class_id field."""
+    ids = set()
+    for line in Path(path).read_text(encoding="utf-8").splitlines():
+        line = line.strip()
+        if line:
+            ids.add(json.loads(line)["class_id"] if line.startswith("{") else line)
+    return ids
+
+
 def _transact(path: Path, build):
     """Read-modify-append under an exclusive lock; nothing is written if build raises."""
     path = Path(path)
@@ -130,9 +140,12 @@ def claim(path: Path, class_id: str, owner: str, *, slot: str = DEFAULT_SLOT, sc
 
 def pick(path: Path, ledger: Path, owner: str, *, limit: int = 1, slot: str = DEFAULT_SLOT,
          scope: str = "", statuses=OPEN_STATUSES, hours: float = DEFAULT_LEASE_HOURS,
-         next_question: str = "", run_id: str | None = None) -> list[dict]:
+         next_question: str = "", run_id: str | None = None,
+         class_ids: set[str] | None = None) -> list[dict]:
     """Claim the first <limit> cases in ledger order that nobody holds in <slot>."""
     rows = list(open_rows(ledger, statuses))
+    if class_ids is not None:
+        rows = [row for row in rows if row["class_id"] in class_ids]
 
     def build(current):
         taken = {key for key, cur in current.items() if cur["state"] == "ACTIVE"}
@@ -194,6 +207,8 @@ def main(argv=None) -> int:
     auto.add_argument("--limit", type=int, default=1)
     auto.add_argument("--slot", default=DEFAULT_SLOT)
     auto.add_argument("--status", action="append", default=None)
+    auto.add_argument("--class-id-file", type=Path,
+                      help="batch identifier: class_id lines or a round's assessments jsonl")
     auto.add_argument("--next-question", default="")
     auto.add_argument("--run-id")
     auto.add_argument("--hours", type=float, default=DEFAULT_LEASE_HOURS)
@@ -223,7 +238,8 @@ def main(argv=None) -> int:
             statuses = tuple(args.status) if args.status else OPEN_STATUSES
             events = pick(args.claims_file, args.ledger, _owner(args), limit=args.limit, slot=args.slot,
                           scope=args.scope, statuses=statuses, hours=args.hours,
-                          next_question=args.next_question, run_id=args.run_id)
+                          next_question=args.next_question, run_id=args.run_id,
+                          class_ids=class_id_file(args.class_id_file) if args.class_id_file else None)
             for event in events:
                 print(f"{event['class_id']} slot {event['slot']} claimed by {event['owner']} until {event['lease_until']}")
             if not events:

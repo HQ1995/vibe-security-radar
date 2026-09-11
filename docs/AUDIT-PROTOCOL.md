@@ -14,6 +14,7 @@ Claim before working a case; one writer per `(class_id, slot)`.
 
 ```bash
 python3 scripts/claims.py pick  --owner <agent> --scope <batch> --limit N  # next N unclaimed cases
+python3 scripts/claims.py pick  --owner <agent> --scope <batch> --class-id-file <ids>  # only that batch
 python3 scripts/claims.py claim --class-id <id> --owner <agent>            # one known case
 python3 scripts/claims.py list  --scope <batch>                            # who holds what
 python3 scripts/claims.py done  --class-id <id> --owner <agent> --result <verdict>
@@ -29,11 +30,16 @@ audits. Leases last 24h unless `--hours` overrides; an expired claim reads `STAL
 takeover records `supersedes`. Keep each case's report in the batch's research
 directory and `done` it with the verdict.
 
+A batch is a file: `class_id` lines, or a round's `assessments-*.jsonl`, whose rows carry
+`class_id`. That path plus `--scope` is the identifier to hand a worker; membership lives in the
+file, so every picker reads the same batch.
+
 ## Handing a case to a worker
 
 This file is the method, not the assignment. A spawned worker also needs, in its own prompt:
 
 - scope, case ids (or `pick --scope <batch> --limit N`) and its `--slot`;
+ its scope, its batch file (class_id lines or a round's `assessments-*.jsonl`), case ids and `--slot`;
 - the neutral evidence: advisory URL, local checkout, primary patch/raw/PR pages;
 - its output directory (`research/<batch>/<case>/`) for the report and snapshots;
 - boundaries: no ledger writes, no `web/`, no other agent's files; report an evidence gap

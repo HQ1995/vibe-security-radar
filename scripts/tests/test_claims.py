@@ -85,3 +85,17 @@ def test_concurrent_pick_is_atomic_across_processes(tmp_path):
         groups.append(json.loads(out))
     taken = [case for group in groups for case in group]
     assert sorted(taken) == ["a", "b", "d"]  # every open case claimed exactly once
+
+
+def test_pick_from_a_batch_file_stays_inside_the_batch(tmp_path):
+    ledger, log = _case(tmp_path)
+    jsonl = tmp_path / "round18.jsonl"
+    jsonl.write_text('{"class_id": "d", "status": "UNANALYZED"}\n{"class_id": "c"}\n', encoding="utf-8")
+    picked = claims.pick(log, ledger, "w1", limit=5, scope="round18",
+                         class_ids=claims.class_id_file(jsonl))
+    assert [event["class_id"] for event in picked] == ["d"]  # c is closed, a/b are outside the batch
+    plain = tmp_path / "ids.txt"
+    plain.write_text("a\nb\n", encoding="utf-8")
+    rest = claims.pick(log, ledger, "w2", limit=5, scope="round18",
+                       class_ids=claims.class_id_file(plain))
+    assert [event["class_id"] for event in rest] == ["a", "b"]
