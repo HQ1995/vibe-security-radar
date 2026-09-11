@@ -42,6 +42,28 @@ Keep committed content in English.
   tier is metered.
   Public data must pass `scripts/site_preflight.py`; never use allowlisting as a filter.
 
+## Publish flow (research -> site)
+
+1. Land the research first: `scripts/ledger_store.py` `assessment-add` ->
+   `finalize` -> `export`, and check the export sha matches the Neon snapshot
+   digest.
+2. Regenerate site data, `cd web`: `npm run research:data:sync` (export +
+   `export-history` + `audit_envelope.py` + `publish_tp_ledger.py
+   --prefer-export`) writes `web/src/generated/research-data.json`. It reads
+   Neon, so run it only when a ledger change needs publishing.
+3. Gate locally: `npm run build` (prebuild runs `site_preflight.py`,
+   `--verify-fix-objects-live` and the advisory links; postbuild runs vitest)
+   plus `npm run research:data:check`. Offline payload check: run
+   `publish_tp_ledger.py --from-export` in a scratch root and diff it against
+   the committed payload - only `snapshot.generated_at`, the ledger counters
+   and the `snapshot.ledger` provenance label may differ.
+4. Commit the payload with its overlays and push `main`; the Cloudflare Pages
+   Git integration deploys `web/`. Dispatch `Deploy Pages (manual, from Neon)`
+   only to republish straight from Neon.
+5. Verify live: `curl -sL -o /dev/null -w '%{http_code}'`
+   `https://vibesecradar.com/cves/<UPPERCASE-ID>/` - the trailing slash is
+   required, a bare or lowercase path 404s.
+
 ## host-1 NUMA
 
 - Verify topology with `numactl -H` before heavy work. Node 0 is reserved for
