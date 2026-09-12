@@ -31,6 +31,34 @@ define the research evidence standard.
   the key retain legacy lookup. Canonical publication fields override synthesis
   fallbacks, including explicit nulls/empty sets.
 
+## Audit records
+
+One JSON record per case, kept in the batch's research directory; the accepted
+synthesis lands in the ledger row's `causal_research` in the same shape. Required
+fields beyond the verdict and its prose: `advisory_disposition`, `introducer_sha`,
+`landing_commit`, `bic_granularity`, `decomposed_shas`, `decomposition_probe`,
+`ai_on_bic` (JSON boolean, or absent when not established), `ai_marker`,
+`fix_ai_marker`, `remaining_gap`, `flip_condition` (what evidence would change the
+verdict) and `ai_admissibility` whenever AI evidence sits outside the BIC object.
+
+    python3 scripts/audit_record_gates.py --strict research/<batch>/<case>.json
+    python3 scripts/compare_slots.py --a research/<batch>/review --b research/<batch>/verify
+
+Verdict rule, by the change that carries the defect:
+
+- `AI_ROOT_CAUSE` — the vulnerable behavior first enters the tree in an AI-attributed change.
+- `AI_CODE_FLAWED` — the origin is human (or non-AI) and the AI-attributed change is itself
+  the flawed code: AI-written logic, or an incomplete remediation or hardening that leaves
+  the defect or creates the exposure the advisory describes.
+- `AI_CAUSAL_CONTRIBUTOR` — an AI-attributed change adds the causal exposure path of a
+  human-origin defect, without being that origin or its repair.
+- `NOT_AI` — no AI attribution on the object that carries the defect.
+- `FALSE_POSITIVE` — the advisory is rejected, withdrawn or a duplicate.
+- `EVIDENCE_GAP` / `BLOCKED` — open: the decisive fact, or the upstream answer, is missing.
+
+Introduction, new exposure and incomplete remediation are the three accepted reasons a case
+may be a TP; none of them requires AI to have written the original defect.
+
 ## Published cases
 
 - Only `AI_ROOT_CAUSE` / `AI_CODE_FLAWED` rows are TPs. Public `case_id` uses

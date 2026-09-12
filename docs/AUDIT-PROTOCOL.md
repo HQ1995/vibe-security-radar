@@ -10,96 +10,104 @@ avoid GitHub API requests while rate-limited.
 
 ## Claiming cases
 
-Claim before working a case; one writer per `(class_id, slot)`.
-
-```bash
-python3 scripts/claims.py pick  --owner <agent> --scope <batch> --limit N  # next N unclaimed cases
-python3 scripts/claims.py pick  --owner <agent> --scope <batch> --class-id-file <ids>  # only that batch
-python3 scripts/claims.py claim --class-id <id> --owner <agent>            # one known case
-python3 scripts/claims.py list  --scope <batch>                            # who holds what
-python3 scripts/claims.py done  --class-id <id> --owner <agent> --result <verdict>
-python3 scripts/claims.py release --class-id <id> --owner <agent>          # hand back
-```
-
-`pick` claims the next unclaimed cases in ledger order and is atomic, so concurrent
-pickers never receive the same case. Records go to the append-only
-`artifacts/claims/claims.jsonl`: coordination data, never exported to the ledger or the
-site, committed by the leader with the batch. `--scope` is the batch label and `--slot`
-(default `main`) the auditor, so one batch in several slots means several independent
-audits. Leases last 24h unless `--hours` overrides; an expired claim reads `STALE` and a
-takeover records `supersedes`. `first_claimed_at` survives both and is how long a case
-has been in flight. Keep each case's report in the batch's research directory and
-`done` it with the verdict.
+Claim before working a case; one writer per `(class_id, slot)`. `pick` claims the next
+unclaimed cases in ledger order and is atomic, so concurrent pickers never receive the
+same case. Command list and record location: [AGENTS.md](../AGENTS.md). `--scope` is the
+batch label and `--slot` (default `main`) the auditor, so one batch in several slots
+means several independent audits. Leases last 24h unless `--hours` overrides; an expired
+claim reads `STALE` and a takeover records `supersedes`. `first_claimed_at` survives both
+and is how long a case has been in flight.
 
 A batch is a file: `class_id` lines, or a round's `assessments-*.jsonl`, whose rows carry
-`class_id`. That path plus `--scope` is the identifier to hand a worker; membership lives in the
-file, so every picker reads the same batch.
+`class_id`. That path plus `--scope` is the identifier to hand a worker; membership lives
+in the file, so every picker reads the same batch.
 
-## Handing a case to a worker
+## Worker brief
 
-This file is the method, not the assignment. A spawned worker also needs, in its own prompt:
+Both slots of a re-audit get the same brief; only `<slot>` and `<outdir>` differ. It names:
 
-- its scope, batch file (class_id lines or a round's `assessments-*.jsonl`), case ids or
-  `pick --scope <batch> --limit N`, and its `--slot`;
-- the neutral evidence: advisory URL, local checkout, primary patch/raw/PR pages;
-- its output directory (`research/<batch>/<case>/`) for the report and snapshots;
-- boundaries: no ledger writes, no `web/`, no other agent's files; report an evidence gap
-  instead of guessing;
-- close-out: `claims.py done --class-id <id> --owner <agent> --slot <slot> --result <verdict>`.
+- claim: `scripts/claims.py pick --owner <agent> --scope <batch> --slot <slot> --limit N`
+  (or `claim --class-id X`), then `done --class-id <id> --owner <agent> --slot <slot>
+  --result <verdict>` on close-out;
+- the case ids and `<outdir>/<class_id>/` for the report and primary-source snapshots;
+- neutral evidence only: advisory URL, local checkout, primary patch/raw/PR pages, no prior
+  verdict, dossier or the other slot's output;
+- boundaries: no ledger writes, no `web/`, no other agent's files, and `EVIDENCE_GAP` rather
+  than a guess.
 
-### Independent re-audit
+Blind re-audit: the same brief in a different `--slot` and output directory. Do not read the
+first pass's report, dossier or ledger verdict until your own verdict is written down. Then
+state agreement or disagreement, the decisive evidence, and what evidence would flip your
+verdict. A copied verdict is not a result. Compare the slots with
+`scripts/compare_slots.py --a <slotA> --b <slotB>`.
 
-Same assignment in a different `--slot` and output directory, plus the blind rule: do not read
-the first pass's report, dossier or ledger verdict until your own verdict is written down. Then
-compare and state agreement or disagreement, the decisive evidence, and what evidence would flip
-your verdict. Re-derive the classification or report the gap; a copied verdict is not a result.
+0. **Advisory status:** read the advisory record itself (CVE JSON in cveawg, OSV, GHSA)
+   before the mechanism. A `REJECTED`, withdrawn or duplicate advisory is
+   `FALSE_POSITIVE` and gets no mechanism work. Every record carries
+   `advisory_disposition`: `ACTIVE`, `WITHDRAWN`, `REJECTED`, `DUPLICATE`, `UNKNOWN`.
 
 1. **Cause:** Explain trigger → vulnerable code → security impact, including
    preconditions and counterevidence. Separate distinct mechanisms.
-2. **BIC:** Find the smallest original introducing change and compare its immediate
-   parent; trace moves and separate introduction from later exposure. For BIC and fix,
-   decompose merge/squash history into logically atomic causal changes across PR members
-   and hunks/files; distinguish landing commits from those changes. If history is
-   unavailable, isolate the causal diff and state the limit on commit-level minimality.
-3. **Fix:** Identify the minimum repairing hunks/commit set and explain why it closes
-   the defect. Follow partial repairs through the residual defect to closure.
-   Verify affected/fixed versions separately; substantiate an unpatched state and
-   propose a repair when no fix exists.
 
-   Record the fix side explicitly and consistently:
-   - Set fix_ai_marker (state PRESENT/ABSENT/UNKNOWN with per-sha evidence) on the
-     fix commit objects. Fix-side AI is informational: it never substitutes for
-     BIC-side attribution, and a fix-side marker alone does not change the verdict.
-   - If the remediation is partial or a claimed patched release does not contain
-     the fix, set remaining_gap and name the still-open surface plus closing commit
-     (or none). When evidence/reasoning already uses wording like "remains unbounded",
-     "still ships", "not closed", "residual", or "incomplete remediation", remaining_gap
-     must not be empty; keep the record consistent with its own evidence.
-4. **AI:** Tie AI evidence to causal changes throughout the history, within its
-   disclosed scope. A TP requires demonstrated AI contribution to the defect:
-   introduction, new exposure or incomplete remediation can qualify after a human
-   BIC. Successful repair alone does not qualify; unknown does not mean `NOT_AI`.
-   Keep the verdict consistent with this account.
+2. **BIC:** Find the smallest logically atomic introducing change, which is not always the
+   commit it landed in. `landing_commit` is the merge/squash object that carried it;
+   `introducer_sha` is the atomic change. Compare its immediate parent; trace moves and
+   separate introduction from later exposure. Declare `bic_granularity`:
+   - `ATOMIC`: the commit object is the change, so it is not its own `landing_commit`;
+   - `SQUASH_DECOMPOSED`: a squash whose members are reconstructable; list their 40-hex
+     shas in `decomposed_shas`;
+   - `AGGREGATE_MEMBERS_UNREACHABLE`: members still unavailable after one bounded PR-ref
+     fetch (`git fetch origin pull/<N>/head`); record the command and what it returned in
+     `decomposition_probe`;
+   - `NON_GIT_BOUNDARY`: the change predates VCS (SVN/CVS), so `introducer_sha` is null.
 
-   Record fix_ai_marker on the fix itself, keeping BIC-side and fix-side attribution
-   distinct. Placeholder identities (*@localhost, test@test.com, generic Test <...>) are
-   not named-human proof and are not commit-object AI attribution; leave EVIDENCE_GAP
-   unless a positive marker or recovered named identity closes the case.
+   An aggregate commit's trailers, co-authors and badges belong to the aggregate, not to a
+   hunk: they are never BIC attribution. If history is unavailable, isolate the causal diff
+   and state the limit on commit-level minimality.
 
-   On the BIC side write ai_on_bic as a boolean; omit the field when the marker is
-   not established, so an absent read and a negative read stay distinguishable.
-   Never write "no", "none" or "unknown" as its value: a non-empty string reads as
-   true downstream.
-5. **Evidence:** Retain a per-case report and primary-source snapshots with exact
-   SHAs, paths/hunks, URLs and capture dates. Explain comparisons, counterevidence,
-   uncertainties and their effect on conclusions. Complete available decisive
-   checks; preserve findings and explain revisions.
+3. **Fix:** Identify the minimum repairing hunks/commit set and explain why it closes the
+   defect. Follow partial repairs through the residual defect to closure. Verify
+   affected/fixed versions separately; substantiate an unpatched state and propose a repair
+   when no fix exists.
 
-   The per-case report and remaining_gap must agree with the evidence: if the evidence
-   shows a residual open surface, say so in the report and in remaining_gap; do not carry
-   a closed verdict while the record's own evidence names an unclosed path.
+   - Set `fix_ai_marker` (state PRESENT/ABSENT/UNKNOWN with per-sha evidence) on the fix
+     commit objects. Fix-side AI is informational: it never substitutes for BIC-side
+     attribution, and a fix-side marker alone does not change the verdict.
+   - If the remediation is partial or a claimed patched release does not contain the fix,
+     set `remaining_gap` and name the still-open surface plus the closing commit (or none).
+     When the evidence already says "remains unbounded", "still ships", "not closed",
+     "residual" or "incomplete remediation", `remaining_gap` must not be empty.
 
-Review causal conclusions before ledger updates or publication; saved reports and
-passing format checks do not establish correctness. Keep a batch index of outcomes
-and remaining gaps. Follow the [data schema](DATA-SCHEMA.md) and
-[write boundaries](../AGENTS.md).
+4. **AI:** Tie AI evidence to causal changes throughout the history, within its disclosed
+   scope, and record how the evidence was admitted (`ai_admissibility`):
+   - a marker on the BIC object itself (trailer, co-author, bot author) is decisive;
+   - a first-party disclosure bound to that causal change (PR body, release note) is
+     admissible once the record says what binds it;
+   - repository-level AI activity, changelog habits, labels and org policy are never
+     admissible.
+
+   A TP needs demonstrated AI contribution to the defect: introduction, new exposure or
+   incomplete remediation can qualify after a human BIC; a successful repair alone does not.
+   Label definitions: [DATA-SCHEMA](DATA-SCHEMA.md). When both slots agree on the BIC and
+   differ only on the label, ask which change carries the defect, not which one is nearest.
+
+   On the BIC side write `ai_on_bic` as a boolean, or omit it when the marker is not
+   established, so an absent read and a negative read stay distinguishable. Never write
+   "no", "none" or "unknown" as its value: a non-empty string reads as true downstream.
+   `NOT_AI` needs a recovered named human/organization identity on the BIC object, no marker
+   on that object, and a spot check of the repo's AI-disclosure convention at that date.
+   Reserve `EVIDENCE_GAP` for missing history, a placeholder identity, or an unresolvable
+   object. Placeholder identities (*@localhost, test@test.com, generic Test <...>) are not
+   named-human proof and not commit-object AI attribution.
+
+5. **Evidence:** Retain a per-case report and primary-source snapshots with exact SHAs,
+   paths/hunks, URLs and capture dates. Explain comparisons, counterevidence, uncertainties
+   and their effect on conclusions. State `flip_condition`: what evidence would change the
+   verdict. Report, evidence and `remaining_gap` must agree; never carry a closed verdict
+   while the record's own evidence names an unclosed path.
+
+Check a record before landing it:
+`python3 scripts/audit_record_gates.py --strict research/<batch>/<case>.json`. Review causal
+conclusions before ledger updates or publication; saved reports and passing format checks do
+not establish correctness. Keep a batch index of outcomes and remaining gaps. Follow the
+[data schema](DATA-SCHEMA.md) and [write boundaries](../AGENTS.md).
