@@ -51,14 +51,18 @@ verdict. A copied verdict is not a result. Compare the slots with
 
 2. **BIC:** Find the smallest logically atomic introducing change, which is not always the
    commit it landed in. `landing_commit` is the merge/squash object that carried it;
-   `introducer_sha` is the atomic change. Compare its immediate parent; trace moves and
-   separate introduction from later exposure. Declare `bic_granularity`:
+   `introducer_sha` is the atomic change, reachable from the default branch or annotated
+   when it is not. Compare its immediate parent; trace moves and separate introduction from
+   later exposure. Declare `bic_granularity`:
    - `ATOMIC`: the commit object is the change, so it is not its own `landing_commit`;
    - `SQUASH_DECOMPOSED`: a squash whose members are reconstructable; list their 40-hex
      shas in `decomposed_shas`;
    - `AGGREGATE_MEMBERS_UNREACHABLE`: members still unavailable after one bounded PR-ref
      fetch (`git fetch origin pull/<N>/head`); record the command and what it returned in
-     `decomposition_probe`;
+     `decomposition_probe`. A squash's PR number and title are not membership: find members
+     by content identity (`--find-object` or pickaxe on the introduced blob), and expect the
+     number to name another epoch, and the fetch an unrelated branch, when the squash
+     predates a history import;
    - `NON_GIT_BOUNDARY`: the change predates VCS (SVN/CVS), so `introducer_sha` is null.
 
    An aggregate commit's trailers, co-authors and badges belong to the aggregate, not to a
