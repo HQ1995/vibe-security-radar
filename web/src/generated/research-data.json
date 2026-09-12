@@ -2,24 +2,24 @@
  "snapshot": {
   "status": "PUBLISHED",
   "case_set": "TP_FUNNEL",
-  "case_count": 284,
-  "ai_root_cause": 226,
-  "ai_code_flawed": 58,
+  "case_count": 289,
+  "ai_root_cause": 227,
+  "ai_code_flawed": 62,
   "ledger_total": 29593,
-  "ledger_reviewed": 2973,
-  "ledger_in_progress": 5799,
-  "ledger_not_started": 20821,
-  "confirmed_cases": 221,
+  "ledger_reviewed": 3271,
+  "ledger_in_progress": 5694,
+  "ledger_not_started": 20628,
+  "confirmed_cases": 226,
   "qualified_cases": 63,
   "provisional_cases": 0,
-  "exact_publication_dates": 284,
+  "exact_publication_dates": 289,
   "unknown_publication_dates": 0,
   "date_policy": "GHSA_OR_CVE_PUBLISHED_ONLY",
   "coverage_from": "2025-05-01",
   "coverage_to": "2026-08-26",
   "source_cutoff": "2026-08-26",
-  "generated_at": "2026-09-11T22:07:40Z",
-  "ledger": "artifacts/funnel-account-20260817.jsonl"
+  "generated_at": "2026-09-12T19:26:28Z",
+  "ledger": "neon:ledger_rows"
  },
  "cause_categories": {
   "auth_access": {
@@ -988,6 +988,110 @@
    "ir_chain": null,
    "unpatched": null,
    "advisory_url": "https://github.com/advisories/ghsa-6g6r-q6gw-w8fg",
+   "publication_issues": [],
+   "publication_status": "confirmed"
+  },
+  {
+   "case_id": "GHSA-F833-7JW8-XWRV",
+   "aliases": [
+    "CVE-2026-62384"
+   ],
+   "repository": "nltk/nltk",
+   "repository_metadata": {
+    "full_name": "nltk/nltk",
+    "language": "Python",
+    "archived": false
+   },
+   "contribution_class": "AI_CODE_FLAWED",
+   "candidate_set": [
+    "7d1389d0789c1eca56bd0ed444089e0a3972e3ed"
+   ],
+   "carrier_set": [],
+   "minimum_fix_set": [
+    "736d3212a47de2005b85b785dde6720556d3925d"
+   ],
+   "gates": {
+    "ai_hunk": "PASS",
+    "but_for": "PASS",
+    "fix_reversal": "PASS",
+    "identity": "PASS",
+    "release": "PASS",
+    "topology": "PASS",
+    "uniqueness": "PASS"
+   },
+   "vulnerable_release": {
+    "kind": "advisory_range",
+    "version": ">= 3.10.0, < 3.10.2",
+    "tag": null
+   },
+   "fixed_release": {
+    "kind": "git_tag",
+    "version": "v3.10.2",
+    "tag": "v3.10.2"
+   },
+   "published_at": "2026-08-22",
+   "severity": null,
+   "cwes": [],
+   "description": "FrameNet path handling was reworked in one commit that unifies the per-method checks into a shared helper and routes the three XML reads through the corpus reader's own path resolution. The helper rejects separators, parent references and drive prefixes in the interpolated name, and the commit claims the change gains symlink and containment defenses, yet resolve_path remains a lexical join and the opens pass no required root, so the containment claim does not hold for a symlink. The repair adds a validation step that resolves both the constructed path and the corpus root and checks containment before any read, so a symlink whose name is ordinary is rejected with an error instead of being followed.",
+   "references": [],
+   "mechanism": "The name guards reject separators, parent references and Windows drive prefixes only in the string the caller supplies, and they never resolve the path that is finally opened. The reader builds the XML path through a lexical corpus-relative join, which compares normalized text prefixes and therefore accepts a symlink, and the file is then opened without a required root, so the corpus boundary is not enforced. A symlink planted inside the corpus's own frame, lu or fulltext subdirectory has an ordinary name and passes every check, so frame_by_name(), _lu_file() or doc() follows it and returns the parsed text of an XML file outside the corpus root to the caller.",
+   "cause_category": "injection",
+   "ai_provenance": {
+    "family": "claude",
+    "coverage": "complete",
+    "candidate_count": 1,
+    "named_candidate_count": 1
+   },
+   "fix_authorship": {
+    "classification": "no_ai_marker",
+    "families": [],
+    "fixes": [
+     {
+      "sha": "736d3212a47de2005b85b785dde6720556d3925d",
+      "classification": "no_ai_marker",
+      "author": {
+       "name": "Litesh Ghute",
+       "email": "61110758+LiteshGhute@users.noreply.github.com"
+      },
+      "authored_at": "2026-08-04T18:07:33+05:30"
+     }
+    ]
+   },
+   "code_evidence": {
+    "candidate_url": "https://github.com/nltk/nltk/commit/7d1389d0789c1eca56bd0ed444089e0a3972e3ed",
+    "fix_url": "https://github.com/nltk/nltk/commit/736d3212a47de2005b85b785dde6720556d3925d",
+    "advisory_url": "https://github.com/nltk/nltk/security/advisories/GHSA-f833-7jw8-xwrv",
+    "summary": "Hardening of the FrameNet corpus reader tightened the checks on the names that are interpolated into XML file paths, but a corpus subdirectory can hold a symlink whose name passes those checks and points outside the corpus root, so the reader returns text from a file outside the corpus.",
+    "steps": [
+     {
+      "title": "AI change",
+      "detail": "The rework unified the path guards into one helper and sent the three XML reads through the corpus reader's own path resolution, which compares normalized path text and never resolves a symlink."
+     },
+     {
+      "title": "Fix",
+      "detail": "A new validation step resolves the constructed path and the corpus root and checks containment before the file is opened, so a symlink that escapes the corpus root raises an error."
+     }
+    ],
+    "display_hunks": [
+     {
+      "role": "candidate",
+      "file": "nltk/corpus/reader/framenet.py",
+      "code": "@@ -756,6 +757,28 @@ class FramenetError(Exception):\n     \"\"\"An exception class for framenet-related errors.\"\"\"\n \n \n+def _reject_unsafe_path_component(value, kind):\n+    \"\"\"Reject a corpus-/caller-supplied name that could escape the corpus root.\n+\n+    ``doc()``, ``frame_by_name()`` and ``_lu_file()`` interpolate a name into an\n+    XML file path (CWE-22).  Besides POSIX/Windows separators and ``..``, this\n+    also rejects a Windows drive- or UNC-qualified name such as ``C:evil`` or\n+    ``\\\\\\\\host\\\\share``: it contains no separator, yet ``os.path.join`` discards\n+    the corpus root when the name carries a drive on Windows.\n+    ``ntpath.splitdrive`` is used rather than ``os.path.splitdrive`` so the\n+    check applies on every platform (and stays testable off Windows).\n+    \"\"\"\n+    value = str(value)\n+    if (\n+        os.sep in value\n+        or \"/\" in value\n+        or \"\\\\\" in value\n+        or \"..\" in value\n+        or ntpath.splitdrive(value)[0]\n+    ):\n+        raise FramenetError(f\"Invalid {kind}: {value!r}\")\n+\n+\n class AttrDict(dict):\n     \"\"\"A class that wraps a dict and allows accessing the keys of the\n     dict as if they were attributes. Taken from here:",
+      "annotation": "The rework collects the path checks into this helper, which rejects separators, parent references and drive prefixes in the supplied name but never resolves the path that is later opened."
+     },
+     {
+      "role": "fix",
+      "file": "nltk/corpus/reader/framenet.py",
+      "code": "@@ -1482,16 +1508,22 @@ warnings(True) to display corpus consistency warnings when loading data\n         elif not self._frame_idx:\n             self._buildframeindex()\n \n-        # Security (CWE-22): the frame name is interpolated into the XML file\n-        # path.  Reject crafted names, then resolve through self.abspath() so the\n-        # file is read via the PathPointer / nltk.pathsec sandbox rather than the\n-        # builtin open() that a bare string path would use in XMLCorpusView.\n+        # Security (CWE-22 / CWE-59): the frame name is interpolated into the\n+        # XML file path.  Reject crafted names, then resolve through\n+        # self.abspath() and validate_path() with the corpus root as\n+        # required_root -- the same symlink-resolving containment guard\n+        # CorpusReader.open() and NKJPCorpusReader use -- so the file is read\n+        # via the PathPointer / nltk.pathsec sandbox rather than the builtin\n+        # open() that a bare string path would use in XMLCorpusView, and a\n+        # symlink planted inside the frame directory cannot escape the corpus\n+        # root even though its own name contains no separators or \"..\".\n         _reject_unsafe_path_component(fn_fname, \"frame name\")\n \n         # construct the path name for the xml file containing the Frame info\n         # Grab the xml for the frame\n         try:\n             locpath = self.abspath(os.path.join(self._frame_dir, fn_fname + \".xml\"))\n+            _validate_in_root(locpath, self.root, \"FramenetCorpusReader\")\n             with XMLCorpusView(locpath, \"frame\") as view:\n                 elt = view[0]\n         except OSError as e:",
+      "annotation": "The repair validates the resolved path against the corpus root in the same step that builds it, so a symlink is rejected before the XML view can open the file."
+     }
+    ],
+    "candidate_patch_sha256": "69ba76c1f111e7b1cddae8d05bf8b7f18e10d35bb3ae05e570c42c06ac039ac8",
+    "fix_patch_sha256": "f559b00535d3747641bac0240db21ba264dfa4b84c4f52c8587d920991be80c3"
+   },
+   "ir_chain": null,
+   "unpatched": null,
+   "advisory_url": "https://github.com/nltk/nltk/security/advisories/GHSA-f833-7jw8-xwrv",
    "publication_issues": [],
    "publication_status": "confirmed"
   },
@@ -10470,6 +10574,120 @@
    "publication_status": "confirmed"
   },
   {
+   "case_id": "GHSA-4CXX-M26F-JMX8",
+   "aliases": [
+    "CVE-2026-62218"
+   ],
+   "repository": "openclaw/openclaw",
+   "repository_metadata": {
+    "full_name": "openclaw/openclaw",
+    "language": "TypeScript",
+    "archived": false
+   },
+   "contribution_class": "AI_CODE_FLAWED",
+   "candidate_set": [
+    "b6489cd320c361d2c0c458acb7b38ecc36efb685"
+   ],
+   "carrier_set": [
+    "1c85eff9b1e65c220dd21375162c412c907204bd"
+   ],
+   "minimum_fix_set": [
+    "517ce3df75a97a08bf5e1b8de15604bd574d8fc9"
+   ],
+   "gates": {
+    "ai_hunk": "PASS",
+    "but_for": "PASS",
+    "fix_reversal": "PASS",
+    "identity": "PASS",
+    "release": "PASS",
+    "topology": "PASS",
+    "uniqueness": "PASS"
+   },
+   "vulnerable_release": {
+    "kind": "advisory_range",
+    "version": ">= 2026.1.20, < 2026.5.27",
+    "tag": null
+   },
+   "fixed_release": {
+    "kind": "git_tag",
+    "version": "v2026.5.27",
+    "tag": "v2026.5.27"
+   },
+   "published_at": "2026-07-17",
+   "severity": null,
+   "cwes": [],
+   "description": "The commit that introduced the rule added a helper that reads the roles a pending pairing asks for, and denies the approval with a role-management-requires-admin reason when any requested role is not operator. That denial was written into the block that already handled ownership, which opens only for a caller that presents a device identifier and is not an administrator, so the new rule inherited the older condition and sessions without a device identifier kept approving node-role pairings. A later commit by a maintainer changes the enclosing branch to test only whether the caller is an administrator, and moves the device-identifier test into the ownership comparison, so the role rule now reaches every non-admin caller while the ownership rule still applies only where it can be evaluated.",
+   "references": [],
+   "mechanism": "A pairing session that carries no caller device identifier, such as one opened with the shared secret or a trusted-proxy session, sends device.pair.approve for a pending request whose requested role is not operator. In the handler the role-management rule sits inside the caller-device condition, so a session without a device identifier never reaches it and the approval proceeds. The caller therefore hands a device a node role that only an administrator should be able to grant.",
+   "cause_category": "auth_access",
+   "ai_provenance": {
+    "family": "claude",
+    "coverage": "complete",
+    "candidate_count": 1,
+    "named_candidate_count": 1
+   },
+   "fix_authorship": {
+    "classification": "no_ai_marker",
+    "families": [],
+    "fixes": [
+     {
+      "sha": "517ce3df75a97a08bf5e1b8de15604bd574d8fc9",
+      "classification": "no_ai_marker",
+      "author": {
+       "name": "Peter Steinberger",
+       "email": "steipete@gmail.com"
+      },
+      "authored_at": "2026-05-27T13:16:23+01:00"
+     }
+    ]
+   },
+   "code_evidence": {
+    "candidate_url": "https://github.com/openclaw/openclaw/commit/b6489cd320c361d2c0c458acb7b38ecc36efb685",
+    "fix_url": "https://github.com/openclaw/openclaw/commit/517ce3df75a97a08bf5e1b8de15604bd574d8fc9",
+    "advisory_url": "https://github.com/openclaw/openclaw/security/advisories/GHSA-8v95-qqcm-qp9h",
+    "summary": "The AI change that made approving a node-role device pairing an admin action placed the new check inside a branch that only runs for callers with a known device identifier, so sessions without one skipped it. The repair runs the check for every non-admin caller.",
+    "steps": [
+     {
+      "title": "AI change",
+      "detail": "The role-management check for device approvals was added inside the existing caller-device block, so it only ran for non-admin callers that presented a device identifier."
+     },
+     {
+      "title": "Fix",
+      "detail": "The enclosing condition now asks only whether the caller is an administrator, and the ownership comparison itself tests for a caller device identifier."
+     }
+    ],
+    "display_hunks": [
+     {
+      "role": "candidate",
+      "file": "src/gateway/server-methods/devices.ts",
+      "code": "@@ -203,6 +218,17 @@ export const deviceHandlers: GatewayRequestHandlers = {\n         );\n         return;\n       }\n+      if (requestsNonOperatorDeviceRole(pending)) {\n+        context.logGateway.warn(\n+          `device pairing approval denied request=${requestId} reason=role-management-requires-admin`,\n+        );\n+        respond(\n+          false,\n+          undefined,\n+          errorShape(ErrorCodes.INVALID_REQUEST, DEVICE_PAIR_APPROVAL_DENIED_MESSAGE),\n+        );\n+        return;\n+      }\n     }\n     const approved = await approveDevicePairing(requestId, { callerScopes: authz.callerScopes });\n     if (!approved) {",
+      "annotation": "This block adds the role check for approve, and its placement inside the caller-device branch is what leaves sessions without a device identifier unchecked."
+     },
+     {
+      "role": "fix",
+      "file": "src/gateway/server-methods/devices.ts",
+      "code": "@@ -222,7 +222,7 @@ export const deviceHandlers: GatewayRequestHandlers = {\n     }\n     const { requestId } = params as { requestId: string };\n     const authz = resolveDeviceSessionAuthz(client);\n-    if (authz.callerDeviceId && !authz.isAdminCaller) {\n+    if (!authz.isAdminCaller) {\n       const pending = await getPendingDevicePairing(requestId);\n       if (!pending) {\n         respond(",
+      "annotation": "The repair drops the device-identifier test from the enclosing branch and moves it onto the ownership comparison, so every non-admin caller meets the role rule."
+     }
+    ],
+    "fix_files": [
+     "docs/cli/devices.md",
+     "docs/gateway/operator-scopes.md",
+     "src/gateway/device-authz.test-helpers.ts",
+     "src/gateway/server-methods/devices.test.ts",
+     "src/gateway/server-methods/devices.ts",
+     "src/gateway/server.device-pair-approve-authz.test.ts"
+    ],
+    "candidate_patch_sha256": "32ea0f0ff2237d91b4ff58952b6c3feb3466a447ce1497e72226d8af740588c2",
+    "fix_patch_sha256": "2505c2e2883ca41b624b6257e9ef1aea967ff08b9c1cc0247ebcc9861fa32ba0"
+   },
+   "ir_chain": null,
+   "unpatched": null,
+   "advisory_url": "https://github.com/openclaw/openclaw/security/advisories/GHSA-8v95-qqcm-qp9h",
+   "publication_issues": [],
+   "publication_status": "confirmed"
+  },
+  {
    "case_id": "GHSA-WJHR-76VG-2HVC",
    "aliases": [
     "CVE-2026-54447"
@@ -11053,6 +11271,117 @@
    "ir_chain": null,
    "unpatched": null,
    "advisory_url": "https://github.com/advisories/ghsa-5383-j2p9-qfg3",
+   "publication_issues": [],
+   "publication_status": "confirmed"
+  },
+  {
+   "case_id": "GHSA-F996-H3C6-GCWG",
+   "aliases": [
+    "CVE-2026-61442"
+   ],
+   "repository": "mervinpraison/praisonai",
+   "repository_metadata": {
+    "full_name": "mervinpraison/praisonai",
+    "language": "Python",
+    "archived": false
+   },
+   "contribution_class": "AI_CODE_FLAWED",
+   "candidate_set": [
+    "2adfe7e8323f6deec66925cf15a885b6238895e9"
+   ],
+   "carrier_set": [],
+   "minimum_fix_set": [
+    "393de394087e3badc79acfec490323bcc99638bd"
+   ],
+   "gates": {
+    "ai_hunk": "PASS",
+    "but_for": "PASS",
+    "fix_reversal": "PASS",
+    "identity": "PASS",
+    "release": "PASS",
+    "topology": "PASS",
+    "uniqueness": "PASS"
+   },
+   "vulnerable_release": {
+    "kind": "advisory_range",
+    "version": "< 0.1.9",
+    "tag": null
+   },
+   "fixed_release": {
+    "kind": "advisory_version",
+    "version": "0.1.9",
+    "tag": null
+   },
+   "published_at": "2026-07-11",
+   "severity": null,
+   "cwes": [],
+   "description": "The AI-assisted hardening commit gave project deletion a permission check that reads the project lead, and left the project edit route with its member-only dependency and a writable lead field. The bypass is the pair of requests: one member request rewrites the lead, and one member request deletes the project. Release v4.6.78 closes it by running the same permission check inside the edit route before the update is written, so a member can no longer rewrite the lead and the deletion check keeps seeing the original owner.",
+   "references": [],
+   "mechanism": "An authenticated workspace member sends a PATCH for a project with lead_id set to their own user id, followed by a DELETE for the same project. The edit route in projects.py accepted the new lead because it required only workspace membership, and the deletion route compared the stored project lead against the caller, so the rewritten ownership satisfied the check. Both requests succeed with member rights alone, which lets a member take over and remove a project the workspace owner created.",
+   "cause_category": "injection",
+   "ai_provenance": {
+    "family": "cursor",
+    "coverage": "complete",
+    "candidate_count": 1,
+    "named_candidate_count": 1
+   },
+   "fix_authorship": {
+    "classification": "no_ai_marker",
+    "families": [],
+    "fixes": [
+     {
+      "sha": "393de394087e3badc79acfec490323bcc99638bd",
+      "classification": "no_ai_marker",
+      "author": {
+       "name": "MervinPraison",
+       "email": "praison.ms@gmail.com"
+      },
+      "authored_at": "2026-06-25T09:21:27+01:00"
+     }
+    ]
+   },
+   "code_evidence": {
+    "candidate_url": "https://github.com/mervinpraison/praisonai/commit/2adfe7e8323f6deec66925cf15a885b6238895e9",
+    "fix_url": "https://github.com/mervinpraison/praisonai/commit/393de394087e3badc79acfec490323bcc99638bd",
+    "advisory_url": "https://github.com/MervinPraison/PraisonAI/security/advisories/GHSA-c78w-2q4r-68r7",
+    "summary": "The AI-assisted hardening change added an owner check to project deletion, but the project edit route still took a caller-supplied lead and only asked for workspace membership, so a member could make themselves the lead and then delete a project they do not own. The repair applies the same owner check to the edit route.",
+    "steps": [
+     {
+      "title": "AI change",
+      "detail": "The new permission check was attached to project deletion only, while the neighboring edit route kept its member-only dependency and still wrote a caller-supplied lead identifier."
+     },
+     {
+      "title": "Fix",
+      "detail": "The edit route now loads the project and runs the same permission check before saving, so a member's attempt to change the lead is refused."
+     }
+    ],
+    "display_hunks": [
+     {
+      "role": "candidate",
+      "file": "src/praisonai-platform/praisonai_platform/api/routes/projects.py",
+      "code": "@@ -93,6 +93,12 @@ async def delete_project(\n     session: AsyncSession = Depends(get_db),\n ):\n     svc = ProjectService(session)\n+    project = await svc.get(project_id, workspace_id=workspace_id)\n+    if project is None:\n+        raise HTTPException(status_code=404, detail=\"Project not found\")\n+    await require_delete_permission(\n+        workspace_id, user, session, resource_owner_id=project.lead_id\n+    )\n     deleted = await svc.delete(project_id, workspace_id=workspace_id)\n     if not deleted:\n         raise HTTPException(status_code=404, detail=\"Project not found\")",
+      "annotation": "This added check resolves the project and compares its stored lead against the caller, so deletion only passes for a workspace admin or for the user recorded as lead."
+     },
+     {
+      "role": "candidate",
+      "file": "src/praisonai-platform/praisonai_platform/api/deps.py",
+      "code": "@@ -95,6 +95,25 @@ async def require_workspace_owner(\n     )\n \n \n+async def require_delete_permission(\n+    workspace_id: str,\n+    user: AuthIdentity,\n+    session: AsyncSession,\n+    *,\n+    resource_owner_id: Optional[str] = None,\n+) -> None:\n+    \"\"\"Allow delete when user is admin/owner or owns the resource.\"\"\"\n+    member_svc = MemberService(session)\n+    if await member_svc.has_role(workspace_id, user.id, \"admin\"):\n+        return\n+    if resource_owner_id and resource_owner_id == user.id:\n+        return\n+    raise HTTPException(\n+        status_code=status.HTTP_403_FORBIDDEN,\n+        detail=\"Insufficient permission to delete this resource\",\n+    )\n+\n+\n def ensure_resource_in_workspace(\n     resource_workspace_id: str | None,\n     workspace_id: str,",
+      "annotation": "The helper allows the operation when the caller is a workspace admin or when the identifier passed as the resource owner equals the caller, so the decision rests on the value it is handed."
+     },
+     {
+      "role": "fix",
+      "file": "src/praisonai-platform/praisonai_platform/api/routes/projects.py",
+      "code": "@@ -71,6 +71,12 @@ async def update_project(\n     session: AsyncSession = Depends(get_db),\n ):\n     svc = ProjectService(session)\n+    project = await svc.get(project_id, workspace_id=workspace_id)\n+    if project is None:\n+        raise HTTPException(status_code=404, detail=\"Project not found\")\n+    await require_delete_permission(\n+        workspace_id, user, session, resource_owner_id=project.lead_id\n+    )\n     project = await svc.update(\n         project_id,\n         workspace_id=workspace_id,",
+      "annotation": "The repair runs the same permission check inside the edit route before the update, so the request that used to rewrite the lead now fails with a permission error."
+     }
+    ],
+    "fix_files": [
+     "src/praisonai-platform/praisonai_platform/api/routes/projects.py"
+    ]
+   },
+   "ir_chain": null,
+   "unpatched": null,
+   "advisory_url": "https://github.com/MervinPraison/PraisonAI/security/advisories/GHSA-c78w-2q4r-68r7",
    "publication_issues": [],
    "publication_status": "confirmed"
   },
@@ -19775,6 +20104,114 @@
    "publication_status": "confirmed"
   },
   {
+   "case_id": "GHSA-R5M9-WM49-959F",
+   "aliases": [
+    "CVE-2026-3198"
+   ],
+   "repository": "mlflow/mlflow",
+   "repository_metadata": {
+    "full_name": "mlflow/mlflow",
+    "language": "Python",
+    "archived": false
+   },
+   "contribution_class": "AI_CODE_FLAWED",
+   "candidate_set": [
+    "e151258a559567015b03058c55208fd02550ea9f"
+   ],
+   "carrier_set": [],
+   "minimum_fix_set": [
+    "9f7c4692338266cde8e643617f1e101b52c6e3b7"
+   ],
+   "gates": {
+    "ai_hunk": "PASS",
+    "but_for": "PASS",
+    "fix_reversal": "PASS",
+    "identity": "PASS",
+    "release": "PASS",
+    "topology": "PASS",
+    "uniqueness": "PASS"
+   },
+   "vulnerable_release": {
+    "kind": "git_tag_interval",
+    "version": ">= v3.9.0, < v3.16.0",
+    "tag": "v3.9.0"
+   },
+   "fixed_release": {
+    "kind": "git_tag",
+    "version": "v3.16.0",
+    "tag": "v3.16.0"
+   },
+   "published_at": "2026-06-02",
+   "severity": null,
+   "cwes": [],
+   "description": "The change that added permission checks for gateway CRUD operations wrote the gateway authorization registry from scratch: validators for reading, creating, updating and deleting secrets, endpoints and model definitions, plus the endpoint bindings and tags, including the endpoint bindings list route. The three list operations were left out of that registry, so they stayed reachable without a permission check. The repair registers after-request filters for those three operations, and each filter parses the response, keeps only the rows the caller is allowed to read and passes admins through untouched.",
+   "references": [],
+   "mechanism": "An authenticated user without admin rights sends a GET to the gateway secrets, endpoints or model definitions list route on a server started with the basic-auth app. Those three operation names have no entry in the before-request handler registry, so the lookup finds no validator and the request reaches the list handler, which reads every row from the tracking store and returns them unfiltered. The result is full enumeration of gateway secrets, endpoint configurations and model definitions by any account that can sign in, because these routes never consult per-resource permissions.",
+   "cause_category": "injection",
+   "ai_provenance": {
+    "family": "claude",
+    "coverage": "complete",
+    "candidate_count": 1,
+    "named_candidate_count": 1
+   },
+   "fix_authorship": {
+    "classification": "no_ai_marker",
+    "families": [],
+    "fixes": [
+     {
+      "sha": "9f7c4692338266cde8e643617f1e101b52c6e3b7",
+      "classification": "no_ai_marker",
+      "author": {
+       "name": "Pat Sukprasert",
+       "email": "pattara.sk127@gmail.com"
+      },
+      "authored_at": "2026-08-24T12:48:28+08:00"
+     }
+    ]
+   },
+   "code_evidence": {
+    "candidate_url": "https://github.com/mlflow/mlflow/commit/e151258a559567015b03058c55208fd02550ea9f",
+    "fix_url": "https://github.com/mlflow/mlflow/commit/9f7c4692338266cde8e643617f1e101b52c6e3b7",
+    "advisory_url": "https://github.com/advisories/GHSA-r5m9-wm49-959f",
+    "summary": "The AI-assisted change that added permission checks to the gateway routes registered validators for every gateway operation but the three list routes, so any signed-in user could keep enumerating all gateway secrets, endpoints and model definitions. The repair filters those list responses down to the rows the caller is allowed to read.",
+    "steps": [
+     {
+      "title": "AI change",
+      "detail": "The new registry covered every gateway create, read, update and delete route and the endpoint bindings list, while the secrets, endpoints and model definitions list operations were left without an entry."
+     },
+     {
+      "title": "Fix",
+      "detail": "The three list operations are now registered against after-request filters that drop rows the caller cannot read, and new coverage tests assert the dropped rows."
+     }
+    ],
+    "display_hunks": [
+     {
+      "role": "candidate",
+      "file": "mlflow/server/auth/__init__.py",
+      "code": "@@ -703,6 +909,30 @@ BEFORE_REQUEST_HANDLERS = {\n     GetScorer: validate_can_read_scorer,\n     DeleteScorer: validate_can_delete_scorer,\n     ListScorerVersions: validate_can_read_scorer,\n+    # Routes for gateway secrets\n+    GetGatewaySecretInfo: validate_can_read_gateway_secret,\n+    UpdateGatewaySecret: validate_can_update_gateway_secret,\n+    DeleteGatewaySecret: validate_can_delete_gateway_secret,\n+    # Routes for gateway endpoints\n+    CreateGatewayEndpoint: validate_can_create_gateway_endpoint,\n+    GetGatewayEndpoint: validate_can_read_gateway_endpoint,\n+    UpdateGatewayEndpoint: validate_can_update_gateway_endpoint,\n+    DeleteGatewayEndpoint: validate_can_delete_gateway_endpoint,\n+    # Routes for gateway model definitions\n+    CreateGatewayModelDefinition: validate_can_create_gateway_model_definition,\n+    GetGatewayModelDefinition: validate_can_read_gateway_model_definition,\n+    UpdateGatewayModelDefinition: validate_can_update_gateway_model_definition,\n+    DeleteGatewayModelDefinition: validate_can_delete_gateway_model_definition,\n+    # Routes for gateway endpoint-model mappings\n+    AttachModelToGatewayEndpoint: validate_can_update_gateway_endpoint,\n+    DetachModelFromGatewayEndpoint: validate_can_update_gateway_endpoint,\n+    # Routes for gateway endpoint bindings\n+    CreateGatewayEndpointBinding: validate_can_update_gateway_endpoint,\n+    DeleteGatewayEndpointBinding: validate_can_update_gateway_endpoint,\n+    ListGatewayEndpointBindings: validate_can_read_gateway_endpoint,\n+    # Routes for gateway endpoint tags\n+    SetGatewayEndpointTag: validate_can_update_gateway_endpoint,\n+    DeleteGatewayEndpointTag: validate_can_update_gateway_endpoint,\n }\n \n ",
+      "annotation": "AI added this gateway block to the before-request registry, covering every operation including the endpoint bindings list, and the three list routes the advisory names are absent from it."
+     },
+     {
+      "role": "fix",
+      "file": "mlflow/server/auth/__init__.py",
+      "code": "@@ -4140,6 +4167,50 @@ def filter_list_scorers(resp: Response) -> None:\n     resp.data = message_to_json(response_message)\n \n \n+# The list endpoints reach the handler behind the gateway-proxy validator (authenticated);\n+# these after-request filters are the row-level access control, dropping rows the caller\n+# cannot read. Keep them registered in AFTER_REQUEST_PATH_HANDLERS.\n+def filter_list_gateway_endpoints(resp: Response) -> None:\n+    \"\"\"Filter ``ListGatewayEndpoints`` responses to endpoints the caller can read.\"\"\"\n+    if sender_is_admin():\n+        return\n+    response_message = ListGatewayEndpoints.Response()\n+    parse_dict(resp.json, response_message)\n+    can_read = _role_based_read_predicate(authenticate_request().username, \"gateway_endpoint\")\n+    kept = [row for row in response_message.endpoints if can_read(row.endpoint_id)]\n+    response_message.ClearField(\"endpoints\")\n+    response_message.endpoints.extend(kept)\n+    resp.data = message_to_json(response_message)\n+\n+\n+def filter_list_gateway_model_definitions(resp: Response) -> None:\n+    \"\"\"Filter ``ListGatewayModelDefinitions`` responses to rows the caller can read.\"\"\"\n+    if sender_is_admin():\n+        return\n+    response_message = ListGatewayModelDefinitions.Response()\n+    parse_dict(resp.json, response_message)\n+    can_read = _role_based_read_predicate(\n+        authenticate_request().username, \"gateway_model_definition\"\n+    )\n+    kept = [row for row in response_message.model_definitions if can_read(row.model_definition_id)]\n+    response_message.ClearField(\"model_definitions\")\n+    response_message.model_definitions.extend(kept)\n+    resp.data = message_to_json(response_message)\n+\n+\n+def filter_list_gateway_secrets(resp: Response) -> None:\n+    \"\"\"Filter ``ListGatewaySecretInfos`` responses to secrets the caller can read.\"\"\"\n+    if sender_is_admin():\n+        return\n+    response_message = ListGatewaySecretInfos.Response()\n+    parse_dict(resp.json, response_message)\n+    can_read = _role_based_read_predicate(authenticate_request().username, \"gateway_secret\")\n+    kept = [row for row in response_message.secrets if can_read(row.secret_id)]\n+    response_message.ClearField(\"secrets\")\n+    response_message.secrets.extend(kept)\n+    resp.data = message_to_json(response_message)\n+\n+\n AFTER_REQUEST_PATH_HANDLERS = {\n     CreateExperiment: set_can_manage_experiment_permission,\n     CreateRegisteredModel: set_can_manage_registered_model_permission,",
+      "annotation": "The repair adds three after-request filters, one per list operation, and each parses the response, drops rows the caller cannot read and leaves admins unrestricted."
+     },
+     {
+      "role": "fix",
+      "file": "mlflow/server/auth/__init__.py",
+      "code": "@@ -4159,6 +4230,10 @@ AFTER_REQUEST_PATH_HANDLERS = {\n     DeleteGatewayEndpoint: delete_gateway_endpoint_permissions_cascade,\n     CreateGatewayModelDefinition: set_can_manage_gateway_model_definition_permission,\n     DeleteGatewayModelDefinition: delete_gateway_model_definition_permissions_cascade,\n+    # Cross-resource gateway list endpoints: filter rows to what the caller can read.\n+    ListGatewayEndpoints: filter_list_gateway_endpoints,\n+    ListGatewayModelDefinitions: filter_list_gateway_model_definitions,\n+    ListGatewaySecretInfos: filter_list_gateway_secrets,\n     ListWorkspaces: filter_list_workspaces,\n     CreateWorkspace: _seed_default_workspace_roles,\n     DeleteWorkspace: _cleanup_workspace_permissions,",
+      "annotation": "Registering the three operations in this map is what makes those filters run before each list response is returned to the caller."
+     }
+    ]
+   },
+   "ir_chain": null,
+   "unpatched": null,
+   "advisory_url": "https://github.com/advisories/GHSA-r5m9-wm49-959f",
+   "publication_issues": [],
+   "publication_status": "confirmed"
+  },
+  {
    "case_id": "CVE-2026-44653",
    "aliases": [],
    "repository": "danny-avila/librechat",
@@ -21708,6 +22145,116 @@
    "ir_chain": null,
    "unpatched": null,
    "advisory_url": "https://github.com/advisories/ghsa-fvvm-949w-qj4w",
+   "publication_issues": [],
+   "publication_status": "confirmed"
+  },
+  {
+   "case_id": "GHSA-67C5-X5MF-RPPQ",
+   "aliases": [
+    "CVE-2026-2611"
+   ],
+   "repository": "mlflow/mlflow",
+   "repository_metadata": {
+    "full_name": "mlflow/mlflow",
+    "language": "Python",
+    "archived": false
+   },
+   "contribution_class": "AI_DIRECT_ROOT",
+   "candidate_set": [
+    "280bf76cffcd790ff045bcedf9cb9f6bcda88362"
+   ],
+   "carrier_set": [
+    "99b5a3dd85e01160aa4c89559209bb0cce42055c"
+   ],
+   "minimum_fix_set": [
+    "8f9c8a53af90842944101eb8b7d60706822c81bc"
+   ],
+   "gates": {
+    "ai_hunk": "PASS",
+    "but_for": "PASS",
+    "fix_reversal": "PASS",
+    "identity": "PASS",
+    "release": "PASS",
+    "topology": "PASS",
+    "uniqueness": "PASS"
+   },
+   "vulnerable_release": {
+    "kind": "advisory_range",
+    "version": "= 3.9.0",
+    "tag": null
+   },
+   "fixed_release": {
+    "kind": "git_tag",
+    "version": "v3.10.0",
+    "tag": "v3.10.0"
+   },
+   "published_at": "2026-05-19",
+   "severity": null,
+   "cwes": [],
+   "description": "The assistant service first enters the tree with its own API router, guarded only by a check that the request comes from a loopback address and mounted under the /ajax-api/3.0/mlflow/assistant prefix, while the server's request-blocking path test and its wildcard cross-origin response stayed as they were. The repair teaches that path test about the /ajax-api/ prefix, so state-changing requests to the assistant are inspected and refused unless the request origin is loopback or explicitly configured, and it replaces the wildcard response with the configured origins plus the loopback origin patterns.",
+   "references": [],
+   "mechanism": "A user who runs the tracking server locally with the assistant enabled and then opens a page from anywhere on the web gives that page's script the same source address as the local user, so the loopback check that guards the assistant routes passes. Those routes are mounted under /ajax-api/3.0/mlflow/assistant, a prefix the server's cross-origin request blocking never inspected because its path test only matched /api/ endpoints, and the fallback cross-origin middleware answered the page's preflight with a wildcard allow-origin. The page can therefore send a state-changing request to the assistant configuration endpoint and rewrite which providers, projects and permissions the assistant runs with; turning on full access makes the assistant launch its coding agent with permission prompts bypassed, which is arbitrary command execution in the account that started the server.",
+   "cause_category": "injection",
+   "ai_provenance": {
+    "family": "claude",
+    "coverage": "complete",
+    "candidate_count": 1,
+    "named_candidate_count": 1
+   },
+   "fix_authorship": {
+    "classification": "no_ai_marker",
+    "families": [],
+    "fixes": [
+     {
+      "sha": "8f9c8a53af90842944101eb8b7d60706822c81bc",
+      "classification": "no_ai_marker",
+      "author": {
+       "name": "TomuHirata",
+       "email": "tomu.hirata@gmail.com"
+      },
+      "authored_at": "2026-02-16T15:15:19+09:00"
+     }
+    ]
+   },
+   "code_evidence": {
+    "candidate_url": "https://github.com/mlflow/mlflow/commit/280bf76cffcd790ff045bcedf9cb9f6bcda88362",
+    "fix_url": "https://github.com/mlflow/mlflow/commit/8f9c8a53af90842944101eb8b7d60706822c81bc",
+    "advisory_url": "https://github.com/advisories/GHSA-67c5-x5mf-rppq",
+    "summary": "AI-assisted work added an assistant service to the MLflow tracking server and mounted it under the /ajax-api/ prefix, where the server's cross-origin request blocking did not apply, so a web page could rewrite its configuration and reach command execution.",
+    "steps": [
+     {
+      "title": "AI change",
+      "detail": "The change added the assistant API router and mounted it on the tracking server under the /ajax-api/ prefix, with only a loopback source-address check standing in for access control."
+     },
+     {
+      "title": "Fix",
+      "detail": "The repair extends the API path test to the /ajax-api/ prefix so cross-origin blocking covers the assistant routes, and stops the fallback cross-origin middleware from echoing any origin."
+     }
+    ],
+    "display_hunks": [
+     {
+      "role": "candidate",
+      "file": "mlflow/server/fastapi_app.py",
+      "code": "@@ -11,6 +11,7 @@ from fastapi.middleware.wsgi import WSGIMiddleware\n from flask import Flask\n \n from mlflow.server import app as flask_app\n+from mlflow.server.assistant.api import assistant_router\n from mlflow.server.fastapi_security import init_fastapi_security\n from mlflow.server.gateway_api import gateway_router\n from mlflow.server.job_api import job_api_router\n@@ -50,6 +51,10 @@ def create_fastapi_app(flask_app: Flask = flask_app):\n     # This provides /gateway/{endpoint_name}/mlflow/invocations routes\n     fastapi_app.include_router(gateway_router)\n \n+    # Include Assistant API router for AI-powered trace analysis\n+    # This provides /ajax-api/3.0/mlflow/assistant/* endpoints (localhost only)\n+    fastapi_app.include_router(assistant_router)\n+\n     # Mount the entire Flask application at the root path\n     # This ensures compatibility with existing APIs\n     # NOTE: This must come AFTER include_router to avoid Flask catching all requests\n",
+      "annotation": "The AI change mounts the assistant router on the tracking server under the /ajax-api/ prefix, which the server's cross-origin request blocking did not inspect."
+     },
+     {
+      "role": "fix",
+      "file": "mlflow/server/security_utils.py",
+      "code": "@@ -23,8 +23,9 @@ STATE_CHANGING_METHODS = [\"POST\", \"PUT\", \"DELETE\", \"PATCH\"]\n # Paths exempt from host validation\n HEALTH_ENDPOINTS = [\"/health\", \"/version\"]\n \n-# API path prefix for MLflow endpoints\n+# API path prefixes for MLflow endpoints\n API_PATH_PREFIX = \"/api/\"\n+AJAX_API_PATH_PREFIX = \"/ajax-api/\"\n \n # Test-only endpoints that should not have CORS blocking\n TEST_ENDPOINTS = [\"/test\", \"/api/test\"]\n@@ -122,7 +123,9 @@ def should_block_cors_request(origin: str, method: str, allowed_origins: list[st\n \n def is_api_endpoint(path: str) -> bool:\n     \"\"\"Check if a path is an API endpoint that should have CORS/OPTIONS handling.\"\"\"\n-    return path.startswith(API_PATH_PREFIX) and path not in TEST_ENDPOINTS\n+    return (\n+        path.startswith(API_PATH_PREFIX) or path.startswith(AJAX_API_PATH_PREFIX)\n+    ) and path not in TEST_ENDPOINTS\n \n \n def is_allowed_host_header(allowed_hosts: list[str], host: str) -> bool:\n",
+      "annotation": "The repair adds the /ajax-api/ prefix to the path test that decides which requests the server's cross-origin blocking inspects."
+     },
+     {
+      "role": "fix",
+      "file": "mlflow/server/fastapi_security.py",
+      "code": "@@ -175,10 +176,13 @@ def init_fastapi_security(app: FastAPI) -> None:\n             expose_headers=[\"*\"],\n         )\n     else:\n+        # Use CORSBlockingMiddleware for blocking CORS requests on the server side,\n+        # and CORSMiddleware for responding to OPTIONS requests.\n         app.add_middleware(CORSBlockingMiddleware, allowed_origins=allowed_origins)\n         app.add_middleware(\n             CORSMiddleware,\n-            allow_origins=[\"*\"],\n+            allow_origins=allowed_origins,\n+            allow_origin_regex=\"|\".join(LOCALHOST_ORIGIN_PATTERNS),\n             allow_credentials=True,\n             allow_methods=[\"GET\", \"POST\", \"PUT\", \"DELETE\", \"OPTIONS\", \"PATCH\"],\n             allow_headers=[\"*\"],\n",
+      "annotation": "The wildcard allow-origin for the fallback middleware is replaced by the configured origins and the loopback origin patterns, so an unrelated page no longer receives permission to read responses."
+     }
+    ]
+   },
+   "ir_chain": null,
+   "unpatched": null,
+   "advisory_url": "https://github.com/advisories/GHSA-67c5-x5mf-rppq",
    "publication_issues": [],
    "publication_status": "confirmed"
   },
