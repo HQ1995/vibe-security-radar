@@ -116,6 +116,17 @@ describe("how we verify page", () => {
 });
 
 describe("canonical case evidence", () => {
+  it("shows incomplete verification on provisional findings", () => {
+    for (const status of ["provisional", "qualified", "confirmed"] as const) {
+      const item = getResearchCases().find((item) => item.publication_status === status)!;
+      const html = renderToStaticMarkup(<CanonicalCaseEvidence item={item} />);
+      expect(html.includes("Provisional finding.")).toBe(status === "provisional");
+      expect(html.includes("Full causal and release verification remains incomplete.")).toBe(
+        status === "provisional",
+      );
+    }
+  });
+
   it("keeps internal publication status off reader-facing case pages", async () => {
     const cases = [
       "GHSA-X98J-GH4V-7P7G",

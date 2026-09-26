@@ -1063,7 +1063,9 @@ def case_quality(case: dict) -> tuple:
     )
 
 
-def merge_duplicate_identities(cases: list[dict]) -> list[dict]:
+def merge_duplicate_identities(
+    cases: list[dict], *, canonical_class_ids: set[str] | None = None
+) -> list[dict]:
     """One official advisory ID is one public case (gate 07)."""
     parent = list(range(len(cases)))
 
@@ -1095,9 +1097,16 @@ def merge_duplicate_identities(cases: list[dict]) -> list[dict]:
         if len(group) == 1:
             merged.append(group[0])
             continue
-        winner = dict(min(group, key=case_quality))
-        chain = next((item.get("ir_chain") for item in group if item.get("ir_chain")), None)
-        evidence = next(
+        canonical = [
+            item for item in group
+            if item.get("class_id") in (canonical_class_ids or set())
+        ]
+        sources = canonical or group
+        winner = dict(min(sources, key=case_quality))
+        chain = winner.get("ir_chain") if canonical else next(
+            (item.get("ir_chain") for item in group if item.get("ir_chain")), None
+        )
+        evidence = winner.get("code_evidence") if canonical else next(
             (item.get("code_evidence") for item in group if item.get("code_evidence")),
             None,
         )
@@ -1625,13 +1634,25 @@ def build_case(row: dict, overlays: Overlays) -> dict:
         cves = unique([*cves, *cached_cves])
         aliases = unique([*ghsas, *cves, row["class_id"]])
         aliases = [item for item in aliases if item.upper() != case_id]
-    marker = first_text(
-        ai_marker_text((rec or {}).get("ai_marker")),
-        ai_marker_text(((cached or {}).get("code_evidence") or {}).get("ai_marker")),
-    )
-    family = detect_family(marker) or detect_family(
-        json.dumps(rec or {}, ensure_ascii=False)
-    )
+    marker_value = (row.get("code_evidence") or {}).get("ai_marker")
+    if "causal_research" in row and isinstance(marker_value, dict):
+        # Structured canonical markers include an explicit state and causal scope.
+        # Older free-text markers retain their existing curated interpretation.
+        marker = ai_marker_text(marker_value)
+        if isinstance(marker_value, dict) and str(marker_value.get("state")).upper() in {"PRESENT", "AI"}:
+            marker = first_text(marker_value.get("quote"), marker)
+        # Repair disclosures and comparison commits cannot identify the causal model.
+        family = detect_family(marker)
+        cached_provenance = {}
+    else:
+        marker = first_text(
+            ai_marker_text((rec or {}).get("ai_marker")),
+            ai_marker_text(((cached or {}).get("code_evidence") or {}).get("ai_marker")),
+        )
+        family = detect_family(marker) or detect_family(
+            json.dumps(rec or {}, ensure_ascii=False)
+        )
+        cached_provenance = (cached or {}).get("ai_provenance") or {}
     cached_evidence = (cached or {}).get("code_evidence") or {}
     mechanism = public_prose(
         cached.get("mechanism") if cached else None,
@@ -1766,10 +1787,10 @@ def build_case(row: dict, overlays: Overlays) -> dict:
             )
         ),
         "ai_provenance": {
-            "family": family or ((cached or {}).get("ai_provenance") or {}).get("family"),
+            "family": family or cached_provenance.get("family"),
             "coverage": (
                 "complete"
-                if family or ((cached or {}).get("ai_provenance") or {}).get("coverage") == "complete"
+                if family or cached_provenance.get("coverage") == "complete"
                 else "generic"
                 if marker
                 else "unresolved"
@@ -1852,6 +1873,7 @@ def main(argv: list[str] | None = None) -> None:
         for item in (overlays.overrides.get("drop_class_ids") or [])
     }
     canonical_evidence_classes: set[str] = set()
+    canonical_research_classes: set[str] = set()
     cases: list[dict] = []
     for row in rows:
         if row.get("status") not in TP_STATUSES:
@@ -1862,6 +1884,8 @@ def main(argv: list[str] | None = None) -> None:
             continue
         if "code_evidence" in row:
             canonical_evidence_classes.add(str(row.get("class_id") or "").lower())
+        if "causal_research" in row and "code_evidence" in row:
+            canonical_research_classes.add(row["class_id"])
         case = build_case(row, overlays)
         case["aliases"] = [
             item
@@ -1869,7 +1893,7 @@ def main(argv: list[str] | None = None) -> None:
             if item.upper() != case["case_id"].upper()
         ]
         cases.append(case)
-    cases = merge_duplicate_identities(cases)
+    cases = merge_duplicate_identities(cases, canonical_class_ids=canonical_research_classes)
     security_fix_contexts = load_json(SECURITY_FIX_CONTEXTS) or {}
     for case in cases:
         if not ai_summary_overlay(

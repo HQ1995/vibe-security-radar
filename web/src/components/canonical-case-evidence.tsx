@@ -924,6 +924,11 @@ export function CanonicalCaseEvidence({
                 {formatContributionClass(item.contribution_class)}
               </span>
             </div>
+            {item.publication_status === "provisional" ? (
+              <p className="mt-3 border-l-2 border-amber-500 pl-3 text-sm text-muted-foreground">
+                Provisional finding. Full causal and release verification remains incomplete.
+              </p>
+            ) : null}
             <h2 className="mt-3 text-xl font-semibold tracking-[-0.025em] sm:text-2xl">
               {summary ?? contributionHeadline(item.contribution_class)}
             </h2>

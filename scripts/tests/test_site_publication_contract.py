@@ -106,6 +106,63 @@ def _ledger_row() -> dict:
     }
 
 
+def test_duplicate_merge_preserves_accepted_research_over_legacy_chain() -> None:
+    legacy = {**_case(), "class_id": "alias-legacy", "ir_chain": _ir_chain(),
+              "aliases": ["GHSA-1111-2222-3333"]}
+    accepted = {**_case(), "class_id": "alias-current", "ir_chain": None,
+                "contribution_class": "AI_DIRECT_ROOT", "candidate_set": ["d" * 40],
+                "minimum_fix_set": ["e" * 40],
+                "gates": {key: "UNKNOWN" for key in publish_tp_ledger.DEFAULT_GATES}}
+    accepted["code_evidence"]["candidate_url"] = f"https://github.com/acme/app/commit/{'d' * 40}"
+    accepted["code_evidence"]["fix_url"] = f"https://github.com/acme/app/commit/{'e' * 40}"
+    for rows in ([legacy, accepted], [accepted, legacy]):
+        merged = publish_tp_ledger.merge_duplicate_identities(
+            rows, canonical_class_ids={"alias-current"}
+        )
+        assert len(merged) == 1
+        case = merged[0]
+        assert case["class_id"] == "alias-current"
+        assert case["ir_chain"] is None
+        assert case["contribution_class"] == "AI_DIRECT_ROOT"
+        assert case["candidate_set"] == ["d" * 40]
+        assert case["minimum_fix_set"] == ["e" * 40]
+        assert case["code_evidence"] == accepted["code_evidence"]
+        assert set(publish_tp_ledger.official_ids_of(case)) == {
+            "CVE-2026-12345", "GHSA-1111-2222-3333"
+        }
+
+    accepted["ir_chain"] = _ir_chain()
+    accepted["ir_chain"]["original_sha"] = "f" * 40
+    for rows in ([accepted, legacy], [legacy, accepted]):
+        case = publish_tp_ledger.merge_duplicate_identities(
+            rows, canonical_class_ids={"alias-current", "alias-legacy"}
+        )[0]
+        assert case["class_id"] == "alias-legacy"
+        assert case["ir_chain"] == legacy["ir_chain"]
+
+
+def test_canonical_model_identity_uses_only_the_causal_marker() -> None:
+    cached = _case()
+    cached["ai_provenance"] = {"family": "claude", "coverage": "complete"}
+    row = _ledger_row()
+    row["causal_research"].update(
+        ai_marker={"state": "ABSENT"},
+        disclosure_convention_note="A different contribution disclosed Claude.",
+        fix_ai_marker={"state": "PRESENT", "quote": "Assisted by Codex"},
+    )
+    for marker, expected in [
+        ({"state": "PRESENT", "quote": "This is my model's code."}, (None, "generic")),
+        ({"state": "PRESENT", "quote": "Co-authored-by: Copilot"}, ("copilot", "complete")),
+        ({"state": "ABSENT", "quote": "No Claude marker"}, (None, "unresolved")),
+    ]:
+        row["code_evidence"] = {"ai_marker": marker}
+        case = publish_tp_ledger.build_case(
+            row, publish_tp_ledger.Overlays(official={cached["case_id"]: cached})
+        )
+        provenance = case["ai_provenance"]
+        assert (provenance["family"], provenance["coverage"]) == expected
+
+
 def test_publication_status_fails_closed() -> None:
     case = _case()
     case["publication_issues"] = publish_tp_ledger.publication_issues(case)
