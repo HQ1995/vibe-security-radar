@@ -153,7 +153,7 @@ def load_ledger_rows(*, from_export: bool = False) -> list[dict]:
 
 # Inclusive GHSA/CVE publication window of the funnel ledger.
 LEDGER_WINDOW_START = "2025-05-01"
-LEDGER_WINDOW_END = "2026-08-26"
+LEDGER_WINDOW_END = "2026-09-26"
 GHSA_RE = re.compile(r"GHSA-[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}", re.I)
 CVE_RE = re.compile(r"(?<![A-Z0-9])CVE-\d{4}-\d{4,7}(?![A-Z0-9])", re.I)
 SHA_RE = re.compile(r"^[0-9a-fA-F]{7,40}$")
@@ -1303,7 +1303,7 @@ def ai_summary_overlay(
         canonical = public_text(evidence.get("summary"))
         if (
             canonical
-            and public_explanation(canonical)
+            and reader_prose(canonical)
             and complete_prose(canonical)
             and not AUDIT_IDENTIFIER_RE.search(canonical)
             and "PR #" not in canonical

@@ -329,7 +329,8 @@ def test_publisher_uses_only_sourced_ledger_gates() -> None:
         raise AssertionError("explicit ledger gates without gates_source were accepted")
 
 
-def test_canonical_ledger_code_evidence_overrides_generated_and_cached_data() -> None:
+@pytest.mark.parametrize("long_summary", [False, True])
+def test_canonical_ledger_code_evidence_overrides_generated_and_cached_data(long_summary) -> None:
     case_id = "GHSA-1111-2222-3333"
     class_id = "alias-evidence"
     ledger_evidence = {
@@ -344,6 +345,15 @@ def test_canonical_ledger_code_evidence_overrides_generated_and_cached_data() ->
         "fix_hunks": [],
         "comparison_hunks": [],
     }
+    if long_summary:
+        ledger_evidence["summary"] = (
+            "An AI-assisted serializer exported stored strings without neutralizing spreadsheet formulas. "
+            "A person able to write data used by a victim could influence exported cells if the victim "
+            "chose CSV and imported it with formula evaluation enabled. This does not establish CLI "
+            "execution, automatic disclosure, or universal spreadsheet behavior. The repair combines "
+            "type-aware formula neutralization with carriage-return quoting."
+        )
+        assert len(ledger_evidence["summary"]) > 360
     stale_evidence = {
         "summary": "Stale generated evidence must not win.",
         "candidate_hunks": [],
@@ -394,6 +404,10 @@ def test_canonical_ledger_code_evidence_overrides_generated_and_cached_data() ->
     overlays = publish_tp_ledger.Overlays(summaries={case_id: fallback})
     assert publish_tp_ledger.ai_summary_overlay(case, overlays, canonical=True)
     assert case["code_evidence"]["summary"] == ledger_evidence["summary"]
+    errors, _, _ = site_preflight.evaluate({"cases": [case], "snapshot": {"case_count": 1}})
+    assert not any("missing public reader summary" in error for error in errors)
+    assert site_preflight.has_reader_fallback(case, "candidate")
+    assert site_preflight.has_reader_fallback(case, "before_after")
     assert publish_tp_ledger.ai_summary_overlay(case, overlays)
     assert case["code_evidence"]["summary"] == fallback
 

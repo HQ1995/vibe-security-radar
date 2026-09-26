@@ -474,7 +474,7 @@ def has_reader_fallback(case: dict, role: str) -> bool:
     closure = chain.get("final_closure") or {}
     if role == "candidate":
         values = (*annotation_context(case), attempted.get("changed"), attempted.get("missed"))
-        return any(public_explanation(value) for value in values)
+        return any(reader_prose(value) for value in values)
     if role == "fix":
         if public_explanation(closure.get("closed")):
             return True
@@ -490,7 +490,7 @@ def has_reader_fallback(case: dict, role: str) -> bool:
             attempted.get("missed"),
             closure.get("closed"),
         )
-        return any(public_explanation(value) for value in values)
+        return any(reader_prose(value) for value in values)
     return False
 
 
@@ -1095,7 +1095,7 @@ def evaluate(
         evidence = case.get("code_evidence") or {}
         summary = str(evidence.get("summary") or "").strip()
         if (
-            not public_explanation(summary)
+            not reader_prose(summary)
             or AUDIT_IDENTIFIER_RE.search(summary)
             or "PR #" in summary
             or not complete_prose(summary)

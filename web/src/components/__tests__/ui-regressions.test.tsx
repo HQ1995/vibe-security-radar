@@ -67,7 +67,9 @@ describe("homepage hierarchy", () => {
     );
     expect(html).toContain("Star on GitHub");
     expect(html).toContain("Covered advisories");
-    expect(html).toContain("2025-05 – 2026-08");
+    expect(html).toContain(
+      `${snapshot.coverage_from!.slice(0, 7)} – ${snapshot.coverage_to!.slice(0, 7)}`,
+    );
     expect(html).not.toContain("Covered Advisories (2025-05-01");
     expect(html).not.toContain("Research ledger");
     expect(html).not.toContain("completed");
