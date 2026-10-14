@@ -1,17 +1,19 @@
 # Adjudication protocol
 
-Contract version: `2026-09-27.3`. Existing batches retain their frozen contracts.
+Contract version: `2026-10-14.1`. Existing batches retain their frozen contracts.
 
 N auditors independently apply [AUDIT-PROTOCOL](AUDIT-PROTOCOL.md). One adjudicator
 (the reducer role) reads all N reports, investigates the case and owns the final
-research conclusion. Reports are hypotheses and evidence leads, not ground truth.
+research conclusion on the same four questions: cause, impact, history and AI role.
+Reports are hypotheses and evidence leads, not ground truth. The audit protocol's
+research boundary and stopping rule apply unchanged.
 
 ## Compare and investigate
 
 1. Pin the manifest, all assigned auditor names and original outputs, contracts,
    brief and gate code. Keep originals immutable. Separate execution failures from independent research;
    reducer recovery does not retroactively make a failed audit successful.
-2. Compare **every case** across advisory, mechanism, BIC/landing, AI provenance,
+2. Compare **every case** across advisory, cause, impact, BIC/landing, AI role,
    fix, versions and residual/flip condition:
 
        python3 scripts/compare_slots.py --lane auditor1=<cases1> --lane auditor2=<cases2> \
@@ -90,8 +92,8 @@ establish either landing or publication.
 
 ## Before scaling a model or profile
 
-Use the evaluator-only [calibration set and scoring rules](audit-calibration.json),
-then verify the first five production cases. Compare the same evidence, tools, context,
+Use the evaluator-only calibration set and scoring rules (`docs/audit-calibration.json`,
+kept local and out of the public repository), then verify the first five production cases. Compare the same evidence, tools, context,
 budgets and retry policy in fresh contexts. Auditors get neutral inputs; reducers also
 get independent reports. Neither gets the evaluator key or previous leader judgments.
 Score without model names; keep failures and retries visible. A small set qualifies a

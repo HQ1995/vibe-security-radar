@@ -42,14 +42,17 @@ define the research evidence standard.
 
 ## Audit records
 
-Current research contract: `2026-09-27.3` (see AUDIT-PROTOCOL). The base record
+Current research contract: `2026-10-14.1` (see AUDIT-PROTOCOL). The base record
 format originated in `2026-09-19.1`; the research-work sidecar was added in
-`2026-09-25.1`. These dates do not migrate older frozen batches. Reject duplicate
-JSON keys, including nested ones; later values must never silently replace evidence.
+`2026-09-25.1`; `impact` was added in `2026-10-14.1`. These dates do not migrate
+older frozen batches. Every new record declares its `protocol_version`. Reject
+duplicate JSON keys, including nested ones; later values must never silently replace
+evidence.
 
 One JSON record per case, kept in the batch's research directory; the accepted
 synthesis lands in the ledger row's `causal_research` in the same shape. Required
-fields beyond the verdict and its prose: `advisory_disposition`,
+fields beyond the verdict and its prose: `protocol_version`, `impact` (except for a
+`FALSE_POSITIVE`), `advisory_disposition`,
 `advisory_aliases`, `introducer_sha`, `landing_commit`, `bic_granularity`,
 `decomposed_shas`, `decomposition_probe`, `ai_on_bic` (JSON boolean, or absent
 when not established), `ai_marker`, `fix_ai_marker`, `fix_granularity`,
@@ -65,6 +68,11 @@ whenever AI evidence sits outside the BIC object.
 
 How the causal fields read:
 
+- `impact` is the step-2 account, three substantive strings: `affected` (component,
+  routes and affected revisions/versions), `prerequisites` (who can trigger it: network
+  position, authentication, role, configuration or state) and `effect` (what they
+  obtain). An unknown part says what is unknown and why. The strict gate requires it
+  for records declaring `protocol_version` `2026-10-14.1` or later.
 - `EVIDENCE_GAP` / `BLOCKED` may carry an explicit `bic_granularity: null`
   with `introducer_sha: null`, or `fix_granularity: null` with no claimed fix or
   repair SHAs. Both require a substantive `remaining_gap` and `flip_condition`.
@@ -294,7 +302,9 @@ The option rejects an omitted or different declaration; older frozen batches ret
 their existing contract. This is local coordination data, never ledger or site data.
 
 Each decision has a `research` object with `advisory`, `mechanism`, `bic`, `ai`, `fix`
-and `versions` entries. Auditors keep the same object in their owned research sidecar,
+and `versions` entries. The protocol's four questions map onto them: cause is
+`mechanism`; impact is `mechanism` (prerequisites, effect) plus `versions` (affected
+range); history is `bic`, `fix` and `versions`; AI role is `ai`. Auditors keep the same object in their owned research sidecar,
 linked from the sealed report; adjudicators write their own synthesis in the decision.
 The existing `basis`, `residual` resolution and per-dimension `missing_fact` describe
 the remaining uncertainty. A single entry has this shape (not a prewritten finding):

@@ -66,6 +66,11 @@ FP_GROUNDS = {
     "EVIDENCE_INSUFFICIENT",
     "MECHANISM_REFUTED",
 }
+# Contract 2026-10-14.1 adds the step-2 impact account. Records that declare an
+# older protocol_version (or none) keep their frozen shape.
+CONTRACT_VERSION = re.compile(r"^(\d{4})-(\d{2})-(\d{2})\.(\d+)$")
+IMPACT_CONTRACT = (2026, 10, 14, 1)
+IMPACT_FIELDS = ("affected", "prerequisites", "effect")
 # The step-4 NOT_AI threshold: a recovered named human or organization identity
 # on the BIC object. Everything else there is EVIDENCE_GAP.
 IDENTITY_CLASSES = {
@@ -546,7 +551,25 @@ def check_record_strict(record: dict) -> list[str]:
                 "and the record never says whether that evidence was admissible"
             )
 
+    if verdict != "FALSE_POSITIVE" and contract_version(record) >= IMPACT_CONTRACT:
+        impact = record.get("impact")
+        missing = [
+            key for key in IMPACT_FIELDS
+            if not (isinstance(impact, dict) and isinstance(impact.get(key), str) and impact[key].strip())
+        ]
+        if missing:
+            problems.append(
+                f"{cid}: strict: contract records need a substantive "
+                + ", ".join(f"impact.{key}" for key in missing) + " (step 2)"
+            )
+
     return problems
+
+
+def contract_version(record: dict) -> tuple[int, ...]:
+    """The record's declared protocol_version; undeclared or malformed reads as legacy."""
+    match = CONTRACT_VERSION.match(str(record.get("protocol_version") or "").strip())
+    return tuple(int(part) for part in match.groups()) if match else (0,)
 
 
 def review_signals(record: dict) -> list[str]:

@@ -79,6 +79,36 @@ def test_contract_record_passes_both_gate_sets(verdict):
     assert check_record_strict(record) == []
 
 
+IMPACT = {
+    "affected": "the upload route in releases 2.1.0-2.3.4",
+    "prerequisites": "any authenticated user; default configuration",
+    "effect": "writes files outside the upload directory",
+}
+
+
+@pytest.mark.parametrize("version", [None, "2026-09-27.3", "not-a-version"])
+def test_older_contract_records_do_not_need_impact(version):
+    record = {**GOOD, "protocol_version": version}
+    assert check_record_strict(record) == []
+
+
+@pytest.mark.parametrize("verdict", (*AI_CASES, "EVIDENCE_GAP"))
+def test_current_contract_records_need_the_impact_account(verdict):
+    record = {**GOOD, "verdict": verdict, "protocol_version": "2026-10-14.1"}
+    if verdict == "EVIDENCE_GAP":
+        record.update(remaining_gap="the fix object is not public", flip_condition="the fix object is published")
+    assert any("impact.affected" in p for p in check_record_strict(record))
+    record["impact"] = {**IMPACT, "effect": "  "}
+    assert [p for p in check_record_strict(record) if "impact" in p] == [
+        "alias-x: strict: contract records need a substantive impact.effect (step 2)"]
+    record["impact"] = IMPACT
+    assert [p for p in check_record_strict(record) if "impact" in p] == []
+
+
+def test_refuted_records_need_no_impact_account():
+    assert check_record_strict({**REFUTED, "protocol_version": "2026-10-14.1"}) == []
+
+
 @pytest.mark.parametrize("verdict", AI_CASES)
 @pytest.mark.parametrize("field", ("advisory_ids", "introducer_sha", "fix_sha"))
 def test_closed_ai_verdict_needs_causal_fields(verdict, field):
