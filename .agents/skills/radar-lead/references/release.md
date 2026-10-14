@@ -9,7 +9,7 @@ with the NUMA binding in [AGENTS.md](../../../../AGENTS.md), except where `web/`
 The normal path is **leader claim -> N independent reports -> adjudication -> finalize
 in Neon -> generate site data -> deploy and verify -> release**. Stop at the authorized
 endpoint. `release` only clears occupancy; completed work and unfinished handoffs use
-the same operation, with their different outcomes recorded in the batch index.
+the same operation, with their different outcomes recorded in the case state.
 
 ## What each record means
 
@@ -25,7 +25,7 @@ Only the leader writes canonical data. By default that same leader dispatches wo
 accepts deliverables and owns release through live verification; a separate adjudicator
 owns causal research. Roles, workspaces and shared claims follow the
 [operating arrangement](operations.md#operating-arrangement). Combine roles only
-when the batch assignment explicitly names that arrangement. Record the batch,
+when the user explicitly names that arrangement. Record the run,
 intended changes and authorized endpoint once. Continue to
 that endpoint without asking again at each routine step; research-only scope ends at
 handoff. Keep the last verified step, receipts and next action beside the frozen research
@@ -33,13 +33,11 @@ files, without modifying the frozen decision file to record release progress.
 
 ## 1. Claim and finish the assigned work
 
-The leader claims the whole case once and saves its receipt ID. Auditor submissions and
-adjudication are tracked in the batch index, with no additional claims. After N reports
-are sealed, the adjudicator researches and submits its deliverables for leader acceptance.
-A researched evidence gap differs from a crash/timeout; neither becomes accepted merely
-because an assignment ended. Follow [dispatch and handoff](operations.md#dispatch-and-handoff).
-Use the [dispatch guard](operations.md#dispatch-guard): the leader creates a new
-batch and registers assignments with its private receipt; agents run their saved task bindings.
+`radar_case.py prepare` claims the whole case once and records its receipt ID in
+`case.json`; auditors, the adjudicator and the reviewer take no claims. After both reports
+are sealed, the adjudicator researches and delivers for leader acceptance. A researched
+evidence gap differs from a crash or timeout; neither becomes accepted merely because a
+subagent returned. The [case commands](operations.md#case-commands) carry each step.
 
 Read occupancy with `list --class-id <id>`. A foreign holder, including an expired or
 historical slot claim, blocks new ownership and ledger writes. Arrange a real handoff
@@ -50,14 +48,14 @@ and stop the old attempt before release. `claimed: false` establishes only avail
 
 ## 2. Land accepted research in Neon
 
-For runs driven by `scripts/radar_run.py`, `radar_run.py land` performs this whole section per
-case (scan runs and assessments, the frozen gate, finalize, readback, export check, claim
-release); the steps below describe what it does and how to do it by hand.
+`radar_case.py land` performs this whole section per case (scan runs and assessments,
+finalize, readback, export check, claim release); the steps below describe what it does
+and how to do it by hand.
 
 The release owner checks the final manifest, all auditor inputs, accepted records,
 decisions and gate receipts under the frozen adjudication contract. Re-run the gate on
 the final bytes before ingestion. BLOCKED research does not enter this accepted release
-path, and remains visible in the batch's unresolved work.
+path, and remains visible in the case state.
 
 Prepare assessments and revision-checked patches using the [data contract](ledger.md#ledger-rows).
 Each assessment needs a recorded, active `run_id`, an explicit stable `assessment_id`,
@@ -71,7 +69,7 @@ accepted synthesis and canonical publication fields agree with it.
 
 ```sh
 python3 scripts/ledger_store.py assessment-add <assessments.jsonl>
-python3 scripts/ledger_store.py finalize <patches.jsonl> --actor <claim-owner> --description <batch-description>
+python3 scripts/ledger_store.py finalize <patches.jsonl> --actor <claim-owner> --description <run and case>
 python3 scripts/ledger_store.py check
 ```
 

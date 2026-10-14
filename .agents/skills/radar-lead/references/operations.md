@@ -1,106 +1,88 @@
 # Operations
 
-Commands for the research workflow. Research rules are in
-[audit protocol](../../radar-audit/references/protocol.md) and [adjudication protocol](../../radar-adjudicate/references/protocol.md);
-landing and publication are in the [release reference](release.md). Run from the
-repository root with the repository environment and the NUMA binding in [AGENTS.md](../../../../AGENTS.md):
+Commands for the research workflow, run from the repository root with the repository
+environment and the NUMA binding in [AGENTS.md](../../../../AGENTS.md):
 
 ```sh
 uv venv .venv && uv pip install --python .venv/bin/python -r scripts/requirements.txt
 numactl --cpunodebind=1 --membind=1 .venv/bin/python scripts/<tool>.py ...
 ```
 
-## Workflow
-
-```
-radar-incremental: fetch.py -> build_delta.py -> intake_rows.py -> ledger_store.py intake -> watermark.py
-                                                                          | manifest of new cases
-radar-lead:        select cases -> radar_run.py admit -> run -> (review) -> land -> release
-                                          | per case, each in a fresh sandboxed session
-                         auditor1, auditor2 (radar-audit) -> adjudicator (radar-adjudicate) -> reviewer
-```
-
 ## Operating arrangement
+
+The workflow runs inside a local Codex or Claude Code session. The session that loads
+radar-lead is the leader; every other role is a fresh subagent it starts with the host's
+own tools.
 
 | Role | Skill | Owns |
 | --- | --- | --- |
-| Leader | [radar-lead](../SKILL.md), [radar-incremental](../../radar-incremental/SKILL.md) | Selection, claims, runs, acceptance, canonical writes, publication |
-| Auditor | [radar-audit](../../radar-audit/SKILL.md) | One independent case report, record and evidence |
-| Adjudicator | [radar-adjudicate](../../radar-adjudicate/SKILL.md) | The case's final record and decisions |
-| Reviewer | radar-lead, "Review one case" | The leader's source review of one sealed case, in a fresh session |
+| Leader | radar-lead, radar-incremental | Selection, claims, sealing, acceptance, canonical writes, publication |
+| Auditor (two) | radar-audit | `research/<run>/<NNN>/auditor1` or `auditor2` |
+| Adjudicator | radar-adjudicate | `research/<run>/<NNN>/adjudicator` |
+| Reviewer | radar-lead, "Review one case" | `research/<run>/<NNN>/reviewer/review.json` |
 
-Only the leader claims cases and writes canonical data. Each case is its own batch under
-`research/<run>-<NNN>/`; independent lanes never read each other, and the adjudicator starts
-only when both sealed auditor outputs exist. A different directory is not isolation: the
-runner profile's sandbox enforces it.
+| Host | Starting a subagent |
+| --- | --- |
+| Claude Code | The Agent tool with the assignment text as the prompt and a `model` per lane; start several in the background and wait for their notifications. |
+| Codex | Spawn a subagent with the assignment text, or run `codex exec "<assignment>"` in another terminal, with a model per lane. |
 
-## Case research
+A subagent starts with no conversation history. That, the read limits in its assignment
+and sealing keep the lanes independent; isolation is by instruction, not by sandbox, so
+never put one lane's findings into another lane's prompt. Use different models for the two
+auditors when the host offers them.
 
-`radar_run.py` drives the whole case path through the guarded tools below.
+## Case directory
 
-```sh
-python3 scripts/radar_run.py admit --run <run> --manifest <class ids> --leader <name> \
-  --endpoint ledger --profile .ai-slop/runner.json --cutoff <UTC>
-python3 scripts/radar_run.py run --run <run> --parallel 4
-python3 scripts/radar_run.py status --run <run>
-python3 scripts/radar_run.py land --run <run>
-python3 scripts/radar_run.py resume --run <run> --case <NNN> --task <task> --inspection <json>
-python3 scripts/radar_run.py stop --run <run> --reason <text>
+```text
+research/<run>/run.json, STOP               leader
+research/<run>/<NNN>/case.json              leader: identity, base revision, claim, contract commit, roles and models
+                     state.json             leader: phase and next step
+                     manifest.txt, inputs/  neutral packet: question and advisory records with receipts
+                     assignments/<role>.md  the exact prompt each subagent received
+                     auditor1/, auditor2/   one auditor each; read-only after seal
+                     adjudicator/           read-only after a passing check
+                     reviewer/review.json
+                     scratch/<role>/        scratch clones and experiments; never sealed
+                     SEAL.json, decisions.json, gate.json, land/
 ```
 
-- **admit** reads each row (`ledger_store.py get`), refuses occupied cases, creates the
-  batch, claims the case, retains its advisory records (GitHub/NVD, with receipts) as the
-  neutral packet, and registers both auditors. The run freezes one contract per role under
-  `.ai-slop/runs/<run>/contract/`: that role's skill, the protocols it applies, the schema,
-  this guide, AI markers, the briefs and the import closure of the worker-side helpers.
-- **run** advances cases in parallel, starting a case only while node-local memory covers
-  the profile's bound. Each case runs auditor1, auditor2, the adjudicator and then a
-  reviewer. A failed task becomes `HOLD`; nothing is retried automatically. A refusal marker
-  in any task's streams records a batch stop and stops the run (`SAFETY_STOP`).
-- **land** stores every attempt as a scan run and assessment, lands accepted research with
-  `radar_release.py` (reduction gate on all lanes, revision-checked finalize, readback,
-  export check, exact claim release), or closes a researched blocker without changing the row.
-- **status** prints one line per case; the case directory keeps receipts, review and
-  release files. Workers' exact prompts and terminal streams are in `research/<batch>/.logs/`.
-
-The runner profile describes the command: see `runner.example.json`. `prefix` and
-`agent` are argv lists with `{timeout}`, `{memory_bytes}`, `{model}`, `{output}` and `{cwd}`
-placeholders and exactly one `{brief}`; `sandbox` binds the workspace read-only, the output
-writable, every registered input read-only and the profile's `ro_binds` and `shared_clones`.
-Keep the real profile in `.ai-slop/runner.json`. Before scaling a new profile, run one
-harmless multi-turn prompt through it and inspect the actual output.
-
-## Dispatch guard
-
-`audit_dispatch.py` binds each task before it runs; `radar_run.py` uses it for you.
+## Case commands
 
 ```sh
-python3 scripts/audit_dispatch.py create <batch-spec.json> > <leader-private receipt>
-python3 scripts/audit_dispatch.py register <task-spec.json> --batch-receipt <receipt>
-python3 scripts/audit_dispatch.py check|run|retire --batch <b> --task <t> --binding <sha256>
-python3 scripts/audit_dispatch.py run ... --resume --inspection <json>
-python3 scripts/audit_dispatch.py stop --batch <b> --batch-receipt <receipt> --reason safety_refusal --evidence <file>
+python3 scripts/radar_case.py prepare --run <run> --manifest <class ids> --leader <name> --cutoff <UTC>
+python3 scripts/radar_case.py prompt --run <run> --case <NNN> --role <role> [--model <m> --host <h>]
+python3 scripts/radar_case.py lint <role directory>
+python3 scripts/radar_case.py seal --run <run> --case <NNN>
+python3 scripts/radar_case.py check --run <run> --case <NNN> [--dry-run]
+python3 scripts/radar_case.py reopen --run <run> --case <NNN>
+python3 scripts/radar_case.py land --run <run> [--case <NNN>]
+python3 scripts/radar_case.py status --run <run>
+python3 scripts/radar_case.py stop --run <run> --case <NNN> --reason <text> [--evidence <file>]
 ```
 
-`create` refuses an existing directory or an occupied case and returns a receipt only the
-leader keeps. Registration pins the manifest, claim acquisitions, brief, skill, inputs and
-fixed argv; every check and run re-verifies them and refuses overlapping outputs, a second
-active adjudicator or an input still owned by an active writer. A persisted send marker
-refuses duplicate dispatch. Each attempt records its start, exit, exact prompt and streams.
-`--resume` needs an inspection binding the original attempt, an ordinary
-`runtime_fault`/`delivery_fault` classification, `previous_work_stopped: true` and evidence
-pins. `stop` blocks further dispatch in the batch; it does not signal processes.
-
-## Dispatch and handoff
-
-`radar_flow.py advance` connects the registered auditors to the sole adjudicator: it writes
-each worker's public `INPUT-BINDING.json`, runs it, collects only a successful terminal
-receipt with a valid sealed delivery, retires the task and registers the adjudicator once
-every lane is sealed. Anything else is `HOLD` with the next action; N never shrinks.
-`radar_flow.py migrate` replaces one inspected failed lane, or binds a labeled adjudicator
-continuation for a returned review, without rewriting history. `radar_release.py` lands a
-leader-reviewed case. Execution, research acceptance, landing and publication are separate
-states; a released claim, a passing format gate or an exit code proves none of the others.
+- **prepare** reads each row (`ledger_store.py get`), holds a case another owner occupies,
+  claims the rest, retains its advisory records from GitHub and NVD with receipts, and
+  records the repository commit that carries the contract.
+- **prompt** prints and saves the assignment for one role (`auditor1`, `auditor2`,
+  `adjudicator`, `reviewer`) and records the model and host. The adjudicator's prompt needs
+  both lanes sealed; the reviewer's needs a passing check.
+- **lint** checks a role directory: required files, class ID, protocol version, the
+  research-work sidecar and its receipts. Workers run it themselves.
+- **seal** needs both lanes to lint clean, records their record-gate results and the hash
+  of every file, and makes the files read-only. Until then nothing is sealed and the
+  auditors can still fix their work.
+- **check** verifies the sealed lanes, builds `decisions.json` from the adjudicator's
+  `decision.json` and runs the reduction gate on both lanes. A pass (ACCEPTED, or a
+  researched BLOCKED) seals the adjudicator; otherwise its problems go back to the
+  adjudicator. `--dry-run` writes nothing.
+- **reopen** keeps a checked adjudication and its review as `adjudicator-vN/` and
+  `reviewer-vN/` and gives the adjudicator a writable copy for a labeled continuation.
+- **land** validates the review, stores one scan run and assessment per role, then either
+  finalizes accepted research at the prepared revision with readback and an export check,
+  or closes a researched blocker without changing the row, and releases the claim. It never
+  repeats a finalize whose result it cannot read back.
+- **stop** records an upstream refusal or operating stop; `prepare` and `prompt` refuse new
+  work in the run until it is resolved with the user.
 
 ## Claim commands
 
@@ -135,4 +117,4 @@ digest-matching export) plus the committed editorial inputs in `scripts/*.json`;
 new or changed AI case needs; [release](release.md) covers build, deploy and live verification.
 
 Offline tests: `python3 -m pytest scripts/tests` and the skill's `scripts/` tests use
-harmless fixture workers, real gates and fake ledgers; they never contact Neon.
+fixture deliveries, real gates and fake ledgers; they never contact Neon.

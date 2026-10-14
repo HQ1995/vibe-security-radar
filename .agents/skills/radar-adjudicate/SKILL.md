@@ -5,8 +5,8 @@ description: As the sole adjudicator of one Vibe Security Radar case, read all N
 
 # Radar adjudicate
 
-Contract `2026-10-14.1`. You own the research conclusion for one case. Your brief supplies
-the case, the sealed lane paths and the time budget.
+Contract `2026-10-14.1`. You own the research conclusion for one case. Your assignment
+supplies the case, the sealed lane paths, your directory and the time budget.
 
 ## Boundary
 
@@ -18,7 +18,8 @@ the case, the sealed lane paths and the time budget.
 
 ## Steps
 
-1. **Check the assignment.** Run the `radar_flow.py inputs` command from your brief.
+1. **Check the assignment.** Both lanes must exist and be sealed (read-only); otherwise say
+   so in `SUMMARY.md` and stop.
 2. **Read every lane in full**: report, record, sidecar and decisive receipts. Treat each
    conclusion as a hypothesis and each source as a lead.
 3. **Align before comparing.** Make sure the lanes describe the same product, revision,
@@ -35,12 +36,12 @@ the case, the sealed lane paths and the time budget.
    is still unknown after its bounded probe (name it and the next question). Keep an
    unknown AI role separate from an established mechanism or repair.
 7. **Deliver together**: `REPORT.md`, the accepted `record.json`, `research.json` and
-   `decisions.json`. Read them back, replace superseded statements, run the strict record
-   gate and the reduction gate on the final bytes with every lane, and seal.
-8. **Hand off**: decisions per question, what changed relative to the lanes, artifact
-   paths and the questions still open with their next owner.
+   `decision.json`. Read them back, replace superseded statements, and run
+   `radar_case.py check --dry-run` until it reports ready (or outcome BLOCKED).
+8. **Hand off**: write `SUMMARY.md` (decisions per question, what changed relative to the
+   lanes, questions still open with their next owner) and reply with it only.
 
-Work directly in your assigned session. A follow-up that returns to you is a labeled
+Work in your own session; do not start further subagents. A follow-up that returns to you is a labeled
 continuation of the same case, not a new blind audit.
 
 ## References
@@ -52,5 +53,5 @@ continuation of the same case, not a new blind audit.
 | [../radar-audit/references/ai-markers.md](../radar-audit/references/ai-markers.md) | When checking AI attribution |
 | [../radar-audit/references/record.md](../radar-audit/references/record.md) | When writing the accepted `record.json` |
 | [../radar-audit/references/research-work.md](../radar-audit/references/research-work.md) | When writing `research.json` and the decisions' research objects |
-| [decisions.md](references/decisions.md) | When writing `decisions.json` and running the reduction gate |
+| [decisions.md](references/decisions.md) | When writing `decision.json` and running the reduction gate |
 | [../radar-audit/references/submission.md](../radar-audit/references/submission.md) | Before step 7, for receipts, checks and sealing |

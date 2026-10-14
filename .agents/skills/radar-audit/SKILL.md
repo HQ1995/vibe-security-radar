@@ -1,13 +1,13 @@
 ---
 name: radar-audit
-description: Independently research one assigned Vibe Security Radar case - its cause, impact, history (introduction, exposure, repair, release) and the role AI played - and deliver a sealed, evidence-backed audit record. Use for an auditor assignment in a bound batch; not for ordinary code review or adjudication.
+description: Independently research one assigned Vibe Security Radar case - its cause, impact, history (introduction, exposure, repair, release) and the role AI played - and deliver a sealed, evidence-backed audit record. Use for an auditor assignment from radar-lead; not for ordinary code review or adjudication.
 ---
 
 # Radar audit
 
 Contract `2026-10-14.1`. You are one of N independent auditors of a case. Answer its four
-questions from primary evidence, alone, and deliver a sealed record. Your brief supplies
-the case, paths and time budget.
+questions from primary evidence, alone, and deliver a record. Your assignment supplies
+the case, your directory, a scratch directory and the time budget.
 
 ## Boundary
 
@@ -23,8 +23,8 @@ the case, paths and time budget.
 
 ## Steps
 
-1. **Check the assignment.** Run the `radar_flow.py inputs` command from your brief. A
-   failure is a setup defect for the leader, not a research finding.
+1. **Check the assignment.** Make sure the inputs and directories it names exist. If one is
+   missing, say so in `SUMMARY.md` and stop: that is a setup defect, not a finding.
 2. **Advisory status.** Read the keyed advisory itself before anything else.
 3. **Cause and impact.** Trace the real input, caller, validation and consuming operation
    at the affected revision; establish who can trigger it and what they obtain.
@@ -35,13 +35,13 @@ the case, paths and time budget.
 6. **Stop when answered.** End each question when evidence answers it or its bounded probe
    is exhausted; name the observation that would close any remaining gap.
 7. **Write and check.** Write `REPORT.md` first, organized by the four questions, then
-   derive `record.json` and `research.json`. Read them back, make them agree, and run the
-   strict record gate.
-8. **Seal and hand off.** Seal with `audit_delivery.py`. Your final message gives the
-   findings per question, artifact paths, open questions and execution failures.
-   Submission is not acceptance.
+   derive `record.json` and `research.json`. Read them back, make them agree, and run
+   `radar_case.py lint` and the strict record gate.
+8. **Hand off.** Write `SUMMARY.md` (the answer to each question, open questions, execution
+   failures) and reply with it only. The leader seals your directory; submission is not
+   acceptance.
 
-Work directly in your assigned session; do not spawn sub-agents. A crash, timeout or empty
+Work in your own session; do not start further subagents. A crash, timeout or empty
 response is an execution failure, never an evidence gap.
 
 ## References

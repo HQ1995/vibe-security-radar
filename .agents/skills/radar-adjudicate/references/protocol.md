@@ -10,23 +10,17 @@ research boundary and stopping rule apply unchanged.
 
 ## Compare and investigate
 
-1. Pin the manifest, all assigned auditor names and original outputs, contracts,
-   brief and gate code. Keep originals immutable. Separate execution failures from independent research;
-   reducer recovery does not retroactively make a failed audit successful.
+1. Start only when the leader has sealed every lane; the sealed originals stay immutable.
+   Separate execution failures from independent research; reducer recovery does not
+   retroactively make a failed audit successful.
 2. Compare **every case** across advisory, cause, impact, BIC/landing, AI role,
    fix, versions and residual/flip condition:
 
-       python3 scripts/compare_slots.py --lane auditor1=<cases1> --lane auditor2=<cases2> \
-           --lane auditor3=<cases3> --json <comparison.json>
+       python3 scripts/compare_slots.py --lane auditor1=<case>/auditor1/record.json \
+           --lane auditor2=<case>/auditor2/record.json --json <scratch>/comparison.json
 
    `research_differences` includes missing values and member/carrier differences.
    Text differences need interpretation; matching verdicts never auto-accept a case.
-   Each lane argument accepts a record file or a directory containing only records.
-   For a one-case task, use the original `record.json` paths. Do not pass a case
-   directory containing arbitrary source JSON or scratch checkouts: the directory
-   loader recursively reads JSON. For multiple cases, the leader supplies a
-   records-only view pinned byte-for-byte to every original record; retain the
-   full manifest, every assigned lane and all sealed source/report directories.
 3. Build your own causal account before choosing among reports. For each research
    dimension, ask what all auditors may have missed and seek counterevidence to their
    shared conclusion. Read primary sources; do not limit investigation to flagged differences.
@@ -62,26 +56,18 @@ route counts and terminal labels cannot establish that sufficiency.
 A vendor correction is unnecessary when code and release evidence settle the conclusion.
 State exactly which conclusion depends on any unresolved answer.
 
-For new assignments, store frozen decisions in a dedicated `decisions.json` using
-the [decision format](decisions.md). Keep
-execution status and a pointer to that file in the mutable batch index. Preserve
-legacy frozen layouts; adopting this layout requires an explicit new binding.
-Bind all N inputs, accepted records and primary receipts by SHA-256. Explain required
-resolutions, including TP BIC/AI/fix checks despite agreement. Before closeout:
+Write your decision in `decision.json` using the [decision format](decisions.md), binding
+primary receipts by SHA-256. Explain required resolutions, including TP BIC/AI/fix checks
+despite agreement. Before closeout:
 
-1. Finish records, report and any staging payload; check that staging preserves the
-   accepted research. Freeze these deliverables and their pins.
-2. Run the [record checks](../../radar-audit/references/submission.md) and the delivery gate:
+1. Finish the report, record, sidecar and decision, and read them back together.
+2. Run the [record checks](../../radar-audit/references/submission.md) and the reduction
+   gate over both lanes:
 
-       python3 scripts/audit_reduction_gate.py --manifest <batch.txt-or-manifest.jsonl> \
-           --lane auditor1=<cases1> --lane auditor2=<cases2> --lane auditor3=<cases3> \
-           --accepted <accepted-cases> \
-           --research-contract causal-work-v1 \
-           --decisions <decisions.json>
+       python3 scripts/radar_case.py check --run <run> --case <NNN> --dry-run
 
-3. Save gate output and the decision-file hash outside the frozen decision file. Changed
-   evidence/records reopen affected decisions; re-review before refreshing hashes.
-   Re-run against final bytes before ingestion. Contract changes require explicit migration.
+3. The leader's `check` freezes the decisions and seals your directory. Changed evidence
+   or records afterwards reopen the affected decisions as a labeled continuation.
 
 The gate checks coverage, required decisions and unchanged bytes, **not causal truth**.
 The reducer owns that judgment. Report execution, accepted/blocked research and publication

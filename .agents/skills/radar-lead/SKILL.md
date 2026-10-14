@@ -1,29 +1,28 @@
 ---
 name: radar-lead
-description: Coordinate Vibe Security Radar case research end to end - select cases from the ledger or a new intake, run independent auditors, one adjudicator and a fresh-session review per case with scripts/radar_run.py, land accepted research in the canonical ledger and prepare publication. Use for coordination, recovery, landing and release; not for researching a case yourself.
+description: Coordinate Vibe Security Radar case research from a local Codex or Claude Code session - select cases, start two independent auditor subagents, an adjudicator and a reviewer per case with the host's own subagent tools, seal and check their work with scripts/radar_case.py, land accepted research in the canonical ledger and prepare publication. Use for coordination, recovery, landing and release; not for researching a case yourself.
 ---
 
 # Radar lead
 
-Contract `2026-10-14.1`. You own case selection, dispatch, acceptance, ledger landing and
-publication. Keep your own context administrative: statuses, paths, hashes and next
-questions. Case evidence stays in each case's workspace, where auditors, the adjudicator
-and the reviewer read it in their own fresh sessions.
+Contract `2026-10-14.1`. You run in the local session the user started; every other role is a
+fresh subagent you start with this host's own tools. You own case selection, claims, sealing,
+acceptance, ledger landing and publication. Keep your context administrative: `status`,
+paths and next questions. Subagents reply with a short summary; read case evidence only when
+you review a case yourself.
 
 ## Inputs
 
-- The user's scope and authorized endpoint: `research` (handoff only) or `ledger` (land
-  accepted research). Publication is a separate, explicit authorization.
-- A runner profile: start from `scripts/runner.example.json`; keep the real one local
-  (`.ai-slop/runner.json`). Check it once with a harmless multi-turn prompt before a run.
+- The user's scope and authorized endpoint: research only, or ledger landing. Publication is
+  a separate, explicit authorization.
 - Run every command from the repository root with `.venv/bin/python` under
   `numactl --cpunodebind=1 --membind=1`.
 
 ## 1. Select cases
 
 Write a manifest with one `class_id` per line. For new advisories, take the manifest that
-[radar-incremental](../radar-incremental/SKILL.md) admitted. For the existing ledger, read
-the export (after `ledger_store.py check` shows `jsonl_byte_identical: true`) in this order:
+[radar-incremental](../radar-incremental/SKILL.md) admitted. For the existing ledger, read the
+export (after `ledger_store.py check` shows `jsonl_byte_identical: true`) in this order:
 
 1. `AI_ROOT_CAUSE`/`AI_CODE_FLAWED` rows without `causal_research` (they are public);
 2. `NOT_AI` rows whose `notai_review_state` is `CAUSAL_REVIEW_PENDING`;
@@ -31,64 +30,78 @@ the export (after `ledger_store.py check` shows `jsonl_byte_identical: true`) in
 
 Start a new run with about five cases and inspect them before scaling.
 
-## 2. Run
+## 2. Prepare
 
 ```sh
-python3 scripts/radar_run.py admit --run <run> --manifest <file> --leader <you> \
-  --endpoint ledger --profile .ai-slop/runner.json --cutoff <source cutoff UTC>
-python3 scripts/radar_run.py run --run <run> --parallel 4
-python3 scripts/radar_run.py status --run <run>
+python3 scripts/radar_case.py prepare --run <run> --manifest <file> --leader <you> --cutoff <source cutoff UTC>
 ```
 
-`admit` claims each case, retains its advisory records as a neutral packet, freezes one
-contract per role and registers both auditors. `run` advances each case through both
-auditors, the adjudicator and a reviewer, each in a fresh sandboxed session, under the
-node-memory gate. Read `status`, not the workers' output:
+It claims each case, retains its advisory records as the neutral packet and records the
+repository commit that carries the contract. A case another owner holds stays `FOREIGN_HOLD`.
+
+## 3. Run each case
+
+Work on several cases at once within the host's subagent limit. For each case:
+
+1. **Auditors.** Print `prompt --role auditor1 --model <m1> --host <host>` and the same for
+   `auditor2`, with a different model when the host offers one. Start each as a fresh
+   subagent whose prompt is exactly that text. Start both together.
+2. **Seal.** When both have replied, run `seal`.
+3. **Adjudicator.** Print `prompt --role adjudicator`, start a fresh subagent with it, and
+   run `check` when it replies.
+4. **Reviewer.** Print `prompt --role reviewer` and start a fresh subagent, or for a small
+   run do section 4 yourself and write `reviewer/review.json`.
+
+Read `status`, not the subagents' work:
 
 | Phase | Next step |
 | --- | --- |
-| `READY_TO_LAND` | Land (step 4). |
-| `HOLD` | Inspect the named task's receipts in `research/<batch>/.logs/` and index. For an ordinary runtime fault confirm the worker stopped, write an inspection and use `radar_run.py resume`; never retry blindly. |
-| `RETURNED` | The review named a decisive question. Continue the same adjudicator as a labeled continuation (`radar_flow.py migrate`). |
-| `SAFETY_STOP` | An upstream refusal stopped the run. Preserve it, tell the user, and do not resume, rephrase or switch models until they resolve the upstream configuration. |
+| `HOLD` | Do what `next` says. Send the listed `problems` back to the same subagent and rerun the step. If a subagent died without delivering, prompt its role again and tell the new subagent its directory holds an unfinished attempt it may continue. |
+| `CHECKED` | Review (step 4), then land (section 5). |
+| `RETURNED` | Run `reopen`, then give the review's `next_question` to the adjudicator as a labeled continuation, and `check` again. |
+| `STOPPED` | A refusal or operating stop. Tell the user; do not resume, rephrase or switch models until they resolve it. |
 | `FOREIGN_HOLD` | Another owner holds the case; arrange a real handoff. |
 
-## 3. Review one case
+If any subagent reports a safety refusal, or the host refuses a turn, run
+`stop --run <run> --case <NNN> --reason <what happened> --evidence <file>` and tell the user.
 
-The reviewer session runs this section for one case; you can run it yourself the same way.
-Read the adjudicator's sealed delivery and the auditors' reports, then check the decisive
-claims against primary evidence:
+## 4. Review one case
+
+The reviewer runs this section for one case; you can run it yourself the same way. Read the
+adjudicator's report and record and both auditors' reports, then check the decisive claims
+against primary evidence:
 
 - the parent of the claimed introducing change, under matched configuration and authority;
 - the real caller of the claimed repair and any material omitted route;
 - the object that carries each AI marker, and the activity it discloses;
 - that report, record, `impact` and `remaining_gap` agree.
 
-Write `leader-review.json` with `decision` `ACCEPT` or `RETURN`, a substantive `basis`,
-`evidence` entries from the delivery's `files`, and for RETURN the `next_question`. Accept
-a BLOCKED decision only when the blocker is researched, not an execution failure.
+Write `reviewer/review.json` with `decision` `ACCEPT` or `RETURN`, a substantive `basis`,
+`evidence` entries (absolute path and SHA-256 of sealed files under the case), and for RETURN
+the `next_question`. Accept a BLOCKED outcome only when the blocker is researched, not an
+execution failure.
 
-## 4. Land
+## 5. Land
 
 ```sh
-python3 scripts/radar_run.py land --run <run>
+python3 scripts/radar_case.py land --run <run>
 ```
 
-Accepted research lands through `radar_release.py`: every attempt is stored as a scan run
-and assessment, the frozen reduction gate is rerun on all lanes, the row is finalized at its
-admitted revision, read back, the export is verified and the exact claim is released. A
+It stores one scan run and assessment per role, then finalizes accepted research at the
+revision recorded by `prepare`, reads it back, verifies the export and releases the claim. A
 non-AI verdict clears `site_scope`/`site_tier`. A researched blocker keeps the row unchanged
-and stores its assessments. A changed row, duplicate TP alias or stale export holds the case.
+and stores its assessments. A changed row, duplicate TP alias, stale export or unreadable
+earlier finalize holds the case.
 
-## 5. Publish (separate authorization)
+## 6. Publish (separate authorization)
 
-New or changed AI rows need editorial inputs before the site can be regenerated. In a
-scratch worktree run `python3 scripts/publish_tp_ledger.py --from-export`; each error names
-what is missing:
+New or changed AI rows need editorial inputs before the site can be regenerated. In a scratch
+worktree run `python3 scripts/publish_tp_ledger.py --from-export`; each error names what is
+missing:
 
-1. `missing reader summary`: add an entry to `scripts/publication-curation.json`
-   (`case_id`, `class_id`, `mechanism`, `code_evidence.summary`) written as public prose
-   from the accepted `causal_research`, without SHAs, paths or `PR #`.
+1. `missing reader summary`: add an entry to `scripts/publication-curation.json` (`case_id`,
+   `class_id`, `mechanism`, `code_evidence.summary`) written as public prose from the
+   accepted `causal_research`, without SHAs, paths or `PR #`.
 2. `missing published_at`: add the advisory's first-party publication date, from the
    retained advisory record, to `scripts/first-party-advisory-dates.json`.
 3. `no code comparison`, listing or fix SHA mismatches: rebuild code evidence with
@@ -100,16 +113,16 @@ authorization (a push deploys). Verify each changed page live.
 
 ## Close
 
-Record each case's outcome in `status` before releasing anything; `land` releases claims
-itself. Report separately: cases researched, accepted, blocked, held; rows landed with
-revisions; publication done or pending; remaining questions with their owner.
+Report separately: cases researched, accepted, blocked, held; rows landed with revisions;
+publication done or pending; remaining questions with their owner.
 
 ## References
 
 | Read | When |
 | --- | --- |
-| [operations.md](references/operations.md) | When a command fails or you need the dispatch, flow, claims or runner-profile details |
+| [operations.md](references/operations.md) | How each host starts a subagent, the case directory, every `radar_case.py` command, claims |
 | [ledger.md](references/ledger.md) | Before landing or editing canonical data: row fields, statuses, published-case rules |
-| [release.md](references/release.md) | For manual landing, recovery after a failed write, and the build/deploy/verify steps |
+| [release.md](references/release.md) | Manual landing, recovery after a failed write, and the build, deploy and verify steps |
+| [assignments/](assignments/) | The templates `prompt` fills; change them there, not in the printed prompts |
 | [../radar-adjudicate/references/protocol.md](../radar-adjudicate/references/protocol.md) | When reviewing a case or judging a returned question |
 | [../radar-audit/references/protocol.md](../radar-audit/references/protocol.md) | When a review needs a question's exact requirement |

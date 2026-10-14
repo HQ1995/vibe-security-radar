@@ -87,7 +87,7 @@ updated `artifacts/source-watermark.json` with the refreshed export.
 
 ## 7. Hand off and report
 
-Give `$R/intake/manifest.txt` to radar-lead (step 2, `radar_run.py admit`) with the
+Give `$R/intake/manifest.txt` to radar-lead (step 2, `radar_case.py prepare`) with the
 window end as `--cutoff`. Report the window and stream coverage, components classified, rows
 admitted and deferred, each open queue's count, the ledger change set, and that research
 on the admitted cases is still pending.

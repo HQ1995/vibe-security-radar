@@ -23,7 +23,7 @@ Never fill a field by guessing. Execution failure is not a researched EVIDENCE_G
 [Data fields](record.md) define the output. The local
 [research-work contract](research-work.md) separates supported
 conclusions from unfinished investigation; record it in the owned sidecar.
-[Audit operations](../../radar-lead/references/operations.md) cover dispatch and submission. One adjudicator
+[Submission](submission.md) covers what to deliver. One adjudicator
 subsequently reviews all reports and completes unresolved research under
 [adjudication protocol](../../radar-adjudicate/references/protocol.md).
 
@@ -51,7 +51,7 @@ subsequently reviews all reports and completes unresolved research under
   release record, then an API for what those cannot settle). Run each probe once and
   retain its command and output.
 - Before recording a gap, name the observation that would close it. If that
-  observation is available within the brief's time budget, obtain it.
+  observation is available within your assignment's time budget, obtain it.
 - Work still open when the budget runs out is unfinished work in the research-work
   sidecar, not an EVIDENCE_GAP.
 

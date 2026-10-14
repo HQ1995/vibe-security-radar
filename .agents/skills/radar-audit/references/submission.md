@@ -1,30 +1,29 @@
 # Submission
 
+What each auditor and the adjudicator deliver, in the directory their assignment owns:
 
-What every worker delivers, inside its owned output only:
-
-1. Check the assignment first: `python3 -B contract/scripts/radar_flow.py inputs <output>/INPUT-BINDING.json --binding <hash>`.
-2. Save receipts as you go: command or URL, repository and full object SHA or version,
-   capture time, exit or HTTP status and the raw output file. Keep failed probes.
-3. Write the report first, then derive `record.json` and the research-work sidecar
+1. Save receipts in `evidence/` as you go: command or URL, repository and full object SHA or
+   version, capture time, exit or HTTP status and the raw output. Keep failed probes.
+2. Write `REPORT.md` first, then derive `record.json` and the research-work sidecar
    `research.json` with file writes or a script; never interpolate source text or whole JSON
-   documents into shell strings. After a write failure inspect the files before continuing.
-4. Run the frozen record gates and keep both receipts:
-   `python3 -B contract/scripts/audit_record_gates.py --strict <record.json>` and, with the
-   product clone, `--repo <clone>`. They check structure and local objects, not truth.
-   Never invent a value for a check you could not run; explain it.
-5. Check receipts are JSON with the actual `argv`, integer `exit_code` and `outputs`
-   (`path`, `sha256`) for saved stdout/stderr.
-6. Write the delivery spec (`batch`, `task`, `binding_sha256`, `manifest`, `output`,
-   `report`, `records`, `research_work`, `evidence`, `checks`; the adjudicator adds
-   `decisions`) with absolute paths inside the output, then
-   `python3 -B contract/scripts/audit_delivery.py seal <spec>`. A seal is never overwritten.
+   documents into shell strings. After a write failure, inspect the files before continuing.
+3. Receipts inside `research.json` (and the adjudicator's `decision.json`) are
+   `{"path", "sha256"}`, with paths relative to your directory.
+4. Run the checks and keep their output in `checks/`:
+   - `python3 -B scripts/radar_case.py lint <your directory>`: required files, class ID,
+     protocol version, the research-work sidecar and its receipts;
+   - `python3 -B scripts/audit_record_gates.py --strict <your directory>/record.json`, and
+     with the product clone `--repo <clone>`. They check structure and local objects, not
+     truth; never invent a value for a check you could not run, explain it instead;
+   - the adjudicator also runs `python3 -B scripts/radar_case.py check --run <run> --case <NNN>
+     --dry-run`, the reduction gate over both lanes; a researched BLOCKED decision reports
+     outcome BLOCKED.
+5. Write `SUMMARY.md` (at most ten lines: the answer to each question, open questions,
+   execution failures) and reply with it.
 
-The [research-work sidecar](research-work.md) keeps supported
-conclusions apart from unfinished work; the gate runs with `--research-contract causal-work-v1`.
-Adjudicators also run the reduction gate on the final bytes with every lane's exact
-`record.json`, and keep its receipt; a BLOCKED decision makes it exit nonzero by design.
-A crash, timeout, rate limit or empty response is an execution failure, never an
-EVIDENCE_GAP. A completed command or sealed submission grants no claim, ledger or
-publication authority.
+The leader then seals your directory: the files become read-only and their hashes are
+recorded. A later correction is a labeled continuation; the sealed original is kept.
 
+The [research-work sidecar](research-work.md) keeps supported conclusions apart from
+unfinished work. A crash, timeout, rate limit or empty response is an execution failure,
+never an EVIDENCE_GAP. Delivering grants no claim, ledger or publication authority.

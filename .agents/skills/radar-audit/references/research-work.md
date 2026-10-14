@@ -1,10 +1,10 @@
 # Research-work contract
 
-New batches adopting the current contract retain the sidecar introduced in
-`2026-09-25.1`: set `reduction.research_contract` to
-`causal-work-v1` and freeze the gate invocation with `--research-contract causal-work-v1`.
-The option rejects an omitted or different declaration; older frozen batches retain
-their existing contract. This is local coordination data, never ledger or site data.
+Every auditor and the adjudicator keep a research-work sidecar, `research.json`, the
+contract `causal-work-v1` introduced in `2026-09-25.1`. `radar_case.py` declares it in the
+decisions and runs the reduction gate with `--research-contract causal-work-v1`; older
+frozen batches keep their existing contract. This is local research data, never ledger or
+site data.
 
 Each decision has a `research` object with `advisory`, `mechanism`, `bic`, `ai`, `fix`
 and `versions` entries. The protocol's four questions map onto them: cause is

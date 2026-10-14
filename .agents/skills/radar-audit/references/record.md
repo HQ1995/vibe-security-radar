@@ -7,7 +7,7 @@ older frozen batches. Every new record declares its `protocol_version`. Reject
 duplicate JSON keys, including nested ones; later values must never silently replace
 evidence.
 
-One JSON record per case, kept in the batch's research directory; the accepted
+One JSON record per case, `record.json` in the role's case directory; the accepted
 synthesis lands in the ledger row's `causal_research` in the same shape. Required
 fields beyond the verdict and its prose: `protocol_version`, `impact` (except for a
 `FALSE_POSITIVE`), `advisory_disposition`,
@@ -20,9 +20,9 @@ when not established), `ai_marker`, `fix_ai_marker`, `fix_granularity`,
 residual cue was adjudicated as a version range, and `ai_admissibility`
 whenever AI evidence sits outside the BIC object.
 
-    python3 scripts/audit_record_gates.py --strict research/<batch>/<case>.json
-    python3 scripts/audit_record_gates.py --strict --repo <clone_dir> research/<batch>/<case>.json
-    python3 scripts/compare_slots.py --lane auditor1=<cases1> --lane auditor2=<cases2> --lane auditor3=<cases3>
+    python3 scripts/audit_record_gates.py --strict <role directory>/record.json
+    python3 scripts/audit_record_gates.py --strict --repo <clone_dir> <role directory>/record.json
+    python3 scripts/compare_slots.py --lane auditor1=<case>/auditor1/record.json --lane auditor2=<case>/auditor2/record.json
 
 How the causal fields read:
 

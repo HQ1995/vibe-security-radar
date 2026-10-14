@@ -5,11 +5,13 @@ https://vibesecradar.com/. For every advisory we research its cause, its impact,
 (introduction, exposure, repair, release) and the role AI played, from primary evidence.
 Keep committed content in English.
 
-Work through the skill for your role; each one says which of its references to read when.
+The skills run in a local Codex or Claude Code session: the leader starts every other role as a
+fresh subagent with the host's own tools. Work through the skill for your role; each one says
+which of its references to read when.
 
 | Skill | Role |
 | --- | --- |
-| [radar-lead](.agents/skills/radar-lead/SKILL.md) | Select cases, run research with `scripts/radar_run.py`, review, land, publish |
+| [radar-lead](.agents/skills/radar-lead/SKILL.md) | Select cases, start the other roles as subagents, seal, check and land with `scripts/radar_case.py`, publish |
 | [radar-incremental](.agents/skills/radar-incremental/SKILL.md) | Capture new advisories since the watermark and admit them |
 | [radar-audit](.agents/skills/radar-audit/SKILL.md) | One independent auditor, one case |
 | [radar-adjudicate](.agents/skills/radar-adjudicate/SKILL.md) | The sole adjudicator of a case |
