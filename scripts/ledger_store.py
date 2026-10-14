@@ -6,6 +6,7 @@ import argparse
 import hashlib
 import json
 import os
+import re
 import sys
 import uuid
 from collections import defaultdict
@@ -438,6 +439,285 @@ def read_patches(path: Path, *, require_assessments: bool) -> list[dict]:
     return sorted(patches, key=lambda item: item["row"]["class_id"])
 
 
+PUBLIC_INTAKE_ID = re.compile(
+    r"(?:CVE-\d{4}-\d{4,}|GHSA-[23456789cfghjmpqrvwx]{4}(?:-[23456789cfghjmpqrvwx]{4}){2})$",
+    re.I,
+)
+
+
+def intake_public_ids(row: dict) -> set[str]:
+    """Explicit identity edges only; URLs and titles never imply aliases."""
+    values = list(row.get("advisory_ids") or [])
+    values.extend(row.get("advisory_aliases") or [])
+    values.extend((row.get("advisory_identity") or {}).get("member_ids") or [])
+    result = set()
+    for value in values:
+        value = value.get("id") if isinstance(value, dict) else value
+        if isinstance(value, str) and PUBLIC_INTAKE_ID.fullmatch(value):
+            result.add(value.upper())
+    return result
+
+
+def intake_class_id(ids: set[str]) -> str:
+    normalized = sorted("GHSA-" + x[5:].lower() if x.startswith("GHSA-") else x
+                        for x in ids)
+    return "alias-" + sha256("\n".join(normalized) + "\n")[:24]
+
+
+def validate_intake_row(row: dict, files: dict) -> None:
+    cid = row.get("class_id")
+    if not isinstance(cid, str) or not re.fullmatch(r"alias-[0-9a-f]{24}", cid):
+        raise ValueError("intake class_id must be alias- followed by 24 lowercase hex digits")
+    if row.get("status") != "UNANALYZED":
+        raise ValueError(f"{cid}: intake accepts UNANALYZED only")
+    ids = row.get("advisory_ids")
+    if (not isinstance(ids, list) or not ids
+            or any(not isinstance(v, str) or not PUBLIC_INTAKE_ID.fullmatch(v) for v in ids)
+            or len({v.upper() for v in ids}) != len(ids)):
+        raise ValueError(f"{cid}: advisory_ids must contain unique explicit CVE/GHSA IDs")
+    known = intake_public_ids(row)
+    provenance = row.get("source_intake")
+    if not isinstance(provenance, dict):
+        raise ValueError(f"{cid}: source_intake object required")
+    window = provenance.get("window")
+    try:
+        dates = [re.fullmatch(
+            r"[0-9]{4}-[0-9]{2}-[0-9]{2}[Tt][0-9]{2}:[0-9]{2}:[0-9]{2}"
+            r"(?:\.([0-9]+))?(?:[Zz]|[+-]00:00)", window[k]) for k in ("start", "end")]
+        if any(match is None or len((match[1] or "").rstrip("0")) > 6 for match in dates):
+            raise ValueError
+        start, end = [datetime.fromisoformat(match[0].upper().replace("Z", "+00:00"))
+                      for match in dates]
+        if (start.tzinfo is None or end.tzinfo is None or start >= end
+                or start.utcoffset().total_seconds() or end.utcoffset().total_seconds()):
+            raise ValueError
+    except (TypeError, KeyError, AttributeError, ValueError):
+        raise ValueError(f"{cid}: source_intake.window requires ordered UTC start/end") from None
+    if not re.fullmatch(r"[0-9a-f]{64}", str(provenance.get("delta_sha256", ""))):
+        raise ValueError(f"{cid}: source_intake.delta_sha256 required")
+    mapping = provenance.get("repository_mapping")
+    if (not isinstance(mapping, dict) or not isinstance(row.get("repo"), str)
+            or not row["repo"].strip() or mapping.get("repository") != row["repo"]
+            or not isinstance(mapping.get("basis"), str) or not mapping["basis"].strip()):
+        raise ValueError(f"{cid}: repository_mapping requires exact repository and nonempty basis")
+    records = provenance.get("records")
+    if not isinstance(records, list) or not records:
+        raise ValueError(f"{cid}: source_intake.records must be nonempty")
+
+    def read_file(path):
+        if not isinstance(path, str) or not path:
+            raise ValueError(f"{cid}: source path required")
+        if path not in files:
+            files[path] = Path(path).read_bytes()
+        return files[path]
+
+    source_public_ids = set()
+    for record in records:
+        if not isinstance(record, dict):
+            raise ValueError(f"{cid}: source record object required")
+        pointer = record.get("pointer")
+        if (not isinstance(pointer, str) or not pointer.startswith("/")
+                or re.search(r"~(?![01])", pointer)):
+            raise ValueError(f"{cid}: source record JSON pointer required")
+        if not re.fullmatch(r"[0-9a-f]{64}", str(record.get("sha256", ""))):
+            raise ValueError(f"{cid}: source record sha256 required")
+        # Cache parsed immutable source pages as well as their original bytes.
+        path = record.get("path")
+        raw = read_file(path)
+        parsed_key = ("json", path)
+        if parsed_key not in files:
+            files[parsed_key] = json.loads(raw)
+        value = files[parsed_key]
+        try:
+            for part in pointer[1:].split("/"):
+                part = part.replace("~1", "/").replace("~0", "~")
+                if isinstance(value, list):
+                    if not re.fullmatch(r"0|[1-9]\d*", part):
+                        raise ValueError
+                    value = value[int(part)]
+                else:
+                    value = value[part]
+        except (KeyError, IndexError, TypeError, ValueError):
+            raise ValueError(f"{cid}: source pointer does not resolve: {pointer}") from None
+        canonical = json.dumps(value, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
+        if sha256(canonical) != record["sha256"]:
+            raise ValueError(f"{cid}: source object hash mismatch")
+        if not isinstance(value, dict):
+            raise ValueError(f"{cid}: source pointer must select an advisory object")
+        if "ghsa_id" in value:
+            if value.get("id") is not None:
+                raise ValueError(f"{cid}: mixed GitHub and other source identity fields")
+            for field, kind in (("ghsa_id", "GHSA"), ("cve_id", "CVE")):
+                ident = value.get(field)
+                if field == "cve_id" and ident is None:
+                    continue
+                if (not isinstance(ident, str) or not PUBLIC_INTAKE_ID.fullmatch(ident)
+                        or not ident.upper().startswith(kind + "-")):
+                    raise ValueError(f"{cid}: source {field} type/value mismatch")
+            source_ids = [value["ghsa_id"], value.get("cve_id")]
+        else:
+            source_ids = [value.get("id"), value.get("cve_id")]
+        identifiers = value.get("identifiers")
+        identifiers = [] if identifiers is None else identifiers
+        if not isinstance(identifiers, list):
+            raise ValueError(f"{cid}: source identifiers must be a nullable array")
+        for identifier in identifiers:
+            ident = identifier.get("value") if isinstance(identifier, dict) else None
+            if not isinstance(ident, str) or not PUBLIC_INTAKE_ID.fullmatch(ident):
+                raise ValueError(f"{cid}: invalid source identifier")
+            if "ghsa_id" in value:
+                kind = identifier.get("type")
+                if (kind not in ("CVE", "GHSA") or not ident.upper().startswith(kind + "-")
+                        or (kind == "GHSA" and ident.upper() != str(value["ghsa_id"]).upper())):
+                    raise ValueError(f"{cid}: source identifier type/value mismatch")
+            source_ids.append(ident)
+        source_ids = {v.upper() for v in source_ids
+                      if isinstance(v, str) and PUBLIC_INTAKE_ID.fullmatch(v)}
+        if not source_ids or not source_ids <= known:
+            raise ValueError(f"{cid}: source advisory IDs missing from intake identity")
+        source_public_ids.update(source_ids)
+
+    prior_ids = set()
+    if cid != intake_class_id(known) or not known <= source_public_ids:
+        prior = provenance.get("prior_identity")
+        if not isinstance(prior, dict) or type(prior.get("line")) is not int or prior["line"] < 1:
+            raise ValueError(f"{cid}: non-derived class_id needs pinned prior_identity")
+        content = read_file(prior.get("path"))
+        if sha256(content) != prior.get("sha256"):
+            raise ValueError(f"{cid}: prior identity file hash mismatch")
+        try:
+            previous = json.loads(content.splitlines()[prior["line"] - 1])
+            prior_ids = intake_public_ids({
+                "advisory_ids": previous.get("public_ids", previous.get("advisory_ids", [])),
+                "advisory_aliases": [*previous.get("extra_aliases", []),
+                                    *previous.get("ghsa_ids", []),
+                                    *previous.get("advisory_aliases", [])],
+                "advisory_identity": previous.get("advisory_identity", {}),
+            })
+        except (IndexError, TypeError, AttributeError):
+            raise ValueError(f"{cid}: prior identity line is invalid") from None
+        if previous.get("class_id") != cid or not prior_ids or not prior_ids <= known:
+            raise ValueError(f"{cid}: prior identity does not justify this class/ID set")
+    if not known <= source_public_ids | prior_ids:
+        raise ValueError(f"{cid}: identity IDs not covered by source objects or pinned prior identity")
+
+
+def foreign_active_claims(class_ids: set[str], actor: str, *, path: Path | None = None) -> list[dict]:
+    """Foreign occupancy blocks writes, including expired and historical slot claims."""
+    import claims as claims_mod
+
+    current = claims_mod.state(claims_mod.load(path or claims_mod.DEFAULT_CLAIMS))
+    protected = {value.casefold() for value in class_ids}
+    return [
+        {
+            "class_id": class_id,
+            "slot": cur["slot"],
+            "owner": cur["owner"],
+            "lease_until": cur["lease_until"],
+        }
+        for (class_id, _slot), cur in sorted(current.items())
+        if class_id.casefold() in protected and cur["claimed"] and cur.get("owner") != actor
+    ]
+
+
+
+def intake(path: Path, actor: str, description: str) -> dict:
+    """Append new unassessed identities atomically; never overwrite or merge."""
+    from psycopg.types.json import Jsonb
+
+    if not actor.strip() or not description.strip():
+        raise ValueError("intake actor and description must be nonempty")
+    rows = read_objects(path)
+    if not rows:
+        raise ValueError("intake file is empty")
+    files = {}
+    for row in rows:
+        validate_intake_row(row, files)
+    class_ids = {row["class_id"] for row in rows}
+    if len(class_ids) != len(rows):
+        raise ValueError("duplicate class_id in intake")
+    rows.sort(key=lambda row: row["class_id"])
+    protected_ids = class_ids | {ident for row in rows for ident in intake_public_ids(row)}
+    blockers = foreign_active_claims(protected_ids, actor)
+    if blockers:
+        raise ValueError("foreign active claims block intake: " + json.dumps(blockers, sort_keys=True))
+    change_set = None
+    inserted, skipped = [], []
+    with connect(write=True) as conn:
+        # Conflicts with all table writers, serializing identity checks and ordinals.
+        conn.execute("LOCK TABLE ledger_rows IN SHARE ROW EXCLUSIVE MODE")
+        blockers = foreign_active_claims(protected_ids, actor)
+        if blockers:
+            raise ValueError("foreign active claims block intake: " + json.dumps(blockers, sort_keys=True))
+        # Historical raw JSON can contain escaped NULs, which PostgreSQL jsonb
+        # cannot represent. Verify the local export under this same table lock,
+        # then inspect exactly those bytes with Python; never rewrite old rows.
+        snapshot = DEFAULT_LEDGER.read_bytes()
+        current_digest = conn.execute(SNAPSHOT_SHA256_SQL).fetchone()[0]
+        if sha256(snapshot) != current_digest:
+            raise ValueError("local ledger export does not match locked database snapshot; refresh export before intake")
+        existing = {}
+        owners = defaultdict(set)
+        for line in snapshot.splitlines():
+            if not line.strip():
+                continue
+            saved = json.loads(line)
+            cid = saved["class_id"]
+            if cid in existing:
+                raise ValueError(f"duplicate class_id in verified export: {cid}")
+            existing[cid] = saved
+            for ident in intake_public_ids(saved):
+                owners[ident].add(cid)
+        next_ordinal = conn.execute(
+            "SELECT COALESCE(MAX(ordinal), -1) + 1 FROM ledger_rows"
+        ).fetchone()[0]
+        pending = []
+        for row in rows:
+            cid = row["class_id"]
+            for ident in sorted(intake_public_ids(row)):
+                if owners[ident] - {cid}:
+                    raise ValueError(f"advisory ID overlap: {ident} already belongs to {sorted(owners[ident])}")
+                owners[ident].add(cid)
+            if cid in existing:
+                if existing[cid] != row:
+                    raise ValueError(f"existing class_id has different payload: {cid}")
+                skipped.append(cid)
+            else:
+                pending.append(row)
+        if pending:
+            change_set = str(uuid.uuid4())
+            conn.execute("""
+                INSERT INTO ledger_change_sets(change_set_id, actor, description)
+                VALUES (%s, %s, %s)
+            """, (change_set, actor, description))
+            with conn.cursor() as cursor:
+                for start in range(0, len(pending), 500):
+                    batch = pending[start:start + 500]
+                    encoded = [(row, raw_row(row)) for row in batch]
+                    cursor.executemany("""
+                        INSERT INTO ledger_rows(
+                            class_id, ordinal, status, repo, advisory_ids, raw_json,
+                            revision, change_set_id, updated_by
+                        ) VALUES (%s, %s, %s, %s, %s, %s, 1, %s, %s)
+                    """, [(row["class_id"], next_ordinal + start + offset, row["status"],
+                           row["repo"], Jsonb(row["advisory_ids"]), raw, change_set, actor)
+                          for offset, (row, raw) in enumerate(encoded)])
+                    cursor.executemany("""
+                        INSERT INTO ledger_versions(
+                            class_id, revision, change_set_id, operation, raw_json, checksum, actor
+                        ) VALUES (%s, 1, %s, 'IMPORT', %s, %s, %s)
+                    """, [(row["class_id"], change_set, raw, sha256(raw), actor)
+                          for row, raw in encoded])
+            conn.execute("UPDATE ledger_change_sets SET committed_at = now() WHERE change_set_id = %s",
+                         (change_set,))
+            inserted = [row["class_id"] for row in pending]
+    result = {"change_set_id": change_set, "inserted": inserted, "skipped_exact": skipped}
+    print(json.dumps(result, sort_keys=True))
+    # Export only after commit; a stale local export must be refreshed before intake.
+    export_jsonl_incremental(DEFAULT_LEDGER)
+    return result
+
+
 def apply_updates(
     path: Path,
     actor: str,
@@ -448,6 +728,16 @@ def apply_updates(
     from psycopg.types.json import Jsonb
 
     patches = read_patches(path, require_assessments=require_assessments)
+    blockers = foreign_active_claims({item["row"]["class_id"] for item in patches}, actor)
+    if blockers:
+        detail = "; ".join(
+            f"{item['class_id']} slot {item['slot']} held by {item['owner']} until {item['lease_until']}"
+            for item in blockers
+        )
+        raise SystemExit(
+            f"claims block this write: {detail}"
+            " (the holder must release the exact claim; expiry does not release occupancy)"
+        )
     change_set = str(uuid.uuid4())
     all_assessments = sorted(
         {assessment for item in patches for assessment in item.get("assessment_ids", [])}
@@ -596,6 +886,7 @@ def add_assessments(path: Path) -> None:
             raise ValueError(f"{path}:{number}: run_id required")
         run_ids.append(item["run_id"])
     inserted = []
+    skipped = []
     with connect(write=True) as conn:
         active_runs = {
             row[0]
@@ -642,7 +933,7 @@ def add_assessments(path: Path) -> None:
             if confidence is not None and not isinstance(confidence, (int, float)):
                 raise ValueError(f"{path}:{number}: confidence must be numeric")
             assessment_id = item.get("assessment_id") or str(uuid.uuid4())
-            conn.execute(
+            stored = conn.execute(
                 """
                 INSERT INTO case_assessments(
                     assessment_id, class_id, run_id, base_ledger_revision,
@@ -653,6 +944,8 @@ def add_assessments(path: Path) -> None:
                     %s, %s, %s, %s, %s, %s, %s, %s,
                     %s, %s, %s, %s, %s, %s
                 )
+                ON CONFLICT (assessment_id) DO NOTHING
+                RETURNING assessment_id
                 """,
                 (
                     assessment_id,
@@ -670,9 +963,14 @@ def add_assessments(path: Path) -> None:
                     Jsonb(item.get("metadata") or {}),
                     supersedes,
                 ),
-            )
-            inserted.append(assessment_id)
-    print(json.dumps({"inserted": inserted}))
+            ).fetchone()
+            # ponytail: a deterministic assessment_id means the row is the same
+            # file row; a revised verdict needs supersedes_assessment_id instead.
+            if stored is None:
+                skipped.append(assessment_id)
+            else:
+                inserted.append(assessment_id)
+    print(json.dumps({"inserted": inserted, "skipped": skipped}))
 
 
 def case_history(class_id: str) -> None:
@@ -994,6 +1292,10 @@ def build_parser() -> argparse.ArgumentParser:
     boot = sub.add_parser("bootstrap")
     boot.add_argument("--ledger", type=Path, default=DEFAULT_LEDGER)
     boot.add_argument("--actor", default="migration-20260828")
+    ingest = sub.add_parser("intake")
+    ingest.add_argument("file", type=Path)
+    ingest.add_argument("--actor", required=True)
+    ingest.add_argument("--description", required=True)
     exp = sub.add_parser("export")
     exp.add_argument("--out", type=Path, default=DEFAULT_LEDGER)
     exp.add_argument("--force", action="store_true")
@@ -1039,6 +1341,8 @@ def main() -> int:
         migrate()
     elif args.command == "bootstrap":
         bootstrap(args.ledger, args.actor)
+    elif args.command == "intake":
+        intake(args.file, args.actor, args.description)
     elif args.command == "export":
         export_jsonl(args.out, force=args.force)
     elif args.command == "export-incremental":

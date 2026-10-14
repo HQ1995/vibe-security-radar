@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
-"""Compare two independent audit slots over the same batch.
+"""Compare independent audit slots over the same batch.
 
 Two blind audits of one batch disagree where the two briefs asked for
 different fields, or where a rule lived only in prose. This prints that
 comparison, so the drift is one command instead of a hand diff.
 
 Usage:
+  python3 scripts/compare_slots.py --lane auditor1=PATH --lane auditor2=PATH --lane auditor3=PATH
   python3 scripts/compare_slots.py --a research/<batch>/review \\
       --b research/<batch>/verify/cases [--json report.json] [--probe-git]
 """
@@ -13,6 +14,7 @@ from __future__ import annotations
 
 import argparse
 import collections
+import hashlib
 import json
 import os
 import re
@@ -21,7 +23,7 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from audit_record_gates import AI_VERDICTS, check_record_strict, review_signals
+from audit_record_gates import AI_VERDICTS, check_record, check_record_strict, load_record, review_signals
 
 SKIP = re.compile(r"INDEX|manifest|selection|summary|excluded", re.I)
 SQUASH_SUBJECT = re.compile(r"\(#\d+\)$")
@@ -41,20 +43,90 @@ FLAG_KINDS = (
 )
 GIT_ENV = {**os.environ, "GIT_NO_LAZY_FETCH": "1"}
 
+# Text differences are review obligations, not machine-decided contradictions.
+# Keep distinct roles distinct: a landing is not an atomic member, and a later
+# AI contribution is not a decomposed BIC member.
+RESEARCH_FIELDS = {
+    'advisory': ('verdict', 'advisory_ids', 'advisory_disposition',
+                 'advisory_aliases', 'false_positive_ground'),
+    'mechanism': ('cause', 'mechanism', 'mechanisms', 'bug_semantics',
+                  'flaw_origin', 'counterevidence', 'evidence', 'reasoning'),
+    'bic': ('introducer_sha', 'introducer_parent', 'bic_granularity',
+            'bic_minimality', 'bic_note', 'landing_commit', 'landing_basis',
+            'landing_note', 'decomposed_shas', 'decomposition_probe'),
+    'ai': ('ai_on_bic', 'ai_marker', 'ai_admissibility', 'identity_class',
+           'disclosure_convention', 'disclosure_convention_evidence',
+           'candidate_set', 'candidate_details', 'carrier_set', 'ai_evidence'),
+    'fix': ('fix_sha', 'direct_fix_sha', 'atomic_repair_sha', 'fix_shas',
+            'minimum_fix_set', 'fix_granularity', 'fix', 'fix_note',
+            'fix_ai_marker', 'fix_chain', 'ir_chain', 'unpatched', 'potential_fix'),
+    'versions': ('versions', 'affected_versions', 'fixed_versions',
+                 'fixed_release', 'clone_head_sha'),
+    'residual': ('remaining_gap', 'residual_triage', 'flip_condition'),
+}
 
-def load(path: Path) -> dict[str, dict]:
+
+def research_differences_many(records: dict[str, dict]) -> dict:
+    """List differing claims from every lane without choosing a preferred report."""
+    first = next(iter(records.values()))
+    return {
+        dimension: {field: {name: record.get(field) for name, record in records.items()}
+                    for field in fields
+                    if any(record.get(field) != first.get(field) for record in records.values())}
+        for dimension, fields in RESEARCH_FIELDS.items()
+        if any(record.get(field) != first.get(field)
+               for field in fields for record in records.values())
+    }
+
+
+def research_differences(a: dict, b: dict) -> dict:
+    return research_differences_many({'a': a, 'b': b})
+
+
+def lane_paths(values=None, a: Path | None = None, b: Path | None = None) -> dict[str, Path]:
+    if values:
+        if a is not None or b is not None:
+            raise ValueError('use --lane or --a/--b, not both')
+        paths = {}
+        for value in values:
+            name, separator, path = value.partition('=')
+            if not separator or not path or not re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9_-]*', name):
+                raise ValueError('--lane requires NAME=PATH')
+            if name == 'accepted' or name in paths:
+                raise ValueError(f'duplicate or reserved lane name: {name}')
+            paths[name] = Path(path)
+    elif a is not None and b is not None:
+        paths = {'a': a, 'b': b}
+    else:
+        raise ValueError('supply named --lane inputs, or both --a and --b')
+    if len({path.resolve() for path in paths.values()}) != len(paths):
+        raise ValueError('independent lanes must have distinct input paths')
+    return paths
+
+
+def load_snapshot(path: Path) -> tuple[dict[str, dict], dict[str, str]]:
     files = sorted(path.rglob('*.json')) if path.is_dir() else [path]
     records: dict[str, dict] = {}
+    digests = {}
     for file in files:
         if SKIP.search(file.name):
             continue
         try:
-            record = json.loads(file.read_text(encoding='utf-8'))
-        except (json.JSONDecodeError, UnicodeDecodeError):
-            continue
+            data = file.read_bytes()
+            record = load_record(data.decode('utf-8'))
+        except (ValueError, UnicodeDecodeError) as exc:
+            raise ValueError(f"{file}: {exc}") from exc
         if isinstance(record, dict) and 'verdict' in record:
-            records[str(record.get('class_id') or file.stem)] = record
-    return records
+            key = str(record.get('class_id') or file.stem)
+            if key in records:
+                raise ValueError(f'{file}: duplicate class_id {key}')
+            records[key] = record
+            digests[key] = hashlib.sha256(data).hexdigest()
+    return records, digests
+
+
+def load(path: Path) -> dict[str, dict]:
+    return load_snapshot(path)[0]
 
 
 def sha(value) -> str:
@@ -63,7 +135,7 @@ def sha(value) -> str:
 
 def view(record: dict) -> dict:
     """One shape for both slots: new fields win, older ones map onto them."""
-    members = record.get('decomposed_shas') or record.get('candidate_set') or []
+    members = record.get('decomposed_shas') or []
     return {
         'verdict': record.get('verdict'),
         'bic': sha(record.get('introducer_sha')),
@@ -87,7 +159,7 @@ def flag_kind(message: str) -> str:
 
 
 def squash_shape(value: str, clone: str) -> str:
-    """squash / merge / atomic / unknown for one commit object, probed in git."""
+    """Inspect Git shape; single-parent/root objects need separate minimality research."""
     if not (value and clone):
         return 'unknown'
     try:
@@ -104,7 +176,7 @@ def squash_shape(value: str, clone: str) -> str:
         return 'merge'
     if 'noreply@github.com' in lines[1] or SQUASH_SUBJECT.search(lines[2]):
         return 'squash'
-    return 'atomic'
+    return 'single_parent_or_root'
 
 
 def compare(a_path: Path, b_path: Path, probe_git: bool = False) -> dict:
@@ -144,7 +216,7 @@ def compare(a_path: Path, b_path: Path, probe_git: bool = False) -> dict:
 
     fix_differ = [
         key for key in shared
-        if a[key]['fix'] and b[key]['fix'] and a[key]['fix'] != b[key]['fix']
+        if a[key]['fix'] != b[key]['fix']
     ]
     presence = {}
     for field, getter in (
@@ -170,7 +242,7 @@ def compare(a_path: Path, b_path: Path, probe_git: bool = False) -> dict:
         counter = collections.Counter()
         by_kind = collections.defaultdict(list)
         for key, record in raw.items():
-            for message in check_record_strict(record):
+            for message in check_record(record) + check_record_strict(record):
                 counter[flag_kind(message)] += 1
             for message in review_signals(record):
                 kind = 'ai_disclosure_claim' if 'claims' in message else 'residual_open_surface'
@@ -204,6 +276,14 @@ def compare(a_path: Path, b_path: Path, probe_git: bool = False) -> dict:
             for key in bic_differ
         ],
         'fix_differ': len(fix_differ),
+        'fix_differ_samples': [
+            {'class_id': key, 'a': a[key]['fix'], 'b': b[key]['fix']}
+            for key in fix_differ
+        ],
+        'research_differences': {
+            key: differences for key in shared
+            if (differences := research_differences(a_raw[key], b_raw[key]))
+        },
         'presence': presence,
         'strict_flags': flags,
         'signals': signals,
@@ -218,7 +298,51 @@ def compare(a_path: Path, b_path: Path, probe_git: bool = False) -> dict:
     return report
 
 
+def compare_many(paths: dict[str, Path], probe_git: bool = False) -> dict:
+    if not paths:
+        raise ValueError('at least one auditor input is required')
+    slots = {name: load(path) for name, path in paths.items()}
+    union = set().union(*(set(records) for records in slots.values()))
+    shared = set.intersection(*(set(records) for records in slots.values()))
+    report = {
+        'lanes': {name: {'path': str(paths[name]), 'records': len(records),
+                         'verdicts': dict(collections.Counter(r.get('verdict') for r in records.values()))}
+                  for name, records in slots.items()},
+        'union': len(union), 'shared': len(shared),
+        'missing': {name: sorted(union - set(records)) for name, records in slots.items()},
+        'research_differences': {
+            cid: differences for cid in sorted(shared)
+            if (differences := research_differences_many({name: records[cid] for name, records in slots.items()}))
+        },
+        'strict_flags': {name: {cid: errors for cid, record in records.items()
+                               if (errors := check_record(record) + check_record_strict(record))}
+                         for name, records in slots.items()},
+        'signals': {name: {cid: messages for cid, record in records.items()
+                          if (messages := review_signals(record))}
+                    for name, records in slots.items()},
+        'scope': 'comparison only; use the adjudication gate and manifest for acceptance',
+    }
+    if probe_git:
+        report['bic_shape'] = {
+            name: dict(collections.Counter(squash_shape(sha(r.get('introducer_sha')), r.get('clone') or '')
+                                           for r in records.values()))
+            for name, records in slots.items()
+        }
+    return report
+
+
 def render(report: dict, limit: int) -> str:
+    if 'lanes' in report:
+        out = [f'{name}: records={slot["records"]} missing={len(report["missing"][name])} '
+               f'flagged={len(report["strict_flags"][name])} path={slot["path"]}'
+               for name, slot in report['lanes'].items()]
+        out.append(f'union={report["union"]} shared={report["shared"]} '
+                   f'research differences={len(report["research_differences"])} (not acceptance)')
+        out.extend(f'{cid}: {", ".join(dimensions)}'
+                   for cid, dimensions in list(report['research_differences'].items())[:limit])
+        if 'bic_shape' in report:
+            out.append('Git shapes (not logical atomicity): ' + json.dumps(report['bic_shape']))
+        return '\n'.join(out)
     out = [
         'A ' + report['a']['path'] + '  records=' + str(report['a']['records']),
         'B ' + report['b']['path'] + '  records=' + str(report['b']['records']),
@@ -252,6 +376,10 @@ def render(report: dict, limit: int) -> str:
     for row in report['bic_differ_samples'][:3]:
         out.append('  %s  A=%s B=%s' % (row['class_id'], row['a'][:12], row['b'][:12]))
     out.append('fix  differ=%d' % report['fix_differ'])
+    out.append('research differences requiring adjudication=%d (not acceptance)'
+               % len(report['research_differences']))
+    for key, dimensions in list(report['research_differences'].items())[:limit]:
+        out.append('  %s  %s' % (key, ', '.join(dimensions)))
     if 'bic_shape' in report:
         out.append('BIC shape (probed)  A=%s  B=%s'
                    % (report['bic_shape']['a'], report['bic_shape']['b']))
@@ -281,14 +409,19 @@ def render(report: dict, limit: int) -> str:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--a', type=Path, required=True, help='slot A record dir')
-    parser.add_argument('--b', type=Path, required=True, help='slot B record dir')
+    parser.add_argument('--a', type=Path, help='legacy slot A record dir')
+    parser.add_argument('--b', type=Path, help='legacy slot B record dir')
+    parser.add_argument('--lane', action='append', help='NAME=PATH; repeat for every independent auditor')
     parser.add_argument('--json', type=Path, help='also write the report as JSON')
     parser.add_argument('--limit', type=int, default=8, help='rows per section')
     parser.add_argument('--probe-git', action='store_true',
-                        help='read each BIC object to classify squash/merge/atomic')
+                        help='inspect Git shape; this cannot establish logical atomicity')
     args = parser.parse_args()
-    report = compare(args.a, args.b, args.probe_git)
+    try:
+        paths = lane_paths(args.lane, args.a, args.b)
+        report = compare_many(paths, args.probe_git) if args.lane else compare(args.a, args.b, args.probe_git)
+    except (OSError, ValueError) as exc:
+        parser.error(str(exc))
     print(render(report, args.limit))
     if args.json:
         args.json.write_text(json.dumps(report, indent=2, sort_keys=True) + '\n')

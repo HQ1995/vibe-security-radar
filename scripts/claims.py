@@ -1,21 +1,22 @@
 #!/usr/bin/env python3
-"""Append-only claim ledger for parallel case work: one writer per (class_id, slot)."""
+"""Case occupancy only: leader claim -> release. Research progress lives in the batch index."""
 from __future__ import annotations
 
 import argparse
 import fcntl
+import hashlib
 import json
+import math
 import os
 import sys
+import uuid
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_CLAIMS = ROOT / "artifacts/claims/claims.jsonl"
-DEFAULT_LEDGER = ROOT / "artifacts/funnel-account-20260817.jsonl"
-OPEN_STATUSES = ("UNANALYZED", "PARTIALLY_ANALYZED")
 DEFAULT_LEASE_HOURS = 24.0
-DEFAULT_SLOT = "main"
+DEFAULT_SLOT = "main"  # New claims are case-wide; slots only identify historical holders.
 
 
 class ClaimsError(Exception):
@@ -27,244 +28,195 @@ def _iso(when: datetime) -> str:
 
 
 def load(path: Path) -> list[dict]:
-    path = Path(path)
-    if not path.exists():
+    try:
+        with Path(path).open(encoding="utf-8") as fh:
+            fcntl.flock(fh.fileno(), fcntl.LOCK_SH)
+            return [json.loads(line) for line in fh if line.strip()]
+    except FileNotFoundError:
         return []
-    return [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines() if line.strip()]
 
 
 def state(events: list[dict], at: str | None = None) -> dict[tuple[str, str], dict]:
-    """Reduce the append-only log to the current claim per (class_id, slot)."""
+    """Read old slot logs without rewriting them; expiration never releases occupancy."""
     at = at or _iso(datetime.now(timezone.utc))
-    out: dict[tuple[str, str], dict] = {}
+    current = {}
     for event in events:
-        slot = event.get("slot", DEFAULT_SLOT)
-        cur = out.setdefault((event["class_id"], slot), {"class_id": event["class_id"], "slot": slot})
+        key = (event["class_id"], event.get("slot", DEFAULT_SLOT))
         if event["action"] == "CLAIM":
-            cur.setdefault("first_claimed_at", event["ts"])
-            cur.update({
-                "state": "ACTIVE",
-                "owner": event["owner"],
-                "run_id": event.get("run_id"),
-                "scope": event.get("scope", ""),
-                "claimed_at": event["ts"],
-                "lease_until": event["lease_until"],
-                "next_question": event.get("next_question", ""),
-                "output_path": event.get("output_path", ""),
-                "prev": event.get("prev"),
-                "supersedes": event.get("supersedes"),
-            })
+            legacy = not event.get("claim_id")
+            token = event.get("claim_id") or "legacy-" + hashlib.sha256(
+                json.dumps(event, sort_keys=True).encode()
+            ).hexdigest()
+            prior = current.get(key)
+            if prior and prior["claimed"] and not prior["legacy"] and (
+                token != prior["claim_id"] or event["owner"] != prior["owner"]
+                or event.get("scope", "") != prior["scope"]
+            ):
+                raise ClaimsError(f"{key}: cannot replace an unreleased claim")
+            current[key] = {
+                "class_id": key[0], "slot": key[1], "claimed": True,
+                "owner": event["owner"], "scope": event.get("scope", ""),
+                "claim_id": token, "legacy": legacy,
+                "claimed_at": event.get("claimed_at", event["ts"]),
+                "lease_until": event.get("lease_until", ""),
+            }
+        elif event["action"] in ("DONE", "RELEASED", "RELEASE"):
+            cur = current.get(key)
+            if cur is None:
+                raise ClaimsError(f"{key}: release without a preceding claim")
+            token = event.get("claim_id")
+            if (token and token != cur["claim_id"]) or (not token and not cur["legacy"]):
+                raise ClaimsError(f"{key}: release does not match the current claim_id")
+            if token and event["owner"] != cur["owner"]:
+                raise ClaimsError(f"{key}: release owner does not match")
+            cur["claimed"] = False
         else:
-            cur.update({
-                "state": event["action"],
-                "closed_by": event["owner"],
-                "closed_at": event["ts"],
-                "result": event.get("result", ""),
-            })
-    for cur in out.values():
-        if cur.get("state") == "ACTIVE" and cur.get("lease_until", "") < at:
-            cur["state"] = "STALE"
-    return out
-
-
-def open_rows(ledger: Path, statuses=OPEN_STATUSES):
-    with Path(ledger).open(encoding="utf-8") as fh:
-        for line in fh:
-            if not line.strip():
-                continue
-            row = json.loads(line)
-            if row.get("status") in statuses:
-                yield row
-
-
-def class_id_file(path: Path) -> set[str]:
-    """Read a batch identifier: plain class_id lines or a jsonl with a class_id field."""
-    ids = set()
-    for line in Path(path).read_text(encoding="utf-8").splitlines():
-        line = line.strip()
-        if line:
-            ids.add(json.loads(line)["class_id"] if line.startswith("{") else line)
-    return ids
+            raise ClaimsError(f"unknown claim action: {event['action']}")
+    for cur in current.values():
+        cur["expired"] = bool(cur["claimed"] and cur["lease_until"] and cur["lease_until"] <= at)
+    return current
 
 
 def _transact(path: Path, build):
-    """Read-modify-append under an exclusive lock; nothing is written if build raises."""
+    """Check ownership and append under one lock; a rejected operation writes nothing."""
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
-    with open(path, "a+", encoding="utf-8") as fh:
+    with path.open("a+", encoding="utf-8") as fh:
         fcntl.flock(fh.fileno(), fcntl.LOCK_EX)
         fh.seek(0)
-        events = [json.loads(line) for line in fh.read().splitlines() if line.strip()]
-        new_events = build(state(events))
-        for event in new_events:
+        current = state([json.loads(line) for line in fh if line.strip()])
+        event = build(current)
+        if event is not None:
             fh.write(json.dumps(event, sort_keys=True) + "\n")
-        fh.flush()
-        return new_events
+            fh.flush()
+            os.fsync(fh.fileno())
+        return event
 
 
-def _claim_event(class_id: str, slot: str, owner: str, hours: float, cur: dict | None, *,
-                 scope: str = "", next_question: str = "", output_path: str = "",
-                 run_id: str | None = None) -> dict:
-    if cur and cur["state"] == "ACTIVE" and cur["owner"] != owner:
-        raise ClaimsError(f"{class_id} slot {slot} held by {cur['owner']} until {cur['lease_until']}")
-    now = datetime.now(timezone.utc)
-    event = {
-        "action": "CLAIM",
-        "class_id": class_id,
-        "slot": slot,
-        "owner": owner,
-        "run_id": run_id,
-        "scope": scope,
-        "ts": _iso(now),
-        "lease_until": _iso(now + timedelta(hours=hours)),
-        "next_question": next_question,
-        "output_path": output_path,
-    }
-    if cur:
-        if cur["state"] == "STALE":
-            event["supersedes"] = cur["owner"]
-        elif cur["state"] in ("DONE", "RELEASED"):
-            event["prev"] = f"{cur['state']}:{cur.get('owner', '')}"
-    return event
-
-
-def claim(path: Path, class_id: str, owner: str, *, slot: str = DEFAULT_SLOT, scope: str = "",
-          hours: float = DEFAULT_LEASE_HOURS, next_question: str = "", output_path: str = "",
-          run_id: str | None = None) -> dict:
-    """Take or refresh a (class_id, slot); refuses an unexpired claim held by someone else."""
-    events = _transact(path, lambda current: [
-        _claim_event(class_id, slot, owner, hours, current.get((class_id, slot)),
-                     scope=scope, next_question=next_question, output_path=output_path, run_id=run_id)
-    ])
-    return events[0]
-
-
-def pick(path: Path, ledger: Path, owner: str, *, limit: int = 1, slot: str = DEFAULT_SLOT,
-         scope: str = "", statuses=OPEN_STATUSES, hours: float = DEFAULT_LEASE_HOURS,
-         next_question: str = "", run_id: str | None = None,
-         class_ids: set[str] | None = None) -> list[dict]:
-    """Claim the first <limit> cases in ledger order that nobody holds in <slot>."""
-    rows = list(open_rows(ledger, statuses))
-    if class_ids is not None:
-        rows = [row for row in rows if row["class_id"] in class_ids]
+def claim(path: Path, class_id: str, owner: str, *, scope: str,
+          claim_id: str | None = None, hours: float = DEFAULT_LEASE_HOURS,
+          slot: str = DEFAULT_SLOT) -> dict:
+    """Acquire one whole case, or renew the same acquisition with its receipt ID."""
+    if not all(isinstance(value, str) and value.strip() for value in (class_id, owner, scope)):
+        raise ClaimsError("class_id, owner and scope must be nonempty")
+    if slot != DEFAULT_SLOT:
+        raise ClaimsError("new slot claims are disabled; the leader claims the whole case")
+    if not math.isfinite(hours) or hours <= 0:
+        raise ClaimsError("hours must be finite and positive")
 
     def build(current):
-        taken = {key for key, cur in current.items() if cur["state"] == "ACTIVE"}
-        events = []
-        for row in rows:
-            if len(events) >= limit:
-                break
-            key = (row["class_id"], slot)
-            if key in taken:
-                continue
-            events.append(_claim_event(row["class_id"], slot, owner, hours, current.get(key),
-                                       scope=scope, next_question=next_question, run_id=run_id))
-            taken.add(key)
-        return events
+        held = [cur for (cid, _), cur in current.items() if cid == class_id and cur["claimed"]]
+        cur = current.get((class_id, DEFAULT_SLOT))
+        if claim_id:
+            if (len(held) != 1 or not cur or not cur["claimed"] or cur["legacy"]
+                    or cur["owner"] != owner or cur["scope"] != scope or cur["claim_id"] != claim_id):
+                raise ClaimsError("renewal must match the current owner, scope and claim_id")
+        elif held:
+            detail = "; ".join(f"{c['owner']} (slot {c['slot']})" for c in held)
+            raise ClaimsError(f"{class_id} already claimed by {detail}; expiry does not release it")
+        now = datetime.now(timezone.utc)
+        try:
+            until = _iso(now + timedelta(hours=hours))
+        except OverflowError as exc:
+            raise ClaimsError("hours exceeds the supported lease range") from exc
+        return {
+            "action": "CLAIM", "class_id": class_id, "slot": DEFAULT_SLOT,
+            "owner": owner, "scope": scope, "claim_id": claim_id or str(uuid.uuid4()),
+            "ts": _iso(now), "claimed_at": cur["claimed_at"] if claim_id else _iso(now),
+            "lease_until": until,
+        }
+
+    return _transact(path, build)
+
+
+def release(path: Path, class_id: str, owner: str, *, claim_id: str | None = None,
+            slot: str = DEFAULT_SLOT) -> dict | None:
+    """Release only this acquisition; tokenless closure is limited to old slot records."""
+    def build(current):
+        cur = current.get((class_id, slot))
+        if not cur or cur["owner"] != owner:
+            raise ClaimsError(f"{class_id} slot {slot}: no claim held by {owner}")
+        if (not claim_id and not cur["legacy"]) or (claim_id and claim_id != cur["claim_id"]):
+            raise ClaimsError("release requires the current claim_id; an old receipt cannot release new work")
+        if not cur["claimed"]:
+            return None  # Exact retry after a lost response, without appending a duplicate event.
+        return {"action": "RELEASED", "class_id": class_id, "slot": slot, "owner": owner,
+                "claim_id": cur["claim_id"], "ts": _iso(datetime.now(timezone.utc))}
 
     return _transact(path, build)
 
 
 def close(path: Path, class_id: str, owner: str, action: str, *, slot: str = DEFAULT_SLOT,
-          result: str = "") -> dict:
-    """Finish (DONE) or hand back (RELEASED) a claim; the holder only."""
-    def build(current):
-        cur = current.get((class_id, slot))
-        if not cur or cur["state"] not in ("ACTIVE", "STALE"):
-            raise ClaimsError(f"{class_id} slot {slot} has no open claim")
-        if cur["owner"] != owner:
-            raise ClaimsError(f"{class_id} slot {slot} held by {cur['owner']}, not {owner}")
-        return [{"action": action, "class_id": class_id, "slot": slot, "owner": owner,
-                 "ts": _iso(datetime.now(timezone.utc)), "result": result}]
-
-    return _transact(path, build)[0]
+          result: str = "", claim_id: str | None = None):
+    """Compatibility for old done/release callers; never store research results."""
+    if action not in ("DONE", "RELEASED", "RELEASE"):
+        raise ClaimsError(f"unknown close action: {action}")
+    return release(path, class_id, owner, slot=slot, claim_id=claim_id)
 
 
-def _owner(args) -> str:
-    owner = args.owner or os.environ.get("CLAIM_OWNER")
-    if not owner:
-        raise ClaimsError("pass --owner or set CLAIM_OWNER")
-    return owner
+def occupancy(current: dict, class_id: str) -> dict:
+    holders = [cur for (cid, _), cur in sorted(current.items()) if cid == class_id and cur["claimed"]]
+    return {"class_id": class_id, "claimed": bool(holders), "holders": holders}
 
 
 def main(argv=None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--claims-file", type=Path, default=DEFAULT_CLAIMS)
-    parser.add_argument("--ledger", type=Path, default=DEFAULT_LEDGER)
     sub = parser.add_subparsers(dest="cmd", required=True)
-
-    take = sub.add_parser("claim", help="claim one known class_id")
+    take = sub.add_parser("claim", help="leader acquires a whole case; --claim-id renews it")
     take.add_argument("--class-id", required=True)
-    take.add_argument("--slot", default=DEFAULT_SLOT)
-    take.add_argument("--scope", default="")
-    take.add_argument("--next-question", default="")
-    take.add_argument("--output-path", default="")
-    take.add_argument("--run-id")
-    take.add_argument("--hours", type=float, default=DEFAULT_LEASE_HOURS)
+    take.add_argument("--scope", required=True)
     take.add_argument("--owner", default="")
-
-    auto = sub.add_parser("pick", help="claim the next unclaimed open cases of a batch")
-    auto.add_argument("--scope", required=True, help="agent-independent batch label")
-    auto.add_argument("--limit", type=int, default=1)
-    auto.add_argument("--slot", default=DEFAULT_SLOT)
-    auto.add_argument("--status", action="append", default=None)
-    auto.add_argument("--class-id-file", type=Path,
-                      help="batch identifier: class_id lines or a round's assessments jsonl")
-    auto.add_argument("--next-question", default="")
-    auto.add_argument("--run-id")
-    auto.add_argument("--hours", type=float, default=DEFAULT_LEASE_HOURS)
-    auto.add_argument("--owner", default="")
-
-    listing = sub.add_parser("list", help="show claims (open by default)")
+    take.add_argument("--claim-id")
+    take.add_argument("--hours", type=float, default=DEFAULT_LEASE_HOURS)
+    take.add_argument("--slot", default=DEFAULT_SLOT, help=argparse.SUPPRESS)
+    listing = sub.add_parser("list", help="JSONL case occupancy; no research status")
+    listing.add_argument("--class-id")
     listing.add_argument("--owner")
     listing.add_argument("--scope")
-    listing.add_argument("--slot")
-    listing.add_argument("--all", action="store_true")
-
-    for name, help_text in (("done", "close with a recorded result"), ("release", "hand the case back")):
-        closer = sub.add_parser(name, help=help_text)
+    listing.add_argument("--all", action="store_true", help="include unclaimed historical cases")
+    for name in ("release", "done"):
+        closer = sub.add_parser(name, help="release occupancy" if name == "release" else "legacy alias for release")
         closer.add_argument("--class-id", required=True)
-        closer.add_argument("--slot", default=DEFAULT_SLOT)
-        closer.add_argument("--result", default="")
         closer.add_argument("--owner", default="")
-
-    args = parser.parse_args(argv)
+        closer.add_argument("--claim-id")
+        closer.add_argument("--slot", default=DEFAULT_SLOT, help="historical slot to close")
+        closer.add_argument("--result", default="", help=argparse.SUPPRESS)
+    for name in ("pick", "sweep"):
+        sub.add_parser(name, help="removed: claims do not select tasks or infer completion")
+    args, unknown = parser.parse_known_args(argv)
     try:
+        if args.cmd in ("pick", "sweep"):
+            raise ClaimsError(f"{args.cmd} removed: use batch assignments to select work and release exact claims")
+        if unknown:
+            parser.error("unrecognized arguments: " + " ".join(unknown))
+        if args.cmd == "list":
+            current = state(load(args.claims_file))
+            ids = {args.class_id} if args.class_id else {cid for cid, _ in current}
+            for cid in sorted(ids):
+                rows = [row for (key, _), row in current.items() if key == cid]
+                if (args.owner or args.scope) and not any(
+                    (not args.owner or row["owner"] == args.owner)
+                    and (not args.scope or row["scope"] == args.scope) for row in rows
+                ):
+                    continue
+                item = occupancy(current, cid)
+                if item["claimed"] or args.all or args.class_id:
+                    print(json.dumps(item, sort_keys=True))
+            return 0
+        owner = args.owner or os.environ.get("CLAIM_OWNER")
+        if not owner:
+            raise ClaimsError("pass --owner or set CLAIM_OWNER")
         if args.cmd == "claim":
-            event = claim(args.claims_file, args.class_id, _owner(args), slot=args.slot, scope=args.scope,
-                          hours=args.hours, next_question=args.next_question,
-                          output_path=args.output_path, run_id=args.run_id)
-            print(f"{event['class_id']} slot {event['slot']} claimed by {event['owner']} until {event['lease_until']}")
-        elif args.cmd == "pick":
-            statuses = tuple(args.status) if args.status else OPEN_STATUSES
-            events = pick(args.claims_file, args.ledger, _owner(args), limit=args.limit, slot=args.slot,
-                          scope=args.scope, statuses=statuses, hours=args.hours,
-                          next_question=args.next_question, run_id=args.run_id,
-                          class_ids=class_id_file(args.class_id_file) if args.class_id_file else None)
-            for event in events:
-                print(f"{event['class_id']} slot {event['slot']} claimed by {event['owner']} until {event['lease_until']}")
-            if not events:
-                print("no unclaimed open cases", file=sys.stderr)
-            elif len(events) < args.limit:
-                print(f"picked {len(events)} of {args.limit}; the rest are held or not open", file=sys.stderr)
-        elif args.cmd == "list":
-            for (class_id, slot), cur in sorted(state(load(args.claims_file)).items()):
-                if args.owner and cur.get("owner") != args.owner:
-                    continue
-                if args.scope and cur.get("scope") != args.scope:
-                    continue
-                if args.slot and slot != args.slot:
-                    continue
-                if not args.all and cur["state"] in ("DONE", "RELEASED"):
-                    continue
-                print("\t".join([class_id, slot, cur["state"], cur.get("owner", ""),
-                                 cur.get("lease_until", ""), cur.get("first_claimed_at", ""),
-                                 cur.get("scope", ""), cur.get("next_question", "")]))
+            event = claim(args.claims_file, args.class_id, owner, scope=args.scope,
+                          claim_id=args.claim_id, hours=args.hours, slot=args.slot)
+            print(json.dumps(state([event])[(args.class_id, DEFAULT_SLOT)], sort_keys=True))
         else:
-            action = "DONE" if args.cmd == "done" else "RELEASED"
-            event = close(args.claims_file, args.class_id, _owner(args), action, slot=args.slot, result=args.result)
-            print(f"{event['class_id']} slot {event['slot']} {event['action']} by {event['owner']}")
-    except ClaimsError as exc:
+            if args.cmd == "done" or args.result:
+                print("claims: done/result are legacy; this only releases occupancy", file=sys.stderr)
+            release(args.claims_file, args.class_id, owner, claim_id=args.claim_id, slot=args.slot)
+            print(json.dumps(occupancy(state(load(args.claims_file)), args.class_id), sort_keys=True))
+    except (ClaimsError, OSError, ValueError, KeyError, TypeError) as exc:
         print(f"claims: {exc}", file=sys.stderr)
         return 1
     return 0
