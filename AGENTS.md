@@ -6,7 +6,7 @@ https://vibesecradar.com/. For every advisory we research its cause, its impact,
 Keep committed content in English.
 
 The skills run in a local Codex or Claude Code session: the leader starts every other role as a
-fresh subagent with the host's own tools. Work through the skill for your role; each one says
+fresh session on one of the project's preferred models (`.agents/skills/radar-lead/models.json`). Work through the skill for your role; each one says
 which of its references to read when.
 
 | Skill | Role |

@@ -74,6 +74,10 @@ def env(tmp_path, monkeypatch):
     fake = FakeLedger({cid: {'class_id': cid, 'status': 'UNANALYZED', 'advisory_ids': [aid], 'repo': 'example/project'}
                        for cid, aid in IDS.items()})
     monkeypatch.setattr(radar_case, 'ledger', fake)
+    models = tmp_path / 'models.json'
+    models.write_text(json.dumps({'auditor': ['model-a', 'model-b', 'model-c'], 'adjudicator': ['model-strong'],
+                                  'reviewer': ['model-strong']}))
+    monkeypatch.setattr(radar_case, 'MODELS', models)
 
     def prepare(*cids, auditors=2):
         (tmp_path / 'manifest.txt').write_text(''.join(c + '\n' for c in cids))
@@ -112,8 +116,9 @@ def deliver(directory, value):
 
 def audited(key, value):
     case = radar_case.case_dir('pilot', key)
-    for lane in radar_case.lanes_of(json.loads((case / 'case.json').read_text())):
-        radar_case.prompt('pilot', key, lane, model='model-' + lane, host='test')
+    lanes = radar_case.lanes_of(json.loads((case / 'case.json').read_text()))
+    for lane, model in zip(lanes, ('model-a', 'model-b', 'model-c')):
+        radar_case.prompt('pilot', key, lane, model=model, host='test')
         deliver(case / lane, value)
     return case
 
@@ -136,10 +141,10 @@ def review(case, decision='ACCEPT'):
 def checked(key, value):
     case = audited(key, value)
     assert radar_case.seal('pilot', key)['phase'] == 'SEALED'
-    radar_case.prompt('pilot', key, 'adjudicator')
+    radar_case.prompt('pilot', key, 'adjudicator', 'model-strong')
     adjudicate(case, value)
     assert radar_case.check('pilot', key)['phase'] == 'CHECKED'
-    radar_case.prompt('pilot', key, 'reviewer')
+    radar_case.prompt('pilot', key, 'reviewer', 'model-strong')
     return case
 
 
@@ -154,12 +159,12 @@ def test_case_runs_from_prepare_to_a_verified_landing(env):
     case = audited('001', record('alias-a'))
     assert radar_case.seal('pilot', '001')['phase'] == 'SEALED'
     assert not os.access(case / 'auditor1' / 'record.json', os.W_OK)
-    assert str(case / 'auditor2') in radar_case.prompt('pilot', '001', 'adjudicator')
+    assert str(case / 'auditor2') in radar_case.prompt('pilot', '001', 'adjudicator', 'model-strong')
     adjudicate(case, record('alias-a'))
     assert radar_case.check('pilot', '001', dry_run=True) == {'case': '001', 'ready': True,
                                                                'outcome': 'ACCEPTED', 'problems': []}
     assert radar_case.check('pilot', '001')['phase'] == 'CHECKED'
-    assert 'review.json' in radar_case.prompt('pilot', '001', 'reviewer')
+    assert 'review.json' in radar_case.prompt('pilot', '001', 'reviewer', 'model-strong')
     review(case)
     assert radar_case.land('pilot')[0]['phase'] == 'LANDED'
     landed = fake.rows['alias-a']
@@ -168,7 +173,7 @@ def test_case_runs_from_prepare_to_a_verified_landing(env):
     assert len(fake.assessments) == 4 and set(fake.runs.values()) == {'complete'}
     assert sorted(a['verdict'] for a in fake.assessments.values()) == ['FALSE_POSITIVE'] * 3 + ['REVIEW_ACCEPT']
     models = {a['metadata']['role']: a['metadata']['model'] for a in fake.assessments.values()}
-    assert models['auditor1'] == 'model-auditor1' and models['reviewer'] == 'unrecorded'
+    assert models == {'auditor1': 'model-a', 'auditor2': 'model-b', 'adjudicator': 'model-strong', 'reviewer': 'model-strong'}
     assert not occupied('alias-a')
     assert radar_case.land('pilot')[0]['phase'] == 'LANDED'
     assert fake.calls.count('finalize') == 1
@@ -178,13 +183,13 @@ def test_seal_waits_for_both_lanes(env):
     _, prepare = env
     prepare('alias-a')
     case = radar_case.case_dir('pilot', '001')
-    radar_case.prompt('pilot', '001', 'auditor1')
+    radar_case.prompt('pilot', '001', 'auditor1', 'model-a')
     deliver(case / 'auditor1', record('alias-a'))
     state = radar_case.seal('pilot', '001')
     assert state['phase'] == 'HOLD' and 'auditor2: missing REPORT.md' in state['problems']
     assert not (case / 'SEAL.json').exists() and os.access(case / 'auditor1' / 'record.json', os.W_OK)
     with pytest.raises(ValueError):
-        radar_case.prompt('pilot', '001', 'adjudicator')
+        radar_case.prompt('pilot', '001', 'adjudicator', 'model-strong')
 
 
 def test_a_changed_sealed_lane_stops_adjudication(env):
@@ -192,7 +197,7 @@ def test_a_changed_sealed_lane_stops_adjudication(env):
     prepare('alias-a')
     case = audited('001', record('alias-a'))
     radar_case.seal('pilot', '001')
-    radar_case.prompt('pilot', '001', 'adjudicator')
+    radar_case.prompt('pilot', '001', 'adjudicator', 'model-strong')
     (case / 'auditor2' / 'late-note.md').write_text('added after sealing\n')
     adjudicate(case, record('alias-a'))
     state = radar_case.check('pilot', '001')
@@ -204,7 +209,7 @@ def test_gate_problems_go_back_to_the_adjudicator(env):
     prepare('alias-a')
     case = audited('001', record('alias-a'))
     radar_case.seal('pilot', '001')
-    radar_case.prompt('pilot', '001', 'adjudicator')
+    radar_case.prompt('pilot', '001', 'adjudicator', 'model-strong')
     adjudicate(case, record('alias-a'), basis='')
     dry = radar_case.check('pilot', '001', dry_run=True)
     assert not dry['ready'] and any('basis' in p for p in dry['problems'])
@@ -236,7 +241,7 @@ def test_a_researched_blocker_closes_without_changing_the_row(env):
     prepare('alias-a')
     case = audited('001', blocked('alias-a'))
     radar_case.seal('pilot', '001')
-    radar_case.prompt('pilot', '001', 'adjudicator')
+    radar_case.prompt('pilot', '001', 'adjudicator', 'model-strong')
     adjudicate(case, blocked('alias-a'), status='BLOCKED', next_question='Is the fix object published?')
     assert radar_case.check('pilot', '001', dry_run=True)['outcome'] == 'BLOCKED'
     assert radar_case.check('pilot', '001')['research'] == 'BLOCKED'
@@ -251,7 +256,7 @@ def test_an_occupied_case_is_not_researched(env):
     claims.claim(claims.DEFAULT_CLAIMS, 'alias-a', 'someone', scope='other')
     assert prepare('alias-a')[0]['phase'] == 'FOREIGN_HOLD'
     with pytest.raises(ValueError):
-        radar_case.prompt('pilot', '001', 'auditor1')
+        radar_case.prompt('pilot', '001', 'auditor1', 'model-a')
 
 
 def test_a_stop_blocks_new_work_in_the_run(env):
@@ -259,7 +264,7 @@ def test_a_stop_blocks_new_work_in_the_run(env):
     prepare('alias-a', 'alias-b')
     assert radar_case.stop('pilot', '001', 'upstream safety refusal')['phase'] == 'STOPPED'
     with pytest.raises(ValueError):
-        radar_case.prompt('pilot', '002', 'auditor1')
+        radar_case.prompt('pilot', '002', 'auditor1', 'model-a')
     with pytest.raises(ValueError):
         prepare('alias-a')
 
@@ -286,6 +291,8 @@ def test_more_models_give_more_independent_lanes(env):
     fake, prepare = env
     with pytest.raises(ValueError):
         prepare('alias-a', auditors=1)
+    with pytest.raises(ValueError):
+        prepare('alias-a', auditors=4)
     prepare('alias-a', auditors=3)
     case = radar_case.case_dir('pilot', '001')
     assert 'one of 3 independent auditors' in radar_case.prompt('pilot', '001', 'auditor3', model='model-c')
@@ -300,11 +307,25 @@ def test_more_models_give_more_independent_lanes(env):
         'auditor1': 'MECHANISM_REFUTED', 'auditor2': 'MECHANISM_REFUTED', 'auditor3': 'ADVISORY_MISATTRIBUTED'}
     deliver(case / 'auditor3', record('alias-a'))
     radar_case.seal('pilot', '001')
-    assert 'auditor3' in radar_case.prompt('pilot', '001', 'adjudicator')
+    assert 'auditor3' in radar_case.prompt('pilot', '001', 'adjudicator', 'model-strong')
     adjudicate(case, record('alias-a'))
     assert radar_case.check('pilot', '001')['phase'] == 'CHECKED'
     assert json.loads((case / 'decisions.json').read_text())['reduction']['auditors'] == ['auditor1', 'auditor2', 'auditor3']
-    radar_case.prompt('pilot', '001', 'reviewer')
+    radar_case.prompt('pilot', '001', 'reviewer', 'model-strong')
     review(case)
     assert radar_case.land('pilot')[0]['phase'] == 'LANDED'
     assert len(fake.assessments) == 5
+
+
+def test_only_preferred_models_and_one_model_per_auditor(env):
+    _, prepare = env
+    prepare('alias-a')
+    with pytest.raises(ValueError, match='models.json'):
+        radar_case.prompt('pilot', '001', 'auditor1', 'some-other-model')
+    with pytest.raises(ValueError, match='models.json'):
+        radar_case.prompt('pilot', '001', 'auditor1', 'model-strong')
+    radar_case.prompt('pilot', '001', 'auditor1', 'model-a')
+    with pytest.raises(ValueError, match="unused: \\['model-b', 'model-c'\\]"):
+        radar_case.prompt('pilot', '001', 'auditor2', 'model-a')
+    radar_case.prompt('pilot', '001', 'auditor1', 'model-c')
+    radar_case.prompt('pilot', '001', 'auditor2', 'model-a')

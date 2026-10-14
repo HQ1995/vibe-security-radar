@@ -27,6 +27,7 @@ REPO = Path(__file__).resolve().parents[1]
 RESEARCH = REPO / 'research'
 SKILLS = REPO / '.agents' / 'skills'
 ASSIGNMENTS = SKILLS / 'radar-lead' / 'assignments'
+MODELS = SKILLS / 'radar-lead' / 'models.json'
 CLONES = REPO / '.ai-slop' / 'state' / 'repos'
 CONTRACT_VERSION = '2026-10-14.1'
 LANE_FILES = ('REPORT.md', 'record.json', 'research.json', 'SUMMARY.md')
@@ -67,6 +68,10 @@ def case_dir(run: str, key: str) -> Path:
 
 def cases(run: str) -> list[Path]:
     return sorted(p for p in run_dir(run).glob('[0-9][0-9][0-9]') if (p / 'case.json').is_file())
+
+
+def roster() -> dict[str, list[str]]:
+    return read(MODELS)
 
 
 def lanes_of(info: dict) -> list[str]:
@@ -166,6 +171,8 @@ def prepare(run: str, manifest: Path, leader: str, cutoff: str, fetch: bool = Tr
             auditors: int = 2) -> list[dict]:
     if auditors < 2:
         raise ValueError('independent research needs at least two auditors')
+    if auditors > len(roster()['auditor']):
+        raise ValueError(f"each auditor needs its own model; models.json lists {len(roster()['auditor'])}")
     root = run_dir(run)
     if (root / 'STOP').exists():
         raise ValueError('run stopped; resolve the stop with the user first')
@@ -213,7 +220,7 @@ def prepare_case(meta: dict, case: Path, class_id: str, fetch, auditors: int) ->
     return set_state(case, 'PREPARED', class_id=class_id, next='Prompt both auditors.')
 
 
-def prompt(run: str, key: str, role: str, model: str | None = None, host: str | None = None) -> str:
+def prompt(run: str, key: str, role: str, model: str, host: str | None = None) -> str:
     root = run_dir(run)
     if (root / 'STOP').exists():
         raise ValueError('run stopped; resolve the stop with the user first')
@@ -224,6 +231,14 @@ def prompt(run: str, key: str, role: str, model: str | None = None, host: str | 
     lanes = lanes_of(info)
     if role not in roles_of(info):
         raise ValueError(f'role must be one of {roles_of(info)}')
+    kind = 'auditor' if role in lanes else role
+    allowed = roster()[kind]
+    if model not in allowed:
+        raise ValueError(f'{role} must use a model from models.json: {allowed}')
+    taken = {info['roles'][lane]['model'] for lane in lanes if lane != role and lane in info['roles']}
+    if kind == 'auditor' and model in taken:
+        free = [m for m in allowed if m not in taken]
+        raise ValueError(f'another auditor of this case already uses {model}; unused: {free}')
     if role == 'adjudicator' and not (case / 'SEAL.json').exists():
         raise ValueError('seal both auditor lanes first')
     if role == 'reviewer' and not (case / 'gate.json').exists():
@@ -232,15 +247,15 @@ def prompt(run: str, key: str, role: str, model: str | None = None, host: str | 
               'repo': info.get('repo') or 'not recorded', 'case': case, 'run_dir': root, 'inputs': case / 'inputs',
               'out': case / role, 'scratch': case / 'scratch' / role, 'clones': CLONES, 'skills': SKILLS,
               'repo_root': REPO, 'cutoff': info['cutoff'], 'contract_version': CONTRACT_VERSION,
-              'minutes': MINUTES['auditor' if role in lanes else role], 'run': run, 'key': key, 'n': len(lanes),
+              'minutes': MINUTES[kind], 'run': run, 'key': key, 'n': len(lanes),
               'lanes': '\n'.join(f'- {lane}: {case / lane}' for lane in lanes)}
-    text = (ASSIGNMENTS / f"{'auditor' if role in lanes else role}.md").read_text().format_map(values)
+    text = (ASSIGNMENTS / f'{kind}.md').read_text().format_map(values)
     path = case / 'assignments' / f'{role}.md'
     if path.exists():
         path.rename(path.with_name(f'{role}-{len(list(path.parent.glob(role + "*.md")))}.md'))
     path.write_text(text)
     (case / 'scratch' / role).mkdir(parents=True, exist_ok=True)
-    info['roles'][role] = {'model': model or 'unrecorded', 'host': host or 'unrecorded',
+    info['roles'][role] = {'model': model, 'host': host or 'unrecorded',
                            'assignment_sha256': digest(path), 'at': now()}
     write(case / 'case.json', info)
     return text
@@ -664,7 +679,7 @@ def main() -> int:
     p.add_argument('--run', required=True)
     p.add_argument('--case', required=True)
     p.add_argument('--role', required=True)
-    p.add_argument('--model')
+    p.add_argument('--model', required=True)
     p.add_argument('--host')
     p = sub.add_parser('lint')
     p.add_argument('directory', type=Path)

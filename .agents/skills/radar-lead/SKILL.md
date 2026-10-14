@@ -1,12 +1,12 @@
 ---
 name: radar-lead
-description: Coordinate Vibe Security Radar case research from a local Codex or Claude Code session - select cases, start two or more independent auditor subagents on different models, an adjudicator and a reviewer per case with the host's own subagent tools, seal and check their work with scripts/radar_case.py, land accepted research in the canonical ledger and prepare publication. Use for coordination, recovery, landing and release; not for researching a case yourself.
+description: Coordinate Vibe Security Radar case research from a local Codex or Claude Code session - select cases, start two or more independent auditors on different preferred models, an adjudicator and a reviewer per case as fresh local sessions, seal and check their work with scripts/radar_case.py, land accepted research in the canonical ledger and prepare publication. Use for coordination, recovery, landing and release; not for researching a case yourself.
 ---
 
 # Radar lead
 
 Contract `2026-10-14.1`. You run in the local session the user started; every other role is a
-fresh subagent you start with this host's own tools. You own case selection, claims, sealing,
+fresh session you start on one of the preferred models in [models.json](models.json). You own case selection, claims, sealing,
 acceptance, ledger landing and publication. Keep your context administrative: `status`,
 paths and next questions. Subagents reply with a short summary; read case evidence only when
 you review a case yourself.
@@ -38,22 +38,23 @@ python3 scripts/radar_case.py prepare --run <run> --manifest <file> --leader <yo
 
 It claims each case, retains its advisory records as the neutral packet and records the
 repository commit that carries the contract. A case another owner holds stays `FOREIGN_HOLD`.
-Each case gets two independent auditors; add `--auditors N` for more opinions.
+Each case gets two independent auditors; add `--auditors N` (up to the number of auditor
+models) for more opinions.
 
 ## 3. Run each case
 
 Work on several cases at once within the host's subagent limit. For each case:
 
-1. **Auditors.** For each lane print `prompt --role auditorK --model <model> --host <host>`
-   and start a fresh subagent whose prompt is exactly that text, each lane on a different
-   model. Any model on the local Magpie gateway works: start it with the CLI commands in
-   [operations](references/operations.md#operating-arrangement). Start all lanes together.
+1. **Auditors.** Give each lane a different auditor model from [models.json](models.json)
+   and start it as a fresh session with the command in
+   [operations](references/operations.md#operating-arrangement); its prompt is exactly what
+   `prompt --role auditorK --model <model>` prints. Start all lanes together.
 2. **Seal.** When every lane has replied, `compare` shows where the models disagree (by
    dimension, with each lane's model); then run `seal`.
-3. **Adjudicator.** Print `prompt --role adjudicator`, start a fresh subagent with it, and
-   run `check` when it replies.
-4. **Reviewer.** Print `prompt --role reviewer` and start a fresh subagent, or for a small
-   run do section 4 yourself and write `reviewer/review.json`.
+3. **Adjudicator.** Start it the same way on an adjudicator model, and run `check` when it
+   replies.
+4. **Reviewer.** Start it the same way on a reviewer model, or for a small run do section 4
+   yourself and write `reviewer/review.json`.
 
 Read `status`, not the subagents' work:
 
@@ -127,5 +128,6 @@ publication done or pending; remaining questions with their owner.
 | [ledger.md](references/ledger.md) | Before landing or editing canonical data: row fields, statuses, published-case rules |
 | [release.md](references/release.md) | Manual landing, recovery after a failed write, and the build, deploy and verify steps |
 | [assignments/](assignments/) | The templates `prompt` fills; change them there, not in the printed prompts |
+| [models.json](models.json) | The preferred models for each role; the only ones `prompt` accepts |
 | [../radar-adjudicate/references/protocol.md](../radar-adjudicate/references/protocol.md) | When reviewing a case or judging a returned question |
 | [../radar-audit/references/protocol.md](../radar-audit/references/protocol.md) | When a review needs a question's exact requirement |
