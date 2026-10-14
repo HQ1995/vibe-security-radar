@@ -1,191 +1,93 @@
 ---
 name: radar-incremental
-description: Refresh Vibe Security Radar from new and revised vulnerability advisories since a recorded source cutoff. Use for incremental intake, classification, research queues, and authorized ledger updates; not for a one-case audit or a statistics-only refresh.
+description: Bring new and revised vulnerability advisories into Vibe Security Radar since the recorded source watermark - capture GitHub and NVD streams for a frozen window, reconcile identities against the ledger and prior deltas, admit eligible new rows as UNANALYZED, advance the watermark and hand the admitted cases to radar-lead for research. Run by the leader; not for researching a case.
 ---
 
-# Incremental vulnerability research
+# Radar incremental
 
-Carry every source change through an explicit disposition. A fresh ledger export
-does not extend advisory coverage. A fetched or screened advisory is not an
-accepted causal conclusion.
+The leader runs this skill. It ends with a manifest of newly admitted cases, which
+[radar-lead](../radar-lead/SKILL.md) researches like any other case. Capturing or admitting
+an advisory is source accounting, never a research conclusion.
 
-This is authorized analysis of existing vulnerability records and assigned cases. Follow
-the technical evidence as deeply as the research question requires, including exploit
-paths, PoCs and vulnerable/fixed behavior. Security-sensitive subject matter alone is not
-a reason to stop or narrow the work. The limits below protect source accounting, case
-ownership, credentials, canonical writes and publication.
+Run from the repository root with `.venv/bin/python` (see `scripts/requirements.txt`)
+under `numactl --cpunodebind=1 --membind=1`. Use `GITHUB_TOKEN`/`NVD_API_KEY` from the
+environment when available; never put them in arguments or files.
 
-Work in the ai-slop checkout under its `AGENTS.md`. Use the existing analyzer
-environment (`cve-analyzer/.venv/bin/python`), NUMA policy, source parsers,
-`radar-lead`, and release runbook. Keep raw sources and work manifests local.
-Use `radar-audit` for independent case research and `radar-adjudicate` for the
-assigned reducer; this skill does not provide a weaker research contract.
+## 1. Freeze the window
 
-## Bind the increment
+Read `artifacts/source-watermark.json`. The new window starts at its `next_window_start`
+(the whole boundary day before the last watermark, so delayed ingestion is caught) and
+ends at a fixed UTC instant now, at most microsecond precision. Create a fresh run
+directory `R=.ai-slop/state/incremental-<END>` and write `$R/window.json`
+(`start`, `end`, `inclusive: true`). Never move the end while fetching.
 
-- Record the user's scope and authorized endpoint, current Neon snapshot digest,
-  last verified source cutoff, source set, and a fixed UTC upper bound. Distinguish
-  source coverage, research completion, accepted ledger revisions and publication.
-- Read `artifacts/funnel-universe-meta-20260826.json` for the original universe
-  policy and cutoff. A filename, export timestamp, or recent commit is not a new
-  source watermark. The historical population uses CVE/GHSA identities and a
-  product-source repository funnel; retain off-ledger dispositions too.
-- With only a date-level prior cutoff, overlap that entire day and deduplicate.
-  Subsequent runs also overlap the prior boundary to catch delayed ingestion.
-  Freeze the window before fetching, so pagination does not chase a moving end.
-
-Use explicit UTC window and receipt timestamps exactly representable at microsecond
-precision; reject nonzero digits beyond the sixth rather than rounding. Extra trailing
-zeroes preserve the instant and are allowed. Advisory source dates are separate:
-retain every fractional digit when ordering lifecycle or publication observations.
-Only genuinely equal instants use the conservative retirement tie rule.
-
-## Capture and reconcile sources
-
-Use `scripts/fetch.py` beside this skill for GitHub global advisories and NVD.
-GitHub needs both reviewed and unreviewed streams: its default is reviewed only.
-Use modification dates as well as publication dates, and retain withdrawn and
-rejected records. Do not filter older published records out of a modification
-window. Malware is a separate population and requires an explicit scope decision.
-
-Keep response bodies, request URLs, response status, capture time, hashes and
-pagination receipts. Validate each page and the terminal cursor/count. Resume
-only matching, hash-verified successful pages from the same frozen window.
-Classification replays the retained Link/NVD page chain without network access;
-a `COMPLETE` flag alone is insufficient. Errors and schema drift remain coverage
-gaps; an empty failed fetch is not zero new advisories. Honor provider pacing.
-
-Run `scripts/build_delta.py` to reconcile the captured records with the canonical
-export and the prior universe. It produces an inventory and research routing,
-not AI verdicts. Verify the export's digest against Neon before treating it as
-current. Preserve source-specific dates and identity provenance.
-Retain an immutable copy of that verified export before ledger writes advance
-the generated file; pin this baseline in the increment's manifest.
-
-From the checkout root, with a new owned run directory containing `window.json`
-(`start` and `end` in UTC), a frozen verified export, and a current
-`occupancy.json` mapping claimed class/public IDs to claim entries:
+## 2. Freeze the baseline
 
 ```sh
-numactl --cpunodebind=1 --membind=1 cve-analyzer/.venv/bin/python \
-  .agents/skills/radar-incremental/scripts/fetch.py \
-  --window "$RADAR_RUN/window.json" --output "$RADAR_RUN/capture"
-numactl --cpunodebind=1 --membind=1 cve-analyzer/.venv/bin/python \
-  .agents/skills/radar-incremental/scripts/build_delta.py \
-  --capture "$RADAR_RUN/capture" --ledger "$RADAR_RUN/baseline/ledger.jsonl" \
-  --universe "$RADAR_PRIOR_UNIVERSE" --occupancy "$RADAR_RUN/occupancy.json" \
-  --out "$RADAR_RUN/classification"
+python3 scripts/ledger_store.py check          # must report jsonl_byte_identical: true
+cp artifacts/funnel-account-20260817.jsonl $R/baseline-ledger.jsonl
+python3 scripts/claims.py list > $R/occupancy.jsonl
 ```
 
-Use existing authorized credentials through `GITHUB_TOKEN`/`NVD_API_KEY` when
-available; never put them in arguments, source receipts or committed files.
-Retain the capture and delta manifests as the next run's source baseline, along
-with the prior universe. Do not replace the full baseline with this increment.
-On later runs, pass earlier `classification/delta.jsonl` files with repeated
-`--prior-delta` arguments, oldest first. Keep each matching `summary.json` beside
-its delta when freezing or moving the baseline. The helper verifies delta hashes,
-requires recorded ancestors, and rejects gaps between source windows. Passing only
-the last delta would lose off-ledger identities not touched in that window.
-The complete chain retains those identities and compares source payload hashes.
-When a classifier correction changes identity or status routing, preserve the old
-results and replay the affected retained windows in order, starting at the first
-incorrect delta. Use that corrected chain subsequently; replacing the executable
-alone cannot recover identities already flattened in an earlier delta.
-An unchanged advisory does not by itself renew an expired research
-contract or prove that earlier queued work was completed.
+## 3. Capture
 
-Join identities through explicit CVE/GHSA identifier relationships, never through
-similar titles, shared repositories, or arbitrary reference URLs. Retain existing
-class IDs. A new alias that connects previously separate owned components is an
-identity conflict even if only one owner is in the ledger and no prior conflict
-was recorded. A unique canonical owner can retain a legacy name only within an
-already linked component; incoming alias edges cannot establish that exception.
-These conflicts require review, not permission to replace or silently merge rows.
-Missing old payload hashes mean unknown content change, not proven unchanged.
+```sh
+python3 .agents/skills/radar-incremental/scripts/fetch.py --window $R/window.json --output $R/capture
+```
 
-## Classify and research the whole delta
+It captures six streams (GitHub reviewed and unreviewed, both withdrawn streams, NVD
+published and modified) with page receipts, pacing and no automatic retries.
+`capture/coverage.json` must say `COMPLETE`. A failed or empty page is a coverage gap,
+not zero advisories; resume only into the same frozen window.
 
-Account for new identities, existing identities observed in the change window,
-retirements, missing repository mappings, alias conflicts and occupied cases.
-Repository URLs from references are leads until verified as the affected product;
-advisory databases and PoC repositories do not establish vulnerable source code.
-An inaccessible or unmapped repository remains unresolved, not NOT_AI.
-The helper separately identifies a reviewed `source_code_location` corroborated
-by a same-repository security advisory. This supports intake mapping only, not
-code-level mechanism, AI attribution or acceptance. Preserve the established
-funnel when admitting new UNANALYZED rows; do not add every global CVE merely
-because it appeared in this capture.
+## 4. Classify
 
-Reuse verified evidence only while its source, parser, research contract and
-acceptance bindings remain valid. `cve-analyzer plan-incremental` can plan stage
-reuse; it neither discovers all advisory changes nor grants research acceptance.
-Group repository work to reuse clone/history evidence, while keeping case
-ownership and independent reviewer contexts separate.
+```sh
+python3 .agents/skills/radar-incremental/scripts/build_delta.py --capture $R/capture \
+  --ledger $R/baseline-ledger.jsonl --universe .ai-slop/sources/universe/universe.jsonl \
+  --occupancy $R/occupancy.jsonl --prior-delta <each delta_chain path, oldest first> \
+  --out $R/classification
+```
 
-Use dispatch as the control plane and top-level model sessions as the default execution
-unit. Start a fresh session for each independent case/lane and resume that recorded session
-for its follow-ups. Keep frozen role instructions and tools as stable leading context and
-case-specific material after them. Do not make nested subagents the default; use them only
-after measured total cost or latency justifies them without weakening independence.
+Pass the whole `delta_chain` from the watermark; passing only the last delta loses
+off-ledger identities. Identities join only through explicit CVE/GHSA relationships, never
+titles, shared repositories or reference URLs. The routing counts in `summary.json` are open
+queues: `REPOSITORY_DISCOVERY`, `PRODUCT_SOURCE_REVIEW` (beyond what step 5 admits),
+`EXISTING_SOURCE_REVALIDATION`, `ADVISORY_STATUS_REVIEW` (withdrawn or rejected sources),
+`IDENTITY_CONFLICT` (a new alias joining separately owned components; never merge rows to
+resolve it) and `EXISTING_OWNER_HANDOFF`. Record them; none is a verdict.
 
-The leader creates a bound batch with `scripts/audit_dispatch.py`, claims eligible
-cases, freezes neutral inputs and assigns all required independent lanes plus one
-reducer. Occupied ledger classes, off-ledger classes and public-ID claims stay with
-their owner, including expired claims. A prior unresolved alias conflict remains a
-review route when a later source returns only one member or one original owner
-enters the ledger. An omitted withdrawn/rejected source retains its status-review
-obligation; only a newer same-source status can clear it automatically. Conflicting
-same-time statuses stay unresolved. Retained source states come from the complete
-prior-delta chain, not from assuming omitted records are active.
-Continue the same case's follow-up with its assigned adjudicator. Preserve earlier
-accepted bytes while revised evidence is under review.
+## 5. Admit and land the intake
 
-Research the mechanism, atomic vulnerable contribution and parent, direct repair
-or verified unpatched state, released exposure, and contribution-scoped AI evidence.
-Repository AI activity, product branding, fix-side markers and absent keyword hits
-do not decide causal authorship. Keep uncertain cases and their next decisive
-question visible. Source retirement is not automatically a FALSE_POSITIVE verdict.
+```sh
+python3 .agents/skills/radar-incremental/scripts/intake_rows.py --delta $R/classification/delta.jsonl \
+  --capture $R/capture --universe .ai-slop/sources/universe/universe.jsonl \
+  --prior-delta <same chain> --out $R/intake
+python3 scripts/ledger_store.py intake $R/intake/new-ledger-rows.jsonl --actor <leader> \
+  --description "Incremental intake <start>..<end>"
+```
 
-## Land and checkpoint
+`intake_rows.py` applies the unchanged funnel policy: new identities (or linked off-ledger
+precursors) with an active reviewed GitHub advisory published inside the window, one
+reviewed product repository corroborated by a same-repository advisory, and no ledger row,
+conflict or occupancy. Original-universe identities go to `deferred.jsonl` for review
+rather than widening the policy. `intake` writes the rows atomically as revision-one
+`UNANALYZED`, refuses foreign occupancy and stale exports, and adds nothing on an exact
+repeat. Read back the inserted rows with `ledger_store.py get` and run `check` again.
 
-Use the leader-only `scripts/ledger_store.py` path and
-`docs/RELEASE-RUNBOOK.md`: actual run metadata, full assessments, accepted causal
-records, expected revisions, transactional landing, exact readback and verified
-exports. Inspect supported intake operations before adding new classes; never
-use bootstrap on a populated database or write the generated JSONL directly.
-An intake row can be UNANALYZED without implying research acceptance. New terminal
-verdicts require the same independent evidence and acceptance as existing cases.
+## 6. Advance the watermark
 
-For newly allocated research batches adopting the
-[flow pilot](../../../scripts/README.md#foreground-flow-pilot), route the complete
-manifest through `radar-lead` and its registered N-lane delivery plan. The leader uses
-the release helper after source review and continues the authorized site runbook when
-needed. Keep the captured source window and off-ledger queues alongside that handoff;
-an automatic delivery checkpoint never advances the source cutoff or clears those queues.
+```sh
+python3 .agents/skills/radar-incremental/scripts/watermark.py $R
+```
 
-For a reviewed new-row manifest, use `scripts/ledger_store.py intake FILE --actor
-OWNER --description TEXT` after claiming its cases. It requires `source_intake`
-with the UTC window, delta hash, source object paths/pointers/hashes and repository
-mapping. It checks the local export against Neon under the transaction lock,
-rejects existing aliases and different existing rows, and appends revision-one
-IMPORT history. Refresh a stale export before retrying. Exact repeats add no rows
-or history. Retain failed transaction receipts and verify the committed rows.
+It refuses an incomplete capture or a delta not classified against the complete recorded
+chain, then copies the delta into `.ai-slop/sources/deltas/` and records it. Commit the
+updated `artifacts/source-watermark.json` with the refreshed export.
 
-Refresh the whole-ledger summary from verified counts. Generate, build, deploy and
-check changed public pages only within the authorized publication scope. Record
-the endpoint before releasing claims. Existing authorization carries through
-routine steps; do not ask the user to reapprove each stage.
+## 7. Hand off and report
 
-Advance a **source capture** watermark only after all required streams are complete
-and every captured identity has a recorded disposition. Never use it to imply
-that queued research is finished. Record accepted ledger and publication progress
-separately, with hashes and unresolved IDs. A second run over identical captured
-inputs must produce the same delta and no duplicate ledger writes.
-
-Report source window/coverage, new and revised identities, routing counts,
-research acceptance, actual database changes and remaining dependencies. Do not
-describe an intake inventory or a passing format gate as completed analysis.
-
-Source API contracts:
-[GitHub global advisories](https://docs.github.com/en/rest/security-advisories/global-advisories),
-[NVD vulnerability API](https://nvd.nist.gov/developers/vulnerabilities).
+Give `$R/intake/manifest.txt` to radar-lead (step 2, `radar_run.py admit`) with the
+window end as `--cutoff`. Report the window and stream coverage, components classified, rows
+admitted and deferred, each open queue's count, the ledger change set, and that research
+on the admitted cases is still pending.

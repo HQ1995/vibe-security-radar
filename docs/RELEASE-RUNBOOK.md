@@ -50,6 +50,10 @@ and stop the old attempt before release. `claimed: false` establishes only avail
 
 ## 2. Land accepted research in Neon
 
+For runs driven by `scripts/radar_run.py`, `radar_run.py land` performs this whole section per
+case (scan runs and assessments, the frozen gate, finalize, readback, export check, claim
+release); the steps below describe what it does and how to do it by hand.
+
 The release owner checks the final manifest, all auditor inputs, accepted records,
 decisions and gate receipts under the frozen adjudication contract. Re-run the gate on
 the final bytes before ingestion. BLOCKED research does not enter this accepted release
@@ -82,6 +86,14 @@ run with `ledger_store.py run-complete <run-id>` only after all its assessments 
 These are separate operations; neither `finalize` nor closing a run closes claims.
 
 ## 3. Generate and check the website
+
+A new or changed AI case needs committed editorial inputs before generation can pass. Run
+`python3 scripts/publish_tp_ledger.py --from-export` in a scratch worktree; it names each gap:
+a reader summary and mechanism in `scripts/publication-curation.json`, the advisory's
+first-party date in `scripts/first-party-advisory-dates.json`, and code evidence rebuilt with
+`scripts/build_missing_code_evidence.py artifacts/funnel-account-20260817.jsonl`
+(`FORCE_IDS=<case ids>` when research changed an already published case). Write the summary
+as public prose from the accepted `causal_research`, without SHAs, paths or PR numbers.
 
 Only when a landed change needs publishing, run in `web/`:
 
