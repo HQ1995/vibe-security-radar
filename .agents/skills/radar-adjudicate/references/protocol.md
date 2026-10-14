@@ -2,7 +2,7 @@
 
 Contract version: `2026-10-14.1`. Existing batches retain their frozen contracts.
 
-N auditors independently apply [AUDIT-PROTOCOL](AUDIT-PROTOCOL.md). One adjudicator
+N auditors independently apply [audit protocol](../../radar-audit/references/protocol.md). One adjudicator
 (the reducer role) reads all N reports, investigates the case and owns the final
 research conclusion on the same four questions: cause, impact, history and AI role.
 Reports are hypotheses and evidence leads, not ground truth. The audit protocol's
@@ -53,7 +53,7 @@ accepted records and the final report. Other auditors preserve their owned outpu
   the next decisive question. Calling it an upstream obligation does not settle it.
 - Unattempted work stays pending. Crashes/timeouts remain execution failures.
 
-Track work separately using the local [research-work contract](DATA-SCHEMA.md#research-work-contract).
+Track work separately using the local [research-work contract](../../radar-audit/references/research-work.md).
 Its completion claim is limited to the recorded questions and observations. Check whether
 an omitted caller, earlier member, partial repair or contrary source could change the
 conclusion before accepting an evidence boundary. Evidence sufficiency ends a question;
@@ -63,7 +63,7 @@ A vendor correction is unnecessary when code and release evidence settle the con
 State exactly which conclusion depends on any unresolved answer.
 
 For new assignments, store frozen decisions in a dedicated `decisions.json` using
-the [decision format](DATA-SCHEMA.md#reducer-decisions-local-coordination). Keep
+the [decision format](decisions.md). Keep
 execution status and a pointer to that file in the mutable batch index. Preserve
 legacy frozen layouts; adopting this layout requires an explicit new binding.
 Bind all N inputs, accepted records and primary receipts by SHA-256. Explain required
@@ -71,7 +71,7 @@ resolutions, including TP BIC/AI/fix checks despite agreement. Before closeout:
 
 1. Finish records, report and any staging payload; check that staging preserves the
    accepted research. Freeze these deliverables and their pins.
-2. Run the [record checks](../scripts/README.md#submission) and the delivery gate:
+2. Run the [record checks](../../radar-audit/references/submission.md) and the delivery gate:
 
        python3 scripts/audit_reduction_gate.py --manifest <batch.txt-or-manifest.jsonl> \
            --lane auditor1=<cases1> --lane auditor2=<cases2> --lane auditor3=<cases3> \
@@ -87,12 +87,12 @@ The gate checks coverage, required decisions and unchanged bytes, **not causal t
 The reducer owns that judgment. Report execution, accepted/blocked research and publication
 separately. Assembler counts, format PASS and released claims cannot replace acceptance.
 Claim handoff, ledger landing and publication follow the
-[case lifecycle runbook](RELEASE-RUNBOOK.md); research acceptance alone does not
+[release reference](../../radar-lead/references/release.md); research acceptance alone does not
 establish either landing or publication.
 
 ## Before scaling a model or profile
 
-Use the evaluator-only calibration set and scoring rules (`docs/audit-calibration.json`,
+Use the evaluator-only calibration set and scoring rules (`.ai-slop/audit-calibration.json`,
 kept local and out of the public repository), then verify the first five production cases. Compare the same evidence, tools, context,
 budgets and retry policy in fresh contexts. Auditors get neutral inputs; reducers also
 get independent reports. Neither gets the evaluator key or previous leader judgments.

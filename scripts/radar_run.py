@@ -36,9 +36,9 @@ BRIEFS = REPO / '.agents' / 'skills' / 'radar-lead' / 'briefs'
 CONTRACT_VERSION = '2026-10-14.1'
 LANES = ('auditor1', 'auditor2')
 ROLE_SKILL = {'auditor': 'radar-audit', 'adjudicator': 'radar-adjudicate', 'reviewer': 'radar-lead'}
-AUDIT_DOCS = ['docs/AUDIT-PROTOCOL.md', 'docs/DATA-SCHEMA.md', 'docs/AI-MARKERS.md', 'scripts/README.md']
-ROLE_DOCS = {'auditor': AUDIT_DOCS, 'adjudicator': [*AUDIT_DOCS, 'docs/ADJUDICATION-PROTOCOL.md'],
-             'reviewer': [*AUDIT_DOCS, 'docs/ADJUDICATION-PROTOCOL.md']}
+ROLE_SKILLS = {'auditor': ['radar-audit'], 'adjudicator': ['radar-adjudicate', 'radar-audit'],
+               'reviewer': ['radar-lead', 'radar-adjudicate', 'radar-audit']}
+LEADER_ONLY = {'radar-lead'}
 # Worker-side helpers; their import closure is frozen with them, nothing leader-only.
 WORKER_SCRIPTS = ('audit_record_gates', 'audit_reduction_gate', 'compare_slots', 'audit_delivery', 'radar_flow')
 AI_STATUSES = {'AI_ROOT_CAUSE', 'AI_CODE_FLAWED'}
@@ -99,8 +99,13 @@ def import_closure(roots, scripts: Path = REPO / 'scripts') -> list[str]:
 def freeze_contract(dest: Path) -> dict:
     """Copy one contract per role, mirroring the repository layout so links resolve."""
     scripts = [f'scripts/{name}.py' for name in import_closure(WORKER_SCRIPTS)]
-    for role, skill in ROLE_SKILL.items():
-        for rel in [f'.agents/skills/{skill}/SKILL.md', *ROLE_DOCS[role], *scripts]:
+    for role, skills in ROLE_SKILLS.items():
+        docs = []
+        for skill in skills:
+            root = REPO / '.agents' / 'skills' / skill
+            references = [] if skill in LEADER_ONLY else sorted((root / 'references').glob('*.md'))
+            docs += [str(p.relative_to(REPO)) for p in [root / 'SKILL.md', *references]]
+        for rel in [*docs, *scripts]:
             target = dest / role / rel
             target.parent.mkdir(parents=True, exist_ok=True)
             shutil.copyfile(REPO / rel, target)

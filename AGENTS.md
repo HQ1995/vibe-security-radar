@@ -5,55 +5,34 @@ https://vibesecradar.com/. For every advisory we research its cause, its impact,
 (introduction, exposure, repair, release) and the role AI played, from primary evidence.
 Keep committed content in English.
 
-## Workflow
+Work through the skill for your role; each one says which of its references to read when.
 
-Four skills carry the work; each links the protocol and commands it needs.
-
-- [radar-lead](.agents/skills/radar-lead/SKILL.md): select cases, run research with
-  `scripts/radar_run.py`, review, land in the ledger, prepare publication.
-- [radar-incremental](.agents/skills/radar-incremental/SKILL.md): capture new and revised
-  advisories since the source watermark and admit them as UNANALYZED rows.
-- [radar-audit](.agents/skills/radar-audit/SKILL.md): one independent auditor, one case.
-- [radar-adjudicate](.agents/skills/radar-adjudicate/SKILL.md): the sole adjudicator of a case.
-
-Research rules: [Audit protocol](docs/AUDIT-PROTOCOL.md),
-[Adjudication protocol](docs/ADJUDICATION-PROTOCOL.md), fields in [Data schema](docs/DATA-SCHEMA.md).
-Commands: [Audit operations](scripts/README.md). Landing and publication:
-[Release runbook](docs/RELEASE-RUNBOOK.md).
-
-## Layout
-
-| Path | Contents |
+| Skill | Role |
 | --- | --- |
-| `.agents/skills/` | The four skills, brief templates and the incremental tools |
-| `docs/` | Protocols, data schema, runbook, AI marker catalog |
-| `scripts/` | Ledger store, research driver and guards, publisher and site gates, editorial inputs (`*.json`) |
-| `artifacts/` | Ledger export and history (generated from Neon), source watermark, universe policy |
-| `web/` | The Next.js site; reads only `web/src/generated/research-data.json` |
-| `research/`, `.ai-slop/` | Local batches, evidence, runs, clones and sources; never committed |
+| [radar-lead](.agents/skills/radar-lead/SKILL.md) | Select cases, run research with `scripts/radar_run.py`, review, land, publish |
+| [radar-incremental](.agents/skills/radar-incremental/SKILL.md) | Capture new advisories since the watermark and admit them |
+| [radar-audit](.agents/skills/radar-audit/SKILL.md) | One independent auditor, one case |
+| [radar-adjudicate](.agents/skills/radar-adjudicate/SKILL.md) | The sole adjudicator of a case |
 
 ## Rules
 
 - Research is defensive analysis of published vulnerabilities. Reproduce only in owned,
   isolated checkouts; never contact deployed third-party systems or build working payloads.
   A safety refusal stops the work; record it and ask the user, never reroute it.
-- Independent auditors never see each other's work, prior verdicts or site labels. Reuse
-  neutral primary evidence for blind review.
-- Only the leader claims cases (`scripts/claims.py`) and writes canonical data. Neon
-  `ledger_rows` is the canonical ledger; landing research and updating the database are one
-  operation (`ledger_store.py finalize`/`intake`, usually through `radar_run.py land`). The
-  JSONL export and site data are generated; never hand-edit them.
+- Independent auditors never see each other's work, prior verdicts or site labels.
+- Only the leader claims cases and writes canonical data. Neon `ledger_rows` is the
+  canonical ledger; the JSONL export in `artifacts/` and the site data in `web/src/generated/`
+  are generated, never hand-edited.
 - Execution, research acceptance, ledger landing and publication are separate states. A
   passing gate, released claim or exit code establishes none of the others.
-- `npm run dev`/`build` in `web/` use the committed generated data and never read Neon. Push
-  deploys come from the Cloudflare Pages Git integration (root `web/`, output `out/`);
-  pushing `main` is publication. The manual `Deploy Pages (manual, from Neon)` workflow is the
-  only build that reads Neon. Keep CI and tests off Neon: the free tier is metered.
-- Public data must pass `scripts/site_preflight.py`; never use allowlisting as a filter.
+- Pushing `main` deploys the site through the Cloudflare Pages Git integration from committed
+  data. Keep CI and tests off Neon: the free tier is metered. Public data must pass
+  `scripts/site_preflight.py`; never use allowlisting as a filter.
 - Reader-facing copy says "AI-assisted change" and "AI-assisted fix"; "candidate" stays
   internal to data fields and audit prose.
-- Make the smallest complete change and run the checks relevant to it. Tests use fixtures,
-  not live APIs. Tools use dataclasses, synchronous httpx and argv-only subprocesses.
+- `research/` and `.ai-slop/` hold local batches, evidence, runs, clones and sources; never
+  commit them. Make the smallest complete change and run the checks relevant to it; tests
+  use fixtures, not live APIs.
 
 ## host-1 NUMA
 

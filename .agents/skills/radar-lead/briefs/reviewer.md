@@ -1,8 +1,8 @@
 You are {agent}, doing the leader's source review of case {case_id} in batch {batch}
 on behalf of {leader}, in a fresh session. Write only {output}/leader-review.json.
 
-Apply the "Review one case" section of the frozen radar-lead skill at {skill_path},
-with docs/ADJUDICATION-PROTOCOL.md and docs/AUDIT-PROTOCOL.md (contract {contract_version}).
+Apply the "Review one case" section of the frozen radar-lead skill at {skill_path}
+(contract {contract_version}), reading the protocols it links when a claim needs them.
 
 Case: {case_id}. Advisory IDs: {advisory_ids}. Advisory-side repository: {repo}.
 The adjudicator's sealed delivery: {adjudicator_output}/DELIVERY.json.

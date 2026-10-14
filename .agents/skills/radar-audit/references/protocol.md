@@ -20,12 +20,12 @@ Use neutral primary sources, not another agent's conclusions. Retain every case.
 For each step, state **what you conclude, what you observed, and where the evidence is**.
 Never fill a field by guessing. Execution failure is not a researched EVIDENCE_GAP.
 
-[Data fields](DATA-SCHEMA.md#audit-records) define the output. The local
-[research-work contract](DATA-SCHEMA.md#research-work-contract) separates supported
+[Data fields](record.md) define the output. The local
+[research-work contract](research-work.md) separates supported
 conclusions from unfinished investigation; record it in the owned sidecar.
-[Audit operations](../scripts/README.md) cover dispatch and submission. One adjudicator
+[Audit operations](../../radar-lead/references/operations.md) cover dispatch and submission. One adjudicator
 subsequently reviews all reports and completes unresolved research under
-[ADJUDICATION-PROTOCOL](ADJUDICATION-PROTOCOL.md).
+[adjudication protocol](../../radar-adjudicate/references/protocol.md).
 
 ## Research boundary
 
@@ -66,7 +66,7 @@ subsequently reviews all reports and completes unresolved research under
    affirmative primary evidence and `false_positive_ground`; inability to establish the
    mechanism is `EVIDENCE_GAP`, never proof of `FALSE_POSITIVE`. For a supported
    FALSE_POSITIVE, causal introducer/repair fields are explicitly null (not applicable),
-   as defined by DATA-SCHEMA; keep examined objects in evidence without assigning them
+   as the [record reference](record.md) defines; keep examined objects in evidence without assigning them
    vulnerability roles. An excluded advisory's disposition does not change the verdict
    of its broader live alias cluster.
 
@@ -124,7 +124,7 @@ subsequently reviews all reports and completes unresolved research under
    treating a root or a failed ancestry walk as evidence. Missing local objects are not
    proof that public history is unavailable: distinguish a commit, its trees/blobs and
    the product repository from a reporter or umbrella clone. If the BIC itself is
-   unknown, use the explicit nulls DATA-SCHEMA allows for open records.
+   unknown, use the explicit nulls the record reference allows for open records.
 
 4. **History: repair and release.** Identify the minimum repairing hunks/commit set and
    why it closes the defect. Follow the repair through actual caller wiring, sibling
@@ -147,7 +147,7 @@ subsequently reviews all reports and completes unresolved research under
 5. **AI role.** Tie AI evidence to causal changes across the history, within its
    disclosed scope, and record how it was admitted (`ai_admissibility`): first
    establish that the named object carries the causal change at the claimed
-   granularity, then read its actual marker. [AI markers](AI-MARKERS.md) lists known
+   granularity, then read its actual marker. [AI markers](ai-markers.md) lists known
    carriers as leads; their absence proves nothing. A first-party disclosure bound to
    that causal change is admissible once the record says what binds it;
    repository-level AI activity, changelog habits, labels and org policy are never
@@ -161,7 +161,7 @@ subsequently reviews all reports and completes unresolved research under
    on the BIC object, no marker on that object, and a spot check of the repo's
    disclosure convention at that date; a placeholder, anonymous or unresolvable
    identity is `EVIDENCE_GAP`, not `NOT_AI`. Label definitions:
-   [DATA-SCHEMA](DATA-SCHEMA.md).
+   [audit record](record.md).
 
    "No marker" is a statement about every local object that carries the causal
    content, including commits no ref reaches (a pre-force-push iteration of the same PR

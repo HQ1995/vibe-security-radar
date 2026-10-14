@@ -5,12 +5,8 @@ description: As the sole adjudicator of one Vibe Security Radar case, read all N
 
 # Radar adjudicate
 
-Contract `2026-10-14.1`. You own the research conclusion for one case. The frozen
-[adjudication protocol](../../../docs/ADJUDICATION-PROTOCOL.md) defines the work; the
-[audit protocol](../../../docs/AUDIT-PROTOCOL.md) defines each question, the research
-boundary and when a question is finished; [DATA-SCHEMA](../../../docs/DATA-SCHEMA.md)
-defines the record and decisions. Your brief supplies the case, the sealed lane paths and
-the time budget.
+Contract `2026-10-14.1`. You own the research conclusion for one case. Your brief supplies
+the case, the sealed lane paths and the time budget.
 
 ## Boundary
 
@@ -22,7 +18,7 @@ the time budget.
 
 ## Steps
 
-1. **Check the assignment.** Run the frozen `radar_flow.py inputs` command from your brief.
+1. **Check the assignment.** Run the `radar_flow.py inputs` command from your brief.
 2. **Read every lane in full**: report, record, sidecar and decisive receipts. Treat each
    conclusion as a hypothesis and each source as a lead.
 3. **Align before comparing.** Make sure the lanes describe the same product, revision,
@@ -38,13 +34,23 @@ the time budget.
 6. **Decide**: `ACCEPTED` when the whole chain is supported, `BLOCKED` when a decisive fact
    is still unknown after its bounded probe (name it and the next question). Keep an
    unknown AI role separate from an established mechanism or repair.
-7. **Deliver together**: `REPORT.md`, the accepted `record.json` (with `protocol_version`
-   and `impact`), `research.json` and `decisions.json`. Read them back, replace superseded
-   statements, run the strict record gate and the reduction gate on the final bytes with
-   every lane, save the receipts, and seal with `audit_delivery.py`.
+7. **Deliver together**: `REPORT.md`, the accepted `record.json`, `research.json` and
+   `decisions.json`. Read them back, replace superseded statements, run the strict record
+   gate and the reduction gate on the final bytes with every lane, and seal.
 8. **Hand off**: decisions per question, what changed relative to the lanes, artifact
-   paths and the questions still open with their next owner. The leader's review is
-   separate from your decision.
+   paths and the questions still open with their next owner.
 
-Work directly in your assigned session. If a follow-up returns to you, it is a labeled
+Work directly in your assigned session. A follow-up that returns to you is a labeled
 continuation of the same case, not a new blind audit.
+
+## References
+
+| Read | When |
+| --- | --- |
+| [protocol.md](references/protocol.md) | Before step 2; comparison, decision and closeout rules |
+| [../radar-audit/references/protocol.md](../radar-audit/references/protocol.md) | At step 4; what each question requires and when it is finished |
+| [../radar-audit/references/ai-markers.md](../radar-audit/references/ai-markers.md) | When checking AI attribution |
+| [../radar-audit/references/record.md](../radar-audit/references/record.md) | When writing the accepted `record.json` |
+| [../radar-audit/references/research-work.md](../radar-audit/references/research-work.md) | When writing `research.json` and the decisions' research objects |
+| [decisions.md](references/decisions.md) | When writing `decisions.json` and running the reduction gate |
+| [../radar-audit/references/submission.md](../radar-audit/references/submission.md) | Before step 7, for receipts, checks and sealing |

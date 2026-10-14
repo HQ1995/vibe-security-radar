@@ -91,3 +91,10 @@ Give `$R/intake/manifest.txt` to radar-lead (step 2, `radar_run.py admit`) with 
 window end as `--cutoff`. Report the window and stream coverage, components classified, rows
 admitted and deferred, each open queue's count, the ledger change set, and that research
 on the admitted cases is still pending.
+
+## References
+
+| Read | When |
+| --- | --- |
+| [../radar-lead/references/ledger.md](../radar-lead/references/ledger.md) | Before landing intake: row fields and statuses |
+| [../radar-lead/references/operations.md](../radar-lead/references/operations.md) | For claims and the shared command environment |

@@ -168,12 +168,16 @@ def test_role_contracts_carry_only_their_own_skill_and_worker_code(env):
     admit('alias-a')
     contract = radar_run.RUNS / 'pilot' / 'contract'
     auditor = {p.relative_to(contract / 'auditor').as_posix() for p in (contract / 'auditor').rglob('*') if p.is_file()}
-    assert '.agents/skills/radar-audit/SKILL.md' in auditor
+    assert {'.agents/skills/radar-audit/SKILL.md', '.agents/skills/radar-audit/references/protocol.md',
+            '.agents/skills/radar-audit/references/record.md'} <= auditor
     assert not any('radar-lead' in p or 'radar-adjudicate' in p or 'radar-incremental' in p for p in auditor)
-    assert 'docs/ADJUDICATION-PROTOCOL.md' not in auditor and 'docs/RELEASE-RUNBOOK.md' not in auditor
     assert {'scripts/audit_dispatch.py', 'scripts/claims.py', 'scripts/radar_flow.py'} <= auditor
     assert not any(p.endswith(('ledger_store.py', 'radar_release.py', 'radar_run.py')) for p in auditor)
-    assert (contract / 'reviewer' / '.agents/skills/radar-lead/SKILL.md').is_file()
+    adjudicator = {p.relative_to(contract / 'adjudicator').as_posix() for p in (contract / 'adjudicator').rglob('*.md')}
+    assert {'.agents/skills/radar-adjudicate/references/protocol.md', '.agents/skills/radar-audit/references/record.md'} <= adjudicator
+    reviewer = {p.relative_to(contract / 'reviewer').as_posix() for p in (contract / 'reviewer').rglob('*.md')}
+    assert '.agents/skills/radar-lead/SKILL.md' in reviewer
+    assert not any('radar-lead/references' in p for p in reviewer)
 
 
 def test_sandboxed_command_binds_inputs_and_passes_the_brief_once(tmp_path):

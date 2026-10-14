@@ -1,11 +1,11 @@
 # AI markers
 
-A lead list for step 5 of the [audit protocol](AUDIT-PROTOCOL.md): where AI tools leave
+A lead list for step 5 of the [audit protocol](protocol.md): where AI tools leave
 traces on commits, pull requests and repositories. Use it to know what to look for on the
 causal object. It is not a verdict rule:
 
 - A match is a lead. Attribution still needs the marker on the object that carries the
-  causal change, with its exact quote, as DATA-SCHEMA requires.
+  causal change, with its exact quote, as the [record reference](record.md) requires.
 - No match proves nothing. `NOT_AI` needs the named identity, object-local marker absence
   and disclosure-convention check the protocol defines.
 - Repository configuration files and AI activity elsewhere in a repository are never

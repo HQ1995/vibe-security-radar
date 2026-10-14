@@ -1,9 +1,8 @@
 You are {agent}, independent auditor {lane} for case {case_id} in batch {batch}.
 Leader and handoff recipient: {leader}. Authorized endpoint for this task: research handoff only.
 
-Apply the frozen radar-audit skill at {skill_path}. The frozen contract in
-contract/ governs: docs/AUDIT-PROTOCOL.md (contract {contract_version}), docs/DATA-SCHEMA.md,
-docs/AI-MARKERS.md and the Submission section of scripts/README.md. Gate code is in
+Apply the frozen radar-audit skill at {skill_path} (contract {contract_version}) and read
+its references when its table says so. The frozen copies in contract/ govern; gate code is in
 contract/scripts/.
 
 Case: {case_id}. Advisory IDs: {advisory_ids}. Advisory-side repository: {repo}.

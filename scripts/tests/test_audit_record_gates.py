@@ -120,10 +120,11 @@ def test_contract_documents_every_gate_enforced_vocabulary():
     """A value the gate rejects must be documented, or producers invent one."""
     import audit_record_gates as gates
 
-    docs = Path(__file__).resolve().parents[2] / "docs"
+    skills = Path(__file__).resolve().parents[2] / ".agents" / "skills"
     contract = "\n".join(
-        (docs / name).read_text()
-        for name in ("DATA-SCHEMA.md", "AUDIT-PROTOCOL.md", "ADJUDICATION-PROTOCOL.md")
+        (skills / name).read_text()
+        for name in ("radar-audit/references/record.md", "radar-audit/references/protocol.md",
+                     "radar-adjudicate/references/protocol.md")
     )
     for vocabulary in (
         gates.DISPOSITIONS,

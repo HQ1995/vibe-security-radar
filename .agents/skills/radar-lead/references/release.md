@@ -1,10 +1,10 @@
-# Case lifecycle and release runbook
+# Case lifecycle and release
 
 Use this for claims, handoff, ledger landing and website publication. Research rules
-remain in [AUDIT-PROTOCOL](AUDIT-PROTOCOL.md) and
-[ADJUDICATION-PROTOCOL](ADJUDICATION-PROTOCOL.md); command details are in
-[scripts/README.md](../scripts/README.md). Run commands from the repository root
-with the NUMA binding in [AGENTS.md](../AGENTS.md), except where `web/` is specified.
+remain in [audit protocol](../../radar-audit/references/protocol.md) and
+[adjudication protocol](../../radar-adjudicate/references/protocol.md); command details are in
+[operations](operations.md). Run commands from the repository root
+with the NUMA binding in [AGENTS.md](../../../../AGENTS.md), except where `web/` is specified.
 
 The normal path is **leader claim -> N independent reports -> adjudication -> finalize
 in Neon -> generate site data -> deploy and verify -> release**. Stop at the authorized
@@ -24,7 +24,7 @@ the same operation, with their different outcomes recorded in the batch index.
 Only the leader writes canonical data. By default that same leader dispatches work,
 accepts deliverables and owns release through live verification; a separate adjudicator
 owns causal research. Roles, workspaces and shared claims follow the
-[operating arrangement](../scripts/README.md#operating-arrangement). Combine roles only
+[operating arrangement](operations.md#operating-arrangement). Combine roles only
 when the batch assignment explicitly names that arrangement. Record the batch,
 intended changes and authorized endpoint once. Continue to
 that endpoint without asking again at each routine step; research-only scope ends at
@@ -37,8 +37,8 @@ The leader claims the whole case once and saves its receipt ID. Auditor submissi
 adjudication are tracked in the batch index, with no additional claims. After N reports
 are sealed, the adjudicator researches and submits its deliverables for leader acceptance.
 A researched evidence gap differs from a crash/timeout; neither becomes accepted merely
-because an assignment ended. Follow [dispatch and handoff](../scripts/README.md#dispatch-and-handoff).
-Use the [dispatch guard](../scripts/README.md#dispatch-guard): the leader creates a new
+because an assignment ended. Follow [dispatch and handoff](operations.md#dispatch-and-handoff).
+Use the [dispatch guard](operations.md#dispatch-guard): the leader creates a new
 batch and registers assignments with its private receipt; agents run their saved task bindings.
 
 Read occupancy with `list --class-id <id>`. A foreign holder, including an expired or
@@ -59,7 +59,7 @@ decisions and gate receipts under the frozen adjudication contract. Re-run the g
 the final bytes before ingestion. BLOCKED research does not enter this accepted release
 path, and remains visible in the batch's unresolved work.
 
-Prepare assessments and revision-checked patches using the [data contract](DATA-SCHEMA.md#ledger).
+Prepare assessments and revision-checked patches using the [data contract](ledger.md#ledger-rows).
 Each assessment needs a recorded, active `run_id`, an explicit stable `assessment_id`,
 the actual `base_ledger_revision`, agent identity and full reasoning/raw output. The leader
 registers actual attempts with `ledger_store.py run-start`; preserve the real model,

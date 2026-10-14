@@ -1,10 +1,9 @@
 You are {agent}, the sole adjudicator for case {case_id} in batch {batch}.
 Leader and handoff recipient: {leader}. Authorized endpoint for this task: research handoff only.
 
-Apply the frozen radar-adjudicate skill at {skill_path}. The frozen contract in
-contract/ governs: docs/ADJUDICATION-PROTOCOL.md and docs/AUDIT-PROTOCOL.md (contract
-{contract_version}), docs/DATA-SCHEMA.md, docs/AI-MARKERS.md and the Submission section of
-scripts/README.md. Gate code is in contract/scripts/.
+Apply the frozen radar-adjudicate skill at {skill_path} (contract {contract_version}) and read
+its references when its table says so. The frozen copies in contract/ govern; gate code is in
+contract/scripts/.
 
 Case: {case_id}. Advisory IDs: {advisory_ids}. Advisory-side repository: {repo}.
 Neutral sources: inputs/README.md and inputs/SOURCES.json. Source coverage cutoff: {cutoff}.
@@ -29,7 +28,7 @@ Steps:
    they share an unsupported premise.
 3. Write {output}/{case_id}/REPORT.md, the accepted {output}/{case_id}/record.json (with
    "protocol_version": "{contract_version}"), {output}/{case_id}/research.json and the frozen
-   decisions in {output}/decisions.json per DATA-SCHEMA (reducer {agent}, auditors {lane_names},
+   decisions in {output}/decisions.json per the decisions reference (reducer {agent}, auditors {lane_names},
    research_contract causal-work-v1, pins for manifest, brief and gate code; gate pins use the
    absolute paths of the files in {cwd}/contract/scripts/).
 4. Run the strict record gate on your record and the reduction gate:
