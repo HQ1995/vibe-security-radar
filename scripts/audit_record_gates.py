@@ -1,26 +1,4 @@
 #!/usr/bin/env python3
-"""Fact gates for a causal-research record. These do not judge the AI role.
-
-They refuse to land a closed verdict that is missing identity, BIC, or a
-fix. They do not classify AI vs human — that stays a judgment call.
-
---strict adds the protocol checks that score a record against the current
-audit contract (docs/DATA-SCHEMA.md): advisory disposition, BIC granularity
-and squash decomposition evidence, flip condition, AI admissibility. A record
-written under an older contract fails those; use it for batch QA, not for a
-record that was never asked to carry the fields.
-
-Usage:
-  python3 scripts/audit_record_gates.py RECORD.jsonl
-  python3 scripts/audit_record_gates.py --stdin  < one.json
-  python3 scripts/audit_record_gates.py --strict --stdin < one.json
-  python3 scripts/audit_record_gates.py --strict records/*.json
-  python3 scripts/audit_record_gates.py --strict --repo /path/to/clone RECORD.json
-
---repo checks quoted commit markers and recorded parent links against local Git
-objects, with lazy fetch and replace refs disabled. It does not prove causality
-or authenticate first-party web disclosures.
-"""
 from __future__ import annotations
 
 import argparse
@@ -46,13 +24,7 @@ GRANULARITIES = {
     "NON_GIT_BOUNDARY",
 }
 MARKER_STATES = {"PRESENT", "ABSENT", "UNKNOWN"}
-# An accepted AI marker is a bot/agent author, an AI co-author trailer, or a
-# disclosure naming a tool. ANNOTATION_ONLY keeps a non-AI trailer visible
-# without counting it as AI evidence (docs/DATA-SCHEMA.md).
 FIX_MARKER_STATES = MARKER_STATES | {"ANNOTATION_ONLY"}
-# NO_FIX_OBJECT is the substantiated-unpatched case (step 3): there is no fix
-# object, so there is nothing to decompose - as distinct from UNRESOLVED, where
-# a fix object exists and cannot be read.
 FIX_GRANULARITIES = {"ATOMIC", "CARRIER_BUNDLE", "UNRESOLVED", "NO_FIX_OBJECT"}
 LANDING_BASIS = {
     "PROSE_CARRIER_ON_DEFAULT",
@@ -66,13 +38,9 @@ FP_GROUNDS = {
     "EVIDENCE_INSUFFICIENT",
     "MECHANISM_REFUTED",
 }
-# Contract 2026-10-14.1 adds the step-2 impact account. Records that declare an
-# older protocol_version (or none) keep their frozen shape.
 CONTRACT_VERSION = re.compile(r"^(\d{4})-(\d{2})-(\d{2})\.(\d+)$")
 IMPACT_CONTRACT = (2026, 10, 14, 1)
 IMPACT_FIELDS = ("affected", "prerequisites", "effect")
-# The step-4 NOT_AI threshold: a recovered named human or organization identity
-# on the BIC object. Everything else there is EVIDENCE_GAP.
 IDENTITY_CLASSES = {
     "HUMAN",
     "HUMAN_GH_NOREPLY",
@@ -82,9 +50,6 @@ IDENTITY_CLASSES = {
     "OBJECT_MISSING",
     "NO_OBJECT",
 }
-# A display name with no address and no account binding is not a recovered
-# identity: nltk w320 (198 empty-address commits, commit API returns no author)
-# stays EVIDENCE_GAP under step 4 rather than carrying a NOT_AI verdict.
 NAMED_IDENTITIES = {"HUMAN", "HUMAN_GH_NOREPLY"}
 DISCLOSURE_STATES = {
     "CONVENTION_NOT_OBSERVED",
@@ -94,9 +59,6 @@ DISCLOSURE_STATES = {
 }
 NOTE_MIN = 20
 
-# A disclosure claim, not a denial of one: "Generated with Claude Code",
-# "Co-authored-by: Copilot". A nearby no/without/absent/missing guards the
-# ordinary "checked - no AI trailer" sentence out of the match.
 DISCLOSURE = re.compile(
     r"\b(?:generated[- ]with|generated[- ]by|co[- ]authored[- ]by|authored[- ]by"
     r"|written[- ]by|assisted[- ]by|produced[- ]by)\b[^\n]{0,60}?"
@@ -132,7 +94,6 @@ JUDGMENT_KEYS = (
 
 
 def judgment_text(record: dict) -> str:
-    """The prose a verdict is argued from, as one string."""
     parts = []
     for key in JUDGMENT_KEYS:
         value = record.get(key)
@@ -143,7 +104,6 @@ def judgment_text(record: dict) -> str:
 
 
 def denied_around(text: str, start: int, end: int) -> bool:
-    """True when the match sits in a denial or exclusion clause, not a claim."""
     return bool(
         DENIAL.search(text[max(0, start - 70) : start])
         or DENIAL.search(text[end : end + 40])
@@ -151,7 +111,6 @@ def denied_around(text: str, start: int, end: int) -> bool:
 
 
 def claimed_disclosure(text: str) -> str:
-    """First AI-disclosure claim in text, skipping negated mentions."""
     for match in DISCLOSURE.finditer(text):
         if denied_around(text, match.start(), match.end()):
             continue
@@ -160,14 +119,6 @@ def claimed_disclosure(text: str) -> str:
 
 
 def residual_denied(record: dict) -> bool:
-    """True when the case's own triage read the cue as a release-range or quoted-text cue.
-
-    RESIDUAL cannot tell "v2.9.1 still ships the pre-fix blob" (a version range,
-    below the fix) or a quoted commit subject from an open surface. `residual_triage`
-    carries that reading: decision NOT-RESIDUAL plus the basis sentence, so the cue
-    stops firing where a reviewer already adjudicated it instead of being denied on
-    the spot.
-    """
     triage = record.get("residual_triage")
     if not isinstance(triage, dict):
         return False
@@ -192,7 +143,6 @@ def official_ids(record: dict) -> list[str]:
 
 
 def sha_list(value) -> list[str]:
-    """decomposed_shas is a list, or (in older rows) its own string repr."""
     if isinstance(value, str):
         try:
             value = json.loads(value)
@@ -204,7 +154,6 @@ def sha_list(value) -> list[str]:
 
 
 def check_record(record: dict) -> list[str]:
-    """Return human-readable problems. Empty means the record may land."""
     cid = str(record.get("class_id") or "?")
     verdict = record.get("verdict")
     problems: list[str] = []
@@ -277,7 +226,6 @@ def check_jsonl(path: Path) -> list[str]:
 
 
 def check_record_strict(record: dict) -> list[str]:
-    """Protocol-contract checks. Empty means the record carries the current fields."""
     cid = str(record.get("class_id") or "?")
     verdict = record.get("verdict")
     if verdict is None:
@@ -426,9 +374,6 @@ def check_record_strict(record: dict) -> list[str]:
         else ""
     )
     if verdict in AI_VERDICTS and ai_on_bic is not True and bic_marker != "PRESENT":
-        # Contract 2026-09-19.1: every TP binds its marker to the BIC object. For
-        # AI_CODE_FLAWED / AI_CAUSAL_CONTRIBUTOR the BIC is the AI-attributed flawed
-        # or exposing change; the human origin goes in flaw_origin (docs/DATA-SCHEMA.md).
         problems.append(
             f"{cid}: strict: {verdict} needs ai_on_bic true or ai_marker PRESENT on "
             "introducer_sha (the AI-attributed change is the BIC; record the human "
@@ -438,8 +383,6 @@ def check_record_strict(record: dict) -> list[str]:
         problems.append(f"{cid}: strict: NOT_AI contradicts ai_on_bic true")
 
     if verdict == "NOT_AI":
-        # producers write the lower-case hyphen form (identity-read.jsonl:
-        # "human-gh-noreply"), so accept both spellings of one class
         identity = need("identity_class").upper().replace("-", "_")
         if identity not in IDENTITY_CLASSES:
             problems.append(
@@ -475,8 +418,6 @@ def check_record_strict(record: dict) -> list[str]:
                 f"{cid}: strict: EVIDENCE_INSUFFICIENT is a legacy false-positive label; "
                 "new records need affirmative MECHANISM_REFUTED evidence or an open verdict"
             )
-        # A refuted or excluded allegation has no causal introducer or repair.
-        # Observed source objects belong in evidence, not invented causal roles.
         for key in ("introducer_sha", "bic_granularity", "fix_sha", "fix_granularity"):
             if key not in record or record[key] is not None:
                 problems.append(f"{cid}: strict: FALSE_POSITIVE requires explicit {key}: null (not applicable)")
@@ -567,19 +508,11 @@ def check_record_strict(record: dict) -> list[str]:
 
 
 def contract_version(record: dict) -> tuple[int, ...]:
-    """The record's declared protocol_version; undeclared or malformed reads as legacy."""
     match = CONTRACT_VERSION.match(str(record.get("protocol_version") or "").strip())
     return tuple(int(part) for part in match.groups()) if match else (0,)
 
 
 def review_signals(record: dict) -> list[str]:
-    """Heuristic cues for a human re-read. Not gates: a hit is a question.
-
-    A record can be complete and still contradict itself in prose. These two
-    cues found the cases that decided the round21 protocol review: an AI
-    disclosure the verdict does not reflect, and a closed verdict whose own
-    evidence names an open surface.
-    """
     cid = str(record.get("class_id") or "?")
     verdict = record.get("verdict")
     if not isinstance(verdict, str):
@@ -613,7 +546,6 @@ def review_signals(record: dict) -> list[str]:
 
 
 def load_record(text: str) -> dict:
-    """Reject duplicate keys, including nested ones, before json can discard evidence."""
     def unique_pairs(pairs):
         result = {}
         for key, value in pairs:
@@ -629,7 +561,6 @@ def load_record(text: str) -> dict:
 
 
 def check_git_evidence(record: dict, repo: Path) -> list[str]:
-    """Verify object facts; admission of an AI contribution remains a research judgment."""
     cid = record.get("class_id", "?")
     problems = []
     objects = {}
@@ -738,7 +669,7 @@ def check_path(path: Path, strict: bool = False, repo: Path | None = None) -> li
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description=__doc__)
+    parser = argparse.ArgumentParser(description='Fact gates for a causal-research record')
     parser.add_argument("paths", nargs="*", type=Path)
     parser.add_argument("--stdin", action="store_true")
     parser.add_argument("--repo", type=Path, help="verify commit marker quotes and parent links in this local clone (no fetch)")

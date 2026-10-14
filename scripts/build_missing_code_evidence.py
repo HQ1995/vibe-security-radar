@@ -1,8 +1,4 @@
 #!/usr/bin/env python3
-"""Build display hunks for published cases that still lack code evidence.
-
-Uses GitHub commit patches. Mechanical: no fabricated files or SHAs.
-"""
 from __future__ import annotations
 
 import hashlib
@@ -121,8 +117,6 @@ def hydrate_allowed_patches(
     allowed_files: object,
     anchors: object,
 ) -> dict | None:
-    """Recover an allowlisted source blob when GitHub omits a large patch."""
-
     if not isinstance(commit, dict) or not isinstance(allowed_files, list) or not anchors:
         return commit
     allowed = {str(path) for path in allowed_files if str(path).strip()}
@@ -164,15 +158,12 @@ def needs_evidence(case_id: str, existing: dict, force: set[str]) -> bool:
         return True
     if force:
         return False
-    # The store ships the publisher's resolved `display_hunks`; a missing list
-    # or a missing fix role still needs fetching.
     hunks = entry.get("display_hunks") or []
     if not hunks:
         return True
     if not any(hunk.get("role") == "fix" for hunk in hunks) and not entry.get("fix_url"):
         return True
     return False
-
 
 
 def fetch_override_for(case: dict, overrides: dict[str, dict]) -> dict:
@@ -374,8 +365,6 @@ def build_case(case: dict, override: dict | None = None) -> dict | None:
             if str(cid).upper().startswith("GHSA-")
             else ""
         ),
-        # A character-offset slice used to ship a sentence that stopped
-        # mid-word; cut at the last sentence boundary that fits instead.
         "summary": clip_sentence(mechanism, 280),
         "steps": [
             *([{"title": "AI change", "detail": subject(cand_commit)}] if cand_commit else []),
@@ -407,8 +396,6 @@ def build_case(case: dict, override: dict | None = None) -> dict | None:
 
 
 def ledger_case(row: dict, publication_overrides: dict | None = None) -> dict | None:
-    """Use the publisher's canonical research-record priority for one row."""
-
     if row.get("status") not in ("AI_ROOT_CAUSE", "AI_CODE_FLAWED"):
         return None
     records = research_records(row)
@@ -452,8 +439,6 @@ def ledger_case(row: dict, publication_overrides: dict | None = None) -> dict | 
 
 
 def ledger_cases(path: Path) -> list[dict]:
-    """Build cases from every canonical record container used by the publisher."""
-
     publication_overrides = json.loads(PUBLICATION_OVERRIDES.read_text())
     out: list[dict] = []
     for line in path.read_text(encoding="utf-8").splitlines():
@@ -536,8 +521,6 @@ def main() -> None:
             )
         else:
             print(f"{index}/{len(missing)} SKIP {case['case_id']}")
-    # Normalize through the publisher's own scrubber so the store always ships
-    # the resolved `display_hunks` shape and rebuilds cannot revert it.
     built = {key: scrub_evidence(value) or value for key, value in built.items()}
     OUT.write_text(json.dumps(built, indent=2, ensure_ascii=False) + "\n")
     print(json.dumps({"wrote": len(built), "new": ok, "out": str(OUT)}))

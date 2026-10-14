@@ -1,4 +1,3 @@
-/** Display names for each AI tool (keyed by internal tool id). */
 export const TOOL_DISPLAY_NAMES: Readonly<Record<string, string>> = {
   claude_code: "Claude Code",
   cursor: "Cursor",
@@ -81,7 +80,6 @@ export function getToolDisplayName(tool: string): string {
   return TOOL_DISPLAY_NAMES[tool] ?? tool;
 }
 
-/** Brand colors for programming languages. */
 export const LANGUAGE_COLORS: Readonly<Record<string, string>> = {
   Python: "#3572A5",
   JavaScript: "#F7DF1E",

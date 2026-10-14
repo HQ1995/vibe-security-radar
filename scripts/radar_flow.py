@@ -1,9 +1,4 @@
 #!/usr/bin/env python3
-"""Advance registered independent deliveries to their sole adjudicator.
-
-One foreground worker at a time; the existing batch index remains authoritative.
-Research methods, leader source review and publication follow the assigned skills.
-"""
 from __future__ import annotations
 
 import argparse
@@ -47,8 +42,6 @@ def collect(batch: str, receipt: dict) -> dict:
 def run_once(batch: str, receipt: dict) -> dict:
     entry = entry_for(batch, receipt)
     if not entry['dispatched']:
-        # Workers can check actual readability in their own sandbox, without seeing
-        # the shared coordination index or other auditors' judgments.
         assignment = Path(entry['binding']['output']) / 'INPUT-BINDING.json'
         assignment.parent.mkdir(parents=True, exist_ok=True)
         public = {'binding': entry['binding'], 'sha256': entry['sha256']}
@@ -59,7 +52,6 @@ def run_once(batch: str, receipt: dict) -> dict:
             with assignment.open('x') as out:
                 json.dump(public, out, sort_keys=True)
         dispatch.act(batch, receipt['task'], receipt['binding_sha256'], 'run')
-    # Never retry a crash, timeout, ambiguous send or incomplete submission here.
     return collect(batch, receipt)
 
 
@@ -112,8 +104,6 @@ def _advance(plan: dict, batch_receipt: dict) -> dict:
     try:
         for receipt in plan['auditors']:
             run_once(batch, receipt)
-        # Registration itself rejects inputs with an active writer. Also require
-        # all complete sealed report/evidence trees to be passed, not just votes.
         for receipt in plan['auditors']:
             output = Path(entry_for(batch, receipt)['binding']['output'])
             if str(output) not in spec['inputs']:
@@ -161,11 +151,6 @@ def inputs(path: Path, expected_hash: str) -> dict:
 
 
 def migrate(plan: dict, batch_receipt: dict, inspection: Path) -> dict:
-    """Leader-only, inspected replacement of one failed lane or same-owner adjudication.
-
-Keep every original binding, attempt and plan. This never dispatches a worker or
-changes a sealed valid blind submission, manifest, endpoint, N or safety stop.
-"""
     batch = plan['batch']
     dispatch.authorize(batch, batch_receipt)
     with dispatch.lock(dispatch.index_path(batch).parent / '.flow.lock', nonblocking=True):
@@ -250,7 +235,7 @@ changes a sealed valid blind submission, manifest, endpoint, N or safety stop.
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description=__doc__)
+    parser = argparse.ArgumentParser(description='Advance registered independent deliveries to their sole adjudicator')
     sub = parser.add_subparsers(dest='action', required=True)
     advancing = sub.add_parser('advance')
     advancing.add_argument('plan', type=Path)

@@ -80,12 +80,10 @@ function advisoryBlurb(item: ResearchCase): string | null {
   return blurb;
 }
 
-/** Full advisory text, not the 500-char teaser — rendered with a manual expand. */
 function advisoryDescription(item: ResearchCase): string | null {
   return stripMarkdown(item.description) || null;
 }
 
-/** Plain-language explanation of the AI-caused mechanism, when fit for visitors. */
 function publicMechanism(item: ResearchCase): string | null {
   return stripMarkdown(item.mechanism) || null;
 }
@@ -93,7 +91,6 @@ function publicMechanism(item: ResearchCase): string | null {
 function findingSummary(item: ResearchCase): string | null {
   return item.code_evidence?.summary || advisoryBlurb(item);
 }
-
 
 function missingCheck(item: ResearchCase): string | null {
   return (
@@ -109,10 +106,6 @@ function whatWentWrong(item: ResearchCase): string {
   );
 }
 
-/**
- * Prefer the audited step title, but drop the generic "AI-assisted change" and
- * "Fix" labels — those say nothing a visitor doesn't already know from the kicker.
- */
 function cardStepTitle(
   step: { readonly title: string } | undefined,
   fallback: string,
@@ -143,7 +136,6 @@ function rootCauseTitle(item: ResearchCase): string {
   );
 }
 
-
 function fixAuthorship(item: ResearchCase): string {
   const record = item.fix_authorship;
   if (!record) return "Fix authorship not yet analyzed";
@@ -165,8 +157,6 @@ function fixAuthorship(item: ResearchCase): string {
     )
     .join(" + ");
   if (record.classification === "ai_assisted") {
-    // An unnamed agent co-author (no tool family in the map) shows the author
-    // alone; a bare separator with nothing in front of it is a bug on the page.
     return families
       ? `AI-assisted fix: ${families} · ${authors}`
       : `AI-assisted fix: ${authors}`;
@@ -355,10 +345,6 @@ function CauseFixCard({
   );
 }
 
-/**
- * Advisory description: fixed-height preview (no ellipsis cut), manual expand.
- * line-clamp trims visually; <details> supplies the explicit toggle.
- */
 function AdvisoryDisclosure({
   text,
   className,
@@ -380,10 +366,6 @@ function AdvisoryDisclosure({
   );
 }
 
-/**
- * Plain-language mechanism note: clamped preview, manual expand. Only rendered
- * when the text passes the public-prose filter.
- */
 function MechanismDisclosure({
   item,
   className,
@@ -408,7 +390,6 @@ function MechanismDisclosure({
   );
 }
 
-/** Right-hand facts card: dates, severity, releases. */
 function CaseFactsCard({ item }: { readonly item: ResearchCase }) {
   const facts: { label: string; value: ReactNode }[] = [
     {
@@ -702,9 +683,6 @@ function DiffHunk({
       ? [index]
       : [],
   );
-  // Anchors pick the causal lines to expand, but a hunk whose anchor text is
-  // absent — or that carries no anchors at all — must still show its note:
-  // fall back to the first changed line.
   const keyLines = anchorLines.length
     ? anchorLines
     : [
@@ -846,14 +824,8 @@ export function CanonicalCaseEvidence({
   const introStep = steps.length >= 3 ? steps[0] : null;
   const summary = findingSummary(item);
   const blurb = advisoryBlurb(item);
-  // Publish-time scrubbing (scripts/site_preflight.usable_hunk_annotation)
-  // already decides which annotations are reader-facing; the component only
-  // renders them, so the rule lives in one place.
   const hunkAnnotation = (hunk: ResearchCodeHunk) =>
     hunk.annotation ? stripMarkdown(hunk.annotation).trim() || null : null;
-  // Authoritative tool attribution comes from ai_provenance, not from
-  // parsing a Co-authored-by trailer (which can name a human co-author
-  // first, mislabeling them as the AI author).
   const candidateModel =
     item.ai_provenance?.coverage === "complete" &&
     item.ai_provenance?.family
@@ -869,8 +841,6 @@ export function CanonicalCaseEvidence({
     item.repository,
     item.minimum_fix_set[0] ?? candidateSource.sha,
   );
-  // Publish resolves the reader-facing list once (scripts/site_preflight
-  // display_hunks); the component only renders it.
   const codeHunks = (evidence?.display_hunks ?? []).map((hunk) => {
     const label: DiffRole =
       hunk.role === "candidate"

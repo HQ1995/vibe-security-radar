@@ -1,4 +1,3 @@
-"""Offline intake contract tests. Fake transactions only; no Neon connections."""
 from __future__ import annotations
 
 from copy import deepcopy
@@ -461,7 +460,6 @@ class IntakeTests(unittest.TestCase):
                         db.events.index("snapshot_digest"))
         self.assertLess(db.events.index("snapshot_digest"), db.events.index("changeset"))
         self.assertFalse(any("raw_json::" in event for event in db.events))
-        # The NUL-bearing row still contributes its explicit alias collision.
         with self.assertRaisesRegex(ValueError, "advisory ID overlap"):
             self.call([self.row("GHSA-2345-6789-cfgh")], db)
         self.assertEqual(db.rows["old"], before)
@@ -491,8 +489,6 @@ class IntakeTests(unittest.TestCase):
         old = {"class_id": "old", "status": "NOT_AI", "advisory_ids": ["CVE-2026-99999"]}
         db = FakeDB([old])
         db.rows["old"] = (80, db.rows["old"][1])
-        # Simulate a concurrent local-file change after verification. The intake
-        # must inspect the already-read matching bytes, not re-open the path.
         db.after_digest = lambda: self.ledger.write_bytes(b"changed-after-read")
         row = self.row()
         result, db, _, _ = self.call([row], db)

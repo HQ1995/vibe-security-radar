@@ -1,4 +1,3 @@
-"""Publisher reads Neon; jsonl is export-only."""
 from __future__ import annotations
 
 import hashlib

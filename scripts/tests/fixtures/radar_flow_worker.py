@@ -1,4 +1,3 @@
-"""Harmless foreground worker for orchestration tests; contains no vulnerability research."""
 import json
 from pathlib import Path
 import sys

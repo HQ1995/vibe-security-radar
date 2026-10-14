@@ -23,7 +23,6 @@ def _case() -> dict:
         "fixed_release": {"version": "1.0.1"},
         "advisory_url": "https://www.cve.org/CVERecord?id=CVE-2026-12345",
         "ai_provenance": {"coverage": "complete"},
-        # A confirmed case must carry fix authorship (publication_issues gate).
         "fix_authorship": {
             "classification": "no_ai_marker",
             "families": [],
@@ -176,7 +175,6 @@ def test_publication_status_fails_closed() -> None:
 
 
 def test_release_fallback_admits_a_reviewed_release_gap(monkeypatch) -> None:
-    """A reviewed release fallback lets a case confirm; unknown reasons do not."""
     case = _case()
     case["gates"]["release"] = "NARROW"
     case["publication_issues"] = publish_tp_ledger.publication_issues(case)
@@ -538,7 +536,6 @@ def test_invalid_canonical_research_does_not_fall_back(record: object) -> None:
 
 
 def test_public_projection_keeps_only_the_public_key_set() -> None:
-    """The publisher's projection, not the gate, drops internal keys."""
     case = publish_tp_ledger.build_case(_ledger_row(), publish_tp_ledger.Overlays())
     case["class_id"] = "alias-abcdef123456"
     case["ledger_status"] = "AI_ROOT_CAUSE"
@@ -580,7 +577,6 @@ def test_publisher_omits_internal_research_after_validation() -> None:
 
 
 def test_unpatched_comes_from_a_record_not_from_prose() -> None:
-    """A prose phrase must not silently suppress a missing fix."""
     row = _ledger_row()
     row["causal_research"].update(
         {"fix_sha": None, "remaining_gap": "Unpatched; no fix released."}
@@ -624,7 +620,6 @@ def test_canonical_empty_reader_copy_does_not_use_stale_overlays(empty: object) 
 
 
 def test_publish_drops_internal_audit_prose_from_canonical_fields() -> None:
-    """The payload is public, so internal notes never leave publish."""
     internal = {
         "description": "/tmp/fp211-cross-01/pages/ghsa/GHSA-aaaa-bbbb-cccc.json",
         "mechanism": "cand=b7b362ae427c fix=23838a995955 ai=['src/lib/engine.ts:528']",
@@ -661,7 +656,6 @@ def test_reader_prose_ignores_audit_keys_hidden_inside_words() -> None:
 
 
 def test_publish_gates_prose_on_the_rendered_text_not_the_link_target() -> None:
-    """Markdown links are stripped for display, so their URLs are not prose."""
     prose = (
         "The AI-linked change wrote a proof file under "
         "[proof](https://example.com/tmp/proof) while reading user input."
@@ -674,7 +668,6 @@ def test_publish_gates_prose_on_the_rendered_text_not_the_link_target() -> None:
 
 
 def test_writers_cap_reader_copy_at_a_sentence_boundary() -> None:
-    """A length cap cut at an offset ships a sentence with no tail."""
     clipped = "The patch added a check that stops at the credential bounda"
     assert not site_preflight.complete_prose(clipped)
     assert site_preflight.complete_prose(clipped + "ry and rejects the call.")
@@ -683,12 +676,10 @@ def test_writers_cap_reader_copy_at_a_sentence_boundary() -> None:
     capped = site_preflight.clip_sentence(source, 100)
     assert capped == clipped + "ry and rejects the call."
     assert site_preflight.clip_sentence("One. Two three four five.", 10) == "One."
-    # No boundary fits, so a fragment is not offered as reader copy.
     assert site_preflight.clip_sentence(source[:40], 20) == ""
 
 
 def test_clipped_ledger_summary_falls_back_to_curated_copy() -> None:
-    """The row only holds a fragment because a writer sliced it mid-sentence."""
     curated = "The curated copy is a finished sentence about the same change."
     overlays = publish_tp_ledger.Overlays(summaries={"CVE-2026-12345": curated})
     case = {
@@ -950,7 +941,6 @@ def test_evidence_backfill_rebuilds_when_fix_hunks_missing() -> None:
         case_id: {"display_hunks": [{"file": "src/app.py", "role": "candidate"}]}
     }
 
-    # Candidate diff exists but the fix diff was never fetched: rebuild.
     assert build_missing_code_evidence.needs_evidence(case_id, existing, set())
 
 
@@ -1303,8 +1293,6 @@ def test_publisher_removes_pseudo_annotations_and_assigns_hunk_roles() -> None:
     )
 
     assert cleaned is not None
-    # A bare diff token is not an explanation, so the publisher drops it
-    # instead of shipping the code line back to the reader as its own note.
     assert [
         (hunk["role"], hunk["file"], hunk["annotation"])
         for hunk in cleaned["display_hunks"]
@@ -1633,8 +1621,6 @@ def test_before_after_hunk_annotation_must_be_prose_not_the_diff_line() -> None:
     errors, _, _ = site_preflight.evaluate(
         {"cases": [case], "snapshot": {"case_count": 1}}
     )
-    # Every displayed hunk needs its own reader-facing note; a bare diff line
-    # is not one, and neither is nothing at all.
     assert any("has no reader-facing annotation" in error for error in errors)
 
     case["code_evidence"]["comparison_hunks"][0]["annotation"] = (
@@ -2189,8 +2175,6 @@ def test_ir_chain_rejects_a_short_original_sha_even_with_a_reason() -> None:
 
 def test_ir_chain_records_keep_atomic_qf5v_and_frvj_origin() -> None:
     root = Path(__file__).resolve().parents[2]
-    # Committed artifacts only: this test must not open Neon, because every
-    # push and local build runs it and the database is a metered free tier.
     published = {
         case["case_id"]: case
         for case in json.loads(

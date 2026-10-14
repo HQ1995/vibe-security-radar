@@ -1,9 +1,3 @@
-"""Multi-host git URL parser for GitHub, GitLab, and Bitbucket.
-
-Single source of truth for extracting commit, PR/MR, and repo information
-from URLs across all supported git hosting platforms.
-"""
-
 from __future__ import annotations
 
 import re
@@ -13,19 +7,15 @@ from urllib.parse import urlsplit
 
 @dataclass(frozen=True)
 class GitCommitRef:
-    """Parsed commit URL from any supported host."""
-
-    host: str  # "github.com", "gitlab.gnome.org", etc.
-    owner: str  # owner or group path (may contain slashes for GitLab)
+    host: str
+    owner: str
     repo: str
     sha: str
-    repo_url: str  # reconstructed canonical repo URL
+    repo_url: str
 
 
 @dataclass(frozen=True)
 class GitPrRef:
-    """Parsed PR/MR URL from any supported host."""
-
     host: str
     owner: str
     repo: str
@@ -34,33 +24,17 @@ class GitPrRef:
 
     @property
     def url(self) -> str:
-        """Reconstruct the canonical PR/MR URL."""
         if self.host == "github.com":
             return f"https://github.com/{self.owner}/{self.repo}/pull/{self.number}"
         if self.host == "bitbucket.org":
             return f"https://bitbucket.org/{self.owner}/{self.repo}/pull-requests/{self.number}"
-        # GitLab (any host)
         return f"https://{self.host}/{self.owner}/{self.repo}/-/merge_requests/{self.number}"
 
 
-# Self-hosted GitLab instances commonly seen in CVE data.
-# Only matches gitlab.* domains — git.* hosts (git.kernel.org, etc.) use
-# different URL schemes (cgit, gitweb) and are not GitLab.
 _GITLAB_SELF_HOSTED_RE = re.compile(r"^gitlab\.[a-z0-9.-]+$", re.IGNORECASE)
 
-# Some public Git servers expose a repository directly below the host rather
-# than under an owner/group path.  Keep this allowlist narrow: generic hosts
-# still require at least ``owner/repo`` so arbitrary web paths are not treated
-# as repository identities.
 _GENERIC_SINGLE_COMPONENT_REPO_HOSTS = frozenset({"git.ffmpeg.org"})
 
-# GitLab browsing paths below a project. Modern GitLab puts all of these
-# behind ``/-/``, which is stripped separately; these markers catch the
-# pre-2019 unprefixed routes that self-hosted instances still serve (GNOME,
-# freedesktop.org, ow2.org and others in real advisory data use them). Without
-# this, e.g. ``gitlab.gnome.org/GNOME/glib/commit/<sha>`` parses as owner
-# ``GNOME/glib/commit`` and repo ``<sha>`` instead of being recognised as a
-# browsing URL for GNOME/glib.
 _GITLAB_PROJECT_SUFFIX_MARKERS = (
     "/tree/",
     "/blob/",
@@ -78,8 +52,6 @@ _GITLAB_PROJECT_SUFFIX_MARKERS = (
 
 
 def _strip_gitlab_browsing_suffix(path: str) -> str:
-    """Cut a GitLab project path at the first browsing-suffix marker."""
-
     project_path = path.split("/-/", 1)[0]
     for marker in _GITLAB_PROJECT_SUFFIX_MARKERS:
         project_path = project_path.split(marker, 1)[0]
@@ -89,9 +61,6 @@ _SCP_REPO_RE = re.compile(r"^(?:(?P<user>[^/@:\s]+)@)?(?P<host>[^/:\s]+):(?P<pat
 _REPO_URL_SCHEMES = frozenset({"http", "https", "ssh", "git+ssh", "git"})
 _DEFAULT_PORTS = {"http": 80, "https": 443, "ssh": 22, "git+ssh": 22, "git": 9418}
 
-# GitHub reserves these top-level routes for product pages and account-wide
-# features.  Treating them as repository owners turns advisory/package links
-# into clone targets and silently reduces analysis coverage.
 _GITHUB_NON_REPO_OWNERS = frozenset(
     {
         "advisories",
@@ -128,7 +97,6 @@ def _is_github_repository_owner(owner: str) -> bool:
 
 
 def _transport_location(url: str) -> tuple[str, str] | None:
-    """Extract a normalized host and raw path from common Git transports."""
     raw = url.strip()
     if not raw or any(character in raw for character in ("\x00", "\r", "\n")):
         return None
@@ -157,11 +125,6 @@ def _transport_location(url: str) -> tuple[str, str] | None:
 
 
 def _split_gitlab_path(path: str) -> tuple[str, str]:
-    """Split a GitLab group/repo path into (owner, repo).
-
-    GitLab supports nested groups: ``group/subgroup/repo``.
-    The last component is the repo name; everything before is the owner/group.
-    """
     parts = path.rstrip("/").split("/")
     if len(parts) < 2:
         return ("", parts[0] if parts else "")
@@ -176,11 +139,6 @@ def _valid_gitlab_project_path(path: str) -> bool:
 
 
 def parse_commit_url(url: str) -> GitCommitRef | None:
-    """Parse a commit URL from GitHub, GitLab, or Bitbucket.
-
-    Returns a GitCommitRef with host, owner, repo, sha, and repo_url,
-    or None if the URL doesn't match any known pattern.
-    """
     location = _transport_location(url)
     if location is None:
         return None
@@ -239,10 +197,6 @@ def parse_commit_url(url: str) -> GitCommitRef | None:
 
 
 def parse_pr_url(url: str) -> GitPrRef | None:
-    """Parse a PR/MR URL from GitHub, GitLab, or Bitbucket.
-
-    Returns a GitPrRef or None if the URL doesn't match.
-    """
     location = _transport_location(url)
     if location is None:
         return None
@@ -295,12 +249,6 @@ def parse_pr_url(url: str) -> GitPrRef | None:
 
 
 def parse_repo_url(url: str) -> tuple[str, str, str] | None:
-    """Extract (host, owner, repo) from any supported git hosting URL.
-
-    Handles GitHub, GitLab (public + self-hosted), and Bitbucket.
-    Strips trailing ``.git`` suffix from repo name.
-    Returns None if the URL doesn't match any known host pattern.
-    """
     location = _transport_location(url)
     if location is None:
         return None
@@ -368,13 +316,6 @@ def parse_repo_url(url: str) -> tuple[str, str, str] | None:
 
 
 def normalize_repo_identity(url: str) -> tuple[str, str] | None:
-    """Return a transport-independent, lowercase ``(host, repo_path)``.
-
-    Known GitHub, GitLab, and Bitbucket URLs use :func:`parse_repo_url` so
-    browsing suffixes such as ``/tree`` and ``/-/commit`` are excluded.  Base
-    repository origins on other hosts still normalize safely when they use
-    HTTP(S), SSH, Git, or SCP-like syntax.
-    """
     parsed = parse_repo_url(url)
     if parsed is not None:
         host, owner, repo = parsed
@@ -404,5 +345,4 @@ def normalize_repo_identity(url: str) -> tuple[str, str] | None:
 
 
 def is_github(ref: GitCommitRef | GitPrRef) -> bool:
-    """Check if a parsed ref is on GitHub (needed for API-dependent features)."""
     return ref.host == "github.com"

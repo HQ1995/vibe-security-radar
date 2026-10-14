@@ -1,13 +1,4 @@
 #!/usr/bin/env python3
-"""Publish confirmed True Positives from the Neon ledger.
-
-Reads AI_ROOT_CAUSE and AI_CODE_FLAWED rows from Neon ledger_rows and
-writes web/src/generated/research-data.json. The committed jsonl file is a
-recovery export, not a default publish input: --from-export restores offline
-and --prefer-export uses it only while its digest matches Neon.
-Existing site evidence is reused when a public advisory ID matches; missing
-fields stay null rather than guessed.
-"""
 from __future__ import annotations
 
 import argparse
@@ -50,13 +41,6 @@ AI_COMMIT_CENSUS = ROOT / "scripts/ai-commit-census.json"
 
 @dataclass(frozen=True)
 class Overlays:
-    """Every committed input publish layers on top of the Neon rows.
-
-    One object instead of nine loose maps: the caller cannot forget to load an
-    overlay, and no overlay lives in module state that a later call could
-    change under a running publish.
-    """
-
     official: dict[str, dict] = field(default_factory=dict)
     by_class: dict[str, dict] = field(default_factory=dict)
     overrides: dict = field(default_factory=dict)
@@ -68,18 +52,9 @@ class Overlays:
 
     @classmethod
     def load(cls) -> "Overlays":
-        """Read every overlay once from committed inputs."""
-        # Curated reader-facing values (severity, CWEs, references, release
-        # ranges, curated steps, dates) have no source in ledger_rows. They
-        # live in committed files, never in the previous publish output:
-        # publish stays a pure function of Neon rows plus committed inputs, so
-        # a bad run cannot feed its own mistakes back in.
         official, by_class = index_existing(load_json(CURATION))
         dates = load_advisory_dates()
         if not dates:
-            # publication_errors only enforces date traceability when the
-            # table is non-empty; fail closed here so a missing table cannot
-            # publish dates nobody verified.
             raise SystemExit(f"missing advisory date table: {ADVISORY_DATES}")
         summaries, mechanisms = _load_summary_maps()
         return cls(
@@ -105,12 +80,6 @@ def _read_export_rows() -> list[dict]:
 
 
 def export_matches_neon() -> bool:
-    """True when the local jsonl export equals the Neon snapshot digest.
-
-    The digest is computed in the database, so the freshness probe costs one
-    small query instead of a full-table transfer. A stale export must never be
-    published; callers fall back to reading Neon ledger_rows.
-    """
     if not LEDGER.exists():
         return False
     sys.path.insert(0, str(ROOT / "scripts"))
@@ -122,12 +91,6 @@ def export_matches_neon() -> bool:
 
 
 def load_ledger_rows(*, from_export: bool = False) -> list[dict]:
-    """Load ledger rows for publication.
-
-    Neon ledger_rows is the default publish input. The jsonl file is a recovery
-    export; pass from_export=True for offline restore, or gate it on
-    export_matches_neon() to publish from the backup without row egress.
-    """
     if from_export:
         return _read_export_rows()
     sys.path.insert(0, str(ROOT / "scripts"))
@@ -151,7 +114,6 @@ def load_ledger_rows(*, from_export: bool = False) -> list[dict]:
         ).fetchall()
     return [json.loads(raw) for (raw,) in fetched]
 
-# Inclusive GHSA/CVE publication window of the funnel ledger.
 LEDGER_WINDOW_START = "2025-05-01"
 LEDGER_WINDOW_END = "2026-09-26"
 GHSA_RE = re.compile(r"GHSA-[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}", re.I)
@@ -193,9 +155,6 @@ DEFAULT_GATES = {
     "uniqueness": "UNKNOWN",
 }
 
-# Reader-facing category copy lives here so the payload is a pure function of
-# its inputs; it used to be read back from the previous snapshot, which froze
-# these definitions at whatever a legacy pipeline had published.
 CAUSE_CATEGORIES = {
     "auth_access": {
         "definition": (
@@ -278,7 +237,6 @@ def is_official_id(value: str | None) -> bool:
 
 
 def drop_original_aliases(case: dict) -> dict:
-    """Earlier advisories in an incomplete chain are not aliases of this case."""
     original = {
         str(item).upper()
         for item in ((case.get("ir_chain") or {}).get("original_advisory_ids") or [])
@@ -440,18 +398,10 @@ def collect_ids(row: dict, rec: dict | None) -> tuple[list[str], list[str], list
             g, c = ids_from_text(str(value or ""))
             ghsas.extend(g)
             cves.extend(c)
-        # Prose may mention sibling advisories in the same repo. A CVE mined
-        # from prose is a weak pointer: it may locate this row's published
-        # page, but it never becomes an alias, and it is only consulted after
-        # the row's own official ids and its published page both miss. A
-        # sibling's id inside the alias set is how one advisory's page
-        # absorbed another's.
         for key in ("bug_semantics", "evidence", "reasoning", "flaw_origin"):
             _, c = ids_from_text(str(rec.get(key) or ""))
             weak.extend(c)
     ghsas, cves, weak = unique(ghsas), unique(cves), unique(weak)
-    # One GHSA is one advisory. Extra GHSAs in squash case_id strings are
-    # sibling bugs, not aliases of this case.
     if len(ghsas) > 1:
         preferred = None
         if rec:
@@ -500,10 +450,6 @@ def first_text(*values: object) -> str | None:
 
 
 def ai_marker_text(value: object) -> str | None:
-    """Marker text from either ledger shape: the marker string, or the tri-state
-    block whose evidence describes it. Only a present marker is an AI marker;
-    ABSENT/UNKNOWN returns None so the row keeps its previous treatment
-    (fix-side trailers must not decide the family)."""
     if isinstance(value, str):
         return value
     if not isinstance(value, dict):
@@ -517,7 +463,6 @@ def ai_marker_text(value: object) -> str | None:
 
 
 def public_text(*values: object) -> str | None:
-    """English reader-facing copy only. Internal Chinese audit notes stay off the site."""
     for value in values:
         if not isinstance(value, str):
             continue
@@ -528,11 +473,6 @@ def public_text(*values: object) -> str | None:
 
 
 def public_prose(*values: object) -> str | None:
-    """First English value that reads as prose, not an internal audit dump.
-
-    The site renders whatever publish ships, so the gate lives here once
-    instead of in a second copy of the heuristic inside the web app.
-    """
     for value in values:
         text = public_text(value)
         if text and reader_prose(strip_markdown(text)):
@@ -541,12 +481,6 @@ def public_prose(*values: object) -> str | None:
 
 
 def ledger_value(row: dict, key: str, fallback, clean=None):
-    """The ledger owns a field when the key is present, even when it is empty.
-
-    Presence, not truthiness, is the contract: a canonical empty value must not
-    fall back to the committed curation snapshot, or a rejected mechanism comes
-    back. Every canonical-vs-snapshot choice routes through here.
-    """
     if key not in row:
         return fallback
     return clean(row[key]) if clean else row[key]
@@ -569,11 +503,6 @@ def infer_hunk_file(hunk: dict) -> str | None:
 
 
 def trim_mid_sentence(text: str) -> str:
-    """Cut a clipped annotation at its last sentence boundary, never mid-word.
-
-    Marker-style strings (sink:/source:/key=value) have no sentence boundary and
-    pass through untouched.
-    """
     stripped = text.rstrip()
     if len(stripped) < 120 or stripped[-1:] in ".!?\"')":
         return text
@@ -587,7 +516,6 @@ _RAW_HUNK_KEYS = ("candidate_hunks", "fix_hunks", "comparison_hunks")
 
 
 def _scrub_hunk(hunk: dict, context: tuple[str, ...]) -> dict:
-    """One reader-facing hunk: public annotation, resolved file, kept role."""
     item = dict(hunk)
     annotation = str(item.get("annotation") or "")
     if CJK_RE.search(annotation):
@@ -602,7 +530,6 @@ def _scrub_hunk(hunk: dict, context: tuple[str, ...]) -> dict:
 
 
 def _keep_display_hunks(evidence: dict, keep) -> None:
-    """Replace the reader-facing list, dropping any raw collections."""
     evidence["display_hunks"] = [
         hunk for hunk in display_hunks(evidence) if keep(hunk)
     ]
@@ -614,17 +541,9 @@ def scrub_evidence(
     evidence: dict | None,
     case_context: tuple[object, ...] = (),
 ) -> dict | None:
-    """Normalize any evidence shape to one reader-facing `display_hunks` list.
-
-    Ledger rows and fixtures still carry the raw candidate/fix/comparison
-    collections; the committed store already ships resolved `display_hunks`.
-    Both are scrubbed here, resolved once, and reduced to `display_hunks`, so
-    every later filter and check has a single list to work with.
-    """
     if not isinstance(evidence, dict):
         return None
     cleaned = dict(evidence)
-    # Provenance of how the evidence was gathered is internal; nothing reads it.
     cleaned.pop("code_evidence_source", None)
     cleaned["summary"] = public_prose(evidence.get("summary"))
     marker = evidence.get("ai_marker")
@@ -674,7 +593,6 @@ def scrub_evidence(
 
 
 def finalize_evidence(evidence: dict) -> None:
-    """Drop a stale `unavailable_reason` once reader-facing hunks exist."""
     if evidence.get("display_hunks"):
         evidence.pop("unavailable_reason", None)
 
@@ -835,12 +753,9 @@ def publication_issues(case: dict) -> list[str]:
             "missing_ai_attribution",
             (case.get("ai_provenance") or {}).get("coverage") != "unresolved",
         ),
-        # An unpatched finding is a complete result, not a missing fix.
         ("missing_fix", (case.get("minimum_fix_set") or unpatched)),
         ("missing_vulnerable_release", case.get("vulnerable_release")),
-        # Unpatched findings have no fixed release by definition.
         ("missing_fixed_release", (case.get("fixed_release") or unpatched)),
-        # Fix authorship must be analyzed so the site can show who fixed it and whether they used AI.
         ("missing_fix_authorship", (case.get("fix_authorship") or unpatched)),
     )
     issues.extend(name for name, value in checks if not value)
@@ -848,13 +763,8 @@ def publication_issues(case: dict) -> list[str]:
     if fallback and (case.get("gates") or {}).get("release") != "PASS":
         issues.append(f"release_fallback:{fallback.get('reason')}")
     for role in ("candidate", "fix"):
-        # A confirmed case must carry both hunk sets (site_preflight contract);
-        # their absence keeps the case qualified, never confirmed.
-        # Unpatched findings legitimately have no fix hunks.
         if role == "fix" and unpatched:
             continue
-        # `display_hunks` resolves both shapes: ledger rows and fixtures still
-        # carry the raw collections, published cases carry the shipped list.
         hunks = [
             hunk for hunk in display_hunks(evidence) if hunk.get("role") == role
         ]
@@ -880,7 +790,6 @@ def first_unpatched(
 
 
 def _is_unpatched(case: dict) -> bool:
-    """Unpatched is a reviewed record; prose keywords never suppress a gap."""
     record = case.get("unpatched")
     return isinstance(record, dict) and record.get("confirmed") is True
 
@@ -912,7 +821,6 @@ def strip_unpatched_fix_claims(case: dict) -> None:
 
 
 def release_fallback(case: dict) -> dict | None:
-    """An explicit, reviewed fallback for a release gate that cannot close."""
     fallbacks = _release_fallbacks()
     for key in (case.get("case_id"), *(case.get("aliases") or [])):
         hit = fallbacks.get(str(key or "").upper())
@@ -937,8 +845,6 @@ def publication_status(case: dict) -> str:
     gate_values = set((case.get("gates") or {}).values())
     if not gate_values or "UNKNOWN" in gate_values or not case.get("candidate_set"):
         return "provisional"
-    # release may be non-PASS when a reviewed fallback records that the gate
-    # cannot close (no release channel / no fixed artifact / same version).
     unresolved = {
         name
         for name, value in (case.get("gates") or {}).items()
@@ -950,12 +856,6 @@ def publication_status(case: dict) -> str:
 
 
 def index_existing(existing: dict) -> tuple[dict[str, dict], dict[str, dict]]:
-    """Index prior site cases by official ID and by this row's class_id only.
-
-    Do not index alias-* leftovers as if they were advisory IDs. Looking up a
-    class_id through another case's alias list is how sibling ledger rows
-    stole a GHSA identity.
-    """
     official: dict[str, dict] = {}
     by_class: dict[str, dict] = {}
     for case in existing.get("cases") or []:
@@ -1000,17 +900,10 @@ def public_shas(
     evidence: dict | None = None,
     row: dict | None = None,
 ) -> tuple[list[str], list[str]]:
-    """One SHA source for listing, diagram, and diffs.
-
-    ``evidence`` (the code_evidence the case will publish) takes priority
-    over cached evidence so re-generated comparison hunks stay consistent
-    with the listing SHAs.
-    """
     chain = ir_chain_of(row, (cached or {}).get("ir_chain")) or {}
     if (cached or {}).get("ir_chain") and (
         not chain or (row is not None and "ir_chain" in row)
     ):
-        # A rejected legacy chain cannot re-enter through its cached SHA sets or URLs.
         cached = None
         if row is None or "code_evidence" not in row:
             evidence = None
@@ -1066,7 +959,6 @@ def case_quality(case: dict) -> tuple:
 def merge_duplicate_identities(
     cases: list[dict], *, canonical_class_ids: set[str] | None = None
 ) -> list[dict]:
-    """One official advisory ID is one public case (gate 07)."""
     parent = list(range(len(cases)))
 
     def find(index: int) -> int:
@@ -1127,8 +1019,6 @@ def merge_duplicate_identities(
             winner["case_id"] = ghsas[0]
         elif cves:
             winner["case_id"] = cves[0]
-        # Keep every official id of the cluster: dropping the second GHSA
-        # would make that advisory unresolvable on the site (alias gap).
         winner["aliases"] = [
             item
             for item in unique(
@@ -1141,12 +1031,6 @@ def merge_duplicate_identities(
 
 
 def entity_alias_map() -> dict[str, str]:
-    """GHSA <-> CVE equivalence map (one advisory, two spellings).
-
-    Loaded from scripts/ghsa-cve-map.json (maintained from GitHub advisory
-    API). Catches cross-type duplicates: one case publishing a GHSA while
-    another publishes its CVE is the same vulnerability twice.
-    """
     path = ROOT / "scripts/ghsa-cve-map.json"
     try:
         payload = json.loads(path.read_text())
@@ -1164,7 +1048,6 @@ _ENTITY_ALIASES: dict[str, str] | None = None
 
 
 def expand_entity_ids(official_ids: list[str]) -> list[str]:
-    """Expand official IDs to the same-entity spelling (GHSA <-> CVE)."""
     global _ENTITY_ALIASES
     if _ENTITY_ALIASES is None:
         _ENTITY_ALIASES = entity_alias_map()
@@ -1274,11 +1157,6 @@ def ir_chain_of(row: dict | None, fallback: dict | None) -> dict | None:
 
 
 def load_advisory_dates() -> dict[str, str]:
-    """Advisory publish dates keyed by GHSA/CVE.
-
-    Doubles as the date-traceability gate in publication_errors: every
-    published_at must appear here. Never publish a commit date in its place.
-    """
     dates: dict[str, str] = {}
     payload = load_json(ADVISORY_DATES)
     if not isinstance(payload, dict):
@@ -1293,11 +1171,6 @@ def load_advisory_dates() -> dict[str, str]:
 def ai_summary_overlay(
     case: dict, overlays: Overlays, *, canonical: bool = False
 ) -> bool:
-    # Keep canonical reader copy only when it reads as public prose without audit
-    # identifiers; pseudo-prose (path/SHA noise) falls through to the curated map.
-    # A summary that stops mid-sentence is the other half of that bar: the row
-    # can only hold it because a writer sliced the note at a character offset, so
-    # the curated copy is the better reader text and wins here.
     evidence = case.get("code_evidence")
     if canonical and isinstance(evidence, dict):
         canonical = public_text(evidence.get("summary"))
@@ -1362,7 +1235,6 @@ def load_generated_evidence() -> dict[str, dict]:
 
 
 def _load_summary_maps() -> tuple[dict[str, str], dict[str, str]]:
-    """Return the curated reader summary and mechanism for each case id."""
     overlay = load_json(CURATION)
     summaries: dict[str, str] = {}
     mechanisms: dict[str, str] = {}
@@ -1404,8 +1276,6 @@ def load_unpatched_fixes() -> dict[str, dict]:
     }
 
 
-
-
 def first_party_date(*keys: object, dates: dict[str, str]) -> str | None:
     for key in keys:
         if isinstance(key, (list, tuple)):
@@ -1427,12 +1297,6 @@ def first_party_date(*keys: object, dates: dict[str, str]) -> str | None:
 
 
 def load_json(path: Path) -> object:
-    """Load a committed publish input; a missing or malformed one is fatal.
-
-    Every caller names a committed overlay, so silently returning {} would ship
-    a degraded catalog instead of failing the build. Payload shape stays with
-    the caller: the unpatched-fix overlay is a list, the rest are objects.
-    """
     try:
         payload = json.loads(path.read_text())
     except FileNotFoundError:
@@ -1536,8 +1400,6 @@ def apply_case_overrides(
         "candidate_sources",
         "candidate_fix_edges",
     ):
-        # The case already holds the cleaned canonical value when the ledger
-        # owns the field; only fill the gap the ledger leaves.
         if key in spec and key not in row:
             case[key] = spec[key]
     if spec.get("aliases_extra"):
@@ -1622,8 +1484,6 @@ def build_case(row: dict, overlays: Overlays) -> dict:
     )
     if cached and official_hit:
         cached_id = str(cached.get("case_id") or "").upper()
-        # A row with no GHSA of its own keeps its published page's id even
-        # when that id is the CVE mined from prose: the page is the case.
         if GHSA_RE.match(cached_id) or (CVE_RE.match(cached_id) and not ghsas):
             case_id = cached_id
         cached_cves = [
@@ -1636,12 +1496,9 @@ def build_case(row: dict, overlays: Overlays) -> dict:
         aliases = [item for item in aliases if item.upper() != case_id]
     marker_value = (row.get("code_evidence") or {}).get("ai_marker")
     if "causal_research" in row and isinstance(marker_value, dict):
-        # Structured canonical markers include an explicit state and causal scope.
-        # Older free-text markers retain their existing curated interpretation.
         marker = ai_marker_text(marker_value)
         if isinstance(marker_value, dict) and str(marker_value.get("state")).upper() in {"PRESENT", "AI"}:
             marker = first_text(marker_value.get("quote"), marker)
-        # Repair disclosures and comparison commits cannot identify the causal model.
         family = detect_family(marker)
         cached_provenance = {}
     else:
@@ -1682,8 +1539,6 @@ def build_case(row: dict, overlays: Overlays) -> dict:
             None,
         ) or (cached or {}).get("code_evidence")
     if case_evidence and (cached or {}).get("code_evidence", {}).get("steps"):
-        # ponytail: prefer cached reader-facing steps over generated commit
-        # subjects so rebuilds do not erase curated annotations.
         generic = {"ai change", "ai fix", "fix", "root cause", "change"}
         has_curated = any(
             str(step.get("title") or "").strip().lower() not in generic
@@ -1768,9 +1623,6 @@ def build_case(row: dict, overlays: Overlays) -> dict:
             candidates,
             dates=overlays.dates,
         )
-        # Merged-identity cases can keep a date the advisory table only holds
-        # under a sibling advisory key; publication_errors still requires the
-        # value to appear somewhere in that table.
         or (cached or {}).get("published_at"),
         "severity": (cached or {}).get("severity"),
         "cwes": list((cached or {}).get("cwes") or []),
@@ -1798,10 +1650,6 @@ def build_case(row: dict, overlays: Overlays) -> dict:
             "candidate_count": len(candidates),
             "named_candidate_count": len(candidates),
         },
-        # The ledger is the source of truth: a derived authorship wins over the
-        # committed snapshot, which can hold a stale non-null value that would
-        # otherwise shadow a corrected ledger row forever. The snapshot stays as
-        # the fallback for rows the ledger cannot derive.
         "fix_authorship": derive_fix_authorship(rec, list(fixes)) or (cached or {}).get("fix_authorship"),
         "code_evidence": scrub_evidence(case_evidence, (mechanism, description)),
         "ir_chain": chain,
@@ -1905,8 +1753,6 @@ def main(argv: list[str] | None = None) -> None:
             raise SystemExit(
                 f"{case['case_id']}: missing reader summary in {CURATION}"
             )
-        # ponytail: scrub runs once in build_case with the record's own
-        # mechanism/description; re-scrubbing here resolved nothing extra.
         evidence = case.get("code_evidence")
         if not isinstance(evidence, dict):
             evidence = {}
@@ -2013,9 +1859,6 @@ def main(argv: list[str] | None = None) -> None:
             "publication invariants failed:\n" + "\n".join(identity_errors[:20])
         )
 
-    # The public payload is a projection of the ledger row; site_preflight owns
-    # the key set, so internal lookup keys (class_id, ledger_status, ai_marker,
-    # alias-<hash> twins) cannot leak by omission here.
     for case in cases:
         project_public_case(case)
 

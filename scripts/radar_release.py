@@ -1,9 +1,4 @@
 #!/usr/bin/env python3
-"""Land a leader-reviewed flow, recover committed writes by readback, and release.
-
-Uses the existing ledger CLI. A site endpoint retains occupancy for the existing
-publication runbook; verified ledger landing is never reported as publication.
-"""
 from __future__ import annotations
 
 import argparse
@@ -63,7 +58,6 @@ def records_view(seal: dict) -> Path:
 
 
 def gate(batch: str, plan: dict, accepted: dict, root: Path, *, expect: str = 'ACCEPTED') -> dict:
-    """Rerun the frozen reduction gate on every lane; a researched blocker exits nonzero by design."""
     decision = delivery.read(Path(accepted['decisions']))['reduction']
     pin = decision['pins']['reduction_gate']
     entry = dispatch.read_index(dispatch.index_path(batch))['dispatch'][plan['adjudicator']['task']]
@@ -121,7 +115,7 @@ def prepare(plan: dict, receipt: dict) -> tuple[dict, list[dict], list[dict], Pa
                 raise ValueError('leader review evidence must belong to the sealed accepted delivery')
     for line in Path(plan['patches']).read_text().splitlines():
         if line.strip():
-            delivery.read_text(line)  # Reject duplicate keys before the existing ledger parser.
+            delivery.read_text(line)
     patches = ledger_store.read_patches(Path(plan['patches']), require_assessments=True)
     assessments = [delivery.read_text(line) for line in Path(plan['assessments']).read_text().splitlines() if line.strip()]
     if {p['row']['class_id'] for p in patches} != set(allotted['case_ids']):
@@ -229,7 +223,6 @@ def _land(plan: dict, receipt: dict) -> dict:
             if missing or any(r['history']['versions'][-1]['actor'] != allotted['leader'] for r in readbacks.values()):
                 raise ValueError('landed history lacks the original actor/assessments')
         else:
-            # The original exact claims still govern writes, including after a crash.
             binding = dispatch.read_index(dispatch.index_path(batch))['dispatch'][
                 dispatch.read_index(dispatch.index_path(batch))['flow']['plan']['adjudicator']['task']]['binding']
             dispatch.verify(binding)
@@ -249,7 +242,6 @@ def _land(plan: dict, receipt: dict) -> dict:
                 raise ValueError('finalize returned without verified landing')
         if any(r['history']['versions'][-1]['actor'] != allotted['leader'] for r in readbacks.values()):
             raise ValueError('landed history actor differs from the original release owner')
-        # A committed transaction can precede a failed export. Rebuild only that tail.
         check = ledger(root, 'check')
         if check.get('jsonl_byte_identical') is not True:
             ledger(root, 'export', structured=False)
@@ -261,7 +253,7 @@ def _land(plan: dict, receipt: dict) -> dict:
                    'change_set_id': next(iter(readbacks.values()))['get']['change_set_id'],
                    'jsonl_byte_identical': True, 'export_sha256': check['sha256'],
                    'endpoint': allotted['endpoint'], 'publication': 'NOT_PERFORMED'}
-        update(batch, {'outcome': outcome})  # Record endpoint before clearing occupancy.
+        update(batch, {'outcome': outcome})
         if allotted['endpoint'] == 'ledger':
             released = release_claims(batch, allotted, patches)
             outcome.update(phase='LEDGER_ENDPOINT_COMPLETE', released_claim_ids=released)
@@ -279,7 +271,7 @@ def _land(plan: dict, receipt: dict) -> dict:
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description=__doc__)
+    parser = argparse.ArgumentParser(description='Land a leader-reviewed flow, recover committed writes by readback, and release')
     parser.add_argument('plan', type=Path)
     parser.add_argument('--batch-receipt', type=Path, required=True)
     args = parser.parse_args()

@@ -1,4 +1,3 @@
-"""Offline checks for identity preservation and conservative intake routing."""
 from dataclasses import replace
 import hashlib
 import httpx
@@ -112,10 +111,8 @@ class IntakeChecks(unittest.TestCase):
         self.assertEqual(row["routing"], "REPOSITORY_DISCOVERY")
         self.assertEqual(row["retired_source_records"], [])
         self.assertLess(timestamp(old_time), timestamp(new_time))
-        # Arbitrary precision stays exact without depending on a Decimal context.
         self.assertLess(timestamp("2026-09-26T20:42:47." + "0" * 40 + "1Z"),
                         timestamp("2026-09-26T20:42:47." + "0" * 40 + "2Z"))
-        # Same instant, different offset/trailing-zero spelling: retain retirement.
         equivalent = "2026-09-26T16:42:47.123456100-04:00"
         self.assertEqual(timestamp(old_time), timestamp(equivalent))
         tied = normalize(self.global_advisory(updated_at=equivalent), "github", "raw", "/0")
@@ -142,7 +139,6 @@ class IntakeChecks(unittest.TestCase):
                 normalize(missing, "github", "raw", "/0")
         with self.assertRaises(ValueError):
             normalize(self.global_advisory(references=[{"url": "https://example.com"}]), "github", "raw", "/0")
-        # References remain leads, not identity edges. Null identifiers do not discard cve_id.
         row = normalize(self.global_advisory(identifiers=None, references=["https://github.com/advisories/GHSA-cfgh-jmpq-rvwx"]), "github", "raw", "/0")
         self.assertEqual(row.ids, ("CVE-2026-10000", "GHSA-2345-6789-CFGH"))
 
@@ -189,7 +185,6 @@ class IntakeChecks(unittest.TestCase):
                 record = normalize(good, "github", str(raw_path), "/0")
                 row = reconcile([record], [], [], {})[0]
                 observation = row["source_records"][0]
-                # Simulate an earlier permissive helper with a genuine object hash.
                 observation["sha256"] = hashlib.sha256(json.dumps(raw, sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode()).hexdigest()
                 observation.update(projection or {})
                 delta.write_text(json.dumps(row) + "\n")
@@ -354,7 +349,6 @@ class IntakeChecks(unittest.TestCase):
         cve, ghsa = "CVE-2026-10000", "GHSA-2345-6789-CFGH"
         source = SourceRecord("github", ghsa, (cve, ghsa), "2026-09-01", "2026-09-02", False, (), "a", "raw", "/0")
         ledger = [{"class_id": "canonical", "advisory_ids": [cve]}]
-        # The explicit baseline alias already links the legacy name to the ledger.
         universe = [{"class_id": "legacy-name", "public_ids": [cve, ghsa]}]
         first = reconcile([source], ledger, universe, {})
         for prior in ([], first):
@@ -381,8 +375,6 @@ class IntakeChecks(unittest.TestCase):
         self.assertEqual(row["prior_universe_class_ids"], ["alias-old-a", "alias-old-b"])
         third = reconcile([current], ledger, universe, {}, prior + [row])[0]
         self.assertEqual(third["routing"], "IDENTITY_CONFLICT")
-        # A unique canonical identity still takes precedence over one legacy
-        # universe name; this is not evidence that two original owners merged.
         unique = reconcile([source], ledger, [{"class_id": "legacy-name", "public_ids": [cve, ghsa]}], {})[0]
         self.assertEqual(unique["identity"], "EXISTING_LEDGER")
         two_ledger = reconcile([source], ledger + [{"class_id": "alias-old-b", "advisory_ids": [ghsa]}], [], {})[0]
@@ -407,7 +399,6 @@ class IntakeChecks(unittest.TestCase):
         cleared = reconcile([reactivated, live], [], [], {}, first + [omitted])[0]
         self.assertEqual(cleared["retired_source_records"], [])
         self.assertEqual(cleared["routing"], "REPOSITORY_DISCOVERY")
-        # Omitting GHSA again must not resurrect its superseded retirement.
         later = reconcile([live], [], [], {}, first + [omitted, cleared])[0]
         self.assertEqual(later["retired_source_records"], [])
         self.assertEqual(later["routing"], "REPOSITORY_DISCOVERY")

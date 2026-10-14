@@ -1,15 +1,4 @@
 #!/usr/bin/env python3
-"""Compare independent audit slots over the same batch.
-
-Two blind audits of one batch disagree where the two briefs asked for
-different fields, or where a rule lived only in prose. This prints that
-comparison, so the drift is one command instead of a hand diff.
-
-Usage:
-  python3 scripts/compare_slots.py --lane auditor1=PATH --lane auditor2=PATH --lane auditor3=PATH
-  python3 scripts/compare_slots.py --a research/<batch>/review \\
-      --b research/<batch>/verify/cases [--json report.json] [--probe-git]
-"""
 from __future__ import annotations
 
 import argparse
@@ -43,9 +32,6 @@ FLAG_KINDS = (
 )
 GIT_ENV = {**os.environ, "GIT_NO_LAZY_FETCH": "1"}
 
-# Text differences are review obligations, not machine-decided contradictions.
-# Keep distinct roles distinct: a landing is not an atomic member, and a later
-# AI contribution is not a decomposed BIC member.
 RESEARCH_FIELDS = {
     'advisory': ('verdict', 'advisory_ids', 'advisory_disposition',
                  'advisory_aliases', 'false_positive_ground'),
@@ -67,7 +53,6 @@ RESEARCH_FIELDS = {
 
 
 def research_differences_many(records: dict[str, dict]) -> dict:
-    """List differing claims from every lane without choosing a preferred report."""
     first = next(iter(records.values()))
     return {
         dimension: {field: {name: record.get(field) for name, record in records.items()}
@@ -134,7 +119,6 @@ def sha(value) -> str:
 
 
 def view(record: dict) -> dict:
-    """One shape for both slots: new fields win, older ones map onto them."""
     members = record.get('decomposed_shas') or []
     return {
         'verdict': record.get('verdict'),
@@ -159,7 +143,6 @@ def flag_kind(message: str) -> str:
 
 
 def squash_shape(value: str, clone: str) -> str:
-    """Inspect Git shape; single-parent/root objects need separate minimality research."""
     if not (value and clone):
         return 'unknown'
     try:
@@ -408,7 +391,7 @@ def render(report: dict, limit: int) -> str:
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description=__doc__)
+    parser = argparse.ArgumentParser(description='Compare independent audit slots over the same batch')
     parser.add_argument('--a', type=Path, help='legacy slot A record dir')
     parser.add_argument('--b', type=Path, help='legacy slot B record dir')
     parser.add_argument('--lane', action='append', help='NAME=PATH; repeat for every independent auditor')

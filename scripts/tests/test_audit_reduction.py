@@ -1,4 +1,3 @@
-"""Regression checks for hidden disagreements and stale reducer acceptance."""
 import json
 import subprocess
 import sys
@@ -216,7 +215,6 @@ def test_third_auditor_dissent_is_required_even_when_first_two_agree(delivery):
     index['cases']['alias-x']['resolutions']['fix'] = 'The third report names the repair member; the other reports name the default landing. The retained tree receipt supports the landing for fix_sha.'
     save_index(paths, index)
     assert check_delivery(**multi_args, lanes=lanes)['delivery_valid']
-    # Omitting the dissenting lane cannot turn this back into a valid two-lane run.
     assert not check_delivery(**paths)['delivery_valid']
     (third / 'case.json').write_text(json.dumps(record) + '\n')
     assert not check_delivery(**multi_args, lanes=lanes)['delivery_valid']
@@ -276,7 +274,7 @@ def test_new_contract_requires_explicit_adoption_and_does_not_change_legacy(deli
 def test_frozen_decisions_do_not_share_the_mutable_dispatch_index(delivery):
     paths, index = delivery
     paths['decisions'].write_text(json.dumps({'reduction': index, 'dispatch': {}}))
-    assert check_delivery(**paths)['delivery_valid']  # Legacy layout, before adoption.
+    assert check_delivery(**paths)['delivery_valid']
     adopt_research_contract(paths, index)
     for field in ('dispatch', 'allocation'):
         paths['decisions'].write_text(json.dumps({'reduction': index, field: {}}))

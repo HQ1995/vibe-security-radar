@@ -1,4 +1,3 @@
-/** Convert markdown-ish advisory text to plain text for cards and meta tags. */
 export function stripMarkdown(text: string | null | undefined): string {
   if (!text) return "";
   const out: string[] = [];

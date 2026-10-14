@@ -1,4 +1,3 @@
-"""Offline radar_run regressions: real dispatch, flow, gates and harmless workers; fake ledger."""
 import copy
 import json
 from pathlib import Path
@@ -19,8 +18,6 @@ IDS = {'alias-a': 'GHSA-1234-5678-90ab', 'alias-b': 'GHSA-2345-6789-cdef'}
 
 
 class FakeLedger:
-    """The canonical ledger CLI as radar_release calls it, with one atomic row per patch."""
-
     def __init__(self, rows):
         self.rows = {cid: {'revision': 1, 'change_set_id': 'initial', 'row': row} for cid, row in rows.items()}
         self.assessments, self.runs, self.sources, self.actors, self.calls = {}, {}, {}, {}, []
@@ -115,7 +112,6 @@ def test_one_case_runs_from_admission_to_a_verified_landing(env):
     batch = dispatch.read_index(dispatch.index_path('pilot-001'))
     assert set(batch['dispatch']) == {'auditor1', 'auditor2', 'adjudicator', 'reviewer'}
     assert all(not e['active'] and e['attempts'][-1]['logs']['prompt'] for e in batch['dispatch'].values())
-    # Repeating land is a no-op once the endpoint is recorded.
     assert radar_run.land('pilot')[0]['phase'] == 'LANDED'
     assert fake.calls.count('finalize') == 1
 

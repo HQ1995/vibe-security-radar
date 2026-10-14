@@ -51,7 +51,6 @@ describe("getLanguageColor", () => {
   it("returns distinct colors for known languages", () => {
     const langs = ["Python", "JavaScript", "TypeScript", "Go", "Rust", "PHP"];
     const colors = langs.map(getLanguageColor);
-    // All should be unique
     expect(new Set(colors).size).toBe(langs.length);
   });
 

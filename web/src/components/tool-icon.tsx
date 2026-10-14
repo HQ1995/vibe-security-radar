@@ -1,14 +1,12 @@
 import Image from "next/image";
 import { getToolDisplayName } from "@/lib/constants";
 
-/** Tools that have separate light/dark SVGs (e.g. foo.svg + foo_dark.svg). */
 export const THEMED_ICONS = new Set([
   "github_copilot",
   "cursor",
   "unknown_ai",
 ]);
 
-/** Intrinsic SVG width/height ratios for the non-square tool marks. */
 const ICON_ASPECT_RATIOS: Readonly<Record<string, number>> = {
   cursor: 466.73 / 532.09,
   github_copilot: 256 / 208,
@@ -20,7 +18,6 @@ export function getIconDimensions(iconKey: string, width: number) {
   return { width, height: Math.round(width / ratio) };
 }
 
-/** Map of tool keys that have dedicated SVG icon files in /icons/tools/. */
 const TOOLS_WITH_ICONS = new Set([
   "claude_code",
   "github_copilot",

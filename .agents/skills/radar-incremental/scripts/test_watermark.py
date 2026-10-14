@@ -1,4 +1,3 @@
-"""Offline checks that the watermark only advances over a complete, chained increment."""
 import hashlib
 import json
 from pathlib import Path

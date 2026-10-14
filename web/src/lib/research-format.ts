@@ -1,6 +1,5 @@
 import type { ResearchCase } from "@/lib/research-data";
 
-/** Small label maps the client index needs; the full payload stays server-side. */
 export interface ResearchLabels {
   readonly causeCategories: Readonly<
     Record<string, { readonly label: string }>
@@ -35,7 +34,6 @@ export function preferredCaseId(item: ResearchCase): string {
   return cve ?? ghsa ?? item.case_id;
 }
 
-/** Page title / in-page label: keep one ID, put the other in parentheses. */
 export function formatCaseLabel(item: ResearchCase, displayId?: string): string {
   const shown = displayId ?? preferredCaseId(item);
   const { cve, ghsa } = officialIds(item);

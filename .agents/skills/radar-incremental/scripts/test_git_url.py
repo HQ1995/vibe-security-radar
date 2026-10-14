@@ -1,13 +1,3 @@
-"""Tests for multi-host git URL parsing — RED phase.
-
-Tests parse_commit_url, parse_pr_url, parse_repo_url for:
-- GitHub (github.com)
-- GitLab public (gitlab.com) with nested groups
-- GitLab self-hosted (gitlab.gnome.org, gitlab.freedesktop.org)
-- Bitbucket (bitbucket.org)
-- Edge cases (trailing slashes, query params, fragments, invalid URLs)
-"""
-
 from __future__ import annotations
 
 import pytest
@@ -19,9 +9,6 @@ from git_url import (
     parse_pr_url,
     parse_repo_url,
 )
-
-
-# ── parse_commit_url ─────────────────────────────────────────────────
 
 
 class TestParseCommitUrlGitHub:
@@ -61,13 +48,11 @@ class TestParseCommitUrlGitHub:
         assert ref.sha == "abc123"
 
     def test_short_sha(self):
-        """Short SHAs (7+ hex chars) should be accepted."""
         ref = parse_commit_url("https://github.com/owner/repo/commit/abc1234")
         assert ref is not None
         assert ref.sha == "abc1234"
 
     def test_too_short_sha(self):
-        """SHAs shorter than 7 chars should be rejected."""
         ref = parse_commit_url("https://github.com/owner/repo/commit/abc")
         assert ref is None
 
@@ -173,9 +158,6 @@ class TestParseCommitUrlInvalid:
         assert parse_commit_url(url) is None
 
 
-# ── parse_pr_url ─────────────────────────────────────────────────────
-
-
 class TestParsePrUrlGitHub:
     def test_basic(self):
         ref = parse_pr_url("https://github.com/owner/repo/pull/42")
@@ -187,7 +169,6 @@ class TestParsePrUrlGitHub:
         assert ref.repo_url == "https://github.com/owner/repo"
 
     def test_with_trailing_path(self):
-        """PR URLs with subpaths like /files or /commits should still work."""
         ref = parse_pr_url("https://github.com/owner/repo/pull/42/files")
         assert ref is not None
         assert ref.number == 42
@@ -242,9 +223,6 @@ class TestParsePrUrlInvalid:
         assert parse_pr_url(url) is None
 
 
-# ── parse_repo_url ───────────────────────────────────────────────────
-
-
 class TestParseRepoUrl:
     def test_github(self):
         result = parse_repo_url("https://github.com/rails/rails")
@@ -259,10 +237,9 @@ class TestParseRepoUrl:
         assert result == ("gitlab.com", "tortoisegit", "tortoisegit")
 
     def test_gitlab_nested(self):
-        """For GitLab nested groups, owner includes the full group path."""
         result = parse_repo_url("https://gitlab.com/group/sub/repo")
         assert result is not None
-        assert result[2] == "repo"  # repo is the last component
+        assert result[2] == "repo"
 
     def test_gitlab_self_hosted(self):
         result = parse_repo_url("https://gitlab.gnome.org/GNOME/glib")
@@ -277,12 +254,6 @@ class TestParseRepoUrl:
         ],
     )
     def test_gitlab_self_hosted_legacy_suffix(self, url: str):
-        """Pre-2019 GitLab routes have no ``/-/`` marker.
-
-        Sampled from real OSV advisory data: without stripping these, the
-        commit sha or issue number was parsed as the repo name, so the
-        advisory did not attribute to GNOME/glib at all.
-        """
         assert parse_repo_url(url) == ("gitlab.gnome.org", "GNOME", "glib")
 
     def test_gitlab_self_hosted_legacy_blob(self):
@@ -359,9 +330,6 @@ def test_normalize_repo_identity_supports_direct_git_server_repository():
         "git.ffmpeg.org",
         "ffmpeg",
     )
-
-
-# ── is_github ────────────────────────────────────────────────────────
 
 
 class TestIsGitHub:

@@ -1,12 +1,4 @@
 #!/usr/bin/env python3
-"""Drive case research end to end: admit, run, review, land and report status.
-
-Each case is its own batch (research/<run>-<NNN>/) with two independent auditors, one
-adjudicator and a fresh-session leader review, connected through audit_dispatch,
-radar_flow and radar_release. The coordinating leader keeps statuses and pointers in
-.ai-slop/runs/<run>/ and never needs case evidence in its own context. Workers run
-through a runner profile (scripts/runner.example.json).
-"""
 from __future__ import annotations
 
 import argparse
@@ -39,13 +31,12 @@ ROLE_SKILL = {'auditor': 'radar-audit', 'adjudicator': 'radar-adjudicate', 'revi
 ROLE_SKILLS = {'auditor': ['radar-audit'], 'adjudicator': ['radar-adjudicate', 'radar-audit'],
                'reviewer': ['radar-lead', 'radar-adjudicate', 'radar-audit']}
 LEADER_ONLY = {'radar-lead'}
-# Worker-side helpers; their import closure is frozen with them, nothing leader-only.
 WORKER_SCRIPTS = ('audit_record_gates', 'audit_reduction_gate', 'compare_slots', 'audit_delivery', 'radar_flow')
 AI_STATUSES = {'AI_ROOT_CAUSE', 'AI_CODE_FLAWED'}
 LANDABLE = ledger_store.TERMINAL_STATUSES - {'BLOCKED'}
 FINISHED = {'LANDED', 'BLOCKED_CLOSED', 'FOREIGN_HOLD', 'RESEARCH_HANDOFF'}
 WAITING = {'SAFETY_STOP', 'READY_TO_LAND', 'RETURNED'}
-GITHUB_API_VERSION = '2026-03-10'  # same version radar-incremental's fetch.py pins
+GITHUB_API_VERSION = '2026-03-10'
 RESOURCE_WAITS = 20
 
 
@@ -59,7 +50,7 @@ def save(path: Path, value: dict, *, exclusive: bool = False) -> None:
 
 
 def run_dir(name: str) -> Path:
-    dispatch.index_path(name)  # same identifier rules as a batch name
+    dispatch.index_path(name)
     return RUNS / name
 
 
@@ -97,7 +88,6 @@ def import_closure(roots, scripts: Path = REPO / 'scripts') -> list[str]:
 
 
 def freeze_contract(dest: Path) -> dict:
-    """Copy one contract per role, mirroring the repository layout so links resolve."""
     scripts = [f'scripts/{name}.py' for name in import_closure(WORKER_SCRIPTS)]
     for role, skills in ROLE_SKILLS.items():
         docs = []
@@ -116,7 +106,6 @@ def freeze_contract(dest: Path) -> dict:
 
 
 def command(profile: dict, role: str, lane: str, cwd: Path, output: Path, ro_paths: list[Path]) -> list[str]:
-    """Runner argv for one task; {brief} stays literal for audit_dispatch to fill."""
     values = {'timeout': str(profile['timeout_seconds'][role]), 'memory_bytes': str(profile['memory_bytes']),
               'model': profile['models'][lane], 'output': str(output), 'cwd': str(cwd)}
 
@@ -146,7 +135,6 @@ def command(profile: dict, role: str, lane: str, cwd: Path, output: Path, ro_pat
 
 
 def fetch_advisory(advisory_id: str, path: Path) -> dict:
-    """Retain one official advisory record with its receipt; credentials never persist."""
     upper = advisory_id.upper()
     if upper.startswith('GHSA-'):
         url = 'https://api.github.com/advisories/' + advisory_id
@@ -270,7 +258,6 @@ def admit(name: str, manifest: Path, leader: str, endpoint: str, profile_path: P
     for class_id in wanted:
         if class_id in known:
             continue
-        # Count every directory, including a failed partial admission, so keys never repeat.
         key = f'{len(list((root / "cases").glob("[0-9][0-9][0-9]"))) + 1:03d}'
         known.add(class_id)
         results.append(admit_case(run, key, class_id, fetch_advisory if fetch else None))
@@ -279,7 +266,7 @@ def admit(name: str, manifest: Path, leader: str, endpoint: str, profile_path: P
 
 def admit_case(run: dict, key: str, class_id: str, fetch) -> dict:
     case_dir = run_dir(run['run']) / 'cases' / key
-    case_dir.mkdir(parents=True)  # never adopt an existing case directory
+    case_dir.mkdir(parents=True)
     current = ledger(case_dir, 'get', class_id)
     row = current['row']
     batch = f"{run['run']}-{key}"
@@ -320,7 +307,6 @@ def admit_case(run: dict, key: str, class_id: str, fetch) -> dict:
 
 
 def node_capacity(node: int) -> int:
-    """Node-local MemFree + FilePages + SReclaimable - Shmem, in bytes (AGENTS.md)."""
     fields = {}
     for line in Path(f'/sys/devices/system/node/node{node}/meminfo').read_text().splitlines():
         parts = line.split()
@@ -339,7 +325,6 @@ def refusal(run: dict, batch: str) -> dict | None:
 
 
 def stop_for_refusal(run: dict, case_dir: Path, case: dict, found: dict) -> dict:
-    """An upstream refusal stops the whole run; resuming it is a human decision."""
     receipt = delivery.read(case_dir / 'batch-receipt.json')
     if not dispatch.read_index(dispatch.index_path(case['batch'])).get('stops'):
         dispatch.stop(case['batch'], receipt, 'safety_refusal', Path(found['path']))
@@ -491,7 +476,6 @@ def assessment(run: dict, case: dict, task: str, entry: dict, base_revision: int
 
 
 def start_runs(run: dict, case_dir: Path, case: dict, items: list[tuple[str, dict, dict]]) -> dict:
-    """One scan run per registered task; recorded so a retry never starts it twice."""
     path = case_dir / 'runs.json'
     started = delivery.read(path) if path.exists() else {}
     for task, entry, item in items:
@@ -613,7 +597,6 @@ def land(name: str, only: set[str] | None = None) -> list[dict]:
 
 
 def resume(name: str, key: str, task: str, inspection: Path) -> dict:
-    """Leader-inspected recovery of one failed task; the next run collects it."""
     case_dir = run_dir(name) / 'cases' / key
     case = delivery.read(case_dir / 'case.json')
     entry = dispatch.read_index(dispatch.index_path(case['batch']))['dispatch'][task]
@@ -631,7 +614,7 @@ def status(name: str) -> list[dict]:
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description=__doc__)
+    parser = argparse.ArgumentParser(description='Drive case research end to end: admit, run, review, land and report status')
     sub = parser.add_subparsers(dest='action', required=True)
     p = sub.add_parser('admit', help='claim cases, build neutral packets and register both auditors')
     p.add_argument('--run', required=True)

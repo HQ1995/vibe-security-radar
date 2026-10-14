@@ -1,6 +1,4 @@
 #!/usr/bin/env python3
-"""Build the effective publication corpus from base and fp211 adjudications."""
-
 from __future__ import annotations
 
 import argparse
@@ -39,14 +37,6 @@ _DECISIVE_NONCAUSAL_GATES = (
 
 
 def verify_committed(output: Path) -> int:
-    """Verify the committed publication corpus without reading research/ sources.
-
-    The drift guard is the input_sha256 manifest recorded inside the committed
-    artifact, not a live re-computation against git-tracked research/ files.
-    Publication data lives in the DB/generated artifacts; research dumps are no
-    longer a deploy-time input. This is the deploy-time gate.
-    """
-
     try:
         payload = json.loads(output.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError) as exc:
@@ -95,7 +85,7 @@ def verify_committed(output: Path) -> int:
 
 
 class PublicationCorpusError(RuntimeError):
-    """An input cannot safely produce the effective publication corpus."""
+    pass
 
 
 def _jsonl(path: Path) -> list[dict[str, Any]]:
@@ -190,8 +180,6 @@ def _apply_supersessions(
     *,
     input_hashes: Mapping[str, str],
 ) -> list[dict[str, Any]]:
-    """Replace a prior label only when the complete public identity collides."""
-
     rows = [deepcopy(row) for row in adjudications]
     subjects_by_index = [
         _subjects(row, canonical_field="cve_id") for row in rows
@@ -288,8 +276,6 @@ def build_publication_corpus(
     *,
     input_hashes: Mapping[str, str],
 ) -> dict[str, Any]:
-    """Overlay every fp211 public case while retaining non-overlapping base rows."""
-
     if not isinstance(base_payload, dict) or base_payload.get("schema_version") != 1:
         raise PublicationCorpusError("base adjudications require schema_version 1")
     base_rows = base_payload.get("adjudications")
@@ -513,7 +499,7 @@ def _atomic_write(path: Path, content: bytes) -> None:
 
 
 def _parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(description=__doc__)
+    parser = argparse.ArgumentParser(description='Build the effective publication corpus from base and fp211 adjudications')
     parser.add_argument("--base", type=Path, default=_DEFAULT_BASE)
     parser.add_argument("--final", type=Path, default=_DEFAULT_FINAL)
     parser.add_argument("--manifest", type=Path, default=_DEFAULT_MANIFEST)

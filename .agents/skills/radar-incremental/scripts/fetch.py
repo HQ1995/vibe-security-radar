@@ -1,11 +1,4 @@
 #!/usr/bin/env python3
-"""Capture six frozen advisory streams. No database, LLM, or watermark writes.
-
-Use the repository .venv (scripts/requirements.txt). GITHUB_TOKEN and NVD_API_KEY are optional,
-read once, and never persisted. No automatic retries or redirect following.
-Window/receipt dates use explicit UTC and exact microsecond precision; extra
-fractional digits are allowed only as zero padding. Source dates are separate.
-"""
 from __future__ import annotations
 
 import argparse
@@ -163,7 +156,6 @@ class Capturer:
     def __init__(self, output, window, client, *, adopt_probes=None,
                  github_token=None, nvd_key=None, sleep=time.sleep, timeout=45,
                  max_pages=10000):
-        # Direct callers and offline coverage replay use the same precision gate.
         for field in ("start", "end"):
             timestamp(window[field])
         if not 0 < timeout <= 120 or not 0 < max_pages <= 10000:
@@ -237,7 +229,6 @@ class Capturer:
             if self.client is None:
                 raise CaptureError("Missing retained page; offline validation never fetches")
             is_ghsa = name.startswith("ghsa-")
-            # Pace even the first request and resumes; no parallel streams.
             self.sleep(0.3 if is_ghsa else 6.1)
             headers = {"Accept": "application/vnd.github+json" if is_ghsa
                        else "application/json"}
@@ -359,7 +350,6 @@ class Capturer:
             coverage_path = self.output / "coverage.json"
             if contract_path.exists():
                 if json.loads(contract_path.read_text()) != self.contract:
-                    # Do not overwrite coverage belonging to a different frozen window.
                     raise CaptureError("Output contract differs; use a separate directory")
             else:
                 save_json(contract_path, self.contract, exclusive=True)
@@ -375,8 +365,6 @@ class Capturer:
                 try:
                     self.stream(result["name"], result)
                 except (CaptureError, OSError, ValueError, KeyError, TypeError) as exc:
-                    # Only CaptureError text is authored here; arbitrary exceptions
-                    # may contain credential-bearing URLs or raw response values.
                     error = str(exc) if isinstance(exc, CaptureError) else type(exc).__name__
                     result["status"] = "FAILED"
                     result["errors"].append(error)
@@ -385,7 +373,7 @@ class Capturer:
                 coverage["body_paths"] = [p for s in coverage["streams"] for p in s["body_paths"]]
                 save_json(coverage_path, coverage)
                 if coverage["status"] == "INCOMPLETE":
-                    break  # No retries, identity switching, or alternative source after denial.
+                    break
             if all(s["complete"] for s in coverage["streams"]):
                 coverage["status"] = "COMPLETE"
             coverage["finished_at"] = utc_now()
@@ -394,7 +382,7 @@ class Capturer:
 
 
 def main(argv=None):
-    parser = argparse.ArgumentParser(description=__doc__)
+    parser = argparse.ArgumentParser(description='Capture six frozen advisory streams')
     parser.add_argument("--window", required=True, type=Path)
     parser.add_argument("--start", help="Optional assertion; must match window.json")
     parser.add_argument("--end", help="Optional assertion; must match window.json")
@@ -406,7 +394,6 @@ def main(argv=None):
     args = parser.parse_args(argv)
     try:
         window, pin = frozen_window(args.window, args.start, args.end)
-        # Preserve the configured network route; do not follow redirects.
         with httpx.Client(follow_redirects=False) as client:
             report = Capturer(
                 args.output, window, client, adopt_probes=args.adopt_probes,

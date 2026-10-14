@@ -1,4 +1,3 @@
-"""Strict record gates refuse a closed verdict that is missing the contract fields."""
 import json
 import os
 import subprocess
@@ -117,7 +116,6 @@ def test_closed_ai_verdict_needs_causal_fields(verdict, field):
 
 
 def test_contract_documents_every_gate_enforced_vocabulary():
-    """A value the gate rejects must be documented, or producers invent one."""
     import audit_record_gates as gates
 
     skills = Path(__file__).resolve().parents[2] / ".agents" / "skills"
@@ -165,8 +163,6 @@ def test_ai_verdict_needs_a_bic_marker(verdict):
 
 
 def test_ai_code_flawed_binds_its_marker_to_the_bic():
-    """Contract 2026-09-19.1: the AI-attributed flawed change is the BIC; a candidate_set
-    marker cannot stand in for one on introducer_sha."""
     record = {
         **GOOD,
         "verdict": "AI_CODE_FLAWED",
@@ -226,9 +222,6 @@ def test_unpatched_record_carries_the_no_fix_object_value():
 
 @pytest.mark.parametrize("verdict", AI_CASES)
 def test_adjudicated_residual_cue_stops_firing(verdict):
-    # DENIAL reads 70 chars back and 40 forward across field boundaries, so a
-    # neighbouring JSON field ("state": "ABSENT") swallows this cue unless the
-    # record's own mechanism sentence sits between them.
     cue = {
         **GOOD,
         "verdict": verdict,
@@ -302,7 +295,7 @@ def test_refuted_mechanism_needs_no_invented_introducer_or_repair():
 def test_legacy_false_positive_label_does_not_close_new_missing_evidence():
     record = {**REFUTED, "false_positive_ground": "EVIDENCE_INSUFFICIENT",
               "evidence": "The object could not be retrieved, so the claimed behavior was not inspected."}
-    assert check_record(record) == []  # Historical parsing remains available.
+    assert check_record(record) == []
     assert any("legacy false-positive" in p for p in check_record_strict(record))
     open_record = {**record, "verdict": "EVIDENCE_GAP",
                    "remaining_gap": "The affected endpoint implementation has not been inspected."}
@@ -338,7 +331,6 @@ def test_empty_malformed_and_non_record_inputs_fail(tmp_path):
 
 
 def test_git_probe_catches_fix_trailer_copied_to_bic(tmp_path):
-    """Two real local commit objects reproduce the misbound-trailer failure."""
     def git(*args):
         return subprocess.run(
             ["git", "-C", str(tmp_path), *args], check=True, capture_output=True,
@@ -387,7 +379,6 @@ def test_git_probe_catches_fix_trailer_copied_to_bic(tmp_path):
         "ai_admissibility": "The first-party statement identifies this exact introducing change.",
     }
     assert check_git_evidence(disclosure, tmp_path) == []
-    # A web disclosure is routed to human evidence review, never treated as a commit quote.
     assert check_git_evidence({**disclosure, "ai_admissibility": ""}, tmp_path)
 
 

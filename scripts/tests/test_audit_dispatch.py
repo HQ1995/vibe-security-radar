@@ -1,4 +1,3 @@
-"""Wrong-task commands must be refused before they can write their marker."""
 import copy
 import json
 import multiprocessing
@@ -161,7 +160,6 @@ def test_added_sealed_input_and_foreign_claim_are_refused(task):
     with pytest.raises(ValueError, match='canonical claim'):
         invoke(receipt)
     assert not marker.exists()
-    # A broken input/claim must not trap a stopped assignment in active forever.
     invoke(receipt, 'retire')
 
 
@@ -315,7 +313,6 @@ def test_new_group_cannot_adopt_existing_batch_or_invent_leader_receipt(task, tm
     source = tmp_path / 'other-selection.txt'
     source.write_text('case-b\n')
     other = dispatch.create({**creation, 'batch': 'group3', 'manifest': str(source)})
-    # Batch names, owner names and public hashes do not grant registration authority.
     guessed = {**batch_receipt, 'batch_token': dispatch.allocation(spec['batch'])['binding']['receipt_sha256']}
     intruder = {**spec, 'task': 'group3-review', 'agent': 'pane-group3',
                 'output': str(Path(spec['cwd']) / 'group3-output')}

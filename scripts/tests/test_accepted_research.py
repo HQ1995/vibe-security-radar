@@ -1,4 +1,3 @@
-"""Accepted causal records stay coherent through finalization and evidence export."""
 import json
 import sys
 from pathlib import Path
@@ -69,7 +68,7 @@ def test_new_finalization_requires_explicit_projection_and_supporting_assessment
     del row["causal_research"]
     with pytest.raises(SystemExit, match="requires causal_research"):
         check()
-    assert check(required=False)[0] == patch  # Legacy apply remains separate.
+    assert check(required=False)[0] == patch
 
     patch["row"] = _row()
     patch["assessment_ids"] = []

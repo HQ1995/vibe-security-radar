@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-"""Shared JSON cache for build-time GitHub reachability checks."""
 from __future__ import annotations
 
 import json
@@ -7,7 +6,7 @@ import time
 from pathlib import Path
 
 CACHE_PATH = Path(__file__).resolve().parent / ".verify-cache.json"
-DEFAULT_TTL = 7 * 24 * 3600  # 7 days
+DEFAULT_TTL = 7 * 24 * 3600
 
 
 def load() -> dict:

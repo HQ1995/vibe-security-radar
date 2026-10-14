@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-"""Offline tests: synthetic responses only; no live API or canonical writes."""
 import importlib.util
 import json
 from pathlib import Path
@@ -114,7 +113,6 @@ class FetchTests(unittest.TestCase):
         path.write_text(json.dumps(window))
         with self.assertRaisesRegex(fetch.CaptureError, "precision"):
             fetch.frozen_window(path, start=different)
-        # A matching unsupported spelling must fail as well, never round silently.
         with self.assertRaisesRegex(fetch.CaptureError, "precision"):
             fetch.frozen_window(path, start=original)
         with self.assertRaisesRegex(fetch.CaptureError, "precision"):
@@ -126,7 +124,6 @@ class FetchTests(unittest.TestCase):
             fetch.frozen_window(path, start="2026-09-27T00:00:00.123457Z")
         with self.assertRaisesRegex(fetch.CaptureError, "precision"):
             fetch.frozen_window(path, start=different)
-        # Zero padding preserves the exact instant and is safe to compare.
         same = "2026-09-27T00:00:00.123456000+00:00"
         self.assertEqual(fetch.frozen_window(path, start=same)[0], window)
         self.assertEqual(fetch.timestamp(same), fetch.timestamp(window["start"]))
@@ -194,12 +191,12 @@ class FetchTests(unittest.TestCase):
 
     def test_nvd_drift_count_duplicate_and_empty_failures(self):
         bad_pages = [
-            nvd(1, 2002, 2000, 2000),  # total drift
-            nvd(1, 2001, 1999, 2000),  # start drift
-            nvd(0, 2001, 2000, 2000),  # missing row
-            nvd(1, 2001, 2000, 0),     # duplicate identity
+            nvd(1, 2002, 2000, 2000),
+            nvd(1, 2001, 1999, 2000),
+            nvd(0, 2001, 2000, 2000),
+            nvd(1, 2001, 2000, 0),
             {"startIndex": 2000, "resultsPerPage": 1, "totalResults": 2001,
-             "vulnerabilities": []},    # reported/actual count mismatch
+             "vulnerabilities": []},
         ]
         for i, bad in enumerate(bad_pages):
             self.output = self.root / f"nvd-bad-{i}"

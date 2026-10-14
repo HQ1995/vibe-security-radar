@@ -1,9 +1,4 @@
 #!/usr/bin/env python3
-"""Bind a foreground audit command to a batch before dispatch or resumption.
-
-Task bindings live under `dispatch` in research/<batch>/index.json. This is a
-coordination guard, not a filesystem sandbox or a research-acceptance gate.
-"""
 from __future__ import annotations
 
 import argparse
@@ -24,7 +19,6 @@ from audit_record_gates import load_record
 from audit_reduction_gate import digest, manifest_ids
 
 RESEARCH = Path(__file__).resolve().parents[1] / 'research'
-# A reviewer is a fresh session doing the leader's source review of one sealed case.
 ROLES = {'auditor', 'adjudicator', 'reviewer'}
 ENDPOINTS = {'research', 'ledger', 'site'}
 
@@ -34,7 +28,6 @@ def now() -> str:
 
 
 def authorize(batch: str, receipt: dict) -> dict:
-    """Check the original leader credential, without adopting an existing directory."""
     allotted = allocation(batch)
     binding = allotted['binding']
     if (receipt.get('batch') != batch
@@ -46,7 +39,6 @@ def authorize(batch: str, receipt: dict) -> dict:
 
 
 def stop(batch: str, receipt: dict, reason: str, evidence: Path) -> dict:
-    """Block new research; process shutdown and stopped-work handoffs remain explicit."""
     if reason not in {'safety_refusal', 'operating_stop'}:
         raise ValueError('stop reason must be safety_refusal or operating_stop')
     with lock(RESEARCH / '.dispatch.lock'):
@@ -135,7 +127,6 @@ def claim_tokens(batch: str, leader: str, ids: set[str]) -> dict[str, list[str]]
 
 
 def create(spec: dict) -> dict:
-    """Create a fresh batch; return its registration credential only to the leader."""
     if (set(spec) != {'batch', 'leader', 'endpoint', 'manifest'}
             or not all(isinstance(v, str) and v.strip() for v in spec.values())
             or spec['endpoint'] not in ENDPOINTS):
@@ -277,7 +268,6 @@ def register(spec: dict, *, batch_receipt: dict) -> dict:
     binding['manifest'] = {'path': binding['manifest'], 'sha256': digest(Path(binding['manifest']))}
     binding['case_ids'] = sorted(manifest_ids(Path(binding['manifest']['path'])))
     path = index_path(binding['batch'])
-    # ponytail: one short project lock; shard only if registration becomes a bottleneck.
     with lock(RESEARCH / '.dispatch.lock'):
         allotted = allocation(binding['batch'])
         token = batch_receipt.get('batch_token') if isinstance(batch_receipt, dict) else None
@@ -354,7 +344,7 @@ def act(batch: str, task: str, expected_hash: str, action: str, *, resume: bool 
                         raise ValueError('inspection evidence changed')
             inspected = snapshot(inspection) if inspection is not None else None
             runner_ready(binding)
-            entry['dispatched'] = True  # Persist before sending: ambiguous delivery must never auto-retry.
+            entry['dispatched'] = True
             attempt = {**receipt, 'attempt_id': secrets.token_hex(16), 'started_at': now(),
                        'mode': 'resume' if resume else 'start', 'status': 'STARTED',
                        'command_exit': None, 'inspection': inspected}
@@ -366,7 +356,6 @@ def act(batch: str, task: str, expected_hash: str, action: str, *, resume: bool 
                 raise ValueError('brief changed while preparing dispatch')
             prompt = prompt_text(binding, expected_hash, brief_bytes.decode('utf-8'), resume=resume)
             command = [prompt if part == '{brief}' else part for part in binding['command']]
-            # Keep the exact prompt and terminal streams outside every owned output.
             logs = path.parent / '.logs'
             logs.mkdir(exist_ok=True)
             stem = logs / f'{task}-{attempt["attempt_id"]}'
@@ -386,7 +375,6 @@ def act(batch: str, task: str, expected_hash: str, action: str, *, resume: bool 
 
 
 def prompt_text(binding: dict, expected_hash: str, brief: str, *, resume: bool) -> str:
-    """The exact text a runner receives: task identity header, then the pinned brief."""
     header = (f'Task binding: {expected_hash}\nBatch: {binding["batch"]}\nTask: {binding["task"]}\n'
               f'Role: {binding["role"]}\nManifest: {binding["manifest"]["path"]}\n'
               f'Manifest SHA256: {binding["manifest"]["sha256"]}\n'
@@ -414,7 +402,7 @@ def persist_attempt(batch: str, task: str, expected_hash: str, attempt: dict) ->
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description=__doc__)
+    parser = argparse.ArgumentParser(description='Bind a foreground audit command to a batch before dispatch or resumption')
     sub = parser.add_subparsers(dest='action', required=True)
     sub.add_parser('create', help='leader creates a new batch; existing directories are refused').add_argument('spec', type=Path)
     registration = sub.add_parser('register', help='leader assigns a task within its created batch')

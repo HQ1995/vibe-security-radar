@@ -1,9 +1,4 @@
 #!/usr/bin/env python3
-"""Advance the source-capture watermark after a complete, classified increment.
-
-The watermark says every advisory captured through its instant has a recorded
-disposition. It never implies research completion, ledger landing or publication.
-"""
 from __future__ import annotations
 
 import argparse
@@ -54,7 +49,7 @@ def advance(run: Path, watermark: Path = WATERMARK, sources: Path = SOURCES) -> 
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description=__doc__)
+    parser = argparse.ArgumentParser(description='Advance the source-capture watermark after a complete, classified increment')
     parser.add_argument("run", type=Path, help="increment directory holding capture/ and classification/")
     print(json.dumps(advance(parser.parse_args().run), sort_keys=True))
     return 0

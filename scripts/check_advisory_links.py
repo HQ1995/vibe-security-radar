@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-"""Fail a site build when a published advisory source is unreachable."""
 from __future__ import annotations
 
 import json
@@ -26,7 +25,6 @@ def check_url(url: str, attempts: int = 6) -> tuple[int, str]:
                 with urlopen(request, timeout=10) as response:
                     return response.status, response.geturl()
             except HTTPError as error:
-                # 405 Method Not Allowed or 403 on HEAD: fall back to GET.
                 if method == "HEAD" and error.code in (405, 403):
                     break
                 if error.code < 500 and error.code != 429:

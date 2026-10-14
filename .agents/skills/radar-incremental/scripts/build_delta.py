@@ -1,4 +1,3 @@
-"""Build deterministic advisory intake routing; never infer causal verdicts or write Neon."""
 from __future__ import annotations
 
 import argparse
@@ -62,7 +61,6 @@ def normalize(item: dict, source: str, path: str, pointer: str) -> SourceRecord:
     if not isinstance(item, dict):
         raise ValueError(f"Expected advisory object: {path}#{pointer}")
     if source == "github":
-        # This path consumes global REST list items, never repository/OSV projections.
         if "state" in item:
             raise ValueError(f"Expected global advisory without repository state: {path}#{pointer}")
         for field in ("published_at", "updated_at", "withdrawn_at"):
@@ -150,8 +148,6 @@ def load_records(capture: Path, coverage: dict) -> list[SourceRecord]:
     validator = Capturer(capture, coverage["window"], None)
     if json.loads((capture / "fetch-contract.json").read_text()) != validator.contract:
         raise ValueError("Capture contract does not match the source window")
-    # Reuse fetch's raw Link/NVD count/unique-ID validation without a client.
-    # A hand-edited COMPLETE manifest cannot hide an unfinished page chain.
     for stream in streams:
         replay = {"pages": 0, "rows": 0, "body_paths": [], "page_receipts": []}
         validator.stream(stream["name"], replay)
@@ -199,8 +195,6 @@ def read_jsonl(path: Path) -> list[dict]:
 
 
 def timestamp(value: str) -> tuple[datetime, str]:
-    # Datetime supplies calendar/offset ordering; keep all fractional digits out
-    # of its microsecond-limited comparison. Trim only insignificant zeroes.
     match = re.fullmatch(
         r"[0-9]{4}-[0-9]{2}-[0-9]{2}(?:[Tt ][0-9]{2}:[0-9]{2}:[0-9]{2}"
         r"(?:[.,]([0-9]+))?(?:[Zz]|[+-][0-9]{2}:[0-5][0-9])?)?", value)
@@ -223,7 +217,6 @@ def reconcile(records: list[SourceRecord], ledger: list[dict], universe: list[di
         if previous is None or when > previous[0]:
             latest_status[key] = (when, retired)
         elif when == previous[0]:
-            # Conflicting same-time observations cannot clear a retirement.
             latest_status[key] = (when, previous[1] or retired)
 
     for row in prior_deltas:
@@ -238,8 +231,6 @@ def reconcile(records: list[SourceRecord], ledger: list[dict], universe: list[di
     conflict_owners = defaultdict(set)
     for row in prior_deltas:
         if row["identity"] == "CONFLICT":
-            # Keep the observed alias edge and its original owners for routing;
-            # the synthetic conflict class is never adopted as a real owner.
             for owner in set(row["ledger_class_ids"] + row["prior_universe_class_ids"]):
                 universe.append({"class_id": owner, "public_ids": row["public_ids"]})
                 for ident in known_ids(row):
@@ -263,8 +254,6 @@ def reconcile(records: list[SourceRecord], ledger: list[dict], universe: list[di
 
     incoming = {i for record in records for i in record.ids}
     parent.update((ident, ident) for ident in incoming)
-    # Import complete prior identity components touched by this increment. Revisit
-    # until no new aliases appear; titles and reference URLs never create edges.
     known = [(r, known_ids(r)) for r in [*ledger, *universe]]
     pending = known
     while True:
@@ -279,8 +268,6 @@ def reconcile(records: list[SourceRecord], ledger: list[dict], universe: list[di
         if not changed:
             break
         pending = remaining
-    # Snapshot existing connectivity before new source edges can bridge owners.
-    # Unowned new identifiers do not count as separate existing components.
     prior_roots = {find(ids[0]) for _, ids in known if ids and ids[0] in parent}
     for record in records:
         join(record.ids)
@@ -369,7 +356,6 @@ def reconcile(records: list[SourceRecord], ledger: list[dict], universe: list[di
 
 
 def load_prior_deltas(paths: list[Path], window: dict) -> list[dict]:
-    """Require intact, complete ancestry instead of forgetting off-ledger rows."""
     rows, available, seen_paths, previous_end = [], set(), set(), None
     source_pages = {}
     for path in paths:
@@ -393,8 +379,6 @@ def load_prior_deltas(paths: list[Path], window: dict) -> list[dict]:
                 or summary["coverage"].get("status") != "COMPLETE"
                 or len(batch) != summary["components"]):
             raise ValueError("Prior delta is not a complete classified capture")
-        # Earlier projections can predate source validation. Recheck their pinned
-        # global list objects instead of trusting a saved retired boolean or alias.
         for row in batch:
             for observation in row["source_records"]:
                 if observation["source"] not in ("github", "nvd"):
@@ -421,7 +405,6 @@ def load_prior_deltas(paths: list[Path], window: dict) -> list[dict]:
 
 
 def load_occupancy(path: Path) -> dict:
-    """Current holders by class ID, read from `claims.py list` output or a saved mapping."""
     if path.suffix != ".jsonl":
         return json.loads(path.read_text())
     occupied = {}
@@ -434,7 +417,7 @@ def load_occupancy(path: Path) -> dict:
 
 
 def main():
-    parser = argparse.ArgumentParser(description=__doc__)
+    parser = argparse.ArgumentParser(description='Build deterministic advisory intake routing; never infer causal verdicts or write Neon')
     parser.add_argument("--capture", type=Path, required=True)
     parser.add_argument("--ledger", type=Path, required=True)
     parser.add_argument("--universe", type=Path, required=True)
@@ -461,7 +444,6 @@ def main():
         if publications:
             whole, fraction = min(publications)
             formatted = whole.isoformat()
-            # Preserve the existing microsecond spelling, extending it losslessly.
             row["earliest_source_publication"] = (formatted[:19] + "." + fraction.ljust(6, "0") + formatted[19:]
                                                   if fraction else formatted)
         row["older_publication_in_component"] = any(value < start for value in publications)

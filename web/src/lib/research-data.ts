@@ -42,7 +42,6 @@ export interface ResearchCodeEvidence {
     readonly title: string;
     readonly detail: string;
   }[];
-  /** Publish resolves the reader-facing list once; the raw collections are inputs. */
   readonly display_hunks: readonly ResearchCodeHunk[];
   readonly candidate_patch_sha256: string | null;
   readonly fix_patch_sha256: string | null;
@@ -214,7 +213,6 @@ export function getResearchSnapshot() {
   return snapshot;
 }
 
-/** Reader-facing label maps; small enough to ship to the client with the index. */
 export function getResearchLabels(): ResearchLabels {
   return {
     causeCategories: snapshot.cause_categories,
@@ -237,7 +235,6 @@ export function getResearchCaseById(id: string): ResearchCase | null {
   );
 }
 
-/** Reader-facing one-line summary: first-party advisory prose first, never internal audit notes. */
 export function getCaseSummary(item: ResearchCase): string {
   const desc = stripMarkdown(item.description);
   const lines = desc.split("\n").map((l) => l.trim()).filter((l) => l.length > 0);

@@ -1,9 +1,4 @@
 #!/usr/bin/env python3
-"""Check a reducer's evidence-backed decisions against exact input/output bytes.
-
-This checks delivery integrity, not the truth of a causal judgment. See
-docs/ADJUDICATION-PROTOCOL.md. It never assembles records or writes the ledger.
-"""
 from __future__ import annotations
 
 import argparse
@@ -27,7 +22,6 @@ def text(value) -> bool:
 
 
 def check_research_work(research, label, receipt):
-    """Validate recorded work, not the completeness of source discovery or causal truth."""
     problems, worklist, boundaries = [], [], []
     counts = collections.Counter()
     if not isinstance(research, dict):
@@ -258,7 +252,6 @@ def check_delivery(manifest: Path, accepted: Path, decisions: Path,
             problems.append(f'{cid}: explicitly review every research dimension')
         required = set(research_differences_many({**inputs, 'accepted': final}))
         all_records = [*inputs.values(), final]
-        # Agreement does not waive primary-evidence scrutiny on publication-sensitive claims.
         if any(text(r.get('verdict')) and r['verdict'] in AI_VERDICTS for r in all_records):
             required.update(('bic', 'ai', 'fix'))
         if any(review_signals(r) for r in all_records):
@@ -296,7 +289,6 @@ def check_delivery(manifest: Path, accepted: Path, decisions: Path,
             for item in evidence:
                 receipt(item, f'{cid} evidence')
 
-    # Detect concurrent mutation and added/removed cases during the check itself.
     for name, path in roots.items():
         if load_snapshot(path)[1] != snapshots[name][1]:
             problems.append(f'{name}: records changed while checking')
@@ -320,7 +312,7 @@ def check_delivery(manifest: Path, accepted: Path, decisions: Path,
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description=__doc__)
+    parser = argparse.ArgumentParser(description="Check a reducer's evidence-backed decisions against exact input/output bytes")
     for name in ('manifest', 'accepted', 'decisions'):
         parser.add_argument('--' + name, required=True, type=Path)
     parser.add_argument('--lane', action='append', help='NAME=PATH; repeat for all assigned auditors')

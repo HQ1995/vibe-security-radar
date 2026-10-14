@@ -1,9 +1,3 @@
-"""Harmless foreground worker for radar_run tests; contains no vulnerability research.
-
-It runs in its assigned workspace, imports the frozen contract copies, and follows the
-brief's delivery steps with fixture data. RADAR_FIXTURE_<TASK>=fail|refuse|return
-simulates a crashed task, an upstream refusal or a returned review.
-"""
 import json
 import os
 from pathlib import Path
@@ -11,7 +5,7 @@ import re
 import subprocess
 import sys
 
-sys.dont_write_bytecode = True  # the frozen contract stays byte-identical
+sys.dont_write_bytecode = True
 scripts = Path.cwd() / 'contract' / 'scripts'
 sys.path.insert(0, str(scripts))
 import audit_delivery

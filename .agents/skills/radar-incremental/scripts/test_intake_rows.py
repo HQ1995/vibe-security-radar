@@ -1,4 +1,3 @@
-"""Offline checks for the deterministic intake admission policy."""
 import json
 from pathlib import Path
 import tempfile

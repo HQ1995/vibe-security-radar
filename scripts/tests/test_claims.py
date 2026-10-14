@@ -1,4 +1,3 @@
-"""Case occupancy, receipt fencing and safe reading of historical slot claims."""
 import json
 import subprocess
 import sys
@@ -40,7 +39,7 @@ def test_boolean_occupancy_and_old_receipt_cannot_release_reacquisition(tmp_path
     assert claims.release(log, "a", "leader", claim_id=first["claim_id"]) is None
     assert log.read_bytes() == before
     assert claims.occupancy(claims.state(claims.load(log)), "a")["claimed"] is False
-    second = acquire(log)  # Same owner, different acquisition: the ABA case.
+    second = acquire(log)
     assert second["claim_id"] != first["claim_id"]
     with pytest.raises(claims.ClaimsError):
         claims.release(log, "a", "leader", claim_id=first["claim_id"])
@@ -58,7 +57,7 @@ def test_whole_case_lock_blocks_other_owners_scopes_and_slots(tmp_path):
         with pytest.raises(claims.ClaimsError):
             claims.claim(log, "a", owner, scope=scope, slot=slot)
         assert log.read_bytes() == before
-    acquire(log, cid="b", owner="other")  # Unrelated cases remain independent.
+    acquire(log, cid="b", owner="other")
     with pytest.raises(claims.ClaimsError, match="slot claims are disabled"):
         acquire(log, cid="c", owner="auditor", slot="review")
 
@@ -105,7 +104,7 @@ def test_historical_slots_block_new_case_claim_until_each_holder_releases(tmp_pa
     before = log.read_bytes()
     current = claims.state(claims.load(log))
     assert len(claims.occupancy(current, "a")["holders"]) == 2
-    assert log.read_bytes() == before  # Reading is not a migration write.
+    assert log.read_bytes() == before
     with pytest.raises(claims.ClaimsError):
         acquire(log)
     claims.close(log, "a", "reviewer", "DONE", slot="review", result="NOT_AI")
@@ -132,7 +131,6 @@ def test_legacy_done_never_bypasses_a_new_claim_receipt(tmp_path):
 @pytest.mark.parametrize("action", ["DONE", "RELEASED", "RELEASE"])
 def test_historical_closures_read_as_unclaimed(action):
     event = legacy_claim()
-    # Old sweep could close another owner's record. Preserve that historical fact.
     close = {"action": action, "class_id": "a", "slot": "review", "owner": "old-leader"}
     assert claims.occupancy(claims.state([event, close]), "a")["claimed"] is False
 

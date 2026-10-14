@@ -1,4 +1,3 @@
-"""Offline end-to-end delivery/release and interrupted-transaction regressions."""
 import copy
 import contextlib
 import io
@@ -82,8 +81,6 @@ class FakeLedger:
         if args[0] == 'get':
             return copy.deepcopy(self.row)
         if args[0] == 'history':
-            # ledger_store.case_history binds class_id once at the top level;
-            # individual assessment objects omit it.
             return {'class_id': 'alias-x', 'assessments': [
                 {key: copy.deepcopy(value) for key, value in item.items() if key != 'class_id'}
                 for item in self.assessments],
@@ -120,7 +117,6 @@ def test_full_flow_real_workers_real_gate_fake_ledger_and_exact_release(flow, mo
     assert len(doc['dispatch']) == 3 and all(not e['active'] for e in doc['dispatch'].values())
     assert all(e['attempts'][0]['status'] == 'RETURNED' for e in doc['dispatch'].values())
     assert not claims.occupancy(claims.state(claims.load(claims.DEFAULT_CLAIMS)), 'alias-x')['claimed']
-    # Repeating closeout, even after a foreign owner acquires, must not write or release foreign work.
     claims.claim(claims.DEFAULT_CLAIMS, 'alias-x', 'foreign', scope='other')
     before = claims.DEFAULT_CLAIMS.read_bytes()
     assert radar_release.land(release, receipt)['phase'] == 'LEDGER_ENDPOINT_COMPLETE'
@@ -291,7 +287,6 @@ def test_release_lock_prevents_concurrent_writers(flow, monkeypatch):
 
 
 def serialized_history_assessment(assessment):
-    """Exercise the real serializer against a fake connection, not a hand-written response."""
     version = (1, 'initial', 'IMPORT', json.dumps({'class_id': 'alias-x', 'status': 'UNANALYZED'}),
                '0' * 64, [], 'leader', None)
     a = assessment

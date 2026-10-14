@@ -1,14 +1,4 @@
 #!/usr/bin/env python3
-"""Select admissible new ledger rows from a verified delta; never writes Neon.
-
-Admission policy, unchanged since the October run: a component new since the original
-universe, or an explicitly linked off-ledger precursor from an earlier delta, with an
-active reviewed GitHub advisory published inside the frozen window, exactly one reviewed
-product repository corroborated by a same-repository security advisory, and no ledger
-row, identity/source conflict or occupancy. Original-universe identities that would
-otherwise qualify are deferred to product-source review. Admission is intake mapping
-only, not research acceptance.
-"""
 from __future__ import annotations
 
 import argparse
@@ -76,7 +66,6 @@ def row(component: dict, window: dict, delta: Path, coverage: Path) -> dict:
 
 
 def prior_identities(prior: list[Path]) -> dict[str, dict]:
-    """Where each off-ledger identity was first recorded, oldest delta first."""
     found = {}
     for path in prior:
         sha = digest(path)
@@ -112,7 +101,7 @@ def select(delta: Path, coverage: Path, universe: Path, prior: list[Path]) -> tu
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description=__doc__)
+    parser = argparse.ArgumentParser(description='Select admissible new ledger rows from a verified delta; never writes Neon')
     parser.add_argument("--delta", type=Path, required=True, help="classification/delta.jsonl from build_delta.py")
     parser.add_argument("--capture", type=Path, required=True, help="the capture directory the delta classified")
     parser.add_argument("--universe", type=Path, required=True, help="the original universe rows")

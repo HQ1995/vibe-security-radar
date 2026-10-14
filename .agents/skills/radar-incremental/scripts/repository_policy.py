@@ -1,10 +1,3 @@
-"""Repository role and cost classification for token-free discovery.
-
-Repository role answers whether a URL points at vulnerable code or merely at
-advisory metadata.  Cost class is deliberately orthogonal: a large repository
-is expensive, not valueless.
-"""
-
 from __future__ import annotations
 
 import re
@@ -49,16 +42,12 @@ _HEAVYWEIGHT_REPOSITORY_PATTERN = re.compile(
 
 
 def repository_role(repo_url: str) -> RepositoryRole:
-    """Classify advisory databases separately from possible vulnerable code."""
-
     if _METADATA_REPOSITORY_PATTERN.search(repo_url):
         return RepositoryRole.METADATA_ONLY
     return RepositoryRole.CODE_CANDIDATE
 
 
 def repository_cost_class(repo_url: str) -> RepositoryCostClass:
-    """Return scheduling cost without changing discovery eligibility."""
-
     if _HEAVYWEIGHT_REPOSITORY_PATTERN.search(repo_url):
         return RepositoryCostClass.HEAVYWEIGHT
     return RepositoryCostClass.STANDARD

@@ -36,7 +36,6 @@ export async function generateMetadata({
   if (!item) return { title: "Finding not found" };
   const canonicalId = preferredCaseId(item);
   const raw = stripMarkdown(item.description ?? "");
-  // Publish already dropped internal audit notes, so this is reader copy.
   const description = (
     raw || `Mechanism-level evidence for ${canonicalId}.`
   ).slice(0, 200);
@@ -86,7 +85,7 @@ function PageHeader({
               className="mt-3 inline-flex items-center gap-1.5 text-sm font-medium text-foreground transition-colors hover:text-primary"
             >
               {avatarUrl ? (
-                // eslint-disable-next-line @next/next/no-img-element -- remote avatar, not an asset
+                // eslint-disable-next-line @next/next/no-img-element
                 <img
                   src={avatarUrl}
                   alt=""

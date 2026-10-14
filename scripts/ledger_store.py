@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-"""Transactional Neon ledger, scan history, and deterministic GitHub exports."""
 from __future__ import annotations
 
 import argparse
@@ -185,11 +184,6 @@ def snapshot_bytes() -> bytes:
     return "".join(f"{raw}\n" for raw, _, _ in database_records()).encode()
 
 
-# Server-side equivalent of sha256(snapshot_bytes()): every raw_json joined with
-# a trailing newline (the join adds a separator after every row, including the
-# last), UTF-8 encoded, digested in the database. Verified byte-identical to
-# snapshot_bytes() on the production ledger 2026-08-31 (sha256 b7837fd8...).
-# Returns 64 bytes of egress instead of pulling the full table (~26 MB).
 SNAPSHOT_SHA256_SQL = """
 SELECT encode(
     sha256(convert_to(coalesce(
@@ -202,15 +196,10 @@ FROM ledger_rows
 
 
 def snapshot_sha256() -> str:
-    """Snapshot digest computed in the database; no full-table transfer."""
     with connect() as conn:
         return conn.execute(SNAPSHOT_SHA256_SQL).fetchone()[0]
 
 
-# Same aggregates check() used to compute by pulling every ledger row into
-# Python. Keys/values must match the historical `check` output exactly:
-# statuses is a status -> row-count map, cve/ghsa count rows whose
-# advisory_ids contain a CVE*/GHSA* identifier.
 SNAPSHOT_AGGREGATES_SQL = """
 WITH status_counts AS (
     SELECT jsonb_object_agg(status, n) AS statuses
@@ -246,7 +235,6 @@ FROM ledger_rows
 
 
 def snapshot_aggregates() -> dict:
-    """Row/status/advisory counts plus the snapshot digest, all server-side."""
     with connect() as conn:
         rows, statuses, cve, ghsa, digest = conn.execute(
             SNAPSHOT_AGGREGATES_SQL
@@ -261,9 +249,6 @@ def snapshot_aggregates() -> dict:
 
 
 def export_jsonl(path: Path, *, force: bool = False) -> None:
-    # The ledger is append-mostly: between change sets the canonical JSONL is
-    # byte-identical, so gate the full ~26 MB transfer on the snapshot digest
-    # (64 bytes of egress) instead of re-exporting on every verification.
     digest = snapshot_sha256()
     if not force and path.exists() and sha256(path.read_bytes()) == digest:
         print(
@@ -297,7 +282,6 @@ def _max_updated_at() -> str:
 
 
 def read_jsonl_map(path: Path) -> dict[str, tuple[str, dict]]:
-    """class_id -> (raw line, row) for the full local jsonl; no egress."""
     return {row["class_id"]: (line, row) for line, row in read_jsonl(path)}
 
 
@@ -310,12 +294,6 @@ def _write_jsonl_map(path: Path, records: dict[str, tuple[str, dict]]) -> None:
 
 
 def export_jsonl_incremental(path: Path, *, force: bool = False) -> bool:
-    """Delta-export ledger_rows into the local jsonl, gated on updated_at.
-
-    Returns True when the file was rewritten. A no-marker first run reuses the
-    export_jsonl snapshot digest gate: an up-to-date local file costs only the
-    64-byte sha256 probe, and only a stale file triggers a full transfer.
-    """
     marker_path = _marker_path(path)
     cursor = None
     if marker_path.exists() and not force:
@@ -346,9 +324,6 @@ def export_jsonl_incremental(path: Path, *, force: bool = False) -> bool:
                 f"sha256={sha256(path.read_bytes())}"
             )
             return True
-        # No rows past the cursor. Confirm the local file still matches the
-        # server-side digest (64-byte probe) before skipping; a miss falls
-        # through to a full export below.
         if path.exists() and sha256(path.read_bytes()) == snapshot_sha256():
             return False
     digest = snapshot_sha256()
@@ -446,7 +421,6 @@ PUBLIC_INTAKE_ID = re.compile(
 
 
 def intake_public_ids(row: dict) -> set[str]:
-    """Explicit identity edges only; URLs and titles never imply aliases."""
     values = list(row.get("advisory_ids") or [])
     values.extend(row.get("advisory_aliases") or [])
     values.extend((row.get("advisory_identity") or {}).get("member_ids") or [])
@@ -521,7 +495,6 @@ def validate_intake_row(row: dict, files: dict) -> None:
             raise ValueError(f"{cid}: source record JSON pointer required")
         if not re.fullmatch(r"[0-9a-f]{64}", str(record.get("sha256", ""))):
             raise ValueError(f"{cid}: source record sha256 required")
-        # Cache parsed immutable source pages as well as their original bytes.
         path = record.get("path")
         raw = read_file(path)
         parsed_key = ("json", path)
@@ -603,7 +576,6 @@ def validate_intake_row(row: dict, files: dict) -> None:
 
 
 def foreign_active_claims(class_ids: set[str], actor: str, *, path: Path | None = None) -> list[dict]:
-    """Foreign occupancy blocks writes, including expired and historical slot claims."""
     import claims as claims_mod
 
     current = claims_mod.state(claims_mod.load(path or claims_mod.DEFAULT_CLAIMS))
@@ -620,9 +592,7 @@ def foreign_active_claims(class_ids: set[str], actor: str, *, path: Path | None 
     ]
 
 
-
 def intake(path: Path, actor: str, description: str) -> dict:
-    """Append new unassessed identities atomically; never overwrite or merge."""
     from psycopg.types.json import Jsonb
 
     if not actor.strip() or not description.strip():
@@ -644,14 +614,10 @@ def intake(path: Path, actor: str, description: str) -> dict:
     change_set = None
     inserted, skipped = [], []
     with connect(write=True) as conn:
-        # Conflicts with all table writers, serializing identity checks and ordinals.
         conn.execute("LOCK TABLE ledger_rows IN SHARE ROW EXCLUSIVE MODE")
         blockers = foreign_active_claims(protected_ids, actor)
         if blockers:
             raise ValueError("foreign active claims block intake: " + json.dumps(blockers, sort_keys=True))
-        # Historical raw JSON can contain escaped NULs, which PostgreSQL jsonb
-        # cannot represent. Verify the local export under this same table lock,
-        # then inspect exactly those bytes with Python; never rewrite old rows.
         snapshot = DEFAULT_LEDGER.read_bytes()
         current_digest = conn.execute(SNAPSHOT_SHA256_SQL).fetchone()[0]
         if sha256(snapshot) != current_digest:
@@ -713,7 +679,6 @@ def intake(path: Path, actor: str, description: str) -> dict:
             inserted = [row["class_id"] for row in pending]
     result = {"change_set_id": change_set, "inserted": inserted, "skipped_exact": skipped}
     print(json.dumps(result, sort_keys=True))
-    # Export only after commit; a stale local export must be refreshed before intake.
     export_jsonl_incremental(DEFAULT_LEDGER)
     return result
 
@@ -964,8 +929,6 @@ def add_assessments(path: Path) -> None:
                     supersedes,
                 ),
             ).fetchone()
-            # ponytail: a deterministic assessment_id means the row is the same
-            # file row; a revised verdict needs supersedes_assessment_id instead.
             if stored is None:
                 skipped.append(assessment_id)
             else:
@@ -1089,11 +1052,6 @@ def write_partitioned(directory: Path, records: list[tuple[str, dict]]) -> int:
     return written
 
 
-# Fingerprint for export_history skip logic: per-table row counts plus the
-# max timestamps of every column later mutations touch (change-set commits,
-# run completion). All history inserts stamp created_at with now(), and
-# updates only ever advance committed_at/completed_at, so an unchanged
-# fingerprint implies byte-identical export output.
 HISTORY_FINGERPRINT_SQL = """
 SELECT
     (SELECT count(*) FROM ledger_change_sets),
@@ -1125,9 +1083,6 @@ def history_fingerprint() -> dict:
 
 
 def export_history(directory: Path, *, force: bool = False) -> None:
-    # Four-table full fetch used to cost ~50 MB per invocation; gate the
-    # transfer on a lightweight fingerprint instead (history is
-    # append-mostly, so unchanged fingerprints mean identical output).
     current = history_fingerprint()
     marker_path = directory / ".export-fingerprint.json"
     if not force and marker_path.exists() and json.loads(marker_path.read_text()) == current:
@@ -1257,11 +1212,6 @@ def export_history(directory: Path, *, force: bool = False) -> None:
 
 
 def check(path: Path) -> None:
-    # All aggregates and the snapshot digest are computed server-side; the
-    # pre-optimization version pulled the full ledger table (~26 MB egress)
-    # on every verification. Aggregates are egress-equivalent to the old
-    # Python-side counting: status -> row-count map, CVE/GHSA row counts,
-    # sha256 over raw_json rows joined with a trailing newline.
     agg = snapshot_aggregates()
     with connect() as conn:
         runs = conn.execute("SELECT count(*) FROM scan_runs").fetchone()[0]

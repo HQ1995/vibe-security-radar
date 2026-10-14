@@ -1,9 +1,4 @@
 #!/usr/bin/env python3
-"""Seal an owned delivery and verify its exact bytes without reading other judgments.
-
-This is packaging, not research acceptance. Freeze this helper and its dependencies
-with new assignments; old batches keep their original submission contract.
-"""
 from __future__ import annotations
 
 import argparse
@@ -94,7 +89,6 @@ def build(spec: dict) -> dict:
 def seal(spec: dict) -> Path:
     value = build(spec)
     path = Path(spec['output']) / 'DELIVERY.json'
-    # A correction gets a new attempt/output; never overwrite a sealed original.
     with path.open('x') as handle:
         json.dump(value, handle, indent=2, sort_keys=True)
         handle.write('\n')
@@ -129,7 +123,7 @@ def verify(path: Path, binding: dict | None = None) -> dict:
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description=__doc__)
+    parser = argparse.ArgumentParser(description='Seal an owned delivery and verify its exact bytes without reading other judgments')
     parser.add_argument('action', choices=['seal', 'check'])
     parser.add_argument('path', type=Path, help='delivery spec for seal; DELIVERY.json for check')
     args = parser.parse_args()

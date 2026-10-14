@@ -88,8 +88,6 @@ describe("canonical research data", () => {
       resolve(import.meta.dirname, "../../generated/research-data.json"),
       "utf8",
     );
-    // Quoted upstream `code` stays verbatim, non-English comments included;
-    // every field publish writes for readers is English.
     const cjkPaths = (value: unknown, path = ""): string[] => {
       if (typeof value === "string")
         return /[\u4e00-\u9fff]/.test(value) ? [path] : [];
@@ -229,7 +227,6 @@ describe("canonical research data", () => {
     ).toBe(true);
     expect(coolify?.vulnerable_release?.version).toMatch(/beta\.466/);
 
-    // One canonical exemption source; site preflight and this contract must agree.
     const preflightAllowlist = JSON.parse(
       readFileSync(
         resolve(

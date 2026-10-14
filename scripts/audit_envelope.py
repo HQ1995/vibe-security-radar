@@ -1,14 +1,4 @@
 #!/usr/bin/env python3
-"""Evidence-envelope gate (canon 2026-08-27; fields in docs/DATA-SCHEMA.md).
-
-A closed ledger row (terminal status) must carry the full re-derivation
-envelope: advisory_ids + single 40-hex introducer_sha (BLOCKED exempt) +
-ai_marker + reasoning. Usage:
-
-    python3 scripts/audit_envelope.py                # whole ledger
-    python3 scripts/audit_envelope.py FILE.jsonl     # specific rows file
-    python3 scripts/audit_envelope.py --class-id alias-xxx [FILE]
-"""
 import json
 import re
 import sys
@@ -76,14 +66,14 @@ def violations(row: dict) -> list:
     ps = payloads(row)
     bics = [p.get("introducer_sha") for p in ps if p.get("introducer_sha")]
     if row["status"] == "FALSE_POSITIVE":
-        return bad  # withdrawn/rejected: no BIC, no AI marker required
+        return bad
     if row["status"] == "BLOCKED":
         if not any(p.get("reasoning") for p in ps):
             bad.append("BLOCKED without reasoning stating why no BIC")
     elif any(p.get("no_bic_reason") for p in ps):
-        pass  # documented no-BIC-by-nature (supply-chain intrusion / data record / closed boundary)
+        pass
     elif row["status"] == "NOT_AI" and any(external_vcs_bic(p) for p in ps):
-        pass  # smallest public BIC is a verified non-Git SVN/CVS revision
+        pass
     else:
         if not bics:
             bad.append("no introducer_sha anywhere in payload")

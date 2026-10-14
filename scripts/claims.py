@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-"""Case occupancy only: leader claim -> release. Research progress lives in the batch index."""
 from __future__ import annotations
 
 import argparse
@@ -16,11 +15,11 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_CLAIMS = ROOT / "artifacts/claims/claims.jsonl"
 DEFAULT_LEASE_HOURS = 24.0
-DEFAULT_SLOT = "main"  # New claims are case-wide; slots only identify historical holders.
+DEFAULT_SLOT = "main"
 
 
 class ClaimsError(Exception):
-    """Refused claim operation."""
+    pass
 
 
 def _iso(when: datetime) -> str:
@@ -37,7 +36,6 @@ def load(path: Path) -> list[dict]:
 
 
 def state(events: list[dict], at: str | None = None) -> dict[tuple[str, str], dict]:
-    """Read old slot logs without rewriting them; expiration never releases occupancy."""
     at = at or _iso(datetime.now(timezone.utc))
     current = {}
     for event in events:
@@ -78,7 +76,6 @@ def state(events: list[dict], at: str | None = None) -> dict[tuple[str, str], di
 
 
 def _transact(path: Path, build):
-    """Check ownership and append under one lock; a rejected operation writes nothing."""
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
     with path.open("a+", encoding="utf-8") as fh:
@@ -96,7 +93,6 @@ def _transact(path: Path, build):
 def claim(path: Path, class_id: str, owner: str, *, scope: str,
           claim_id: str | None = None, hours: float = DEFAULT_LEASE_HOURS,
           slot: str = DEFAULT_SLOT) -> dict:
-    """Acquire one whole case, or renew the same acquisition with its receipt ID."""
     if not all(isinstance(value, str) and value.strip() for value in (class_id, owner, scope)):
         raise ClaimsError("class_id, owner and scope must be nonempty")
     if slot != DEFAULT_SLOT:
@@ -131,7 +127,6 @@ def claim(path: Path, class_id: str, owner: str, *, scope: str,
 
 def release(path: Path, class_id: str, owner: str, *, claim_id: str | None = None,
             slot: str = DEFAULT_SLOT) -> dict | None:
-    """Release only this acquisition; tokenless closure is limited to old slot records."""
     def build(current):
         cur = current.get((class_id, slot))
         if not cur or cur["owner"] != owner:
@@ -139,7 +134,7 @@ def release(path: Path, class_id: str, owner: str, *, claim_id: str | None = Non
         if (not claim_id and not cur["legacy"]) or (claim_id and claim_id != cur["claim_id"]):
             raise ClaimsError("release requires the current claim_id; an old receipt cannot release new work")
         if not cur["claimed"]:
-            return None  # Exact retry after a lost response, without appending a duplicate event.
+            return None
         return {"action": "RELEASED", "class_id": class_id, "slot": slot, "owner": owner,
                 "claim_id": cur["claim_id"], "ts": _iso(datetime.now(timezone.utc))}
 
@@ -148,7 +143,6 @@ def release(path: Path, class_id: str, owner: str, *, claim_id: str | None = Non
 
 def close(path: Path, class_id: str, owner: str, action: str, *, slot: str = DEFAULT_SLOT,
           result: str = "", claim_id: str | None = None):
-    """Compatibility for old done/release callers; never store research results."""
     if action not in ("DONE", "RELEASED", "RELEASE"):
         raise ClaimsError(f"unknown close action: {action}")
     return release(path, class_id, owner, slot=slot, claim_id=claim_id)
@@ -160,7 +154,7 @@ def occupancy(current: dict, class_id: str) -> dict:
 
 
 def main(argv=None) -> int:
-    parser = argparse.ArgumentParser(description=__doc__)
+    parser = argparse.ArgumentParser(description='Case occupancy only: leader claim -> release')
     parser.add_argument("--claims-file", type=Path, default=DEFAULT_CLAIMS)
     sub = parser.add_subparsers(dest="cmd", required=True)
     take = sub.add_parser("claim", help="leader acquires a whole case; --claim-id renews it")
