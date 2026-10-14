@@ -62,7 +62,7 @@ despite agreement. Before closeout:
 
 1. Finish the report, record, sidecar and decision, and read them back together.
 2. Run the [record checks](../../radar-audit/references/submission.md) and the reduction
-   gate over both lanes:
+   gate over every lane:
 
        python3 scripts/radar_case.py check --run <run> --case <NNN> --dry-run
 

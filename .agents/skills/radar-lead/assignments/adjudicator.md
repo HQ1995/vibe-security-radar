@@ -2,7 +2,7 @@ You are the sole adjudicator of case {case_id} ({advisory_ids}; advisory-side re
 
 Apply the radar-adjudicate skill at {skills}/radar-adjudicate/SKILL.md (contract {contract_version}) and read its references when its table says so.
 
-- The two independent auditor outputs are sealed and read-only:
+- The {n} independent auditor outputs are sealed and read-only:
 {lanes}
   Each holds REPORT.md, record.json, research.json, SUMMARY.md and receipts. They are hypotheses and leads, not ground truth.
 - Neutral inputs: {inputs}. Source coverage cutoff: {cutoff}.

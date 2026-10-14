@@ -16,7 +16,7 @@ What each auditor and the adjudicator deliver, in the directory their assignment
      with the product clone `--repo <clone>`. They check structure and local objects, not
      truth; never invent a value for a check you could not run, explain it instead;
    - the adjudicator also runs `python3 -B scripts/radar_case.py check --run <run> --case <NNN>
-     --dry-run`, the reduction gate over both lanes; a researched BLOCKED decision reports
+     --dry-run`, the reduction gate over every lane; a researched BLOCKED decision reports
      outcome BLOCKED.
 5. Write `SUMMARY.md` (at most ten lines: the answer to each question, open questions,
    execution failures) and reply with it.

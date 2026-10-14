@@ -21,6 +21,7 @@ import claims
 import ledger_store
 from audit_record_gates import check_record, check_record_strict, load_record
 from audit_reduction_gate import RESEARCH_CONTRACT, check_delivery, check_research_work, digest
+from compare_slots import research_differences_many
 
 REPO = Path(__file__).resolve().parents[1]
 RESEARCH = REPO / 'research'
@@ -28,10 +29,8 @@ SKILLS = REPO / '.agents' / 'skills'
 ASSIGNMENTS = SKILLS / 'radar-lead' / 'assignments'
 CLONES = REPO / '.ai-slop' / 'state' / 'repos'
 CONTRACT_VERSION = '2026-10-14.1'
-LANES = ('auditor1', 'auditor2')
-ROLES = (*LANES, 'adjudicator', 'reviewer')
 LANE_FILES = ('REPORT.md', 'record.json', 'research.json', 'SUMMARY.md')
-MINUTES = {'auditor1': 25, 'auditor2': 25, 'adjudicator': 25, 'reviewer': 15}
+MINUTES = {'auditor': 25, 'adjudicator': 25, 'reviewer': 15}
 AI_STATUSES = {'AI_ROOT_CAUSE', 'AI_CODE_FLAWED'}
 LANDABLE = ledger_store.TERMINAL_STATUSES - {'BLOCKED'}
 CLOSED = {'LANDED', 'BLOCKED_CLOSED', 'FOREIGN_HOLD', 'STOPPED', 'RETURNED'}
@@ -68,6 +67,14 @@ def case_dir(run: str, key: str) -> Path:
 
 def cases(run: str) -> list[Path]:
     return sorted(p for p in run_dir(run).glob('[0-9][0-9][0-9]') if (p / 'case.json').is_file())
+
+
+def lanes_of(info: dict) -> list[str]:
+    return info.get('lanes') or ['auditor1', 'auditor2']
+
+
+def roles_of(info: dict) -> list[str]:
+    return [*lanes_of(info), 'adjudicator', 'reviewer']
 
 
 def state_of(case: Path) -> dict:
@@ -155,7 +162,10 @@ def neutral_packet(dest: Path, row: dict, cutoff: str, fetch) -> None:
         "lists the advisory records retained here; retrieve anything else from primary sources.\n")
 
 
-def prepare(run: str, manifest: Path, leader: str, cutoff: str, fetch: bool = True) -> list[dict]:
+def prepare(run: str, manifest: Path, leader: str, cutoff: str, fetch: bool = True,
+            auditors: int = 2) -> list[dict]:
+    if auditors < 2:
+        raise ValueError('independent research needs at least two auditors')
     root = run_dir(run)
     if (root / 'STOP').exists():
         raise ValueError('run stopped; resolve the stop with the user first')
@@ -174,11 +184,11 @@ def prepare(run: str, manifest: Path, leader: str, cutoff: str, fetch: bool = Tr
             continue
         known.add(class_id)
         key = f'{len(list(root.glob("[0-9][0-9][0-9]"))) + 1:03d}'
-        results.append(prepare_case(meta, root / key, class_id, fetch_advisory if fetch else None))
+        results.append(prepare_case(meta, root / key, class_id, fetch_advisory if fetch else None, auditors))
     return results
 
 
-def prepare_case(meta: dict, case: Path, class_id: str, fetch) -> dict:
+def prepare_case(meta: dict, case: Path, class_id: str, fetch, auditors: int) -> dict:
     case.mkdir()
     current = ledger(case, 'get', class_id)
     row = current['row']
@@ -186,7 +196,7 @@ def prepare_case(meta: dict, case: Path, class_id: str, fetch) -> dict:
             'repo': row.get('repo'), 'leader': meta['leader'], 'cutoff': meta['cutoff'], 'contract': contract(),
             'base': {'revision': current['revision'], 'change_set_id': current['change_set_id'],
                      'row_sha256': ledger_store.sha256(ledger_store.raw_row(row))},
-            'prepared_at': now(), 'roles': {}}
+            'lanes': [f'auditor{n}' for n in range(1, auditors + 1)], 'prepared_at': now(), 'roles': {}}
     names = {class_id, *row['advisory_ids'], *(a.lower() for a in row['advisory_ids'])}
     occupancy = claims.state(claims.load(claims.DEFAULT_CLAIMS))
     holders = [claims.occupancy(occupancy, n) for n in sorted(names) if claims.occupancy(occupancy, n)['claimed']]
@@ -197,15 +207,13 @@ def prepare_case(meta: dict, case: Path, class_id: str, fetch) -> dict:
     info['claim'] = claims.claim(claims.DEFAULT_CLAIMS, class_id, meta['leader'], scope=f"{meta['run']}-{case.name}")
     (case / 'manifest.txt').write_text(class_id + '\n')
     neutral_packet(case / 'inputs', row, meta['cutoff'], fetch)
-    for name in (*ROLES, 'assignments'):
+    for name in (*roles_of(info), 'assignments'):
         (case / name).mkdir()
     write(case / 'case.json', info)
     return set_state(case, 'PREPARED', class_id=class_id, next='Prompt both auditors.')
 
 
 def prompt(run: str, key: str, role: str, model: str | None = None, host: str | None = None) -> str:
-    if role not in ROLES:
-        raise ValueError(f'role must be one of {ROLES}')
     root = run_dir(run)
     if (root / 'STOP').exists():
         raise ValueError('run stopped; resolve the stop with the user first')
@@ -213,6 +221,9 @@ def prompt(run: str, key: str, role: str, model: str | None = None, host: str | 
     info = read(case / 'case.json')
     if 'claim' not in info:
         raise ValueError('case is not claimed; see status')
+    lanes = lanes_of(info)
+    if role not in roles_of(info):
+        raise ValueError(f'role must be one of {roles_of(info)}')
     if role == 'adjudicator' and not (case / 'SEAL.json').exists():
         raise ValueError('seal both auditor lanes first')
     if role == 'reviewer' and not (case / 'gate.json').exists():
@@ -221,9 +232,9 @@ def prompt(run: str, key: str, role: str, model: str | None = None, host: str | 
               'repo': info.get('repo') or 'not recorded', 'case': case, 'run_dir': root, 'inputs': case / 'inputs',
               'out': case / role, 'scratch': case / 'scratch' / role, 'clones': CLONES, 'skills': SKILLS,
               'repo_root': REPO, 'cutoff': info['cutoff'], 'contract_version': CONTRACT_VERSION,
-              'minutes': MINUTES[role], 'run': run, 'key': key,
-              'lanes': '\n'.join(f'- {lane}: {case / lane}' for lane in LANES)}
-    text = (ASSIGNMENTS / f"{'auditor' if role in LANES else role}.md").read_text().format_map(values)
+              'minutes': MINUTES['auditor' if role in lanes else role], 'run': run, 'key': key, 'n': len(lanes),
+              'lanes': '\n'.join(f'- {lane}: {case / lane}' for lane in lanes)}
+    text = (ASSIGNMENTS / f"{'auditor' if role in lanes else role}.md").read_text().format_map(values)
     path = case / 'assignments' / f'{role}.md'
     if path.exists():
         path.rename(path.with_name(f'{role}-{len(list(path.parent.glob(role + "*.md")))}.md'))
@@ -294,12 +305,12 @@ def seal(run: str, key: str) -> dict:
     info = read(case / 'case.json')
     if (case / 'SEAL.json').exists():
         return {'case': key, **state_of(case)}
-    problems = [p for lane in LANES for p in lint(case / lane, info['class_id'])]
+    problems = [p for lane in lanes_of(info) for p in lint(case / lane, info['class_id'])]
     if problems:
         return set_state(case, 'HOLD', stage='seal', problems=problems,
                          next='Send the problems back to the same auditor; nothing is sealed yet.')
     sealed = {'at': now()}
-    for lane in LANES:
+    for lane in lanes_of(info):
         record = read(case / lane / 'record.json')
         sealed[lane] = {'record_gate': check_record(record) + check_record_strict(record), 'files': freeze(case / lane)}
     write(case / 'SEAL.json', sealed)
@@ -320,7 +331,7 @@ def decisions(case: Path, info: dict) -> dict:
     adjudicated = case / 'adjudicator'
     research = read(adjudicated / 'research.json')
     entry = absolute({**read(adjudicated / 'decision.json'), 'research': research.get('research', research)}, adjudicated)
-    entry['sha256'] = {**{lane: digest(case / lane / 'record.json') for lane in LANES},
+    entry['sha256'] = {**{lane: digest(case / lane / 'record.json') for lane in lanes_of(info)},
                        'accepted': digest(adjudicated / 'record.json')}
     pinned = {'manifest': case / 'manifest.txt',
               'audit_protocol': SKILLS / 'radar-audit' / 'references' / 'protocol.md',
@@ -330,7 +341,7 @@ def decisions(case: Path, info: dict) -> dict:
               'record_gate': REPO / 'scripts' / 'audit_record_gates.py',
               'comparison': REPO / 'scripts' / 'compare_slots.py',
               'reduction_gate': REPO / 'scripts' / 'audit_reduction_gate.py'}
-    return {'reduction': {'reducer': f"{info['run']}-{info['key']}-adjudicator", 'auditors': list(LANES),
+    return {'reduction': {'reducer': f"{info['run']}-{info['key']}-adjudicator", 'auditors': lanes_of(info),
                           'research_contract': RESEARCH_CONTRACT,
                           'pins': {name: {'path': str(p), 'sha256': digest(p)} for name, p in pinned.items()},
                           'cases': {info['class_id']: entry}}}
@@ -358,7 +369,7 @@ def check(run: str, key: str, dry_run: bool = False) -> dict:
         target = case / ('.decisions-dry-run.json' if dry_run else 'decisions.json')
         write(target, decisions(case, info))
         result = check_delivery(case / 'manifest.txt', case / 'adjudicator' / 'record.json', target,
-                                lanes={lane: case / lane / 'record.json' for lane in LANES},
+                                lanes={lane: case / lane / 'record.json' for lane in lanes_of(info)},
                                 research_contract=RESEARCH_CONTRACT)
         if dry_run:
             target.unlink()
@@ -519,7 +530,7 @@ def land_case(case: Path) -> dict:
     gate = read(case / 'gate.json')
     record = read(case / 'adjudicator' / 'record.json')
     (case / 'land').mkdir(exist_ok=True)
-    items = [assessment(case, info, role) for role in ROLES]
+    items = [assessment(case, info, role) for role in roles_of(info)]
     (case / 'land' / 'assessments.jsonl').write_text(
         ''.join(json.dumps(item, ensure_ascii=False, sort_keys=True) + '\n' for item in items))
     if gate['outcome'] == 'BLOCKED':
@@ -612,6 +623,29 @@ def stop(run: str, key: str, reason: str, evidence: Path | None = None) -> dict:
                      next='Tell the user; do not resume, rephrase or switch models until they resolve it.')
 
 
+def short(value, limit: int = 240):
+    if isinstance(value, str):
+        return value if len(value) <= limit else value[:limit] + '...'
+    if isinstance(value, dict):
+        return {key: short(item, limit) for key, item in value.items()}
+    if isinstance(value, list):
+        return [short(item, limit) for item in value]
+    return value
+
+
+def compare(run: str, key: str) -> dict:
+    case = case_dir(run, key)
+    info = read(case / 'case.json')
+    names = [*lanes_of(info), 'adjudicator']
+    records = {name: read(case / name / 'record.json') for name in names if (case / name / 'record.json').is_file()}
+    if len(records) < 2:
+        raise ValueError('compare needs at least two delivered records')
+    return {'case': key, 'class_id': info['class_id'],
+            'records': {name: {'model': info['roles'].get(name, {}).get('model', 'unrecorded'),
+                               'verdict': record.get('verdict')} for name, record in records.items()},
+            'differences': short(research_differences_many(records))}
+
+
 def status(run: str) -> list[dict]:
     return [{'case': c.name, 'class_id': read(c / 'case.json')['class_id'], **state_of(c)} for c in cases(run)]
 
@@ -625,15 +659,16 @@ def main() -> int:
     p.add_argument('--leader', required=True)
     p.add_argument('--cutoff', default=now())
     p.add_argument('--no-fetch', action='store_true')
+    p.add_argument('--auditors', type=int, default=2)
     p = sub.add_parser('prompt')
     p.add_argument('--run', required=True)
     p.add_argument('--case', required=True)
-    p.add_argument('--role', required=True, choices=ROLES)
+    p.add_argument('--role', required=True)
     p.add_argument('--model')
     p.add_argument('--host')
     p = sub.add_parser('lint')
     p.add_argument('directory', type=Path)
-    for name in ('seal', 'check', 'reopen'):
+    for name in ('seal', 'check', 'reopen', 'compare'):
         p = sub.add_parser(name)
         p.add_argument('--run', required=True)
         p.add_argument('--case', required=True)
@@ -652,7 +687,8 @@ def main() -> int:
     args = parser.parse_args()
     try:
         if args.action == 'prepare':
-            result = prepare(args.run, args.manifest, args.leader, args.cutoff, fetch=not args.no_fetch)
+            result = prepare(args.run, args.manifest, args.leader, args.cutoff, fetch=not args.no_fetch,
+                             auditors=args.auditors)
         elif args.action == 'prompt':
             print(prompt(args.run, args.case, args.role, args.model, args.host))
             return 0
@@ -666,6 +702,8 @@ def main() -> int:
             result = check(args.run, args.case, args.dry_run)
         elif args.action == 'reopen':
             result = reopen(args.run, args.case)
+        elif args.action == 'compare':
+            result = compare(args.run, args.case)
         elif args.action == 'land':
             result = land(args.run, set(args.case or []))
         elif args.action == 'stop':

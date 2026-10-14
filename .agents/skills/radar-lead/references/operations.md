@@ -17,19 +17,34 @@ own tools.
 | Role | Skill | Owns |
 | --- | --- | --- |
 | Leader | radar-lead, radar-incremental | Selection, claims, sealing, acceptance, canonical writes, publication |
-| Auditor (two) | radar-audit | `research/<run>/<NNN>/auditor1` or `auditor2` |
+| Auditor (two or more) | radar-audit | `research/<run>/<NNN>/auditor1` ... `auditorN` |
 | Adjudicator | radar-adjudicate | `research/<run>/<NNN>/adjudicator` |
 | Reviewer | radar-lead, "Review one case" | `research/<run>/<NNN>/reviewer/review.json` |
 
 | Host | Starting a subagent |
 | --- | --- |
-| Claude Code | The Agent tool with the assignment text as the prompt and a `model` per lane; start several in the background and wait for their notifications. |
-| Codex | Spawn a subagent with the assignment text, or run `codex exec "<assignment>"` in another terminal, with a model per lane. |
+| Claude Code | The Agent tool with the assignment text as the prompt; its `model` choice covers the Claude models. Start several in the background and wait for their notifications. |
+| Codex | Spawn a subagent with the assignment text. |
+| Any model on Magpie, from either host | One CLI session per lane, in the background (below). |
+
+The models on the local Magpie gateway are listed by `curl -s http://127.0.0.1:3425/v1/models`
+(GPT, Claude, DeepSeek, Grok, GLM, Gemini, MiMo and others). Start a lane on one of them:
+
+```sh
+P=research/<run>/<NNN>/scratch/<role>; mkdir -p $P
+A=$(python3 scripts/radar_case.py prompt --run <run> --case <NNN> --role <role> --model <model> --host <codex|claude>-magpie)
+codex exec -c model_provider=magpie -m <model> --skip-git-repo-check \
+  --output-last-message $P/reply.md "$A" > $P/session.log 2>&1
+claude -p --dangerously-skip-permissions --model <model> "$A" > $P/reply.md 2> $P/session.log
+```
+
+Use either command; both reach every model the gateway serves. Run one per lane in the
+background and wait for all of them before `seal`.
 
 A subagent starts with no conversation history. That, the read limits in its assignment
 and sealing keep the lanes independent; isolation is by instruction, not by sandbox, so
-never put one lane's findings into another lane's prompt. Use different models for the two
-auditors when the host offers them.
+never put one lane's findings into another lane's prompt. Give every auditor a different
+model; a different model is a more independent opinion.
 
 ## Case directory
 
@@ -49,10 +64,11 @@ research/<run>/<NNN>/case.json              leader: identity, base revision, cla
 ## Case commands
 
 ```sh
-python3 scripts/radar_case.py prepare --run <run> --manifest <class ids> --leader <name> --cutoff <UTC>
+python3 scripts/radar_case.py prepare --run <run> --manifest <class ids> --leader <name> --cutoff <UTC> [--auditors N]
 python3 scripts/radar_case.py prompt --run <run> --case <NNN> --role <role> [--model <m> --host <h>]
 python3 scripts/radar_case.py lint <role directory>
 python3 scripts/radar_case.py seal --run <run> --case <NNN>
+python3 scripts/radar_case.py compare --run <run> --case <NNN>
 python3 scripts/radar_case.py check --run <run> --case <NNN> [--dry-run]
 python3 scripts/radar_case.py reopen --run <run> --case <NNN>
 python3 scripts/radar_case.py land --run <run> [--case <NNN>]
@@ -62,17 +78,20 @@ python3 scripts/radar_case.py stop --run <run> --case <NNN> --reason <text> [--e
 
 - **prepare** reads each row (`ledger_store.py get`), holds a case another owner occupies,
   claims the rest, retains its advisory records from GitHub and NVD with receipts, and
-  records the repository commit that carries the contract.
-- **prompt** prints and saves the assignment for one role (`auditor1`, `auditor2`,
+  records the repository commit that carries the contract. `--auditors N` (default 2) sets
+  how many independent lanes each case gets.
+- **prompt** prints and saves the assignment for one role (`auditor1` ... `auditorN`,
   `adjudicator`, `reviewer`) and records the model and host. The adjudicator's prompt needs
-  both lanes sealed; the reviewer's needs a passing check.
+  every lane sealed; the reviewer's needs a passing check.
 - **lint** checks a role directory: required files, class ID, protocol version, the
   research-work sidecar and its receipts. Workers run it themselves.
-- **seal** needs both lanes to lint clean, records their record-gate results and the hash
+- **compare** shows, for each research dimension and field, what every delivered lane (and
+  the adjudicator, once it delivers) concluded, with its model. It reads records only.
+- **seal** needs every lane to lint clean, records their record-gate results and the hash
   of every file, and makes the files read-only. Until then nothing is sealed and the
   auditors can still fix their work.
 - **check** verifies the sealed lanes, builds `decisions.json` from the adjudicator's
-  `decision.json` and runs the reduction gate on both lanes. A pass (ACCEPTED, or a
+  `decision.json` and runs the reduction gate on every lane. A pass (ACCEPTED, or a
   researched BLOCKED) seals the adjudicator; otherwise its problems go back to the
   adjudicator. `--dry-run` writes nothing.
 - **reopen** keeps a checked adjudication and its review as `adjudicator-vN/` and

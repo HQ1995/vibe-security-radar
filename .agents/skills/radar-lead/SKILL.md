@@ -1,6 +1,6 @@
 ---
 name: radar-lead
-description: Coordinate Vibe Security Radar case research from a local Codex or Claude Code session - select cases, start two independent auditor subagents, an adjudicator and a reviewer per case with the host's own subagent tools, seal and check their work with scripts/radar_case.py, land accepted research in the canonical ledger and prepare publication. Use for coordination, recovery, landing and release; not for researching a case yourself.
+description: Coordinate Vibe Security Radar case research from a local Codex or Claude Code session - select cases, start two or more independent auditor subagents on different models, an adjudicator and a reviewer per case with the host's own subagent tools, seal and check their work with scripts/radar_case.py, land accepted research in the canonical ledger and prepare publication. Use for coordination, recovery, landing and release; not for researching a case yourself.
 ---
 
 # Radar lead
@@ -38,15 +38,18 @@ python3 scripts/radar_case.py prepare --run <run> --manifest <file> --leader <yo
 
 It claims each case, retains its advisory records as the neutral packet and records the
 repository commit that carries the contract. A case another owner holds stays `FOREIGN_HOLD`.
+Each case gets two independent auditors; add `--auditors N` for more opinions.
 
 ## 3. Run each case
 
 Work on several cases at once within the host's subagent limit. For each case:
 
-1. **Auditors.** Print `prompt --role auditor1 --model <m1> --host <host>` and the same for
-   `auditor2`, with a different model when the host offers one. Start each as a fresh
-   subagent whose prompt is exactly that text. Start both together.
-2. **Seal.** When both have replied, run `seal`.
+1. **Auditors.** For each lane print `prompt --role auditorK --model <model> --host <host>`
+   and start a fresh subagent whose prompt is exactly that text, each lane on a different
+   model. Any model on the local Magpie gateway works: start it with the CLI commands in
+   [operations](references/operations.md#operating-arrangement). Start all lanes together.
+2. **Seal.** When every lane has replied, `compare` shows where the models disagree (by
+   dimension, with each lane's model); then run `seal`.
 3. **Adjudicator.** Print `prompt --role adjudicator`, start a fresh subagent with it, and
    run `check` when it replies.
 4. **Reviewer.** Print `prompt --role reviewer` and start a fresh subagent, or for a small
@@ -68,7 +71,7 @@ If any subagent reports a safety refusal, or the host refuses a turn, run
 ## 4. Review one case
 
 The reviewer runs this section for one case; you can run it yourself the same way. Read the
-adjudicator's report and record and both auditors' reports, then check the decisive claims
+adjudicator's report and record and every auditor's report, then check the decisive claims
 against primary evidence:
 
 - the parent of the claimed introducing change, under matched configuration and authority;
@@ -120,7 +123,7 @@ publication done or pending; remaining questions with their owner.
 
 | Read | When |
 | --- | --- |
-| [operations.md](references/operations.md) | How each host starts a subagent, the case directory, every `radar_case.py` command, claims |
+| [operations.md](references/operations.md) | How each host starts a subagent, running a lane on any Magpie model, the case directory, every `radar_case.py` command, claims |
 | [ledger.md](references/ledger.md) | Before landing or editing canonical data: row fields, statuses, published-case rules |
 | [release.md](references/release.md) | Manual landing, recovery after a failed write, and the build, deploy and verify steps |
 | [assignments/](assignments/) | The templates `prompt` fills; change them there, not in the printed prompts |

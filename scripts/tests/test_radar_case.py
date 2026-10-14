@@ -75,9 +75,10 @@ def env(tmp_path, monkeypatch):
                        for cid, aid in IDS.items()})
     monkeypatch.setattr(radar_case, 'ledger', fake)
 
-    def prepare(*cids):
+    def prepare(*cids, auditors=2):
         (tmp_path / 'manifest.txt').write_text(''.join(c + '\n' for c in cids))
-        return radar_case.prepare('pilot', tmp_path / 'manifest.txt', 'leader', '2026-10-14T00:00:00Z', fetch=False)
+        return radar_case.prepare('pilot', tmp_path / 'manifest.txt', 'leader', '2026-10-14T00:00:00Z',
+                                  fetch=False, auditors=auditors)
     return fake, prepare
 
 
@@ -111,7 +112,7 @@ def deliver(directory, value):
 
 def audited(key, value):
     case = radar_case.case_dir('pilot', key)
-    for lane in radar_case.LANES:
+    for lane in radar_case.lanes_of(json.loads((case / 'case.json').read_text())):
         radar_case.prompt('pilot', key, lane, model='model-' + lane, host='test')
         deliver(case / lane, value)
     return case
@@ -279,3 +280,31 @@ def test_an_interrupted_finalize_is_recovered_by_readback_never_replayed(env):
     state = radar_case.land('pilot', {'002'})[0]
     assert state['phase'] == 'HOLD' and 'previous finalize' in state['next']
     assert fake.calls.count('finalize') == 1
+
+
+def test_more_models_give_more_independent_lanes(env):
+    fake, prepare = env
+    with pytest.raises(ValueError):
+        prepare('alias-a', auditors=1)
+    prepare('alias-a', auditors=3)
+    case = radar_case.case_dir('pilot', '001')
+    assert 'one of 3 independent auditors' in radar_case.prompt('pilot', '001', 'auditor3', model='model-c')
+    for lane, model in (('auditor1', 'model-a'), ('auditor2', 'model-b')):
+        radar_case.prompt('pilot', '001', lane, model=model)
+    for lane in ('auditor1', 'auditor2'):
+        deliver(case / lane, record('alias-a'))
+    deliver(case / 'auditor3', record('alias-a', false_positive_ground='ADVISORY_MISATTRIBUTED'))
+    seen = radar_case.compare('pilot', '001')
+    assert seen['records']['auditor3'] == {'model': 'model-c', 'verdict': 'FALSE_POSITIVE'}
+    assert seen['differences']['advisory']['false_positive_ground'] == {
+        'auditor1': 'MECHANISM_REFUTED', 'auditor2': 'MECHANISM_REFUTED', 'auditor3': 'ADVISORY_MISATTRIBUTED'}
+    deliver(case / 'auditor3', record('alias-a'))
+    radar_case.seal('pilot', '001')
+    assert 'auditor3' in radar_case.prompt('pilot', '001', 'adjudicator')
+    adjudicate(case, record('alias-a'))
+    assert radar_case.check('pilot', '001')['phase'] == 'CHECKED'
+    assert json.loads((case / 'decisions.json').read_text())['reduction']['auditors'] == ['auditor1', 'auditor2', 'auditor3']
+    radar_case.prompt('pilot', '001', 'reviewer')
+    review(case)
+    assert radar_case.land('pilot')[0]['phase'] == 'LANDED'
+    assert len(fake.assessments) == 5

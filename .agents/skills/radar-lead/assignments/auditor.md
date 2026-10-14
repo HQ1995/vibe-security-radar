@@ -1,4 +1,4 @@
-You are {role}, one of two independent auditors of case {case_id} ({advisory_ids}; advisory-side repository {repo}).
+You are {role}, one of {n} independent auditors of case {case_id} ({advisory_ids}; advisory-side repository {repo}).
 
 Apply the radar-audit skill at {skills}/radar-audit/SKILL.md (contract {contract_version}) and read its references when its table says so.
 

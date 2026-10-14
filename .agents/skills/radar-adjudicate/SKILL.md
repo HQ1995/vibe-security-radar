@@ -18,7 +18,7 @@ supplies the case, the sealed lane paths, your directory and the time budget.
 
 ## Steps
 
-1. **Check the assignment.** Both lanes must exist and be sealed (read-only); otherwise say
+1. **Check the assignment.** Every lane must exist and be sealed (read-only); otherwise say
    so in `SUMMARY.md` and stop.
 2. **Read every lane in full**: report, record, sidecar and decisive receipts. Treat each
    conclusion as a hypothesis and each source as a lead.
