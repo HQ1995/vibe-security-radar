@@ -27,4 +27,6 @@ npm test         # vitest
 | `/about` | How we verify |
 | `/analytics`, `/tools` | Compatibility redirects |
 
-Production: https://vibesecradar.com/. Pushes to `main` deploy via GitHub Actions.
+Production: https://vibesecradar.com/. Pushes to `main` deploy through the Cloudflare Pages Git
+integration, which builds the committed data; the manual `Deploy Pages (manual, from Neon)`
+workflow republishes directly from Neon.

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Evidence-envelope gate (canon 2026-08-27, see artifacts/ledger-summary.md).
+"""Evidence-envelope gate (canon 2026-08-27; fields in docs/DATA-SCHEMA.md).
 
 A closed ledger row (terminal status) must carry the full re-derivation
 envelope: advisory_ids + single 40-hex introducer_sha (BLOCKED exempt) +
