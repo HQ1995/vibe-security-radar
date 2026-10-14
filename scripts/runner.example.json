@@ -1,0 +1,27 @@
+{
+  "name": "codex-exec-bwrap-node1",
+  "provider": "local OpenAI-compatible gateway",
+  "prefix": ["numactl", "--cpunodebind=1", "--membind=1",
+             "timeout", "--signal=TERM", "--kill-after=10s", "{timeout}s",
+             "prlimit", "--as={memory_bytes}", "--"],
+  "sandbox": {
+    "kind": "bwrap",
+    "mask": ["/home/USER", "/root", "/tmp", "/run/user/UID"],
+    "home": "/home/USER/.codex",
+    "ro_binds": ["/home/USER/.codex/auth.json",
+                 "/home/USER/.codex/packages/standalone/releases/VERSION"]
+  },
+  "agent": ["env", "-i", "HOME=/home/USER", "PATH=/usr/local/bin:/usr/bin:/bin", "LANG=C.UTF-8",
+            "/home/USER/.codex/packages/standalone/releases/VERSION/bin/codex", "exec",
+            "--ignore-user-config", "--ignore-rules", "--skip-git-repo-check", "--json",
+            "--model", "{model}", "--sandbox", "danger-full-access",
+            "-c", "approval_policy=\"never\"", "-c", "model_reasoning_effort=\"high\"",
+            "-c", "features.memories=false", "-c", "features.multi_agent=false",
+            "--output-last-message", "{output}/runner-final.txt", "{brief}"],
+  "models": {"auditor1": "MODEL-A", "auditor2": "MODEL-B", "adjudicator": "MODEL-C", "reviewer": "MODEL-C"},
+  "timeout_seconds": {"auditor": 1500, "adjudicator": 1500, "reviewer": 900},
+  "memory_bytes": 8589934592,
+  "numa_node": 1,
+  "shared_clones": ["/path/to/ai-slop/.ai-slop/state/repos"],
+  "refusal_markers": ["flagged for possible cybersecurity risk"]
+}

@@ -28,7 +28,7 @@ def update(batch: str, values: dict) -> None:
         dispatch.write_index(path, document)
 
 
-def execute(root: Path, label: str, argv: list[str]) -> str:
+def execute(root: Path, label: str, argv: list[str], *, check: bool = True) -> str:
     root.mkdir(parents=True, exist_ok=True)
     stem = root / (label + '-' + uuid.uuid4().hex)
     receipt = {'argv': argv, 'cwd': str(ledger_store.ROOT), 'started_at': dispatch.now(),
@@ -42,7 +42,7 @@ def execute(root: Path, label: str, argv: list[str]) -> str:
         outputs.append({'path': str(file), 'sha256': dispatch.digest(file)})
     receipt.update(finished_at=dispatch.now(), exit_code=result.returncode, outputs=outputs)
     dispatch.write_index(stem.with_suffix('.json'), receipt)
-    if result.returncode:
+    if result.returncode and check:
         raise ValueError(f'{label} failed: original receipt {stem.with_suffix(".json")}')
     return result.stdout
 
@@ -62,25 +62,32 @@ def records_view(seal: dict) -> Path:
     return paths[0].parent
 
 
-def gate(batch: str, plan: dict, accepted: dict, root: Path) -> dict:
+def gate(batch: str, plan: dict, accepted: dict, root: Path, *, expect: str = 'ACCEPTED') -> dict:
+    """Rerun the frozen reduction gate on every lane; a researched blocker exits nonzero by design."""
     decision = delivery.read(Path(accepted['decisions']))['reduction']
     pin = decision['pins']['reduction_gate']
     entry = dispatch.read_index(dispatch.index_path(batch))['dispatch'][plan['adjudicator']['task']]
     if (dispatch.digest(Path(pin['path'])) != pin['sha256']
             or not any(hashes.get(pin['path']) == pin['sha256'] for hashes in entry['binding']['inputs'].values())):
         raise ValueError('reduction gate must be the assigned frozen executable')
-    argv = ['numactl', '--cpunodebind=1', '--membind=1', sys.executable, pin['path'],
+    argv = ['numactl', '--cpunodebind=1', '--membind=1', sys.executable, '-B', pin['path'],
             '--manifest', accepted['manifest'], '--accepted', str(records_view(accepted)),
             '--decisions', accepted['decisions'], '--research-contract', 'causal-work-v1']
     for receipt in plan['auditors']:
         entry = radar_flow.entry_for(batch, receipt)
         seal = delivery.verify(Path(entry['delivery']['path']), entry['binding'])
         argv.extend(['--lane', receipt.get('lane', receipt['task']) + '=' + str(records_view(seal))])
-    result = delivery.read_text(execute(root, 'final-gate', argv))
+    result = delivery.read_text(execute(root, 'final-gate', argv, check=expect == 'ACCEPTED'))
     ids = accepted['case_ids']
+    lanes = set(result.get('auditors', [])) == {r.get('lane', r['task']) for r in plan['auditors']}
+    if expect == 'BLOCKED':
+        blocked = [f'{cid}: research remains BLOCKED' for cid in ids]
+        if (not lanes or result.get('cases') != len(ids) or result.get('research_status') != {'BLOCKED': len(ids)}
+                or sorted(result.get('problems', [])) != sorted(blocked)):
+            raise ValueError('final gate does not confirm a researched blocker for every case and lane')
+        return result
     if (result.get('delivery_valid') is not True or result.get('cases') != len(ids)
-            or result.get('research_status') != {'ACCEPTED': len(ids)}
-            or set(result.get('auditors', [])) != {r.get('lane', r['task']) for r in plan['auditors']}):
+            or result.get('research_status') != {'ACCEPTED': len(ids)} or not lanes):
         raise ValueError('final gate does not accept the original manifest and every declared lane')
     return result
 

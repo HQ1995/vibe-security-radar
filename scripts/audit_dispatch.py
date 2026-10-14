@@ -24,7 +24,8 @@ from audit_record_gates import load_record
 from audit_reduction_gate import digest, manifest_ids
 
 RESEARCH = Path(__file__).resolve().parents[1] / 'research'
-ROLES = {'auditor', 'adjudicator'}
+# A reviewer is a fresh session doing the leader's source review of one sealed case.
+ROLES = {'auditor', 'adjudicator', 'reviewer'}
 ENDPOINTS = {'research', 'ledger', 'site'}
 
 
@@ -363,26 +364,44 @@ def act(batch: str, task: str, expected_hash: str, action: str, *, resume: bool 
             expected_brief = next(hashes[binding['brief']] for hashes in binding['inputs'].values() if binding['brief'] in hashes)
             if hashlib.sha256(brief_bytes).hexdigest() != expected_brief:
                 raise ValueError('brief changed while preparing dispatch')
-            brief = brief_bytes.decode('utf-8')
-            header = (f'Task binding: {expected_hash}\nBatch: {batch}\nTask: {task}\n'
-                      f'Role: {binding["role"]}\nManifest: {binding["manifest"]["path"]}\n'
-                      f'Manifest SHA256: {binding["manifest"]["sha256"]}\n'
-                      f'Owned output: {binding["output"]}\nAuthorized endpoint: {binding["endpoint"]}\n'
-                      f'Pinned inputs: {", ".join(binding["inputs"])}\nMode: {"resume" if resume else "start"}\n'
-                      + (f'Read and apply the frozen role skill: {binding["skill"]}\n' if 'skill' in binding else '') +
-                      'Read the frozen protocols, schema and gate code in the pinned inputs; they govern.\n' +
-                      'Keep this task identity on resumption. Do not infer scope from tab names or neighboring reports.\n\n')
-            command = [header + brief if part == '{brief}' else part for part in binding['command']]
+            prompt = prompt_text(binding, expected_hash, brief_bytes.decode('utf-8'), resume=resume)
+            command = [prompt if part == '{brief}' else part for part in binding['command']]
+            # Keep the exact prompt and terminal streams outside every owned output.
+            logs = path.parent / '.logs'
+            logs.mkdir(exist_ok=True)
+            stem = logs / f'{task}-{attempt["attempt_id"]}'
+            Path(f'{stem}.prompt.txt').write_text(prompt)
         try:
-            completed = subprocess.run(command, cwd=binding['cwd'], check=False)
+            with Path(f'{stem}.stdout').open('xb') as out, Path(f'{stem}.stderr').open('xb') as err:
+                completed = subprocess.run(command, cwd=binding['cwd'], stdout=out, stderr=err, check=False)
         except OSError as exc:
-            attempt.update(status='LAUNCH_FAILED', finished_at=now(), error=str(exc))
+            attempt.update(status='LAUNCH_FAILED', finished_at=now(), error=str(exc), logs=log_pins(stem))
             persist_attempt(batch, task, expected_hash, attempt)
             raise
         attempt.update(status='RETURNED', finished_at=now(), command_exit=completed.returncode,
+                       logs=log_pins(stem),
                        scope='command execution only; not research acceptance or publication')
         persist_attempt(batch, task, expected_hash, attempt)
         return attempt
+
+
+def prompt_text(binding: dict, expected_hash: str, brief: str, *, resume: bool) -> str:
+    """The exact text a runner receives: task identity header, then the pinned brief."""
+    header = (f'Task binding: {expected_hash}\nBatch: {binding["batch"]}\nTask: {binding["task"]}\n'
+              f'Role: {binding["role"]}\nManifest: {binding["manifest"]["path"]}\n'
+              f'Manifest SHA256: {binding["manifest"]["sha256"]}\n'
+              f'Owned output: {binding["output"]}\nAuthorized endpoint: {binding["endpoint"]}\n'
+              f'Pinned inputs: {", ".join(binding["inputs"])}\nMode: {"resume" if resume else "start"}\n'
+              + (f'Read and apply the frozen role skill: {binding["skill"]}\n' if 'skill' in binding else '') +
+              'Read the frozen protocols, schema and gate code in the pinned inputs; they govern.\n' +
+              'Keep this task identity on resumption. Do not infer scope from tab names or neighboring reports.\n\n')
+    return header + brief
+
+
+def log_pins(stem: Path) -> dict:
+    files = {kind: Path(f'{stem}{suffix}') for kind, suffix in
+             (('prompt', '.prompt.txt'), ('stdout', '.stdout'), ('stderr', '.stderr'))}
+    return {kind: {'path': str(file), 'sha256': digest(file)} for kind, file in files.items() if file.exists()}
 
 
 def persist_attempt(batch: str, task: str, expected_hash: str, attempt: dict) -> None:
