@@ -9,11 +9,23 @@ import subprocess
 import sys
 import unittest
 
-from build_delta import SourceRecord, class_id, load_records, load_prior_deltas, normalize, reconcile, timestamp
+from build_delta import (SourceRecord, class_id, load_occupancy, load_records, load_prior_deltas, normalize,
+                         reconcile, timestamp)
 from fetch import API_VERSION, Capturer, CaptureError, stream_url
 
 
 class IntakeChecks(unittest.TestCase):
+    def test_occupancy_reads_claims_list_output_and_saved_mappings(self):
+        holder = {"class_id": "alias-a", "claimed": True, "owner": "leader", "claim_id": "c1"}
+        with tempfile.TemporaryDirectory() as tmp:
+            listing = Path(tmp) / "claims.jsonl"
+            listing.write_text(json.dumps({"class_id": "alias-a", "claimed": True, "holders": [holder]}) + "\n"
+                               + json.dumps({"class_id": "alias-b", "claimed": False, "holders": []}) + "\n")
+            self.assertEqual(load_occupancy(listing), {"alias-a": [holder]})
+            saved = Path(tmp) / "occupancy.json"
+            saved.write_text(json.dumps({"alias-a": [holder]}))
+            self.assertEqual(load_occupancy(saved), {"alias-a": [holder]})
+
     def test_increment_keeps_identity_and_uncertainty(self):
         cve = "CVE-2026-10000"
         ghsa = "GHSA-2345-6789-CFGH"

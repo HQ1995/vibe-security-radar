@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Capture six frozen advisory streams. No database, LLM, or watermark writes.
 
-Use cve-analyzer/.venv/bin/python. GITHUB_TOKEN and NVD_API_KEY are optional,
+Use the repository .venv (scripts/requirements.txt). GITHUB_TOKEN and NVD_API_KEY are optional,
 read once, and never persisted. No automatic retries or redirect following.
 Window/receipt dates use explicit UTC and exact microsecond precision; extra
 fractional digits are allowed only as zero padding. Source dates are separate.

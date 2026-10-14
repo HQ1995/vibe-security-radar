@@ -12,7 +12,7 @@ from __future__ import annotations
 
 import pytest
 
-from cve_analyzer.git_url import (
+from git_url import (
     is_github,
     normalize_repo_identity,
     parse_commit_url,

@@ -1,4 +1,4 @@
-from cve_analyzer.repository_policy import (
+from repository_policy import (
     RepositoryCostClass,
     RepositoryRole,
     repository_cost_class,

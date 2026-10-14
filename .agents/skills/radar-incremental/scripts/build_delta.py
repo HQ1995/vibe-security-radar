@@ -9,15 +9,11 @@ import hashlib
 import json
 from pathlib import Path
 import re
-import sys
 from urllib.parse import urlsplit
 
 from fetch import Capturer, STREAMS, timestamp as window_timestamp
-
-ROOT = Path(__file__).resolve().parents[4]
-sys.path.insert(0, str(ROOT / "cve-analyzer/src"))
-from cve_analyzer.git_url import parse_repo_url
-from cve_analyzer.repository_policy import is_metadata_repository
+from git_url import parse_repo_url
+from repository_policy import is_metadata_repository
 
 PUBLIC_ID = re.compile(r"(?:CVE-\d{4}-\d{4,}|GHSA-[23456789cfghjmpqrvwx]{4}(?:-[23456789cfghjmpqrvwx]{4}){2})$", re.I)
 
@@ -424,6 +420,19 @@ def load_prior_deltas(paths: list[Path], window: dict) -> list[dict]:
     return rows
 
 
+def load_occupancy(path: Path) -> dict:
+    """Current holders by class ID, read from `claims.py list` output or a saved mapping."""
+    if path.suffix != ".jsonl":
+        return json.loads(path.read_text())
+    occupied = {}
+    for line in path.read_text().splitlines():
+        if line.strip():
+            entry = json.loads(line)
+            if entry["claimed"]:
+                occupied[entry["class_id"]] = entry["holders"]
+    return occupied
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--capture", type=Path, required=True)
@@ -431,7 +440,8 @@ def main():
     parser.add_argument("--universe", type=Path, required=True)
     parser.add_argument("--prior-delta", type=Path, action="append", default=[],
                         help="Earlier delta.jsonl files, oldest first, including off-ledger dispositions")
-    parser.add_argument("--occupancy", type=Path, required=True, help="JSON mapping class_id to current claim entries")
+    parser.add_argument("--occupancy", type=Path, required=True,
+                        help="`claims.py list` JSONL, or a JSON mapping of class_id to current claim entries")
     parser.add_argument("--out", type=Path, required=True)
     args = parser.parse_args()
     inputs = [args.ledger, args.universe, args.occupancy, args.capture / "coverage.json",
@@ -441,7 +451,7 @@ def main():
     if coverage.get("status") != "COMPLETE":
         raise SystemExit("Required source capture is incomplete; retain its coverage gaps before classification")
     rows = reconcile(load_records(args.capture, coverage), read_jsonl(args.ledger), read_jsonl(args.universe),
-                     json.loads(args.occupancy.read_text()), load_prior_deltas(args.prior_delta, coverage["window"]))
+                     load_occupancy(args.occupancy), load_prior_deltas(args.prior_delta, coverage["window"]))
     window = coverage["window"]
     start, end = timestamp(window["start"]), timestamp(window["end"])
     for row in rows:
