@@ -37,3 +37,12 @@ def test_export_matches_neon_gate(tmp_path, monkeypatch) -> None:
 
     monkeypatch.setattr(publish_tp_ledger, "LEDGER", tmp_path / "absent.jsonl")
     assert publish_tp_ledger.export_matches_neon() is False
+
+
+def test_only_canonical_ai_rows_are_published() -> None:
+    row = {"class_id": "alias-a", "status": "AI_ROOT_CAUSE"}
+    assert publish_tp_ledger.publishable(row, set())
+    assert not publish_tp_ledger.publishable({**row, "status": "NOT_AI"}, set())
+    assert not publish_tp_ledger.publishable({**row, "site_publication": {"publish": False}}, set())
+    assert not publish_tp_ledger.publishable({**row, "duplicate_of_class_id": "alias-b"}, set())
+    assert not publish_tp_ledger.publishable(row, {"alias-a"})

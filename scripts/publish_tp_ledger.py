@@ -321,6 +321,15 @@ def contribution_class(row: dict, rec: dict | None) -> str:
     return "AI_DIRECT_ROOT"
 
 
+def publishable(row: dict, drop_class_ids: set[str]) -> bool:
+    return (
+        row.get("status") in TP_STATUSES
+        and (row.get("site_publication") or {}).get("publish") is not False
+        and not row.get("duplicate_of_class_id")
+        and str(row.get("class_id") or "").lower() not in drop_class_ids
+    )
+
+
 def research_records(row: dict) -> list[dict]:
     if "causal_research" in row:
         record = row["causal_research"]
@@ -1716,11 +1725,7 @@ def main(argv: list[str] | None = None) -> None:
     canonical_research_classes: set[str] = set()
     cases: list[dict] = []
     for row in rows:
-        if row.get("status") not in TP_STATUSES:
-            continue
-        if (row.get("site_publication") or {}).get("publish") is False:
-            continue
-        if str(row.get("class_id") or "").lower() in drop_class_ids:
+        if not publishable(row, drop_class_ids):
             continue
         if "code_evidence" in row:
             canonical_evidence_classes.add(str(row.get("class_id") or "").lower())

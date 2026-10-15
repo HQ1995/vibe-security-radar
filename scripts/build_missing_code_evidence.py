@@ -518,7 +518,7 @@ def main() -> None:
         else:
             print(f"{index}/{len(missing)} SKIP {case['case_id']}")
     built = {key: scrub_evidence(value) or value for key, value in built.items()}
-    OUT.write_text(json.dumps(built, indent=2, ensure_ascii=False) + "\n")
+    OUT.write_text(json.dumps(built, indent=1, ensure_ascii=True) + "\n")
     print(json.dumps({"wrote": len(built), "new": ok, "out": str(OUT)}))
 
 
