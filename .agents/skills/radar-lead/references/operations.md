@@ -33,14 +33,16 @@ the leader's shell (either host), one per role:
 ```sh
 P=research/<run>/<NNN>/scratch/<role>; mkdir -p $P
 A=$(python3 scripts/radar_case.py prompt --run <run> --case <NNN> --role <role> --model <model> --host codex-magpie)
-codex exec -c model_provider=magpie -c features.memories=false -c model_auto_compact_token_limit=500000 -m <model> --skip-git-repo-check \
-  --output-last-message $P/reply.md "$A" > $P/session.log 2>&1
+printf '%s' "$A" | codex exec -c model_provider=magpie -c features.memories=false \
+  -c model_auto_compact_token_limit=500000 -m <model> --skip-git-repo-check \
+  --output-last-message $P/reply.md - > $P/session.log 2>&1
 ```
 
 Start all auditors of a case together and wait for every one before `seal`; `reply.md` holds
 each summary. `features.memories=false` keeps Codex's cross-session memory from carrying one session's findings
 into another. The preferred models hold 1M tokens; compacting at 500k instead of a lower
-personal default keeps a long audit from losing and re-reading its references. `curl -s http://127.0.0.1:3425/v1/models` shows what the gateway serves.
+personal default keeps a long audit from losing and re-reading its references. The prompt goes in on stdin
+so no session can read another's assignment from the process list. `curl -s http://127.0.0.1:3425/v1/models` shows what the gateway serves.
 
 Each session starts with no conversation history. That, the read limits in its assignment
 and sealing keep the lanes independent; isolation is by instruction, not by sandbox, so
