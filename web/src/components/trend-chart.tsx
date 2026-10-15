@@ -2,11 +2,13 @@ import { formatMonthShort } from "@/lib/month-utils";
 import type { ResearchMonth } from "@/lib/research-data";
 
 const WIDTH = 720;
-const HEIGHT = 260;
-const LEFT = 36;
-const RIGHT = 30;
-const TOP = 24;
-const BOTTOM = 42;
+const HEIGHT = 240;
+const LEFT = 40;
+const RIGHT = 16;
+const TOP = 30;
+const BOTTOM = 44;
+const BAR_MAX = 24;
+const RADIUS = 4;
 
 export interface TrendChartProps {
   readonly data: readonly ResearchMonth[];
@@ -16,9 +18,52 @@ export interface TrendChartProps {
   readonly sourceCutoff: string;
 }
 
-function shortMonth(month: string): string {
-  const year = month.slice(2, 4);
-  return `${formatMonthShort(month).slice(0, 3)} '${year}`;
+interface AxisLabel {
+  readonly month: string;
+  readonly year: string | null;
+}
+
+function niceTicks(max: number): number[] {
+  const raw = Math.max(1, max) / 4;
+  const power = 10 ** Math.floor(Math.log10(raw));
+  const step = Math.max(
+    1,
+    [1, 2, 5, 10].map((m) => m * power).find((value) => value >= raw) ?? raw,
+  );
+  const top = Math.max(step, Math.ceil(max / step) * step);
+  const ticks: number[] = [];
+  for (let tick = 0; tick <= top; tick += step) ticks.push(tick);
+  return ticks;
+}
+
+function axisLabels(data: readonly ResearchMonth[]): (AxisLabel | null)[] {
+  const interval = data.length <= 24 ? 3 : data.length <= 60 ? 6 : 12;
+  const starts = data.map(
+    (entry) => (Number(entry.month.slice(5, 7)) - 1) % interval === 0,
+  );
+  const firstStart = starts.indexOf(true);
+  const show = data.map(
+    (_, index) =>
+      starts[index] ||
+      (index === 0 && (firstStart === -1 || firstStart >= 2)),
+  );
+  let lastYear: string | null = null;
+  return data.map((entry, index) => {
+    if (!show[index]) return null;
+    const year = entry.month.slice(0, 4);
+    const label = {
+      month: formatMonthShort(entry.month).slice(0, 3),
+      year: year === lastYear ? null : year,
+    };
+    lastYear = year;
+    return label;
+  });
+}
+
+function barPath(x: number, y: number, width: number, height: number): string {
+  const r = Math.min(RADIUS, height, width / 2);
+  const bottom = y + height;
+  return `M${x},${bottom} V${y + r} Q${x},${y} ${x + r},${y} H${x + width - r} Q${x + width},${y} ${x + width},${y + r} V${bottom} Z`;
 }
 
 export function TrendChart({
@@ -31,21 +76,17 @@ export function TrendChart({
   const visible = data;
   const plotWidth = WIDTH - LEFT - RIGHT;
   const plotHeight = HEIGHT - TOP - BOTTOM;
+  const baseline = TOP + plotHeight;
   const maxCount = Math.max(1, ...visible.map((entry) => entry.count));
-  const points = visible.map((entry, index) => ({
-    ...entry,
-    x: LEFT + (index * plotWidth) / Math.max(1, visible.length - 1),
-    y: TOP + plotHeight - (entry.count / maxCount) * plotHeight,
-  }));
-  const line = points
-    .map((point, index) => `${index === 0 ? "M" : "L"}${point.x},${point.y}`)
-    .join(" ");
-  const area = points.length
-    ? `${line} L${points.at(-1)!.x},${TOP + plotHeight} L${points[0].x},${TOP + plotHeight} Z`
-    : "";
-  const yTicks = [...new Set([0, Math.ceil(maxCount / 2), maxCount])].sort(
-    (a, b) => a - b,
+  const ticks = niceTicks(maxCount);
+  const scaleMax = ticks.at(-1)!;
+  const band = plotWidth / Math.max(1, visible.length);
+  const barWidth = Math.min(BAR_MAX, band * 0.62);
+  const peakIndex = visible.reduce(
+    (best, entry, index) => (entry.count > visible[best].count ? index : best),
+    0,
   );
+  const labels = axisLabels(visible);
   const cutoffMonth = sourceCutoff.slice(0, 7);
   const [cutoffYear, cutoffMonthNumber, cutoffDay] = sourceCutoff
     .slice(0, 10)
@@ -55,6 +96,23 @@ export function TrendChart({
     visible.some((entry) => entry.month === cutoffMonth) &&
     cutoffDay <
     new Date(Date.UTC(cutoffYear, cutoffMonthNumber, 0)).getUTCDate();
+  const columns = visible.map((entry, index) => {
+    const center = LEFT + band * (index + 0.5);
+    const height =
+      entry.count > 0 ? Math.max(2, (entry.count / scaleMax) * plotHeight) : 0;
+    return {
+      ...entry,
+      index,
+      center,
+      top: baseline - height,
+      height,
+      partial: cutoffIsPartial && entry.month === cutoffMonth,
+      label: labels[index],
+    };
+  });
+  const summary = columns
+    .map((column) => `${formatMonthShort(column.month)}: ${column.count} cases`)
+    .join(", ");
 
   return (
     <section
@@ -103,66 +161,59 @@ export function TrendChart({
         </div>
       </dl>
 
-      {points.length ? (
+      {columns.length ? (
         <div className="mt-4">
-          <div
-            className="sm:hidden"
-            role="img"
-            aria-label={points
-              .map(
-                (point) =>
-                  `${formatMonthShort(point.month)}: ${point.count} cases`,
-              )
-              .join(", ")}
-          >
-            <div className="flex h-28 items-end gap-1 border-b border-border px-1">
-              {points.map((point) => (
+          <div className="sm:hidden" role="img" aria-label={summary}>
+            <div className="flex h-28 items-end gap-0.5 border-b border-border px-1">
+              {columns.map((column) => (
                 <div
-                  key={point.month}
+                  key={column.month}
                   className="flex h-full min-w-0 flex-1 flex-col items-center justify-end"
+                  title={`${formatMonthShort(column.month)}: ${column.count} cases`}
                 >
-                  <span className="mb-1 font-mono text-[8px] tabular-nums">
-                    {point.count}
-                  </span>
-                  <span
-                    className="w-full bg-primary"
-                    style={{
-                      height: `${Math.max(2, (point.count / maxCount) * 78)}px`,
-                    }}
-                  />
+                  {column.index === peakIndex ? (
+                    <span className="mb-1 font-mono text-[9px] font-semibold tabular-nums">
+                      {column.count}
+                    </span>
+                  ) : null}
+                  {column.count > 0 ? (
+                    <span
+                      className={`w-full max-w-6 rounded-t-[3px] bg-primary${column.partial ? " opacity-45" : ""}`}
+                      style={{
+                        height: `${Math.max(2, (column.count / scaleMax) * 88)}px`,
+                      }}
+                    />
+                  ) : null}
                 </div>
               ))}
             </div>
-            <div className="mt-2 grid grid-cols-6 font-mono text-[8px] text-muted-foreground">
-              {points
-                .filter(
-                  (_, index) =>
-                    index % Math.max(1, Math.ceil(points.length / 6)) === 0,
-                )
-                .map((point) => (
-                  <span key={point.month}>{shortMonth(point.month)}</span>
-                ))}
+            <div className="flex gap-0.5 px-1 pt-1.5 font-mono text-[9px] leading-tight text-muted-foreground">
+              {columns.map((column) => (
+                <div
+                  key={column.month}
+                  className="flex min-w-0 flex-1 flex-col items-center overflow-visible whitespace-nowrap"
+                >
+                  {column.label ? (
+                    <>
+                      <span>
+                        {column.label.month}
+                        {column.partial ? "*" : ""}
+                      </span>
+                      {column.label.year ? <span>{column.label.year}</span> : null}
+                    </>
+                  ) : null}
+                </div>
+              ))}
             </div>
           </div>
           <svg
             viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
             className="hidden h-auto w-full sm:block"
             role="img"
-            aria-label={points
-              .map(
-                (point) =>
-                  `${formatMonthShort(point.month)}: ${point.count} cases`,
-              )
-              .join(", ")}
+            aria-label={summary}
           >
-            <defs>
-              <linearGradient id="trend-area" x1="0" x2="0" y1="0" y2="1">
-                <stop offset="0%" stopColor="var(--primary)" stopOpacity="0.2" />
-                <stop offset="100%" stopColor="var(--primary)" stopOpacity="0" />
-              </linearGradient>
-            </defs>
-            {yTicks.map((tick) => {
-              const y = TOP + plotHeight - (tick / maxCount) * plotHeight;
+            {ticks.map((tick) => {
+              const y = baseline - (tick / scaleMax) * plotHeight;
               return (
                 <g key={tick}>
                   <line
@@ -177,71 +228,124 @@ export function TrendChart({
                     x={LEFT - 10}
                     y={y + 4}
                     textAnchor="end"
-                    className="fill-muted-foreground font-mono text-[11px]"
+                    className="fill-muted-foreground font-mono text-[11px] tabular-nums"
                   >
                     {tick}
                   </text>
                 </g>
               );
             })}
-            <path d={area} fill="url(#trend-area)" />
-            <path
-              d={line}
-              fill="none"
-              stroke="var(--primary)"
-              strokeWidth="3"
-              strokeLinejoin="round"
-              strokeLinecap="round"
+            {columns.map((column) => {
+              const hoverX = Math.min(
+                WIDTH - RIGHT - 46,
+                Math.max(LEFT + 46, column.center),
+              );
+              const valueY = Math.max(14, column.top - 8);
+              return (
+                <g key={column.month} className="group">
+                  <title>{`${formatMonthShort(column.month)}: ${column.count} cases`}</title>
+                  <rect
+                    x={column.center - band / 2}
+                    y={TOP - 20}
+                    width={band}
+                    height={plotHeight + 20}
+                    fill="transparent"
+                  />
+                  {column.height ? (
+                    <path
+                      d={barPath(
+                        column.center - barWidth / 2,
+                        column.top,
+                        barWidth,
+                        column.height,
+                      )}
+                      fill="var(--primary)"
+                      opacity={column.partial ? 0.45 : 1}
+                      className="transition-opacity group-hover:opacity-70"
+                    />
+                  ) : null}
+                  {column.index === peakIndex ? (
+                    <text
+                      x={column.center}
+                      y={valueY}
+                      textAnchor="middle"
+                      className="fill-foreground font-mono text-[11px] font-semibold tabular-nums transition-opacity group-hover:opacity-0"
+                    >
+                      {column.count}
+                    </text>
+                  ) : null}
+                  <text
+                    x={hoverX}
+                    y={valueY}
+                    textAnchor="middle"
+                    className="pointer-events-none fill-foreground font-mono text-[11px] opacity-0 transition-opacity group-hover:opacity-100"
+                  >
+                    <tspan className="font-semibold tabular-nums">{column.count}</tspan>
+                    <tspan className="fill-muted-foreground">
+                      {` · ${formatMonthShort(column.month)}${column.partial ? "*" : ""}`}
+                    </tspan>
+                  </text>
+                  {column.label ? (
+                    <text
+                      x={column.center}
+                      y={HEIGHT - 24}
+                      textAnchor="middle"
+                      className="fill-muted-foreground font-mono text-[10px]"
+                    >
+                      {column.label.month}
+                      {column.partial ? "*" : ""}
+                    </text>
+                  ) : null}
+                  {column.label?.year ? (
+                    <text
+                      x={column.center}
+                      y={HEIGHT - 10}
+                      textAnchor="middle"
+                      className="fill-muted-foreground font-mono text-[10px]"
+                    >
+                      {column.label.year}
+                    </text>
+                  ) : null}
+                </g>
+              );
+            })}
+            <line
+              x1={LEFT}
+              x2={WIDTH - RIGHT}
+              y1={baseline}
+              y2={baseline}
+              stroke="var(--muted-foreground)"
+              strokeOpacity="0.5"
+              strokeWidth="1"
             />
-            {points.map((point) => (
-              <g key={point.month}>
-                <circle
-                  cx={point.x}
-                  cy={point.y}
-                  r="4.5"
-                  fill="var(--card)"
-                  stroke="var(--primary)"
-                  strokeWidth="3"
-                >
-                  <title>{`${formatMonthShort(point.month)}: ${point.count} cases`}</title>
-                </circle>
-                <text
-                  x={point.x}
-                  y={Math.max(14, point.y - 12)}
-                  textAnchor="middle"
-                  className="fill-foreground font-mono text-[11px] font-semibold"
-                >
-                  {point.count}
-                </text>
-                <text
-                  x={point.x}
-                  y={HEIGHT - 18}
-                  textAnchor="middle"
-                  className="fill-muted-foreground font-mono text-[10px]"
-                >
-                  {shortMonth(point.month)}
-                  {cutoffIsPartial && point.month === cutoffMonth ? "*" : ""}
-                </text>
-              </g>
-            ))}
           </svg>
-          <table className="sr-only">
-            <caption>Canonical advisory disclosures by month</caption>
-            <thead>
-              <tr>
-                <th>Month</th>
-                <th>Findings</th>
-              </tr>
-            </thead>
-            <tbody>
-              {points.map((point) => (
-                <tr key={point.month}>
-                  <td>{formatMonthShort(point.month)}</td>
-                  <td>{point.count}</td>
+          <details className="mt-3">
+            <summary className="cursor-pointer font-mono text-[10px] text-muted-foreground">
+              Monthly counts
+            </summary>
+            <table className="mt-2 w-full max-w-xs font-mono text-[11px]">
+              <caption className="sr-only">
+                Canonical advisory disclosures by month
+              </caption>
+              <thead>
+                <tr className="text-muted-foreground">
+                  <th className="py-0.5 text-left font-normal">Month</th>
+                  <th className="py-0.5 text-right font-normal">Findings</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {columns.map((column) => (
+                  <tr key={column.month} className="border-t border-border">
+                    <td className="py-0.5">
+                      {formatMonthShort(column.month)}
+                      {column.partial ? "*" : ""}
+                    </td>
+                    <td className="py-0.5 text-right tabular-nums">{column.count}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </details>
         </div>
       ) : (
         <p className="py-10 text-sm text-muted-foreground">
@@ -251,7 +355,7 @@ export function TrendChart({
 
       {cutoffIsPartial ? (
         <p className="mt-2 text-[11px] leading-5 text-muted-foreground">
-          * {formatMonthShort(cutoffMonth)} is partial.
+          * {formatMonthShort(cutoffMonth)} is partial (lighter bar).
         </p>
       ) : null}
     </section>
