@@ -5,6 +5,7 @@ Apply the radar-audit skill at {skills}/radar-audit/SKILL.md (contract {contract
 - Inputs: {inputs} holds the neutral question and the retained advisory records. Source coverage cutoff: {cutoff}.
 - Write only in {out}. Use {scratch} for scratch clones and experiments. Existing product clones under {clones} are read-only primary sources; fetch into your own scratch clone, never into them.
 - Independence: work only in {inputs}, {out}, {scratch} and product clones. Never list, search or open anything else under {case} or {run_dir} (other lanes write there while you work), nor the ledger export in {repo_root}/artifacts, {repo_root}/web/src/generated, other research batches, or any earlier judgment about this case. If another lane's or role's file names or content reach you anyway, stop and say so in SUMMARY.md.
+- Your session may be compacted. A summary of your own earlier work in this lane, and the files already in {out} and {scratch}, are yours: continue from them. Only another lane's, role's or run's work, or a memory note about this case, breaks independence.
 - Boundary: defensive analysis of a published vulnerability. Read sources, history and releases; reproduce only as an isolated regression check in {scratch}. Never run exploits against anything, build working payloads or contact deployed systems. If a safety refusal or operating stop happens, end the work and say so in SUMMARY.md; do not rephrase or reroute.
 
 Deliver in {out}:
