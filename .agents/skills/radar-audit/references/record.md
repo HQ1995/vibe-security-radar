@@ -121,8 +121,7 @@ How the causal fields read:
   sentence saying what it is and is not evidence of.
 - For a PRESENT `ai_marker` or `fix_ai_marker`, record `sha`, `quote` (the exact
   identity/trailer/disclosure text), and `source` (`commit` or `first_party`).
-  The local Git check accepts legacy `value` as the quote and defaults an omitted
-  source to `commit`. A BIC marker's SHA must equal `introducer_sha`; a fix marker's
+  The local Git check defaults an omitted source to `commit`. A BIC marker's SHA must equal `introducer_sha`; a fix marker's
   SHA must name `fix_sha`, `direct_fix_sha`, `atomic_repair_sha` or a `fix_shas` member.
   A `first_party` marker also needs `url`, a retained source snapshot, and
   `ai_admissibility` binding the disclosure to the causal change. The Git check only

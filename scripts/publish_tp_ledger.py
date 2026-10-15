@@ -357,48 +357,14 @@ def published_cases(rows: list[dict], overlays: "Overlays") -> tuple[list[dict],
 
 
 def research_records(row: dict) -> list[dict]:
-    if "causal_research" in row:
-        record = row["causal_research"]
-        if not isinstance(record, dict) or not record:
-            raise ValueError(f"{row.get('class_id')}: causal_research must be a nonempty object")
-        if record.get("verdict") != row.get("status"):
-            raise ValueError(f"{row.get('class_id')}: causal_research verdict must match status")
-        return [record]
-    records: list[dict] = []
-    for key in (
-        "round6_research",
-        "round5_research",
-        "round4_research",
-        "round3_research",
-    ):
-        value = row.get(key)
-        if isinstance(value, dict) and value:
-            records.append(value)
-    for key, value in row.items():
-        if key.startswith("round") and key.endswith("_research") and key not in (
-            "round3_research",
-            "round4_research",
-            "round5_research",
-            "round6_research",
-        ):
-            if isinstance(value, dict) and value:
-                records.append(value)
-    for key in ("squash_audit", "partial_wave", "blocked535", "blocked106", "blocked_deepwave_research", "blocked_deepwave_refreshed"):
-        value = row.get(key)
-        if isinstance(value, list):
-            records.extend(item for item in value if isinstance(item, dict))
-        elif isinstance(value, dict) and value:
-            records.append(value)
-    status = row.get("status")
-    ranked = sorted(
-        records,
-        key=lambda item: (
-            0 if item.get("verdict") == status else 1,
-            0 if item.get("introducer_sha") else 1,
-            0 if item.get("case_id") else 1,
-        ),
-    )
-    return ranked
+    if "causal_research" not in row:
+        return []
+    record = row["causal_research"]
+    if not isinstance(record, dict) or not record:
+        raise ValueError(f"{row.get('class_id')}: causal_research must be a nonempty object")
+    if record.get("verdict") != row.get("status"):
+        raise ValueError(f"{row.get('class_id')}: causal_research verdict must match status")
+    return [record]
 
 
 def ids_from_text(text: str) -> tuple[list[str], list[str]]:

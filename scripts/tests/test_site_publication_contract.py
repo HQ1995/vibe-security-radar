@@ -481,10 +481,9 @@ def test_explicit_scope_and_chain_conflict_still_fails_publication() -> None:
     )
 
 
-def test_publisher_keeps_legacy_cached_ir_fallback() -> None:
+def test_publisher_keeps_cached_ir_fallback() -> None:
     row = _ledger_row()
-    row["round6_research"] = row.pop("causal_research")
-    row["round6_research"]["flaw_origin"] = "An incomplete fix left the bypass reachable."
+    row["causal_research"]["flaw_origin"] = "An incomplete fix left the bypass reachable."
     cached = {**_case(), "repository": "acme/app"}
     cached["ir_chain"] = _ir_chain()
 
@@ -1052,37 +1051,21 @@ def test_large_allowlisted_blob_recovers_an_anchor_and_patch_witness() -> None:
     ) == ["src/tools/BashTool/bashPermissions.ts"]
 
 
-def test_ledger_evidence_uses_publisher_priority_and_list_records() -> None:
-    preferred = {
+def test_ledger_evidence_reads_only_causal_research_and_its_override() -> None:
+    accepted = {
         "case_id": "GHSA-1111-2222-3333",
         "advisory_ids": ["GHSA-1111-2222-3333"],
         "repo": "acme/app",
         "verdict": "AI_ROOT_CAUSE",
         "introducer_sha": "a" * 40,
         "direct_fix_sha": "b" * 40,
-        "bug_semantics": "The preferred list record identifies the vulnerable sink.",
+        "bug_semantics": "The accepted record identifies the vulnerable sink.",
     }
-    case = build_missing_code_evidence.ledger_case(
-        {
-            "class_id": "alias-example",
-            "repo": "acme/app",
-            "status": "AI_ROOT_CAUSE",
-            "round11_research": {
-                "case_id": "GHSA-9999-9999-9999",
-                "verdict": "NOT_AI",
-                "introducer_sha": "c" * 40,
-                "fix_sha": "d" * 40,
-            },
-            "partial_wave": [preferred],
-            "squash_audit": [
-                {
-                    "verdict": "AI_ROOT_CAUSE",
-                    "case_id": "GHSA-8888-8888-8888",
-                }
-            ],
-        }
-    )
+    older = {"partial_wave": [{"verdict": "AI_ROOT_CAUSE", "case_id": "GHSA-8888-8888-8888", "introducer_sha": "c" * 40}]}
+    assert publish_tp_ledger.research_records({"class_id": "alias-example", "status": "AI_ROOT_CAUSE", **older}) == []
 
+    row = {"class_id": "alias-example", "repo": "acme/app", "status": "AI_ROOT_CAUSE", "causal_research": accepted, **older}
+    case = build_missing_code_evidence.ledger_case(row)
     assert case is not None
     assert case["case_id"] == "GHSA-1111-2222-3333"
     assert case["candidate_set"] == ["a" * 40]
@@ -1090,12 +1073,7 @@ def test_ledger_evidence_uses_publisher_priority_and_list_records() -> None:
     assert case["repository"] == "acme/app"
 
     overridden = build_missing_code_evidence.ledger_case(
-        {
-            "class_id": "alias-example",
-            "repo": "acme/app",
-            "status": "AI_ROOT_CAUSE",
-            "partial_wave": [preferred],
-        },
+        row,
         publish_tp_ledger.Overlays(overrides={"cases": {"alias-example": {"case_id": "CVE-2026-12345"}}}),
     )
     assert overridden is not None

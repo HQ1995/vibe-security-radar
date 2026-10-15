@@ -13,7 +13,6 @@ EXTERNAL_VCS = re.compile(
     re.I | re.S,
 )
 TERMINAL = {"NOT_AI", "AI_ROOT_CAUSE", "AI_CODE_FLAWED", "BLOCKED", "FALSE_POSITIVE"}
-ITEM_ARRAYS = ("squash_audit", "partial_wave", "blocked535")
 
 
 def status_of_verdict(verdict):
@@ -21,23 +20,8 @@ def status_of_verdict(verdict):
 
 
 def payloads(row: dict) -> list:
-    if "causal_research" in row:
-        accepted = row["causal_research"]
-        return [accepted] if isinstance(accepted, dict) and accepted else []
-    recs = [
-        v
-        for k, v in row.items()
-        if isinstance(v, dict) and (k.endswith("_research") or k == "causal_research")
-    ]
-    for k in ITEM_ARRAYS:
-        val = row.get(k)
-        if isinstance(val, dict):
-            recs.append(val)
-        else:
-            for item in val or []:
-                if isinstance(item, dict):
-                    recs.append(item)
-    return recs
+    accepted = row.get("causal_research")
+    return [accepted] if isinstance(accepted, dict) and accepted else []
 
 def external_vcs_bic(payload: dict) -> bool:
     provenance = " ".join(
