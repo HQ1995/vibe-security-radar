@@ -15,8 +15,8 @@ from pathlib import Path
 from audit_envelope import status_of_verdict, violations
 
 ROOT = Path(__file__).resolve().parents[1]
-DEFAULT_LEDGER = ROOT / "artifacts/funnel-account-20260817.jsonl"
-DEFAULT_HISTORY = ROOT / "artifacts/ledger-history"
+DEFAULT_LEDGER = ROOT / "artifacts/ledger.jsonl"
+DEFAULT_HISTORY = ROOT / ".ai-slop/ledger-history"
 EXPORT_MARKER_NAME = ".funnel-export-marker.json"
 SCHEMA = ROOT / "scripts/ledger_schema.sql"
 ENV_FILE = ROOT / ".env.local"

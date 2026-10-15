@@ -28,7 +28,7 @@ from site_preflight import (
 )
 
 ROOT = Path(__file__).resolve().parents[1]
-LEDGER = ROOT / "artifacts/funnel-account-20260817.jsonl"
+LEDGER = ROOT / "artifacts/ledger.jsonl"
 OUT = ROOT / "web/src/generated/research-data.json"
 OVERRIDES = ROOT / "scripts/tp_publication_overrides.json"
 ADVISORY_DATES = ROOT / "scripts/first-party-advisory-dates.json"
@@ -1809,7 +1809,7 @@ def main(argv: list[str] | None = None) -> None:
             "source_cutoff": LEDGER_WINDOW_END,
             "generated_at": generated_at,
             "ledger": (
-                "artifacts/funnel-account-20260817.jsonl"
+                "artifacts/ledger.jsonl"
                 if from_export
                 else "neon:ledger_rows"
             ),

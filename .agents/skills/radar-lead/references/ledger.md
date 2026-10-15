@@ -1,6 +1,6 @@
 # Ledger and published data
 
-Neon is canonical; `artifacts/funnel-account-*.jsonl` is its deterministic recovery
+Neon is canonical; `artifacts/ledger.jsonl` is its deterministic recovery
 export, not a publish input. The [publisher](../../../../scripts/publish_tp_ledger.py)
 reads case rows from Neon `ledger_rows` (`--from-export` reads the jsonl
 backup). Reader-facing values that have no column in `ledger_rows` (curated

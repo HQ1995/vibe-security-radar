@@ -25,7 +25,7 @@ directory `R=.ai-slop/state/incremental-<END>` and write `$R/window.json`
 
 ```sh
 python3 scripts/ledger_store.py check          # must report jsonl_byte_identical: true
-cp artifacts/funnel-account-20260817.jsonl $R/baseline-ledger.jsonl
+cp artifacts/ledger.jsonl $R/baseline-ledger.jsonl
 python3 scripts/claims.py list > $R/occupancy.jsonl
 ```
 

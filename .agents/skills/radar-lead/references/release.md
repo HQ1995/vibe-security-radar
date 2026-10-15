@@ -18,7 +18,7 @@ the same operation, with their different outcomes recorded in the case state.
 | `artifacts/claims/claims.jsonl` | Whether a case is occupied and by whom | Leader's `claim`, then `release` with the same receipt ID |
 | Frozen reports and adjudication decisions | What was researched and accepted | Auditors' owned reports, then one adjudicator's synthesis |
 | Neon `ledger_rows` | The canonical ledger; the database and the ledger are the same source | Leader's `finalize`, with assessments and revision history in Neon |
-| `artifacts/funnel-account-*.jsonl` | Generated recovery export of that ledger | Automatic export after `finalize`, or `export` |
+| `artifacts/ledger.jsonl` | Generated recovery export of that ledger | Automatic export after `finalize`, or `export` |
 | `web/src/generated/research-data.json` | Website projection of ledger rows and committed editorial inputs | `research:data:sync`; a deployment makes it live |
 
 Only the leader writes canonical data. By default that same leader dispatches work,
@@ -89,7 +89,7 @@ A new or changed AI case needs committed editorial inputs before generation can 
 `python3 scripts/publish_tp_ledger.py --from-export` in a scratch worktree; it names each gap:
 a reader summary and mechanism in `scripts/publication-curation.json`, the advisory's
 first-party date in `scripts/first-party-advisory-dates.json`, and code evidence rebuilt with
-`scripts/build_missing_code_evidence.py artifacts/funnel-account-20260817.jsonl`
+`scripts/build_missing_code_evidence.py artifacts/ledger.jsonl`
 (`FORCE_IDS=<case ids>` when research changed an already published case). Write the summary
 as public prose from the accepted `causal_research`, without SHAs, paths or PR numbers.
 
@@ -101,7 +101,7 @@ npm run build
 npm run research:data:check
 ```
 
-`sync` already runs export, export-history, the envelope gate and the publisher with
+`sync` already runs export, the envelope gate and the publisher with
 `--prefer-export`. It reads Neon; the export is used only when its SHA-256 matches the
 Neon snapshot, otherwise the publisher reads Neon rows. Never hand-edit exports or the
 generated payload. Update required editorial inputs from the accepted evidence, then

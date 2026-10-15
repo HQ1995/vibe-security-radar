@@ -93,7 +93,7 @@ def violations(row: dict) -> list:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="Check every closed ledger row carries its evidence envelope")
-    parser.add_argument("ledger", nargs="?", type=Path, default=ROOT / "artifacts/funnel-account-20260817.jsonl")
+    parser.add_argument("ledger", nargs="?", type=Path, default=ROOT / "artifacts/ledger.jsonl")
     parser.add_argument("--class-id")
     args = parser.parse_args()
     class_id = args.class_id

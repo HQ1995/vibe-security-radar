@@ -2181,7 +2181,7 @@ def test_ir_chain_records_keep_atomic_qf5v_and_frvj_origin() -> None:
 
     frvj = [
         json.loads(line)
-        for line in (root / "artifacts/funnel-account-20260817.jsonl")
+        for line in (root / "artifacts/ledger.jsonl")
         .read_text(encoding="utf-8")
         .splitlines()
         if (json.loads(line).get("advisory_identity") or {}).get(

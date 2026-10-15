@@ -112,7 +112,7 @@ missing:
 2. `missing published_at`: add the advisory's first-party publication date, from the
    retained advisory record, to `scripts/first-party-advisory-dates.json`.
 3. `no code comparison`, listing or fix SHA mismatches: rebuild code evidence with
-   `python3 scripts/build_missing_code_evidence.py artifacts/funnel-account-20260817.jsonl`
+   `python3 scripts/build_missing_code_evidence.py artifacts/ledger.jsonl`
    (`FORCE_IDS="<case ids>"` for a case whose research changed).
 
 Repeat until it passes, then build, commit, and push `main` only with the user's
