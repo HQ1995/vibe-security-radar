@@ -114,8 +114,8 @@ python3 scripts/claims.py release --class-id <id> --owner <leader> --claim-id <r
 
 Claims mean occupied or free, never research progress. Keep the receipt ID; neither another
 owner nor an old receipt can release a newer acquisition. Leases expire after 24 hours but an
-expired foreign claim still blocks ledger writes: find the owner and arrange a real handoff.
-`pick` and `sweep` are disabled.
+expired foreign claim still blocks ledger writes: find the owner, confirm the work stopped, write a
+stopped-work handoff and release it with its own claim ID.
 
 ## Incremental intake
 
@@ -129,8 +129,8 @@ imported `cve_analyzer` replay with `PYTHONPATH=<worktree at f857e3f>/cve-analyz
 
 `publish_tp_ledger.py` builds `web/src/generated/research-data.json` from Neon (or a
 digest-matching export) plus the committed editorial inputs in `scripts/*.json`;
-`site_preflight.py`, `check_advisory_links.py` and `build_publication_adjudications.py
---verify-committed` gate the build. The radar-lead skill's Publish section lists the inputs a
+`site_preflight.py` (which also checks `scripts/publication_adjudications.json`) and
+`check_advisory_links.py` gate the build. The radar-lead skill's Publish section lists the inputs a
 new or changed AI case needs; [release](release.md) covers build, deploy and live verification.
 
 Offline tests: `python3 -m pytest scripts/tests` and the skill's `scripts/` tests use

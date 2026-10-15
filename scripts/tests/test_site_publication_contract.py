@@ -4,6 +4,7 @@ import hashlib
 import inspect
 import json
 import pytest
+import tempfile
 from copy import deepcopy
 from pathlib import Path
 
@@ -192,32 +193,23 @@ def test_release_fallback_admits_a_reviewed_release_gap(monkeypatch) -> None:
     assert "release_fallback:no_release_channel" in issues
 
 
-def test_release_fallback_rejects_an_unknown_reason() -> None:
-    from cohort.publication_admission import evaluate_publication_admission
+def test_release_fallback_rejects_an_unknown_reason(monkeypatch) -> None:
+    with tempfile.TemporaryDirectory() as tmp:
+        fallbacks = Path(tmp) / "release-fallbacks.json"
+        monkeypatch.setattr(publish_tp_ledger, "RELEASE_FALLBACKS", fallbacks)
+        fallbacks.write_text(json.dumps({"GHSA-AAAA-BBBB-CCCC": {"reason": "no_release_channel"}}))
+        assert publish_tp_ledger._release_fallbacks() == {"GHSA-AAAA-BBBB-CCCC": {"reason": "no_release_channel"}}
+        fallbacks.write_text(json.dumps({"GHSA-AAAA-BBBB-CCCC": {"reason": "because_i_said_so"}}))
+        with pytest.raises(ValueError, match="unknown reason"):
+            publish_tp_ledger._release_fallbacks()
 
-    row = {
-        "verdict": "CONFIRM",
-        "confidence": "HIGH",
-        "identity_gate": "PASS",
-        "ai_hunk_gate": "PASS",
-        "topology_gate": "PASS",
-        "but_for_gate": "PASS",
-        "fix_reversal_gate": "PASS",
-        "release_gate": "NARROW",
-        "uniqueness_gate": "PASS",
-        "public_ids_keep": ["GHSA-AAAA-BBBB-CCCC"],
-        "public_ids_remove": [],
-        "source_tier": "STRICT_RELEASED",
-    }
-    admitted = evaluate_publication_admission(
-        row, release_fallback="no_release_channel"
-    )
-    assert admitted["released_publication_admitted"] is True
-    assert admitted["release_fallback"] == "no_release_channel"
 
-    rejected = evaluate_publication_admission(row, release_fallback="because_i_said_so")
-    assert rejected["released_publication_admitted"] is False
-    assert any("release_fallback" in error for error in rejected["errors"])
+def test_publication_adjudications_need_a_label_and_identity() -> None:
+    good = {"schema_version": 1, "adjudications": [{"cve_id": "CVE-2026-1", "label": "NOT_AI_CAUSAL"}]}
+    assert site_preflight.not_ai_publication_errors([], good) == []
+    for row in ({"cve_id": "CVE-2026-1", "label": "MAYBE"}, {"label": "AI_CAUSAL"}):
+        bad = {"schema_version": 1, "adjudications": [row]}
+        assert site_preflight.not_ai_publication_errors([], bad)
 
 
 def test_site_preflight_rejects_a_fail_gate_on_a_published_case() -> None:

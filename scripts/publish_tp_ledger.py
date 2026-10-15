@@ -12,6 +12,7 @@ from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
 
+import ledger_store
 from site_preflight import (
     AUDIT_IDENTIFIER_RE,
     comparison_hunk_role,
@@ -35,6 +36,7 @@ GENERATED_EVIDENCE = ROOT / "scripts/generated-code-evidence.json"
 UNPATCHED_FIXES = ROOT / "scripts/unpatched-potential-fixes.json"
 SECURITY_FIX_CONTEXTS = ROOT / "scripts/security-fix-contexts.json"
 RELEASE_FALLBACKS = ROOT / "scripts/release-fallbacks.json"
+RELEASE_FALLBACK_REASONS = frozenset({"no_release_channel", "no_fixed_artifact", "same_version"})
 CURATION = ROOT / "scripts/publication-curation.json"
 AI_COMMIT_CENSUS = ROOT / "scripts/ai-commit-census.json"
 
@@ -68,35 +70,24 @@ class Overlays:
             mechanisms=mechanisms,
         )
 
-TP_STATUSES = {"AI_ROOT_CAUSE", "AI_CODE_FLAWED"}
+TP_STATUSES = ledger_store.AI_STATUSES
 
 def _read_export_rows() -> list[dict]:
-    rows = []
-    for line in LEDGER.read_text(encoding="utf-8").splitlines():
-        if not line.strip():
-            continue
-        rows.append(json.loads(line))
-    return rows
+    return [row for _, row in ledger_store.read_jsonl(LEDGER)]
 
 
 def export_matches_neon() -> bool:
     if not LEDGER.exists():
         return False
-    sys.path.insert(0, str(ROOT / "scripts"))
-    from ledger_store import load_env, snapshot_sha256
-
-    load_env()
+    ledger_store.load_env()
     digest = hashlib.sha256(LEDGER.read_bytes()).hexdigest()
-    return digest == snapshot_sha256()
+    return digest == ledger_store.snapshot_sha256()
 
 
 def load_ledger_rows(*, from_export: bool = False) -> list[dict]:
     if from_export:
         return _read_export_rows()
-    sys.path.insert(0, str(ROOT / "scripts"))
-    from ledger_store import connect, load_env
-
-    load_env()
+    ledger_store.load_env()
     if not os.environ.get("DATABASE_URL") and not os.environ.get(
         "DATABASE_URL_UNPOOLED"
     ):
@@ -104,7 +95,7 @@ def load_ledger_rows(*, from_export: bool = False) -> list[dict]:
             "publish reads Neon ledger_rows; set DATABASE_URL. "
             "jsonl is export-only (pass --from-export for the backup)."
         )
-    with connect(direct=bool(os.environ.get("DATABASE_URL_UNPOOLED"))) as conn:
+    with ledger_store.connect(direct=bool(os.environ.get("DATABASE_URL_UNPOOLED"))) as conn:
         fetched = conn.execute(
             """
             SELECT raw_json FROM ledger_rows
@@ -838,7 +829,11 @@ def _release_fallbacks() -> dict[str, dict]:
         return {}
     if not isinstance(payload, dict):
         return {}
-    return {str(k).upper(): v for k, v in payload.items() if isinstance(v, dict)}
+    fallbacks = {str(k).upper(): v for k, v in payload.items() if isinstance(v, dict)}
+    unknown = sorted(k for k, v in fallbacks.items() if v.get("reason") not in RELEASE_FALLBACK_REASONS)
+    if unknown:
+        raise ValueError(f"release fallbacks with an unknown reason: {unknown}")
+    return fallbacks
 
 
 def publication_status(case: dict) -> str:
@@ -1324,11 +1319,8 @@ def ledger_census(*, from_export: bool = False) -> dict[str, int]:
             if status in counts:
                 counts[status] += 1
     else:
-        sys.path.insert(0, str(ROOT / "scripts"))
-        from ledger_store import load_env, snapshot_aggregates
-
-        load_env()
-        agg = snapshot_aggregates()
+        ledger_store.load_env()
+        agg = ledger_store.snapshot_aggregates()
         raw_statuses = agg["statuses"] or {}
         if isinstance(raw_statuses, str):
             raw_statuses = json.loads(raw_statuses)

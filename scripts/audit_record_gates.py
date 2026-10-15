@@ -221,10 +221,6 @@ def check_record(record: dict) -> list[str]:
     return problems
 
 
-def check_jsonl(path: Path) -> list[str]:
-    return check_path(path)
-
-
 def check_record_strict(record: dict) -> list[str]:
     cid = str(record.get("class_id") or "?")
     verdict = record.get("verdict")
@@ -618,9 +614,9 @@ def check_git_evidence(record: dict, repo: Path) -> list[str]:
         if not sha or sha not in targets:
             problems.append(f"{cid}: git: {field}.sha must name its {'BIC' if field == 'ai_marker' else 'fix'} object")
             continue
-        quote = marker.get("quote") or marker.get("value")
+        quote = marker.get("quote")
         if not isinstance(quote, str) or not quote.strip():
-            problems.append(f"{cid}: git: {field} requires an exact quote (legacy value is accepted)")
+            problems.append(f"{cid}: git: {field} requires an exact quote")
             continue
         source = marker.get("source", "commit")
         if source == "first_party":
@@ -657,15 +653,7 @@ def check_path(path: Path, strict: bool = False, repo: Path | None = None) -> li
         text = path.read_text(encoding="utf-8")
     except (OSError, UnicodeError) as exc:
         return [f"{path}: {exc}"]
-    entries = [(str(path), text)] if path.suffix == ".json" else [
-        (f"{path}:{idx}", line) for idx, line in enumerate(text.splitlines(), 1) if line.strip()
-    ]
-    if not entries:
-        return [f"{path}: no audit records"]
-    problems = []
-    for source, text in entries:
-        problems.extend(f"{source}: {item}" for item in check_text(text, strict, repo))
-    return problems
+    return [f"{path}: {item}" for item in check_text(text, strict, repo)]
 
 
 def main() -> int:
@@ -676,7 +664,7 @@ def main() -> int:
     parser.add_argument(
         "--strict",
         action="store_true",
-        help="also check the current audit-contract fields (docs/DATA-SCHEMA.md)",
+        help="also check the current audit-contract fields (radar-audit references/record.md)",
     )
     args = parser.parse_args()
     if not args.stdin and not args.paths:

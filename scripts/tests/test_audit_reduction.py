@@ -7,7 +7,7 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from audit_reduction_gate import PIN_ROLES, RESEARCH_CONTRACT, WORK_DIMENSIONS, check_delivery, digest
-from compare_slots import RESEARCH_FIELDS, compare, compare_many, lane_paths, load, research_differences
+from compare_slots import RESEARCH_FIELDS, compare_many, lane_paths, load, research_differences_many
 
 
 @pytest.fixture
@@ -50,6 +50,16 @@ def delivery(tmp_path):
     return paths, index
 
 
+def gate(paths, lanes=None, **kwargs):
+    return check_delivery(paths['manifest'], paths['accepted'], paths['decisions'],
+                          lanes or {'a': paths['a'], 'b': paths['b']}, **kwargs)
+
+
+def cli_args(paths):
+    return [part for name in ('manifest', 'accepted', 'decisions') for part in ('--' + name, str(paths[name]))
+            ] + ['--lane', f'a={paths["a"]}', '--lane', f'b={paths["b"]}']
+
+
 def save_index(paths, index):
     paths['decisions'].write_text(json.dumps({'reduction': index}))
 
@@ -70,7 +80,7 @@ def test_observed_objects_and_contrary_accounts_need_resolution(delivery, field)
         path.write_text(json.dumps({**REFUTED, field: observation}))
         index['cases']['alias-x']['sha256'][lane] = digest(path)
     save_index(paths, index)
-    result = check_delivery(**paths, research_contract='causal-work-v1')
+    result = gate(paths, research_contract='causal-work-v1')
     assert not result['delivery_valid']
     assert any('unresolved mechanism' in problem for problem in result['problems'])
 
@@ -83,22 +93,20 @@ def test_fix_vs_null_and_entire_chain_are_reported(delivery):
                'atomic_repair_sha': 'c' * 40, 'versions': {'fixed': 'v2'},
                'ai_marker': {'state': 'UNKNOWN'}, 'remaining_gap': 'No repair recovered.'}
     file.write_text(json.dumps(changed))
-    report = compare(paths['a'], paths['b'])
-    assert report['verdict_agreement'] == 1
-    assert report['fix_differ'] == 1
+    report = compare_many({'a': paths['a'], 'b': paths['b']})
     assert set(report['research_differences']['alias-x']) == {'fix', 'versions', 'ai', 'residual'}
     index['cases']['alias-x']['sha256']['b'] = digest(file)
     save_index(paths, index)
-    assert 'unresolved fix' in '\n'.join(check_delivery(**paths)['problems'])
+    assert 'unresolved fix' in '\n'.join(gate(paths)['problems'])
 
 
 def test_valid_frozen_delivery_and_cli(delivery):
     paths, _ = delivery
-    assert check_delivery(**paths)['delivery_valid']
+    assert gate(paths)['delivery_valid']
     script = Path(__file__).resolve().parents[1] / 'audit_reduction_gate.py'
     result = subprocess.run([sys.executable, str(script)] + [
-        part for name, path in paths.items() for part in ('--' + name, str(path))
-    ], capture_output=True, text=True)
+        part for name in ('manifest', 'accepted', 'decisions') for part in ('--' + name, str(paths[name]))
+    ] + ['--lane', f'a={paths["a"]}', '--lane', f'b={paths["b"]}'], capture_output=True, text=True)
     assert result.returncode == 0, result.stderr + result.stdout
     assert json.loads(result.stdout)['research_status'] == {'ACCEPTED': 1}
 
@@ -112,10 +120,10 @@ def test_explicit_evidence_backed_resolution_can_close_a_difference(delivery):
     decision = index['cases']['alias-x']
     decision['sha256']['b'] = digest(file)
     save_index(paths, index)
-    assert not check_delivery(**paths)['delivery_valid']
+    assert not gate(paths)['delivery_valid']
     decision['resolutions']['fix'] = 'A names the first default landing; B names its member. The retained parent/tree receipt distinguishes those roles and supports A for fix_sha.'
     save_index(paths, index)
-    assert check_delivery(**paths)['delivery_valid']
+    assert gate(paths)['delivery_valid']
 
 
 @pytest.mark.parametrize('target', ['a', 'b', 'accepted', 'receipt', 'extra_pin'])
@@ -131,7 +139,7 @@ def test_any_changed_accepted_dependency_invalidates_delivery(delivery, target):
     else:
         file = paths[target] / 'case.json'
     file.write_text(file.read_text() + '\n')
-    result = check_delivery(**paths)
+    result = gate(paths)
     assert not result['delivery_valid']
     assert any('changed' in p for p in result['problems'])
 
@@ -141,7 +149,7 @@ def test_missing_on_both_lanes_cannot_disappear_from_denominator(delivery):
     paths['manifest'].write_text('alias-x\nalias-y\n')
     index['pins']['manifest']['sha256'] = digest(paths['manifest'])
     save_index(paths, index)
-    result = check_delivery(**paths)
+    result = gate(paths)
     assert result['cases'] == 2 and not result['delivery_valid']
     assert result['research_status']['PENDING'] == 1
 
@@ -162,18 +170,18 @@ def test_exact_record_inputs_preserve_all_lanes_with_raw_json_evidence(delivery)
         load(paths['a'])
     records = {**paths, **{lane: paths[lane] / 'case.json'
                           for lane in ('a', 'b', 'accepted')}}
-    result = check_delivery(**records)
+    result = gate(records)
     assert result['delivery_valid'] and result['cases'] == 1
     assert set(result['auditors']) == {'a', 'b'}
     records['b'].write_text(records['b'].read_text() + '\n')
-    assert not check_delivery(**records)['delivery_valid']
+    assert not gate(records)['delivery_valid']
 
 
 def test_blocked_is_not_all_accepted(delivery):
     paths, index = delivery
     index['cases']['alias-x'].update(status='BLOCKED', next_question='Which release actually contains the repair?')
     save_index(paths, index)
-    result = check_delivery(**paths)
+    result = gate(paths)
     assert result['research_status']['BLOCKED'] == 1 and not result['delivery_valid']
 
 
@@ -186,13 +194,13 @@ def test_tp_agreement_still_requires_primary_adjudication(delivery):
         file.write_text(json.dumps(record))
         index['cases']['alias-x']['sha256'][name] = digest(file)
     save_index(paths, index)
-    result = check_delivery(**paths)
+    result = gate(paths)
     for dimension in ('bic', 'ai', 'fix'):
         assert any('unresolved ' + dimension in p for p in result['problems'])
 
 
 def test_different_member_roles_do_not_cancel_each_other():
-    assert 'bic' in research_differences({'decomposed_shas': ['a' * 40]}, {'candidate_set': ['a' * 40]})
+    assert 'bic' in research_differences_many({'a': {'decomposed_shas': ['a' * 40]}, 'b': {'candidate_set': ['a' * 40]}})
 
 
 def test_third_auditor_dissent_is_required_even_when_first_two_agree(delivery):
@@ -209,15 +217,14 @@ def test_third_auditor_dissent_is_required_even_when_first_two_agree(delivery):
     report = compare_many(lanes)
     assert report['shared'] == 1
     assert report['research_differences']['alias-x']['fix']['fix_sha']['third'] == 'c' * 40
-    multi_args = {key: value for key, value in paths.items() if key not in ('a', 'b')}
-    result = check_delivery(**multi_args, lanes=lanes)
+    result = gate(paths, lanes=lanes)
     assert any('unresolved fix' in p for p in result['problems'])
     index['cases']['alias-x']['resolutions']['fix'] = 'The third report names the repair member; the other reports name the default landing. The retained tree receipt supports the landing for fix_sha.'
     save_index(paths, index)
-    assert check_delivery(**multi_args, lanes=lanes)['delivery_valid']
-    assert not check_delivery(**paths)['delivery_valid']
+    assert gate(paths, lanes=lanes)['delivery_valid']
+    assert not gate(paths)['delivery_valid']
     (third / 'case.json').write_text(json.dumps(record) + '\n')
-    assert not check_delivery(**multi_args, lanes=lanes)['delivery_valid']
+    assert not gate(paths, lanes=lanes)['delivery_valid']
 
 
 def test_named_lane_cli_and_invalid_lane_arguments(delivery):
@@ -235,7 +242,7 @@ def test_named_lane_cli_and_invalid_lane_arguments(delivery):
         with pytest.raises(ValueError):
             lane_paths(values)
     with pytest.raises(ValueError):
-        lane_paths(['third=z'], paths['a'], paths['b'])
+        lane_paths([])
 
 
 def adopt_research_contract(paths, index):
@@ -259,36 +266,36 @@ def proposed_route():
 
 def test_new_contract_requires_explicit_adoption_and_does_not_change_legacy(delivery):
     paths, index = delivery
-    assert check_delivery(**paths)['delivery_valid']
-    assert not check_delivery(**paths, research_contract=RESEARCH_CONTRACT)['delivery_valid']
+    assert gate(paths)['delivery_valid']
+    assert not gate(paths, research_contract=RESEARCH_CONTRACT)['delivery_valid']
     adopt_research_contract(paths, index)
-    result = check_delivery(**paths, research_contract=RESEARCH_CONTRACT)
+    result = gate(paths, research_contract=RESEARCH_CONTRACT)
     assert result['delivery_valid']
     assert result['research_work']['dimension_counts'] == {'COMPLETE': len(WORK_DIMENSIONS)}
     assert result['research_work']['worklist'] == []
     index.pop('research_contract')
     save_index(paths, index)
-    assert not check_delivery(**paths)['delivery_valid']
+    assert not gate(paths)['delivery_valid']
 
 
 def test_frozen_decisions_do_not_share_the_mutable_dispatch_index(delivery):
     paths, index = delivery
     paths['decisions'].write_text(json.dumps({'reduction': index, 'dispatch': {}}))
-    assert check_delivery(**paths)['delivery_valid']
+    assert gate(paths)['delivery_valid']
     adopt_research_contract(paths, index)
     for field in ('dispatch', 'allocation'):
         paths['decisions'].write_text(json.dumps({'reduction': index, field: {}}))
-        result = check_delivery(**paths, research_contract=RESEARCH_CONTRACT)
+        result = gate(paths, research_contract=RESEARCH_CONTRACT)
         assert not result['delivery_valid']
         assert any('mutable dispatch index' in p for p in result['problems'])
     save_index(paths, index)
     frozen = paths['decisions'].read_bytes()
     execution = paths['decisions'].parent / 'execution-index.json'
     execution.write_text(json.dumps({'dispatch': {'a': {'status': 'returned'}}}))
-    assert check_delivery(**paths, research_contract=RESEARCH_CONTRACT)['delivery_valid']
+    assert gate(paths, research_contract=RESEARCH_CONTRACT)['delivery_valid']
     execution.write_text(json.dumps({'dispatch': {'a': {'status': 'receipt-recorded'}}}))
     assert paths['decisions'].read_bytes() == frozen
-    assert check_delivery(**paths, research_contract=RESEARCH_CONTRACT)['delivery_valid']
+    assert gate(paths, research_contract=RESEARCH_CONTRACT)['delivery_valid']
 
 
 @pytest.mark.parametrize('grade', ['QUALIFIED_BOUNDARY', 'UNRESOLVED'])
@@ -299,7 +306,7 @@ def test_worklist_does_not_filter_by_evidence_grade(delivery, grade):
                            missing_fact='The contents of the repair.',
                            next_permitted_route='repair-parent-child', routes=[proposed_route()])
     save_index(paths, index)
-    result = check_delivery(**paths)
+    result = gate(paths)
     assert result['research_work']['worklist'] == [
         {'class_id': 'alias-x', 'dimension': 'fix', 'next_permitted_route': 'repair-parent-child'}]
     assert any('ACCEPTED contradicts unfinished' in p for p in result['problems'])
@@ -314,7 +321,7 @@ def test_false_route_terminality_never_counts_as_completion(delivery, outcome):
     research['fix'].update(evidence_grade='QUALIFIED_BOUNDARY',
                            missing_fact='Complete repair contents.', routes=[route])
     save_index(paths, index)
-    result = check_delivery(**paths)
+    result = gate(paths)
     assert not result['delivery_valid']
     assert result['research_work']['unassessed_cases'] == ['alias-x']
 
@@ -330,7 +337,7 @@ def test_recorded_frontier_does_not_upgrade_a_grade_or_protocol_acceptance(deliv
                                    'observation': 'The recorded source inquiry does not recover the member.',
                                    'evidence': decision['evidence']}])
     save_index(paths, index)
-    result = check_delivery(**paths)
+    result = gate(paths)
     assert not result['delivery_valid']
     assert result['research_work']['worklist'] == []
     assert result['research_work']['unassessed_cases'] == []
@@ -346,11 +353,11 @@ def test_route_aliases_and_stale_receipts_are_rejected(delivery):
              'evidence': index['cases']['alias-x']['evidence']}
     research['fix']['routes'] = [route, {**route, 'id': 'another-label'}]
     save_index(paths, index)
-    assert any('duplicate evidence route' in p for p in check_delivery(**paths)['problems'])
+    assert any('duplicate evidence route' in p for p in gate(paths)['problems'])
     research['fix']['routes'] = [route]
     route['evidence'] = [{'path': 'evidence.txt', 'sha256': '0' * 64}]
     save_index(paths, index)
-    assert any('empty or changed file' in p for p in check_delivery(**paths)['problems'])
+    assert any('empty or changed file' in p for p in gate(paths)['problems'])
 
 
 def test_missing_independent_lane_does_not_hide_declared_unfinished_work(delivery):
@@ -360,7 +367,7 @@ def test_missing_independent_lane_does_not_hide_declared_unfinished_work(deliver
                            next_permitted_route='repair-parent-child')
     (paths['b'] / 'case.json').unlink()
     save_index(paths, index)
-    result = check_delivery(**paths)
+    result = gate(paths)
     assert not result['delivery_valid']
     assert result['research_work']['worklist'][0]['dimension'] == 'fix'
     assert result['research_status'] == {'PENDING': 1}
@@ -377,7 +384,7 @@ def test_new_resolution_accounts_for_each_lane_and_binds_primary_observation(del
     decision['sha256']['b'] = digest(file)
     decision['resolutions']['fix'] = 'Both repaired it.'
     save_index(paths, index)
-    assert not check_delivery(**paths)['delivery_valid']
+    assert not gate(paths)['delivery_valid']
     resolution = {'claims': {'a': 'Default landing b.', 'b': 'Repair member c.'},
                   'observation': 'The member diff matches the repaired tree in the landing.',
                   'reasoning': 'The reports name different causal roles, not different repairs.',
@@ -385,10 +392,10 @@ def test_new_resolution_accounts_for_each_lane_and_binds_primary_observation(del
                   'evidence': decision['evidence']}
     decision['resolutions']['fix'] = resolution
     save_index(paths, index)
-    assert check_delivery(**paths)['delivery_valid']
+    assert gate(paths)['delivery_valid']
     resolution['claims'].pop('b')
     save_index(paths, index)
-    assert not check_delivery(**paths)['delivery_valid']
+    assert not gate(paths)['delivery_valid']
 
 
 def test_new_contract_cli_and_missing_research_do_not_report_zero_work_as_complete(delivery):
@@ -396,11 +403,11 @@ def test_new_contract_cli_and_missing_research_do_not_report_zero_work_as_comple
     adopt_research_contract(paths, index)
     script = Path(__file__).resolve().parents[1] / 'audit_reduction_gate.py'
     args = [sys.executable, str(script), '--research-contract', RESEARCH_CONTRACT]
-    args += [part for name, path in paths.items() for part in ('--' + name, str(path))]
+    args += cli_args(paths)
     assert subprocess.run(args, capture_output=True, text=True).returncode == 0
     index['cases']['alias-x']['research'].pop('fix')
     save_index(paths, index)
-    result = check_delivery(**paths)
+    result = gate(paths)
     assert not result['delivery_valid']
     assert result['research_work']['unassessed_cases'] == ['alias-x']
 
@@ -412,7 +419,7 @@ def test_missing_dimension_preserves_known_pending_work(delivery):
     research['fix'].update(work_state='UNFINISHED', routes=[proposed_route()],
                            next_permitted_route='repair-parent-child')
     save_index(paths, index)
-    result = check_delivery(**paths)
+    result = gate(paths)
     assert not result['delivery_valid']
     assert result['research_work']['unassessed_cases'] == ['alias-x']
     assert result['research_work']['worklist'] == [
@@ -430,7 +437,7 @@ def test_supplied_resolution_is_checked_even_when_every_record_agrees(delivery):
         'evidence': [{'path': 'missing.txt', 'sha256': '0' * 64}],
     }
     save_index(paths, index)
-    result = check_delivery(**paths)
+    result = gate(paths)
     assert not result['delivery_valid']
     assert any('fix resolution evidence' in p and 'missing.txt' in p for p in result['problems'])
 
@@ -444,7 +451,7 @@ def test_adjudicator_change_to_unanimous_reports_requires_resolution(delivery):
     file.write_text(json.dumps(record))
     index['cases']['alias-x']['sha256']['accepted'] = digest(file)
     save_index(paths, index)
-    assert any('unresolved fix' in p for p in check_delivery(**paths)['problems'])
+    assert any('unresolved fix' in p for p in gate(paths)['problems'])
 
 
 @pytest.mark.parametrize('lane', ['a', 'accepted'])
@@ -457,12 +464,11 @@ def test_malformed_verdict_reports_case_and_lane_without_cli_crash(delivery, lan
     file.write_text(json.dumps(record))
     index['cases']['alias-x']['sha256'][lane] = digest(file)
     save_index(paths, index)
-    result = check_delivery(**paths)
+    result = gate(paths)
     assert not result['delivery_valid']
     assert any(f'alias-x: {lane} verdict' in p for p in result['problems'])
     script = Path(__file__).resolve().parents[1] / 'audit_reduction_gate.py'
-    args = [sys.executable, str(script)] + [
-        part for name, path in paths.items() for part in ('--' + name, str(path))]
+    args = [sys.executable, str(script)] + cli_args(paths)
     run = subprocess.run(args, capture_output=True, text=True)
     assert run.returncode == 1 and 'Traceback' not in run.stderr
     assert json.loads(run.stdout)['delivery_valid'] is False
@@ -473,4 +479,4 @@ def test_bound_fact_cannot_simultaneously_declare_a_decisive_gap(delivery):
     research = adopt_research_contract(paths, index)
     research['fix']['missing_fact'] = 'Whether the fix actually closes this mechanism.'
     save_index(paths, index)
-    assert any('BOUND cannot retain' in p for p in check_delivery(**paths)['problems'])
+    assert any('BOUND cannot retain' in p for p in gate(paths)['problems'])

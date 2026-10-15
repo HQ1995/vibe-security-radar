@@ -3,8 +3,6 @@ from __future__ import annotations
 import pytest
 
 from git_url import (
-    is_github,
-    normalize_repo_identity,
     parse_commit_url,
     parse_pr_url,
     parse_repo_url,
@@ -310,50 +308,8 @@ class TestParseRepoUrl:
     def test_embedded_known_host_is_not_a_repository_origin(self, url: str):
         assert parse_repo_url(url) is None
 
-    def test_embedded_known_host_is_not_a_normalized_origin(self):
-        assert normalize_repo_identity("https://evil.example/prefix/https://github.com/owner/repo") is None
-
     def test_invalid(self):
         assert parse_repo_url("https://example.com/something") is None
 
     def test_empty(self):
         assert parse_repo_url("") is None
-
-
-def test_normalize_repo_identity_supports_generic_multi_host_origins():
-    assert normalize_repo_identity("ssh://git@code.example.org/team/repo.git") == ("code.example.org", "team/repo")
-    assert normalize_repo_identity("git@code.example.org:team/repo.git") == ("code.example.org", "team/repo")
-
-
-def test_normalize_repo_identity_supports_direct_git_server_repository():
-    assert normalize_repo_identity("https://git.ffmpeg.org/ffmpeg.git") == (
-        "git.ffmpeg.org",
-        "ffmpeg",
-    )
-
-
-class TestIsGitHub:
-    def test_github_commit(self):
-        ref = parse_commit_url("https://github.com/owner/repo/commit/abc123")
-        assert ref is not None
-        assert is_github(ref) is True
-
-    def test_gitlab_commit(self):
-        ref = parse_commit_url("https://gitlab.com/owner/repo/-/commit/abc123")
-        assert ref is not None
-        assert is_github(ref) is False
-
-    def test_bitbucket_commit(self):
-        ref = parse_commit_url("https://bitbucket.org/owner/repo/commits/abc123")
-        assert ref is not None
-        assert is_github(ref) is False
-
-    def test_github_pr(self):
-        ref = parse_pr_url("https://github.com/owner/repo/pull/1")
-        assert ref is not None
-        assert is_github(ref) is True
-
-    def test_gitlab_mr(self):
-        ref = parse_pr_url("https://gitlab.com/owner/repo/-/merge_requests/1")
-        assert ref is not None
-        assert is_github(ref) is False

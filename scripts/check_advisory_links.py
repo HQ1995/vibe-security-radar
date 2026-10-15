@@ -37,9 +37,10 @@ def check_url(url: str, attempts: int = 6) -> tuple[int, str]:
 
 
 def main(argv: list[str] | None = None) -> int:
-    path = Path(argv[1]) if argv and len(argv) > 1 else DEFAULT_DATA
+    argv = sys.argv[1:] if argv is None else argv
+    paths = [arg for arg in argv if not arg.startswith("--")]
+    path = Path(paths[0]) if paths else DEFAULT_DATA
     payload = json.loads(path.read_text(encoding="utf-8"))
-    argv = argv if argv is not None else sys.argv[1:]
     force = "--force-online" in argv
     sources = {
         str(case.get("case_id") or ""): str(case.get("advisory_url") or "").strip()
@@ -98,4 +99,4 @@ def main(argv: list[str] | None = None) -> int:
 
 
 if __name__ == "__main__":
-    raise SystemExit(main(sys.argv))
+    raise SystemExit(main())

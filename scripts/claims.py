@@ -141,13 +141,6 @@ def release(path: Path, class_id: str, owner: str, *, claim_id: str | None = Non
     return _transact(path, build)
 
 
-def close(path: Path, class_id: str, owner: str, action: str, *, slot: str = DEFAULT_SLOT,
-          result: str = "", claim_id: str | None = None):
-    if action not in ("DONE", "RELEASED", "RELEASE"):
-        raise ClaimsError(f"unknown close action: {action}")
-    return release(path, class_id, owner, slot=slot, claim_id=claim_id)
-
-
 def occupancy(current: dict, class_id: str) -> dict:
     holders = [cur for (cid, _), cur in sorted(current.items()) if cid == class_id and cur["claimed"]]
     return {"class_id": class_id, "claimed": bool(holders), "holders": holders}
@@ -169,21 +162,13 @@ def main(argv=None) -> int:
     listing.add_argument("--owner")
     listing.add_argument("--scope")
     listing.add_argument("--all", action="store_true", help="include unclaimed historical cases")
-    for name in ("release", "done"):
-        closer = sub.add_parser(name, help="release occupancy" if name == "release" else "legacy alias for release")
-        closer.add_argument("--class-id", required=True)
-        closer.add_argument("--owner", default="")
-        closer.add_argument("--claim-id")
-        closer.add_argument("--slot", default=DEFAULT_SLOT, help="historical slot to close")
-        closer.add_argument("--result", default="", help=argparse.SUPPRESS)
-    for name in ("pick", "sweep"):
-        sub.add_parser(name, help="removed: claims do not select tasks or infer completion")
-    args, unknown = parser.parse_known_args(argv)
+    closer = sub.add_parser("release", help="release occupancy")
+    closer.add_argument("--class-id", required=True)
+    closer.add_argument("--owner", default="")
+    closer.add_argument("--claim-id")
+    closer.add_argument("--slot", default=DEFAULT_SLOT, help="historical slot to close")
+    args = parser.parse_args(argv)
     try:
-        if args.cmd in ("pick", "sweep"):
-            raise ClaimsError(f"{args.cmd} removed: use batch assignments to select work and release exact claims")
-        if unknown:
-            parser.error("unrecognized arguments: " + " ".join(unknown))
         if args.cmd == "list":
             current = state(load(args.claims_file))
             ids = {args.class_id} if args.class_id else {cid for cid, _ in current}
@@ -206,8 +191,6 @@ def main(argv=None) -> int:
                           claim_id=args.claim_id, hours=args.hours, slot=args.slot)
             print(json.dumps(state([event])[(args.class_id, DEFAULT_SLOT)], sort_keys=True))
         else:
-            if args.cmd == "done" or args.result:
-                print("claims: done/result are legacy; this only releases occupancy", file=sys.stderr)
             release(args.claims_file, args.class_id, owner, claim_id=args.claim_id, slot=args.slot)
             print(json.dumps(occupancy(state(load(args.claims_file)), args.class_id), sort_keys=True))
     except (ClaimsError, OSError, ValueError, KeyError, TypeError) as exc:

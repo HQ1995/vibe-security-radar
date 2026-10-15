@@ -20,7 +20,8 @@ DEFAULT_HISTORY = ROOT / "artifacts/ledger-history"
 EXPORT_MARKER_NAME = ".funnel-export-marker.json"
 SCHEMA = ROOT / "scripts/ledger_schema.sql"
 ENV_FILE = ROOT / ".env.local"
-TERMINAL_STATUSES = {"NOT_AI", "AI_ROOT_CAUSE", "AI_CODE_FLAWED", "BLOCKED", "FALSE_POSITIVE"}
+AI_STATUSES = {"AI_ROOT_CAUSE", "AI_CODE_FLAWED"}
+TERMINAL_STATUSES = AI_STATUSES | {"NOT_AI", "BLOCKED", "FALSE_POSITIVE"}
 ALL_STATUSES = TERMINAL_STATUSES | {"UNANALYZED", "PARTIALLY_ANALYZED"}
 HISTORY_CHUNK_BYTES = 50 * 1024 * 1024
 
@@ -1249,9 +1250,6 @@ def build_parser() -> argparse.ArgumentParser:
     exp = sub.add_parser("export")
     exp.add_argument("--out", type=Path, default=DEFAULT_LEDGER)
     exp.add_argument("--force", action="store_true")
-    exp_inc = sub.add_parser("export-incremental")
-    exp_inc.add_argument("--out", type=Path, default=DEFAULT_LEDGER)
-    exp_inc.add_argument("--force", action="store_true")
     hist_export = sub.add_parser("export-history")
     hist_export.add_argument("--out", type=Path, default=DEFAULT_HISTORY)
     hist_export.add_argument("--force", action="store_true")
@@ -1295,8 +1293,6 @@ def main() -> int:
         intake(args.file, args.actor, args.description)
     elif args.command == "export":
         export_jsonl(args.out, force=args.force)
-    elif args.command == "export-incremental":
-        export_jsonl_incremental(args.out, force=args.force)
     elif args.command == "export-history":
         export_history(args.out, force=args.force)
     elif args.command == "get":

@@ -701,6 +701,15 @@ def not_ai_publication_errors(cases: list[dict], adjudications: dict) -> list[st
         or not isinstance(records, list)
     ):
         return ["effective publication adjudications have invalid schema"]
+    malformed = [
+        record.get("cve_id") if isinstance(record, dict) else record
+        for record in records
+        if not isinstance(record, dict)
+        or record.get("label") not in {"AI_CAUSAL", "NOT_AI_CAUSAL", "INCONCLUSIVE"}
+        or not record.get("cve_id")
+    ]
+    if not records or malformed:
+        return [f"publication adjudications need a label and cve_id on every row: {malformed[:5]}"]
     not_ai_ids = {
         str(value).upper()
         for record in records

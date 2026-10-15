@@ -440,14 +440,10 @@ def ledger_case(row: dict, publication_overrides: dict | None = None) -> dict | 
 
 def ledger_cases(path: Path) -> list[dict]:
     publication_overrides = json.loads(PUBLICATION_OVERRIDES.read_text())
-    out: list[dict] = []
-    for line in path.read_text(encoding="utf-8").splitlines():
-        if not line.strip():
-            continue
-        case = ledger_case(json.loads(line), publication_overrides)
-        if case:
-            out.append(case)
-    return out
+    from ledger_store import read_jsonl
+
+    cases = (ledger_case(row, publication_overrides) for _, row in read_jsonl(path))
+    return [case for case in cases if case]
 
 
 def main() -> None:

@@ -1,16 +1,8 @@
-from repository_policy import (
-    RepositoryCostClass,
-    RepositoryRole,
-    repository_cost_class,
-    repository_role,
-)
+from repository_policy import is_metadata_repository
 
 
 def test_ubuntu_tracker_is_metadata_not_vulnerable_code() -> None:
-    assert (
-        repository_role("https://git.launchpad.net/ubuntu-cve-tracker")
-        is RepositoryRole.METADATA_ONLY
-    )
+    assert is_metadata_repository("https://git.launchpad.net/ubuntu-cve-tracker")
 
 
 def test_eclipse_security_trackers_are_metadata_not_vulnerable_code() -> None:
@@ -18,18 +10,14 @@ def test_eclipse_security_trackers_are_metadata_not_vulnerable_code() -> None:
         "https://gitlab.eclipse.org/security/cve-assignement",
         "https://gitlab.eclipse.org/security/vulnerability-reports",
     ):
-        assert repository_role(url) is RepositoryRole.METADATA_ONLY
+        assert is_metadata_repository(url)
+
+
+def test_advisory_databases_are_metadata() -> None:
+    for url in ("https://github.com/pypa/advisory-database", "https://github.com/rubysec/ruby-advisory-db"):
+        assert is_metadata_repository(url)
 
 
 def test_upstream_project_is_code_candidate() -> None:
-    assert (
-        repository_role("https://github.com/openssl/openssl")
-        is RepositoryRole.CODE_CANDIDATE
-    )
-
-
-def test_linux_is_heavyweight_without_becoming_ineligible() -> None:
-    url = "https://github.com/torvalds/linux"
-
-    assert repository_role(url) is RepositoryRole.CODE_CANDIDATE
-    assert repository_cost_class(url) is RepositoryCostClass.HEAVYWEIGHT
+    assert not is_metadata_repository("https://github.com/openssl/openssl")
+    assert not is_metadata_repository("https://github.com/torvalds/linux")

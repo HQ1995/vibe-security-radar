@@ -1,18 +1,6 @@
 from __future__ import annotations
 
 import re
-from enum import StrEnum
-
-
-class RepositoryRole(StrEnum):
-    CODE_CANDIDATE = "code_candidate"
-    METADATA_ONLY = "metadata_only"
-
-
-class RepositoryCostClass(StrEnum):
-    STANDARD = "standard"
-    HEAVYWEIGHT = "heavyweight"
-
 
 _METADATA_REPOSITORY_PATTERN = re.compile(
     r"advisory[_-]?(database|db)|"
@@ -31,31 +19,6 @@ _METADATA_REPOSITORY_PATTERN = re.compile(
     re.IGNORECASE,
 )
 
-_HEAVYWEIGHT_REPOSITORY_PATTERN = re.compile(
-    r"git\.kernel\.org/|"
-    r"github\.com/torvalds/linux|"
-    r"github\.com/gregkh/linux|"
-    r"chromium\.googlesource\.com|"
-    r"github\.com/chromium/chromium",
-    re.IGNORECASE,
-)
-
-
-def repository_role(repo_url: str) -> RepositoryRole:
-    if _METADATA_REPOSITORY_PATTERN.search(repo_url):
-        return RepositoryRole.METADATA_ONLY
-    return RepositoryRole.CODE_CANDIDATE
-
-
-def repository_cost_class(repo_url: str) -> RepositoryCostClass:
-    if _HEAVYWEIGHT_REPOSITORY_PATTERN.search(repo_url):
-        return RepositoryCostClass.HEAVYWEIGHT
-    return RepositoryCostClass.STANDARD
-
 
 def is_metadata_repository(repo_url: str) -> bool:
-    return repository_role(repo_url) is RepositoryRole.METADATA_ONLY
-
-
-def is_heavyweight_repository(repo_url: str) -> bool:
-    return repository_cost_class(repo_url) is RepositoryCostClass.HEAVYWEIGHT
+    return bool(_METADATA_REPOSITORY_PATTERN.search(repo_url))

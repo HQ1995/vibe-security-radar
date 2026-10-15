@@ -33,7 +33,6 @@ class GitPrRef:
 
 _GITLAB_SELF_HOSTED_RE = re.compile(r"^gitlab\.[a-z0-9.-]+$", re.IGNORECASE)
 
-_GENERIC_SINGLE_COMPONENT_REPO_HOSTS = frozenset({"git.ffmpeg.org"})
 
 _GITLAB_PROJECT_SUFFIX_MARKERS = (
     "/tree/",
@@ -313,36 +312,3 @@ def parse_repo_url(url: str) -> tuple[str, str, str] | None:
         return (host, owner, repo)
 
     return None
-
-
-def normalize_repo_identity(url: str) -> tuple[str, str] | None:
-    parsed = parse_repo_url(url)
-    if parsed is not None:
-        host, owner, repo = parsed
-        path = f"{owner.strip('/')}/{repo.strip('/')}"
-    else:
-        location = _transport_location(url)
-        if location is None:
-            return None
-        host, path = location
-
-    if host.lower() == "github.com":
-        owner = path.lstrip("/").partition("/")[0]
-        if not _is_github_repository_owner(owner):
-            return None
-
-    if path.lower().endswith(".git"):
-        path = path[:-4]
-    parts = path.strip("/").split("/")
-    if (
-        (len(parts) < 2 and host.lower() not in _GENERIC_SINGLE_COMPONENT_REPO_HOSTS)
-        or any(
-            not part or part in {".", ".."} or "\\" in part for part in parts
-        )
-    ):
-        return None
-    return host.lower(), "/".join(part.lower() for part in parts)
-
-
-def is_github(ref: GitCommitRef | GitPrRef) -> bool:
-    return ref.host == "github.com"

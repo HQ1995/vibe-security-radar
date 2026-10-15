@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import argparse
 import json
 import re
 import sys
@@ -87,12 +88,12 @@ def violations(row: dict) -> list:
 
 
 def main() -> int:
-    args = [a for a in sys.argv[1:] if not a.startswith("--")]
-    class_id = None
-    if "--class-id" in sys.argv:
-        class_id = sys.argv[sys.argv.index("--class-id") + 1]
-    path = Path(args[0]) if args else ROOT / "artifacts/funnel-account-20260817.jsonl"
-    rows = [json.loads(l) for l in path.read_text().splitlines() if l.strip()]
+    parser = argparse.ArgumentParser(description="Check every closed ledger row carries its evidence envelope")
+    parser.add_argument("ledger", nargs="?", type=Path, default=ROOT / "artifacts/funnel-account-20260817.jsonl")
+    parser.add_argument("--class-id")
+    args = parser.parse_args()
+    class_id = args.class_id
+    rows = [json.loads(l) for l in args.ledger.read_text().splitlines() if l.strip()]
     fails = 0
     for row in rows:
         if class_id and row.get("class_id") != class_id:

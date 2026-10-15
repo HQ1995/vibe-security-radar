@@ -107,9 +107,8 @@ def test_historical_slots_block_new_case_claim_until_each_holder_releases(tmp_pa
     assert log.read_bytes() == before
     with pytest.raises(claims.ClaimsError):
         acquire(log)
-    claims.close(log, "a", "reviewer", "DONE", slot="review", result="NOT_AI")
+    claims.release(log, "a", "reviewer", slot="review")
     assert claims.load(log)[-1]["action"] == "RELEASED"
-    assert "result" not in claims.load(log)[-1]
     with pytest.raises(claims.ClaimsError):
         acquire(log)
     token = claims.state(claims.load(log))[("a", "verify")]["claim_id"]
@@ -118,14 +117,13 @@ def test_historical_slots_block_new_case_claim_until_each_holder_releases(tmp_pa
     assert len(claims.occupancy(claims.state(claims.load(log)), "a")["holders"]) == 1
 
 
-def test_legacy_done_never_bypasses_a_new_claim_receipt(tmp_path):
+def test_a_new_claim_is_released_only_with_its_receipt(tmp_path):
     log = tmp_path / "claims.jsonl"
     event = acquire(log)
     with pytest.raises(claims.ClaimsError):
-        claims.close(log, "a", "leader", "DONE")
-    claims.close(log, "a", "leader", "DONE", claim_id=event["claim_id"], result="ignored")
+        claims.release(log, "a", "leader")
+    claims.release(log, "a", "leader", claim_id=event["claim_id"])
     assert claims.load(log)[-1]["action"] == "RELEASED"
-    assert "result" not in claims.load(log)[-1]
 
 
 @pytest.mark.parametrize("action", ["DONE", "RELEASED", "RELEASE"])
@@ -210,12 +208,13 @@ def test_cli_boolean_status_and_retired_operations(tmp_path, capsys):
     receipt = json.loads(capsys.readouterr().out)
     assert receipt["claimed"] is True
     before = log.read_bytes()
-    for command in ["pick", "sweep"]:
-        assert claims.main(base + [command, "--owner", "leader"]) == 1
-        assert "removed" in capsys.readouterr().err
+    for command in ["pick", "sweep", "done"]:
+        with pytest.raises(SystemExit):
+            claims.main(base + [command, "--owner", "leader"])
         assert log.read_bytes() == before
+    capsys.readouterr()
     args = ["--class-id", "a", "--owner", "leader"]
-    assert claims.main(base + ["done"] + args) == 1
+    assert claims.main(base + ["release"] + args) == 1
     assert "claim_id" in capsys.readouterr().err
     assert claims.main(base + ["release"] + args + ["--claim-id", receipt["claim_id"]]) == 0
     assert json.loads(capsys.readouterr().out)["claimed"] is False

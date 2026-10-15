@@ -10,7 +10,7 @@ import unittest
 
 from build_delta import (SourceRecord, class_id, load_occupancy, load_records, load_prior_deltas, normalize,
                          reconcile, timestamp)
-from fetch import API_VERSION, Capturer, CaptureError, stream_url
+from fetch import API_VERSION, Capturer, CaptureError
 
 
 class IntakeChecks(unittest.TestCase):

@@ -24,22 +24,16 @@ describe("severityBadgeClass", () => {
 });
 
 describe("getToolDisplayName", () => {
-  it("keeps the monitored-tool catalog complete", () => {
-    const monitored = Object.keys(TOOL_DISPLAY_NAMES)
-      .filter((tool) => tool !== "unknown_ai")
-      .sort();
-
-    expect(monitored).toHaveLength(62);
+  it("names every tool that has an icon", () => {
+    expect(Object.keys(TOOL_DISPLAY_NAMES).sort()).toEqual(
+      ["claude_code", "cursor", "github_copilot", "openai_codex", "unknown_ai"],
+    );
   });
 
   it("returns display name for known tools", () => {
     expect(getToolDisplayName("claude_code")).toBe("Claude Code");
     expect(getToolDisplayName("cursor")).toBe("Cursor");
     expect(getToolDisplayName("github_copilot")).toBe("GitHub Copilot");
-  });
-
-  it("publishes the complete Qwen Code catalog entry", () => {
-    expect(TOOL_DISPLAY_NAMES.qwen_code).toBe("Qwen Code");
   });
 
   it("returns raw key for unknown tools", () => {

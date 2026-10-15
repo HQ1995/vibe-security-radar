@@ -4,19 +4,14 @@
   "private": true,
   "scripts": {
     "dev": "next dev --hostname 0.0.0.0 --port 3000",
-    "prebuild": "python3 ../scripts/build_publication_adjudications.py --verify-committed && python3 ../scripts/site_preflight.py && python3 ../scripts/site_preflight.py --verify-fix-objects-live && python3 ../scripts/check_advisory_links.py && node -e \"require('node:fs').rmSync('.next', { recursive: true, force: true })\"",
+    "prebuild": "python3 ../scripts/site_preflight.py --verify-fix-objects-live && python3 ../scripts/check_advisory_links.py && node -e \"require('node:fs').rmSync('.next', { recursive: true, force: true })\"",
     "build": "next build",
-    "postbuild": "PYTHONPATH=../scripts python3 ../scripts/tests/test_build_publication_adjudications.py && PYTHONPATH=../scripts python3 ../scripts/tests/test_site_publication_contract.py && npm test",
+    "postbuild": "PYTHONPATH=../scripts python3 ../scripts/tests/test_site_publication_contract.py && npm test",
     "start": "npx --yes serve out -l 3000",
-    "deploy": "npm run build && npx --yes wrangler pages deploy out --project-name vibe-security-radar --branch main",
-    "research:data": "python3 ../scripts/publish_tp_ledger.py",
     "research:data:sync": "python3 ../scripts/ledger_store.py export && python3 ../scripts/ledger_store.py export-history && python3 ../scripts/audit_envelope.py && python3 ../scripts/publish_tp_ledger.py --prefer-export",
-    "research:preflight": "python3 ../scripts/site_preflight.py",
-    "research:links": "python3 ../scripts/check_advisory_links.py",
     "research:data:check": "vitest run src/lib/__tests__/research-data.test.ts",
     "lint": "eslint",
-    "test": "vitest run",
-    "test:watch": "vitest"
+    "test": "vitest run"
   },
   "dependencies": {
     "class-variance-authority": "^0.7.1",

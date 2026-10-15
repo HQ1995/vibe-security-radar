@@ -122,11 +122,9 @@ def manifest_ids(path: Path) -> set[str]:
     return set(ids)
 
 
-def check_delivery(manifest: Path, accepted: Path, decisions: Path,
-                   a: Path | None = None, b: Path | None = None,
-                   lanes: dict[str, Path] | None = None,
+def check_delivery(manifest: Path, accepted: Path, decisions: Path, lanes: dict[str, Path],
                    research_contract: str | None = None) -> dict:
-    paths = lane_paths([f'{name}={path}' for name, path in lanes.items()] if lanes else None, a, b)
+    paths = lane_paths([f'{name}={path}' for name, path in lanes.items()])
     if accepted.resolve() in {path.resolve() for path in paths.values()}:
         raise ValueError('accepted output must be separate from independent inputs')
     problems, observed = [], {manifest.resolve(): digest(manifest)}
@@ -316,14 +314,11 @@ def main() -> int:
     for name in ('manifest', 'accepted', 'decisions'):
         parser.add_argument('--' + name, required=True, type=Path)
     parser.add_argument('--lane', action='append', help='NAME=PATH; repeat for all assigned auditors')
-    parser.add_argument('--a', type=Path, help='legacy input named a')
-    parser.add_argument('--b', type=Path, help='legacy input named b')
     parser.add_argument('--research-contract', choices=[RESEARCH_CONTRACT],
                         help='require the explicitly adopted research-work contract')
     args = parser.parse_args()
     try:
-        paths = lane_paths(args.lane, args.a, args.b)
-        report = check_delivery(args.manifest, args.accepted, args.decisions, lanes=paths,
+        report = check_delivery(args.manifest, args.accepted, args.decisions, lane_paths(args.lane),
                                 research_contract=args.research_contract)
     except (OSError, ValueError) as exc:
         parser.error(str(exc))

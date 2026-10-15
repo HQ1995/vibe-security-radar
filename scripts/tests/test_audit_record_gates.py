@@ -306,13 +306,12 @@ def test_legacy_false_positive_label_does_not_close_new_missing_evidence():
     '{"verdict":"FALSE_POSITIVE","remaining_gap":"none","remaining_gap":"Skeleton written before probing"}',
     '{"ai_marker":{"state":"ABSENT","state":"PRESENT"}}',
 ])
-def test_duplicate_keys_fail_json_jsonl_stdin_and_slot_loading(tmp_path, body):
+def test_duplicate_keys_fail_file_stdin_and_lane_loading(tmp_path, body):
     from compare_slots import load
 
-    for suffix in (".json", ".jsonl"):
-        path = tmp_path / ("case" + suffix)
-        path.write_text(body + "\n")
-        assert "duplicate JSON key" in " ".join(check_path(path, strict=True))
+    path = tmp_path / "case.json"
+    path.write_text(body + "\n")
+    assert "duplicate JSON key" in " ".join(check_path(path, strict=True))
     with pytest.raises(ValueError, match="duplicate JSON key"):
         load(tmp_path / "case.json")
     cli = Path(__file__).resolve().parents[1] / "audit_record_gates.py"
@@ -325,7 +324,7 @@ def test_duplicate_keys_fail_json_jsonl_stdin_and_slot_loading(tmp_path, body):
 def test_empty_malformed_and_non_record_inputs_fail(tmp_path):
     for body in ("", "[]", "null", "{", "{}"):
         assert check_text(body, strict=True)
-    path = tmp_path / "empty.jsonl"
+    path = tmp_path / "empty.json"
     path.write_text("\n")
     assert check_path(path)
 
@@ -347,7 +346,7 @@ def test_git_probe_catches_fix_trailer_copied_to_bic(tmp_path):
     fix = git("rev-parse", "HEAD")
     record = {
         **GOOD, "introducer_sha": bic, "fix_sha": fix,
-        "ai_marker": {"state": "PRESENT", "sha": bic, "value": quote},
+        "ai_marker": {"state": "PRESENT", "sha": bic, "quote": quote},
         "fix_ai_marker": {"state": "PRESENT", "sha": fix, "quote": quote},
     }
     failures = check_git_evidence(record, tmp_path)
