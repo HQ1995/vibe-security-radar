@@ -54,8 +54,8 @@ and how to do it by hand.
 
 The release owner checks the final manifest, all auditor inputs, accepted records,
 decisions and gate receipts under the frozen adjudication contract. Re-run the gate on
-the final bytes before ingestion. BLOCKED research does not enter this accepted release
-path, and remains visible in the case state.
+the final bytes before ingestion. A researched blocker lands as status `BLOCKED` with its
+EVIDENCE_GAP record; it is not published.
 
 Prepare assessments and revision-checked patches using the [data contract](ledger.md#ledger-rows).
 Each assessment needs a recorded, active `run_id`, an explicit stable `assessment_id`,

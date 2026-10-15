@@ -12,7 +12,7 @@ from collections import defaultdict
 from datetime import datetime
 from pathlib import Path
 
-from audit_envelope import violations
+from audit_envelope import status_of_verdict, violations
 
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_LEDGER = ROOT / "artifacts/funnel-account-20260817.jsonl"
@@ -408,7 +408,7 @@ def read_patches(path: Path, *, require_assessments: bool) -> list[dict]:
             accepted = item["row"].get("causal_research")
             if not isinstance(accepted, dict) or not accepted:
                 raise SystemExit(f"{path}:{number}: finalize requires causal_research")
-            if accepted.get("verdict") != item["row"]["status"]:
+            if status_of_verdict(accepted.get("verdict")) != item["row"]["status"]:
                 raise SystemExit(f"{path}:{number}: causal_research verdict must match status")
     if len(set(class_ids)) != len(class_ids):
         raise SystemExit(f"{path}: duplicate class_id patch")

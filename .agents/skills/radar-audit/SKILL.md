@@ -5,7 +5,7 @@ description: Independently research one assigned Vibe Security Radar case - its 
 
 # Radar audit
 
-Contract `2026-10-14.1`. You are one of N independent auditors of a case. Answer its four
+Contract `2026-10-15.1`. You are one of N independent auditors of a case. Answer its four
 questions from primary evidence, alone, and deliver a record. Your assignment supplies
 the case, your directory, a scratch directory and the time budget.
 

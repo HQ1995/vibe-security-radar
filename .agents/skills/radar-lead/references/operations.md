@@ -94,9 +94,9 @@ python3 scripts/radar_case.py stop --run <run> --case <NNN> --reason <text> [--e
   adjudicator. `--dry-run` writes nothing.
 - **reopen** keeps a checked adjudication and its review as `adjudicator-vN/` and
   `reviewer-vN/` and gives the adjudicator a writable copy for a labeled continuation.
-- **land** validates the review, stores one scan run and assessment per role, then either
-  finalizes accepted research at the prepared revision with readback and an export check,
-  or closes a researched blocker without changing the row, and releases the claim. It never
+- **land** validates the review, stores one scan run and assessment per role, then
+  finalizes the research at the prepared revision with readback and an export check (a
+  researched blocker lands as `BLOCKED`), and releases the claim. It never
   repeats a finalize whose result it cannot read back.
 - **stop** records an upstream refusal or operating stop; `prepare` and `prompt` refuse new
   work in the run until it is resolved with the user.

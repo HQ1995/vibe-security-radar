@@ -19,6 +19,7 @@ import uuid
 
 import claims
 import ledger_store
+from audit_envelope import status_of_verdict
 from audit_record_gates import check_record, check_record_strict, load_record
 from audit_reduction_gate import RESEARCH_CONTRACT, check_delivery, check_research_work, digest
 from compare_slots import research_differences_many
@@ -29,12 +30,11 @@ SKILLS = REPO / '.agents' / 'skills'
 ASSIGNMENTS = SKILLS / 'radar-lead' / 'assignments'
 MODELS = SKILLS / 'radar-lead' / 'models.json'
 CLONES = REPO / '.ai-slop' / 'state' / 'repos'
-CONTRACT_VERSION = '2026-10-14.1'
+CONTRACT_VERSION = '2026-10-15.1'
 LANE_FILES = ('REPORT.md', 'record.json', 'research.json', 'SUMMARY.md')
 MINUTES = {'auditor': 25, 'adjudicator': 25, 'reviewer': 15}
 AI_STATUSES = ledger_store.AI_STATUSES
-LANDABLE = ledger_store.TERMINAL_STATUSES - {'BLOCKED'}
-CLOSED = {'LANDED', 'BLOCKED_CLOSED', 'FOREIGN_HOLD', 'STOPPED', 'RETURNED'}
+CLOSED = {'LANDED', 'FOREIGN_HOLD', 'STOPPED', 'RETURNED'}
 GITHUB_API_VERSION = '2026-03-10'
 
 
@@ -406,7 +406,7 @@ def check(run: str, key: str, dry_run: bool = False) -> dict:
 def reopen(run: str, key: str) -> dict:
     case = case_dir(run, key)
     sealed = read(case / 'SEAL.json')
-    if ('adjudicator' not in sealed or state_of(case)['phase'] in {'LANDED', 'BLOCKED_CLOSED'}
+    if ('adjudicator' not in sealed or state_of(case)['phase'] == 'LANDED'
             or (case / 'land' / 'runs.json').exists() or (case / 'land' / 'patch.jsonl').exists()):
         raise ValueError('only a checked adjudication that has not started landing can be reopened')
     sealed.pop('reviewer', None)
@@ -548,20 +548,14 @@ def land_case(case: Path) -> dict:
     items = [assessment(case, info, role) for role in roles_of(info)]
     (case / 'land' / 'assessments.jsonl').write_text(
         ''.join(json.dumps(item, ensure_ascii=False, sort_keys=True) + '\n' for item in items))
-    if gate['outcome'] == 'BLOCKED':
-        started = store_assessments(case, info, items)
-        if ledger(case, 'get', info['class_id'])['revision'] != info['base']['revision']:
-            raise ValueError('the canonical row changed while closing a researched blocker')
-        complete_runs(case, started)
-        release_claim(info)
-        return set_state(case, 'BLOCKED_CLOSED', remaining_gap=record.get('remaining_gap'),
-                         next='Researched blocker: assessments stored, row unchanged, claim released.')
-    if record.get('verdict') not in LANDABLE:
-        return set_state(case, 'HOLD', stage='land', next=f"verdict {record.get('verdict')} has no landing path")
-    return land_accepted(case, info, record, items)
+    status = status_of_verdict(record.get('verdict'))
+    if status not in ledger_store.TERMINAL_STATUSES or (gate['outcome'] == 'BLOCKED') != (status == 'BLOCKED'):
+        return set_state(case, 'HOLD', stage='land',
+                         next=f"verdict {record.get('verdict')} does not fit research outcome {gate['outcome']}")
+    return land_record(case, info, record, items, status)
 
 
-def land_accepted(case: Path, info: dict, record: dict, items: list[dict]) -> dict:
+def land_record(case: Path, info: dict, record: dict, items: list[dict], status: str) -> dict:
     base, cid = info['base']['revision'], info['class_id']
     patch_path = case / 'land' / 'patch.jsonl'
     current = ledger(case, 'get', cid)
@@ -569,10 +563,8 @@ def land_accepted(case: Path, info: dict, record: dict, items: list[dict]) -> di
         if current['revision'] != base:
             return set_state(case, 'HOLD', stage='land', next='the canonical row changed since prepare; reconcile first')
         row = copy.deepcopy(current['row'])
-        row.update(status=record['verdict'], causal_research=record)
-        if 'remaining_gap' in record:
-            row['remaining_gap'] = record['remaining_gap']
-        if record['verdict'] in AI_STATUSES:
+        row.update(status=status, causal_research=record)
+        if status in AI_STATUSES:
             if ledger(case, 'check').get('jsonl_byte_identical') is not True:
                 return set_state(case, 'HOLD', stage='land', next='the local export differs from Neon; export it first')
             duplicates = duplicate_tps(row)
@@ -611,9 +603,9 @@ def land_accepted(case: Path, info: dict, record: dict, items: list[dict]) -> di
             raise ValueError('export is not byte-identical to Neon')
     complete_runs(case, started)
     release_claim(info)
-    return set_state(case, 'LANDED', verdict=record['verdict'], revision=row['revision'],
+    return set_state(case, 'LANDED', status=status, verdict=record['verdict'], revision=row['revision'],
                      change_set_id=row['change_set_id'],
-                     publication='PENDING' if record['verdict'] in AI_STATUSES else 'NOT_PUBLIC')
+                     publication='PENDING' if status in AI_STATUSES else 'NOT_PUBLIC')
 
 
 def land(run: str, only: set[str] | None = None) -> list[dict]:

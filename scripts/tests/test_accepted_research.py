@@ -65,6 +65,11 @@ def test_new_finalization_requires_explicit_projection_and_supporting_assessment
     row["causal_research"]["verdict"] = "NOT_AI"
     with pytest.raises(SystemExit, match="verdict must match"):
         check()
+    row["causal_research"]["verdict"] = "EVIDENCE_GAP"
+    with pytest.raises(SystemExit, match="verdict must match"):
+        check()
+    row["status"] = "BLOCKED"
+    assert check()[0] == patch
     del row["causal_research"]
     with pytest.raises(SystemExit, match="requires causal_research"):
         check()

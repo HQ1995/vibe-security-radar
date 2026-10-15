@@ -5,7 +5,7 @@ description: Coordinate Vibe Security Radar case research from a local Codex or 
 
 # Radar lead
 
-Contract `2026-10-14.1`. You run in the local session the user started; every other role is a
+Contract `2026-10-15.1`. You run in the local session the user started; every other role is a
 fresh session you start on one of the preferred models in [models.json](models.json). You own case selection, claims, sealing,
 acceptance, ledger landing and publication. Keep your context administrative: `status`,
 paths and next questions. Subagents reply with a short summary; read case evidence only when
@@ -24,9 +24,12 @@ Write a manifest with one `class_id` per line. For new advisories, take the mani
 [radar-incremental](../radar-incremental/SKILL.md) admitted. For the existing ledger, read the
 export (after `ledger_store.py check` shows `jsonl_byte_identical: true`) in this order:
 
-1. `AI_ROOT_CAUSE`/`AI_CODE_FLAWED` rows without `causal_research` (they are public);
-2. `NOT_AI` rows whose `notai_review_state` is `CAUSAL_REVIEW_PENDING`;
+1. `AI_ROOT_CAUSE`/`AI_CODE_FLAWED` rows whose `causal_research` has no `protocol_version`:
+   older-standard conclusions, and public;
+2. other rows whose `causal_research` has no `protocol_version`;
 3. `PARTIALLY_ANALYZED`, then `UNANALYZED`.
+
+Skip rows with `duplicate_of_class_id`.
 
 Start a new run with about five cases and inspect them before scaling.
 
@@ -93,8 +96,8 @@ python3 scripts/radar_case.py land --run <run>
 
 It stores one scan run and assessment per role, then finalizes accepted research at the
 revision recorded by `prepare`, reads it back, verifies the export and releases the claim. A
-non-AI verdict clears `site_scope`/`site_tier`. A researched blocker keeps the row unchanged
-and stores its assessments. A changed row, duplicate TP alias, stale export or unreadable
+non-AI verdict clears `site_scope`/`site_tier`. A researched blocker lands as status `BLOCKED`
+with its EVIDENCE_GAP record. A changed row, duplicate TP alias, stale export or unreadable
 earlier finalize holds the case.
 
 ## 6. Publish (separate authorization)

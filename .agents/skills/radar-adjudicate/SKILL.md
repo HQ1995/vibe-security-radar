@@ -5,7 +5,7 @@ description: As the sole adjudicator of one Vibe Security Radar case, read all N
 
 # Radar adjudicate
 
-Contract `2026-10-14.1`. You own the research conclusion for one case. Your assignment
+Contract `2026-10-15.1`. You own the research conclusion for one case. Your assignment
 supplies the case, the sealed lane paths, your directory and the time budget.
 
 ## Boundary

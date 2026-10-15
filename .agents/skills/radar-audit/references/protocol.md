@@ -1,6 +1,6 @@
 # Audit protocol
 
-Contract version: `2026-10-14.1`. Existing batches retain their frozen contracts.
+Contract version: `2026-10-15.1`. Existing batches retain their frozen contracts.
 
 Every case answers four questions from primary evidence:
 

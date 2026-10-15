@@ -9,7 +9,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-AI_VERDICTS = {"AI_ROOT_CAUSE", "AI_CODE_FLAWED", "AI_CAUSAL_CONTRIBUTOR"}
+AI_VERDICTS = {"AI_ROOT_CAUSE", "AI_CODE_FLAWED"}
 CLOSED = {"NOT_AI", "FALSE_POSITIVE"} | AI_VERDICTS
 OPEN = {"EVIDENCE_GAP", "BLOCKED"}
 SHA40 = re.compile(r"^[0-9a-f]{40}$")

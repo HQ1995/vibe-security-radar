@@ -1,8 +1,10 @@
 # Audit record
 
-Current research contract: `2026-10-14.1` (see the [audit protocol](protocol.md)). The base record
+Current research contract: `2026-10-15.1` (see the [audit protocol](protocol.md)). The base record
 format originated in `2026-09-19.1`; the research-work sidecar was added in
-`2026-09-25.1`; `impact` was added in `2026-10-14.1`. These dates do not migrate
+`2026-09-25.1`; `impact` was added in `2026-10-14.1`; in `2026-10-15.1` the
+`AI_CAUSAL_CONTRIBUTOR` verdict was folded into `AI_CODE_FLAWED` and researched blockers
+land as `BLOCKED`. These dates do not migrate
 older frozen batches. Every new record declares its `protocol_version`. Reject
 duplicate JSON keys, including nested ones; later values must never silently replace
 evidence.
@@ -137,8 +139,7 @@ How the causal fields read:
 - Every TP row binds its AI evidence to the BIC itself (`ai_on_bic` true and
   `ai_marker PRESENT` with `sha` equal to `introducer_sha`). For `AI_ROOT_CAUSE`
   the BIC is the change that first introduces the vulnerable behavior; for
-  `AI_CODE_FLAWED` and `AI_CAUSAL_CONTRIBUTOR` the BIC is the AI-attributed flawed
-  or exposing change itself, and the earlier human origin is recorded in
+  `AI_CODE_FLAWED` the BIC is the AI-attributed flawed or exposing change itself, and the earlier human origin is recorded in
   `flaw_origin` (its sha and what it established), not as `introducer_sha`.
   `candidate_set` lists the other objects considered; it never carries the row's
   attribution, and a marker there cannot stand in for one on the BIC.
@@ -159,25 +160,25 @@ Verdict rule, by the change that carries the defect:
 
 - `AI_ROOT_CAUSE` — the vulnerable behavior first enters the tree in an AI-attributed change.
 - `AI_CODE_FLAWED` — the origin is human (or non-AI) and the AI-attributed change is itself
-  the flawed code: AI-written logic, or an incomplete remediation or hardening that leaves
-  the defect or creates the exposure the advisory describes. Its BIC is that AI-attributed
-  change; the human origin is `flaw_origin`.
+  the flawed code: AI-written logic, an incomplete remediation or hardening that leaves
+  the defect, or a change that adds the exposure path the advisory describes. Its BIC is
+  that AI-attributed change; the human origin is `flaw_origin`.
 - A change is AI-attributed when its own object carries the marker: an agent or bot
   author, an AI co-author trailer, or a first-person disclosure in the message that the
   logic was written or generated with an AI tool (`LLM-assisted` under a human author
   is a marker, so a human-authored commit disclosing AI assistance for the introducing
   change is `AI_ROOT_CAUSE`, not `AI_CODE_FLAWED`). Author identity does not decide
   the class; the marker on the causal object does.
-- `AI_CAUSAL_CONTRIBUTOR` — an AI-attributed change adds the causal exposure path of a
-  human-origin defect, without being that origin or its repair.
 - `NOT_AI` — the causal object has a recovered named human/organization identity,
   no AI marker, and a contemporaneous disclosure-convention check. An absent marker
   alone, an unresolved identity, or a human carrier of unattributed member code is insufficient.
 - `FALSE_POSITIVE` — the advisory is rejected, withdrawn or a duplicate, or its
   own basis does not describe vulnerable code (`false_positive_ground`).
-- `EVIDENCE_GAP` is the audit verdict for a missing decisive fact or upstream answer; it
-lands as terminal `BLOCKED`, whose `remaining_gap` names the one object that would flip
-it. Nothing is published from that row until a revision reads the object.
+- `EVIDENCE_GAP` is the audit verdict for a missing decisive fact or upstream answer. When
+  the adjudicator's decision is `BLOCKED` and the leader accepts the blocker as researched,
+  the row lands with status `BLOCKED` and this record as its `causal_research`; its
+  `remaining_gap` names what is unknown and `flip_condition` the observation that would
+  change it. Nothing is published from that row until a later revision answers it.
 
 Introduction, new exposure and incomplete remediation are the three accepted reasons a case
 may be a TP; none of them requires AI to have written the original defect.

@@ -10,7 +10,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from audit_record_gates import check_git_evidence, check_path, check_record, check_record_strict, check_text
 
-AI_CASES = ("AI_ROOT_CAUSE", "AI_CODE_FLAWED", "AI_CAUSAL_CONTRIBUTOR")
+AI_CASES = ("AI_ROOT_CAUSE", "AI_CODE_FLAWED")
 
 GOOD = {
     "class_id": "alias-x",

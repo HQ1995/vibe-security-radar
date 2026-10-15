@@ -96,6 +96,8 @@ def blocked(cid):
     aid = IDS[cid]
     return {**GOOD, 'class_id': cid, 'advisory_ids': [aid], 'advisory_aliases': [{'id': aid, 'state': 'ACTIVE'}],
             'verdict': 'EVIDENCE_GAP', 'protocol_version': radar_case.CONTRACT_VERSION, 'impact': IMPACT,
+            'ai_marker': {'state': 'UNKNOWN'},
+            'evidence': 'The repair commit is referenced by the advisory but is not in any public repository.',
             'remaining_gap': 'the fix object is not public', 'flip_condition': 'the fix object is published'}
 
 
@@ -236,7 +238,7 @@ def test_a_returned_review_is_reopened_without_losing_the_original(env):
     assert radar_case.land('pilot')[0]['phase'] == 'LANDED'
 
 
-def test_a_researched_blocker_closes_without_changing_the_row(env):
+def test_a_researched_blocker_lands_as_blocked(env):
     fake, prepare = env
     prepare('alias-a')
     case = audited('001', blocked('alias-a'))
@@ -246,8 +248,11 @@ def test_a_researched_blocker_closes_without_changing_the_row(env):
     assert radar_case.check('pilot', '001', dry_run=True)['outcome'] == 'BLOCKED'
     assert radar_case.check('pilot', '001')['research'] == 'BLOCKED'
     review(case)
-    assert radar_case.land('pilot')[0]['phase'] == 'BLOCKED_CLOSED'
-    assert fake.rows['alias-a']['revision'] == 1 and 'finalize' not in fake.calls
+    state = radar_case.land('pilot')[0]
+    assert state['phase'] == 'LANDED' and state['status'] == 'BLOCKED'
+    landed = fake.rows['alias-a']
+    assert landed['revision'] == 2 and landed['row']['status'] == 'BLOCKED'
+    assert landed['row']['causal_research']['verdict'] == 'EVIDENCE_GAP' and 'remaining_gap' not in landed['row']
     assert len(fake.assessments) == 4 and not occupied('alias-a')
 
 

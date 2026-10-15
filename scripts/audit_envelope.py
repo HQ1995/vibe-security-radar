@@ -16,6 +16,10 @@ TERMINAL = {"NOT_AI", "AI_ROOT_CAUSE", "AI_CODE_FLAWED", "BLOCKED", "FALSE_POSIT
 ITEM_ARRAYS = ("squash_audit", "partial_wave", "blocked535")
 
 
+def status_of_verdict(verdict):
+    return "BLOCKED" if verdict in ("EVIDENCE_GAP", "BLOCKED") else verdict
+
+
 def payloads(row: dict) -> list:
     if "causal_research" in row:
         accepted = row["causal_research"]
@@ -62,15 +66,15 @@ def violations(row: dict) -> list:
         accepted = row["causal_research"]
         if not isinstance(accepted, dict) or not accepted:
             bad.append("causal_research must be a nonempty object")
-        elif accepted.get("verdict") != row["status"]:
+        elif status_of_verdict(accepted.get("verdict")) != row["status"]:
             bad.append("causal_research verdict must match status")
     ps = payloads(row)
     bics = [p.get("introducer_sha") for p in ps if p.get("introducer_sha")]
     if row["status"] == "FALSE_POSITIVE":
         return bad
     if row["status"] == "BLOCKED":
-        if not any(p.get("reasoning") for p in ps):
-            bad.append("BLOCKED without reasoning stating why no BIC")
+        if not any(p.get("reasoning") or p.get("remaining_gap") for p in ps):
+            bad.append("BLOCKED without reasoning or remaining_gap stating what is unknown")
     elif any(p.get("no_bic_reason") for p in ps):
         pass
     elif row["status"] == "NOT_AI" and any(external_vcs_bic(p) for p in ps):
