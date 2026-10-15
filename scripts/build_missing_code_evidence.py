@@ -9,20 +9,14 @@ import subprocess
 import sys
 from pathlib import Path
 
-from publish_tp_ledger import (
-    collect_ids,
-    public_shas,
-    repo_of,
-    research_records,
-    scrub_evidence,
-)
+import publish_tp_ledger
+from publish_tp_ledger import scrub_evidence
 from site_preflight import clip_sentence
 
 ROOT = Path(__file__).resolve().parents[1]
 DATA = ROOT / "web/src/generated/research-data.json"
 OUT = ROOT / "scripts/generated-code-evidence.json"
 FETCH_OVERRIDES = ROOT / "scripts/evidence_fetch_overrides.json"
-PUBLICATION_OVERRIDES = ROOT / "scripts/tp_publication_overrides.json"
 SHA40_RE = re.compile(r"^[0-9a-f]{40}$", re.I)
 
 SKIP = re.compile(
@@ -395,55 +389,18 @@ def build_case(case: dict, override: dict | None = None) -> dict | None:
     return evidence
 
 
-def ledger_case(row: dict, publication_overrides: dict | None = None) -> dict | None:
-    if row.get("status") not in ("AI_ROOT_CAUSE", "AI_CODE_FLAWED"):
+def ledger_case(row: dict, overlays: publish_tp_ledger.Overlays | None = None) -> dict | None:
+    if row.get("status") not in publish_tp_ledger.TP_STATUSES:
         return None
-    records = research_records(row)
-    rec = records[0] if records else None
-    if not rec:
-        return None
-    candidates, fixes = public_shas(rec, None, row=row)
-    if not candidates and not fixes:
-        return None
-    ghsas, cves, weak = collect_ids(row, rec)
-    case_id = (ghsas or cves or weak or [row.get("class_id")])[0]
-    mechanism = " ".join(
-        str(rec.get(key) or "")
-        for key in ("flaw_origin", "bug_semantics", "reasoning")
-    ).strip() or row.get("class_id", "")
-    case = {
-        "case_id": case_id,
-        "class_id": row.get("class_id"),
-        "aliases": [case_id, *(cves or ghsas)],
-        "repository": repo_of(row, rec),
-        "mechanism": row["mechanism"]
-        if "mechanism" in row
-        else clip_sentence(mechanism, 400),
-        "candidate_set": candidates,
-        "minimum_fix_set": fixes,
-    }
-    spec = ((publication_overrides or {}).get("cases") or {}).get(
-        str(row.get("class_id") or "")
-    ) or {}
-    if spec.get("case_id"):
-        case["case_id"] = str(spec["case_id"]).upper()
-        case["aliases"] = [
-            case_id,
-            *(alias for alias in case["aliases"] if alias.upper() != case["case_id"]),
-        ]
-    for field in ("repository", "mechanism", "candidate_set", "minimum_fix_set"):
-        canonical_field = "repo" if field == "repository" else field
-        if field in spec and canonical_field not in row:
-            case[field] = spec[field]
-    return case
+    return publish_tp_ledger.build_case(row, overlays or publish_tp_ledger.Overlays())
 
 
 def ledger_cases(path: Path) -> list[dict]:
-    publication_overrides = json.loads(PUBLICATION_OVERRIDES.read_text())
     from ledger_store import read_jsonl
 
-    cases = (ledger_case(row, publication_overrides) for _, row in read_jsonl(path))
-    return [case for case in cases if case]
+    rows = [row for _, row in read_jsonl(path)]
+    cases, _ = publish_tp_ledger.published_cases(rows, publish_tp_ledger.Overlays.load())
+    return cases
 
 
 def main() -> None:

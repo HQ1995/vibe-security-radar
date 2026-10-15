@@ -330,6 +330,32 @@ def publishable(row: dict, drop_class_ids: set[str]) -> bool:
     )
 
 
+def published_cases(rows: list[dict], overlays: "Overlays") -> tuple[list[dict], set[str]]:
+    drop_class_ids = {
+        str(item).lower()
+        for item in (overlays.overrides.get("drop_class_ids") or [])
+    }
+    canonical_evidence_classes: set[str] = set()
+    canonical_research_classes: set[str] = set()
+    cases: list[dict] = []
+    for row in rows:
+        if not publishable(row, drop_class_ids):
+            continue
+        if "code_evidence" in row:
+            canonical_evidence_classes.add(str(row.get("class_id") or "").lower())
+        if "causal_research" in row and "code_evidence" in row:
+            canonical_research_classes.add(row["class_id"])
+        case = build_case(row, overlays)
+        case["aliases"] = [
+            item
+            for item in case["aliases"]
+            if item.upper() != case["case_id"].upper()
+        ]
+        cases.append(case)
+    merged = merge_duplicate_identities(cases, canonical_class_ids=canonical_research_classes)
+    return merged, canonical_evidence_classes
+
+
 def research_records(row: dict) -> list[dict]:
     if "causal_research" in row:
         record = row["causal_research"]
@@ -1717,28 +1743,7 @@ def main(argv: list[str] | None = None) -> None:
         )
     rows = load_ledger_rows(from_export=from_export)
     overlays = Overlays.load()
-    drop_class_ids = {
-        str(item).lower()
-        for item in (overlays.overrides.get("drop_class_ids") or [])
-    }
-    canonical_evidence_classes: set[str] = set()
-    canonical_research_classes: set[str] = set()
-    cases: list[dict] = []
-    for row in rows:
-        if not publishable(row, drop_class_ids):
-            continue
-        if "code_evidence" in row:
-            canonical_evidence_classes.add(str(row.get("class_id") or "").lower())
-        if "causal_research" in row and "code_evidence" in row:
-            canonical_research_classes.add(row["class_id"])
-        case = build_case(row, overlays)
-        case["aliases"] = [
-            item
-            for item in case["aliases"]
-            if item.upper() != case["case_id"].upper()
-        ]
-        cases.append(case)
-    cases = merge_duplicate_identities(cases, canonical_class_ids=canonical_research_classes)
+    cases, canonical_evidence_classes = published_cases(rows, overlays)
     security_fix_contexts = load_json(SECURITY_FIX_CONTEXTS) or {}
     for case in cases:
         if not ai_summary_overlay(

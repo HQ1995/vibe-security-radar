@@ -9,6 +9,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import audit_envelope
 import build_missing_code_evidence
 import ledger_store
+import publish_tp_ledger
 
 
 def _row() -> dict:
@@ -83,13 +84,13 @@ def test_new_finalization_requires_explicit_projection_and_supporting_assessment
 
 def test_evidence_builder_keeps_causal_candidates_separate_from_original_bic():
     row = _row()
-    row.update({"candidate_set": ["c" * 40], "minimum_fix_set": [], "mechanism": "Accepted summary"})
+    row.update({"candidate_set": ["c" * 40], "minimum_fix_set": [], "mechanism": "The accepted summary names the reachable sink and its missing guard."})
     overrides = {"cases": {row["class_id"]: {
-        "repository": "stale/project", "mechanism": "Superseded summary",
+        "repository": "stale/project", "mechanism": "The superseded summary names an older sink that is no longer reachable.",
         "candidate_set": ["d" * 40], "minimum_fix_set": ["e" * 40],
     }}}
-    case = build_missing_code_evidence.ledger_case(row, overrides)
+    case = build_missing_code_evidence.ledger_case(row, publish_tp_ledger.Overlays(overrides=overrides))
     assert case["candidate_set"] == ["c" * 40]
     assert case["minimum_fix_set"] == []
     assert case["repository"] == "example/project"
-    assert case["mechanism"] == "Accepted summary"
+    assert case["mechanism"] == "The accepted summary names the reachable sink and its missing guard."

@@ -1096,7 +1096,7 @@ def test_ledger_evidence_uses_publisher_priority_and_list_records() -> None:
             "status": "AI_ROOT_CAUSE",
             "partial_wave": [preferred],
         },
-        {"cases": {"alias-example": {"case_id": "CVE-2026-12345"}}},
+        publish_tp_ledger.Overlays(overrides={"cases": {"alias-example": {"case_id": "CVE-2026-12345"}}}),
     )
     assert overridden is not None
     assert overridden["case_id"] == "CVE-2026-12345"
