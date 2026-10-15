@@ -334,3 +334,13 @@ def test_only_preferred_models_and_one_model_per_auditor(env):
         radar_case.prompt('pilot', '001', 'auditor2', 'model-a')
     radar_case.prompt('pilot', '001', 'auditor1', 'model-c')
     radar_case.prompt('pilot', '001', 'auditor2', 'model-a')
+
+
+def test_a_folded_duplicate_does_not_hold_landing(tmp_path, monkeypatch):
+    export = tmp_path / 'ledger.jsonl'
+    rows = [{'class_id': 'alias-a', 'status': 'AI_CODE_FLAWED', 'advisory_ids': ['GHSA-1234-5678-90ab', 'CVE-2026-1']},
+            {'class_id': 'alias-b', 'status': 'AI_ROOT_CAUSE', 'advisory_ids': ['CVE-2026-1'], 'duplicate_of_class_id': 'alias-a'},
+            {'class_id': 'alias-c', 'status': 'AI_ROOT_CAUSE', 'advisory_ids': ['GHSA-1234-5678-90AB']}]
+    export.write_text(''.join(json.dumps(r) + '\n' for r in rows))
+    monkeypatch.setattr(ledger_store, 'DEFAULT_LEDGER', export)
+    assert radar_case.duplicate_tps(rows[0]) == ['alias-c']

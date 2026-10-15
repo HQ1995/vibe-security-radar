@@ -524,6 +524,7 @@ def duplicate_tps(row: dict) -> list[str]:
     ids = {a.upper() for a in row['advisory_ids']}
     return [other['class_id'] for _, other in ledger_store.read_jsonl(ledger_store.DEFAULT_LEDGER)
             if other['class_id'] != row['class_id'] and other.get('status') in AI_STATUSES
+            and not other.get('duplicate_of_class_id')
             and ids & {a.upper() for a in other.get('advisory_ids', [])}]
 
 
