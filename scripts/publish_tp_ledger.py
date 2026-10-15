@@ -39,6 +39,7 @@ RELEASE_FALLBACKS = ROOT / "scripts/release-fallbacks.json"
 RELEASE_FALLBACK_REASONS = frozenset({"no_release_channel", "no_fixed_artifact", "same_version"})
 CURATION = ROOT / "scripts/publication-curation.json"
 AI_COMMIT_CENSUS = ROOT / "scripts/ai-commit-census.json"
+ADVISORY_MONTHS = ROOT / "scripts/advisory-months.json"
 
 
 @dataclass(frozen=True)
@@ -1346,6 +1347,52 @@ def ledger_census(*, from_export: bool = False) -> dict[str, int]:
     }
 
 
+COVERAGE_SQL = """
+WITH rows AS (
+    SELECT class_id, status, replace(raw_json, '\\u0000', '\\ufffd')::json AS row FROM ledger_rows
+)
+SELECT class_id, status, row->>'duplicate_of_class_id' IS NOT NULL,
+       (SELECT min(record->>'published')
+        FROM json_array_elements(CASE WHEN json_typeof(row->'source_intake'->'records') = 'array'
+                                      THEN row->'source_intake'->'records' ELSE '[]'::json END) AS record)
+FROM rows
+"""
+
+
+def coverage_rows(*, from_export: bool = False) -> list[tuple[str, str, bool, str | None]]:
+    if not from_export:
+        ledger_store.load_env()
+        with ledger_store.connect() as conn:
+            return [(cid, status, bool(duplicate), first) for cid, status, duplicate, first in conn.execute(COVERAGE_SQL)]
+    out = []
+    for row in _read_export_rows():
+        dates = [
+            str(record["published"])
+            for record in (row.get("source_intake") or {}).get("records") or []
+            if record.get("published")
+        ]
+        out.append((row["class_id"], row.get("status"), bool(row.get("duplicate_of_class_id")), min(dates) if dates else None))
+    return out
+
+
+def research_coverage(
+    rows: list[tuple[str, str, bool, str | None]],
+    months: dict[str, list[str]],
+    start: str,
+    end: str,
+) -> list[dict]:
+    month_of = {class_id: month for month, ids in months.items() for class_id in ids}
+    counts: dict[str, dict] = {}
+    for class_id, status, duplicate, first_published in rows:
+        month = month_of.get(class_id) or (first_published or "")[:7]
+        if duplicate or not start <= month <= end:
+            continue
+        entry = counts.setdefault(month, {"month": month, "advisories": 0, "researched": 0})
+        entry["advisories"] += 1
+        entry["researched"] += status in ledger_store.TERMINAL_STATUSES
+    return [counts[month] for month in sorted(counts)]
+
+
 def apply_case_overrides(
     case: dict,
     row: dict,
@@ -1782,6 +1829,18 @@ def main(argv: list[str] | None = None) -> None:
         },
         "cause_categories": CAUSE_CATEGORIES,
         "ai_provenance_families": FAMILIES,
+        "research_coverage": {
+            "basis": (
+                "Each month counts the ledger's advisories, duplicates folded, by first "
+                "publication, and how many of them have a terminal research status."
+            ),
+            "months": research_coverage(
+                coverage_rows(from_export=from_export),
+                load_json(ADVISORY_MONTHS).get("months") or {},
+                LEDGER_WINDOW_START[:7],
+                LEDGER_WINDOW_END[:7],
+            ),
+        },
         "cases": cases,
     }
 

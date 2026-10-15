@@ -46,3 +46,19 @@ def test_only_canonical_ai_rows_are_published() -> None:
     assert not publish_tp_ledger.publishable({**row, "site_publication": {"publish": False}}, set())
     assert not publish_tp_ledger.publishable({**row, "duplicate_of_class_id": "alias-b"}, set())
     assert not publish_tp_ledger.publishable(row, {"alias-a"})
+
+
+def test_research_coverage_counts_canonical_rows_by_publication_month() -> None:
+    rows = [
+        ("alias-a", "AI_ROOT_CAUSE", False, None),
+        ("alias-b", "UNANALYZED", False, None),
+        ("alias-c", "NOT_AI", True, None),
+        ("alias-d", "PARTIALLY_ANALYZED", False, "2026-09-10T21:13:24Z"),
+        ("alias-e", "NOT_AI", False, "2026-10-02T08:00:00Z"),
+        ("alias-f", "BLOCKED", False, None),
+    ]
+    months = {"2026-08": ["alias-a", "alias-b", "alias-c"], "2024-01": ["alias-f"]}
+    assert publish_tp_ledger.research_coverage(rows, months, "2025-05", "2026-09") == [
+        {"month": "2026-08", "advisories": 2, "researched": 1},
+        {"month": "2026-09", "advisories": 1, "researched": 0},
+    ]

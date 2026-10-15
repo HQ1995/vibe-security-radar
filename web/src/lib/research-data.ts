@@ -148,6 +148,14 @@ export interface ResearchCase {
 export interface ResearchMonth {
   readonly month: string;
   readonly count: number;
+  readonly advisories?: number;
+  readonly researched?: number;
+}
+
+export interface ResearchCoverageMonth {
+  readonly month: string;
+  readonly advisories: number;
+  readonly researched: number;
 }
 
 export interface ResearchDistributionItem {
@@ -206,6 +214,10 @@ const snapshot = researchData as {
     Record<string, { readonly label: string }>
   >;
   readonly ai_commit_census?: ResearchAiCommitCensus;
+  readonly research_coverage?: {
+    readonly basis: string;
+    readonly months: readonly ResearchCoverageMonth[];
+  };
   readonly cases: readonly ResearchCase[];
 };
 
@@ -278,8 +290,24 @@ export function buildResearchTimeline(
   return result;
 }
 
+export function withResearchCoverage(
+  timeline: readonly ResearchMonth[],
+  coverage: readonly ResearchCoverageMonth[],
+): ResearchMonth[] {
+  const byMonth = new Map(coverage.map((entry) => [entry.month, entry]));
+  return timeline.map((entry) => {
+    const found = byMonth.get(entry.month);
+    return found
+      ? { ...entry, advisories: found.advisories, researched: found.researched }
+      : entry;
+  });
+}
+
 export function getResearchTimeline(): ResearchMonth[] {
-  return buildResearchTimeline(snapshot.cases);
+  return withResearchCoverage(
+    buildResearchTimeline(snapshot.cases),
+    snapshot.research_coverage?.months ?? [],
+  );
 }
 
 export function getCauseDistribution(): ResearchDistributionItem[] {

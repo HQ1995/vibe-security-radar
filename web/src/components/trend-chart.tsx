@@ -7,6 +7,8 @@ const LEFT = 40;
 const RIGHT = 16;
 const TOP = 30;
 const BOTTOM = 44;
+const STRIP_GAP = 20;
+const STRIP = 26;
 const BAR_MAX = 24;
 const RADIUS = 4;
 
@@ -66,6 +68,10 @@ function barPath(x: number, y: number, width: number, height: number): string {
   return `M${x},${bottom} V${y + r} Q${x},${y} ${x + r},${y} H${x + width - r} Q${x + width},${y} ${x + width},${y + r} V${bottom} Z`;
 }
 
+function percent(value: number): string {
+  return `${Math.round(value * 100)}%`;
+}
+
 export function TrendChart({
   data,
   caseCount,
@@ -87,6 +93,18 @@ export function TrendChart({
     0,
   );
   const labels = axisLabels(visible);
+  const shareOf = (entry: ResearchMonth) =>
+    entry.advisories ? (entry.researched ?? 0) / entry.advisories : null;
+  const shares = visible
+    .map(shareOf)
+    .filter((value): value is number => value !== null);
+  const hasCoverage = shares.length > 0;
+  const shareMax = Math.max(0.2, Math.ceil(Math.max(0, ...shares) * 20) / 20);
+  const coverageRange = hasCoverage
+    ? `${percent(Math.min(...shares))}–${percent(Math.max(...shares))}`
+    : "";
+  const height = HEIGHT + (hasCoverage ? STRIP_GAP + STRIP : 0);
+  const stripBottom = baseline + STRIP_GAP + STRIP;
   const cutoffMonth = sourceCutoff.slice(0, 7);
   const [cutoffYear, cutoffMonthNumber, cutoffDay] = sourceCutoff
     .slice(0, 10)
@@ -98,21 +116,26 @@ export function TrendChart({
     new Date(Date.UTC(cutoffYear, cutoffMonthNumber, 0)).getUTCDate();
   const columns = visible.map((entry, index) => {
     const center = LEFT + band * (index + 0.5);
-    const height =
+    const barHeight =
       entry.count > 0 ? Math.max(2, (entry.count / scaleMax) * plotHeight) : 0;
+    const share = shareOf(entry);
+    const stripHeight =
+      share && share > 0 ? Math.max(1.5, (share / shareMax) * STRIP) : 0;
+    const name = formatMonthShort(entry.month);
     return {
       ...entry,
       index,
       center,
-      top: baseline - height,
-      height,
+      top: baseline - barHeight,
+      height: barHeight,
+      share,
+      stripHeight,
       partial: cutoffIsPartial && entry.month === cutoffMonth,
       label: labels[index],
+      title: `${name}: ${entry.count} cases${share === null ? "" : `, ${percent(share)} of ${entry.advisories?.toLocaleString("en-US")} advisories researched`}`,
     };
   });
-  const summary = columns
-    .map((column) => `${formatMonthShort(column.month)}: ${column.count} cases`)
-    .join(", ");
+  const summary = columns.map((column) => column.title).join("; ");
 
   return (
     <section
@@ -151,10 +174,12 @@ export function TrendChart({
             </dd>
           </div>
         ) : null}
-        <div className="flex gap-2">
-          <dt className="text-muted-foreground">Cadence</dt>
-          <dd>Monthly</dd>
-        </div>
+        {hasCoverage ? (
+          <div className="flex gap-2">
+            <dt className="text-muted-foreground">Researched</dt>
+            <dd>{`${coverageRange} per month`}</dd>
+          </div>
+        ) : null}
         <div className="flex gap-2">
           <dt className="text-muted-foreground">Through</dt>
           <dd>{sourceCutoff.slice(0, 10)}</dd>
@@ -163,13 +188,25 @@ export function TrendChart({
 
       {columns.length ? (
         <div className="mt-4">
+          {hasCoverage ? (
+            <div className="mb-2 flex flex-wrap gap-x-4 gap-y-1 font-mono text-[10px] text-muted-foreground">
+              <span className="flex items-center gap-1.5">
+                <span className="h-2.5 w-2.5 rounded-[2px] bg-primary" />
+                Findings per month
+              </span>
+              <span className="flex items-center gap-1.5">
+                <span className="h-2.5 w-2.5 rounded-[2px] bg-muted-foreground/45" />
+                Share of the month&apos;s advisories researched
+              </span>
+            </div>
+          ) : null}
           <div className="sm:hidden" role="img" aria-label={summary}>
             <div className="flex h-28 items-end gap-0.5 border-b border-border px-1">
               {columns.map((column) => (
                 <div
                   key={column.month}
                   className="flex h-full min-w-0 flex-1 flex-col items-center justify-end"
-                  title={`${formatMonthShort(column.month)}: ${column.count} cases`}
+                  title={column.title}
                 >
                   {column.index === peakIndex ? (
                     <span className="mb-1 font-mono text-[9px] font-semibold tabular-nums">
@@ -187,6 +224,25 @@ export function TrendChart({
                 </div>
               ))}
             </div>
+            {hasCoverage ? (
+              <div className="mt-1.5 flex h-5 items-end gap-0.5 border-b border-border px-1">
+                {columns.map((column) => (
+                  <div
+                    key={column.month}
+                    className="flex h-full min-w-0 flex-1 flex-col items-center justify-end"
+                  >
+                    {column.stripHeight ? (
+                      <span
+                        className="w-full max-w-6 rounded-t-[2px] bg-muted-foreground/45"
+                        style={{
+                          height: `${Math.max(1.5, ((column.share ?? 0) / shareMax) * 20)}px`,
+                        }}
+                      />
+                    ) : null}
+                  </div>
+                ))}
+              </div>
+            ) : null}
             <div className="flex gap-0.5 px-1 pt-1.5 font-mono text-[9px] leading-tight text-muted-foreground">
               {columns.map((column) => (
                 <div
@@ -207,7 +263,7 @@ export function TrendChart({
             </div>
           </div>
           <svg
-            viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
+            viewBox={`0 0 ${WIDTH} ${height}`}
             className="hidden h-auto w-full sm:block"
             role="img"
             aria-label={summary}
@@ -235,20 +291,40 @@ export function TrendChart({
                 </g>
               );
             })}
+            {hasCoverage ? (
+              <g>
+                <line
+                  x1={LEFT}
+                  x2={WIDTH - RIGHT}
+                  y1={stripBottom}
+                  y2={stripBottom}
+                  stroke="var(--border)"
+                  strokeWidth="1"
+                />
+                <text
+                  x={LEFT - 10}
+                  y={stripBottom - STRIP + 8}
+                  textAnchor="end"
+                  className="fill-muted-foreground font-mono text-[10px] tabular-nums"
+                >
+                  {percent(shareMax)}
+                </text>
+              </g>
+            ) : null}
             {columns.map((column) => {
               const hoverX = Math.min(
-                WIDTH - RIGHT - 46,
-                Math.max(LEFT + 46, column.center),
+                WIDTH - RIGHT - 92,
+                Math.max(LEFT + 92, column.center),
               );
               const valueY = Math.max(14, column.top - 8);
               return (
                 <g key={column.month} className="group">
-                  <title>{`${formatMonthShort(column.month)}: ${column.count} cases`}</title>
+                  <title>{column.title}</title>
                   <rect
                     x={column.center - band / 2}
                     y={TOP - 20}
                     width={band}
-                    height={plotHeight + 20}
+                    height={height - TOP - 4}
                     fill="transparent"
                   />
                   {column.height ? (
@@ -262,6 +338,18 @@ export function TrendChart({
                       fill="var(--primary)"
                       opacity={column.partial ? 0.45 : 1}
                       className="transition-opacity group-hover:opacity-70"
+                    />
+                  ) : null}
+                  {column.stripHeight ? (
+                    <path
+                      d={barPath(
+                        column.center - barWidth / 2,
+                        stripBottom - column.stripHeight,
+                        barWidth,
+                        column.stripHeight,
+                      )}
+                      fill="var(--muted-foreground)"
+                      opacity="0.45"
                     />
                   ) : null}
                   {column.index === peakIndex ? (
@@ -283,12 +371,13 @@ export function TrendChart({
                     <tspan className="font-semibold tabular-nums">{column.count}</tspan>
                     <tspan className="fill-muted-foreground">
                       {` · ${formatMonthShort(column.month)}${column.partial ? "*" : ""}`}
+                      {column.share === null ? "" : ` · ${percent(column.share)} researched`}
                     </tspan>
                   </text>
                   {column.label ? (
                     <text
                       x={column.center}
-                      y={HEIGHT - 24}
+                      y={height - 24}
                       textAnchor="middle"
                       className="fill-muted-foreground font-mono text-[10px]"
                     >
@@ -299,7 +388,7 @@ export function TrendChart({
                   {column.label?.year ? (
                     <text
                       x={column.center}
-                      y={HEIGHT - 10}
+                      y={height - 10}
                       textAnchor="middle"
                       className="fill-muted-foreground font-mono text-[10px]"
                     >
@@ -323,7 +412,7 @@ export function TrendChart({
             <summary className="cursor-pointer font-mono text-[10px] text-muted-foreground">
               Monthly counts
             </summary>
-            <table className="mt-2 w-full max-w-xs font-mono text-[11px]">
+            <table className="mt-2 w-full max-w-md font-mono text-[11px]">
               <caption className="sr-only">
                 Canonical advisory disclosures by month
               </caption>
@@ -331,6 +420,9 @@ export function TrendChart({
                 <tr className="text-muted-foreground">
                   <th className="py-0.5 text-left font-normal">Month</th>
                   <th className="py-0.5 text-right font-normal">Findings</th>
+                  {hasCoverage ? (
+                    <th className="py-0.5 text-right font-normal">Researched</th>
+                  ) : null}
                 </tr>
               </thead>
               <tbody>
@@ -341,6 +433,13 @@ export function TrendChart({
                       {column.partial ? "*" : ""}
                     </td>
                     <td className="py-0.5 text-right tabular-nums">{column.count}</td>
+                    {hasCoverage ? (
+                      <td className="py-0.5 text-right tabular-nums">
+                        {column.share === null
+                          ? "–"
+                          : `${percent(column.share)} of ${column.advisories?.toLocaleString("en-US")}`}
+                      </td>
+                    ) : null}
                   </tr>
                 ))}
               </tbody>
@@ -353,8 +452,13 @@ export function TrendChart({
         </p>
       )}
 
+      {hasCoverage ? (
+        <p className="mt-2 max-w-2xl text-[11px] leading-5 text-muted-foreground">
+          {`Bars count findings among the advisories researched so far. Only ${coverageRange} of each month's covered advisories have been researched (gray), so a short bar can mean little research rather than few AI-caused vulnerabilities.`}
+        </p>
+      ) : null}
       {cutoffIsPartial ? (
-        <p className="mt-2 text-[11px] leading-5 text-muted-foreground">
+        <p className="mt-1 text-[11px] leading-5 text-muted-foreground">
           * {formatMonthShort(cutoffMonth)} is partial (lighter bar).
         </p>
       ) : null}

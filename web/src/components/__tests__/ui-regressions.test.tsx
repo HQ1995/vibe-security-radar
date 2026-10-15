@@ -25,6 +25,7 @@ import {
   getResearchLabels,
   getResearchSnapshot,
   getResearchCases,
+  withResearchCoverage,
 } from "@/lib/research-data";
 
 describe("server-rendered charts", () => {
@@ -49,6 +50,33 @@ describe("server-rendered charts", () => {
     expect(trend).not.toContain("Unavailable");
     expect(trend).not.toContain("recharts");
     expect(trend).not.toContain("min-w-[760px]");
+    expect(trend).not.toContain("researched");
+  });
+
+  it("shows how much of each month was researched next to its findings", () => {
+    const trend = renderToStaticMarkup(
+      <TrendChart
+        data={withResearchCoverage(
+          [
+            { month: "2026-02", count: 5 },
+            { month: "2026-03", count: 23 },
+          ],
+          [
+            { month: "2026-02", advisories: 1000, researched: 40 },
+            { month: "2026-03", advisories: 2000, researched: 360 },
+          ],
+        )}
+        caseCount={28}
+        datedCount={28}
+        unknownDateCount={0}
+        sourceCutoff="2026-08-10T04:01:13.999999+00:00"
+      />,
+    );
+
+    expect(trend).toContain("Feb 2026: 5 cases, 4% of 1,000 advisories researched");
+    expect(trend).toContain("4%–18% per month");
+    expect(trend).toContain("Share of the month&#x27;s advisories researched");
+    expect(trend).toContain("18% of 2,000");
   });
 });
 

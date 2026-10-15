@@ -11,7 +11,9 @@ copy that saves Neon traffic:
 Never hand-edit it. `ledger_store.py export-history` writes a full local backup of the
 history tables to `.ai-slop/ledger-history` (untracked); take one before a large migration.
 Reader-facing values without a ledger column (curated summaries, severity, release ranges,
-advisory dates, code evidence) live in committed files under `scripts/`. Operational order
+advisory dates, code evidence) live in committed files under `scripts/`. `scripts/advisory-months.json`
+dates each row of the original universe for the monthly research-coverage strip; rows admitted later
+are dated by their own `source_intake` records. Operational order
 and recovery follow the [release reference](release.md).
 
 Field definitions: [Ledger SQL](../../../../scripts/ledger_schema.sql) and
