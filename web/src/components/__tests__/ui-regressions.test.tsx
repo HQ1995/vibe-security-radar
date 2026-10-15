@@ -131,7 +131,7 @@ describe("canonical case evidence", () => {
 
   it("keeps internal publication status off reader-facing case pages", async () => {
     const cases = [
-      "GHSA-X98J-GH4V-7P7G",
+      "GHSA-FWG7-53P4-G33C",
       "GHSA-WFX9-6H8H-F3GM",
       "GHSA-Q8HH-M6V5-4F3X",
     ];
@@ -344,7 +344,7 @@ describe("canonical case evidence", () => {
 
   it("shows audited fix authorship without unknown labels", () => {
     const humanMarked = getResearchCaseById("GHSA-8359-H9FX-J6V9");
-    const aiMarked = getResearchCaseById("GHSA-GWMJ-HF32-5V8V");
+    const aiMarked = getResearchCaseById("GHSA-X8HX-RHR2-9RF7");
 
     expect(humanMarked).not.toBeNull();
     expect(aiMarked).not.toBeNull();
@@ -404,7 +404,7 @@ describe("canonical case evidence", () => {
   });
 
   it("renders the mechanism note as plain text, not raw markdown", () => {
-    const item = structuredClone(getResearchCaseById("GHSA-9J5F-PJWJ-62R3")!);
+    const item = structuredClone(getResearchCaseById("GHSA-43R4-3HF9-M84Q")!);
     Object.assign(item, {
       mechanism:
         "## Root cause\n\nThe `search` parameter reached **Pgsql** with no ESCAPE clause.",
@@ -479,7 +479,7 @@ describe("canonical case evidence", () => {
 
   it("expands anchored key lines and folds the surrounding diff context", () => {
     const item = structuredClone(
-      getResearchCaseById("GHSA-9J5F-PJWJ-62R3")!,
+      getResearchCaseById("GHSA-43R4-3HF9-M84Q")!,
     );
     Object.assign(item.code_evidence!.display_hunks![0], {
       annotation:

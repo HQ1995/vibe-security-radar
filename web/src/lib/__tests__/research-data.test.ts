@@ -107,11 +107,14 @@ describe("canonical research data", () => {
       ),
     ).toBe(true);
 
+    const september = snapshot.cases.filter((item) =>
+      item.published_at?.startsWith("2026-09"),
+    ).length;
     const extended = buildResearchTimeline([
       ...snapshot.cases,
       { published_at: "2026-09-03" },
     ]);
-    expect(extended.at(-1)).toEqual({ month: "2026-09", count: 1 });
+    expect(extended.at(-1)).toEqual({ month: "2026-09", count: september + 1 });
   });
 
   it("keeps listing, detail, and evidence on one identity and class", () => {
