@@ -9,7 +9,9 @@ import subprocess
 import sys
 from pathlib import Path
 
-AI_VERDICTS = {"AI_ROOT_CAUSE", "AI_CODE_FLAWED"}
+from audit_envelope import PROSE_KEYS, has_prose
+
+AI_VERDICTS ={"AI_ROOT_CAUSE", "AI_CODE_FLAWED"}
 CLOSED = {"NOT_AI", "FALSE_POSITIVE"} | AI_VERDICTS
 OPEN = {"EVIDENCE_GAP", "BLOCKED"}
 SHA40 = re.compile(r"^[0-9a-f]{40}$")
@@ -243,6 +245,10 @@ def check_record_strict(record: dict) -> list[str]:
     elif disposition in DEAD_DISPOSITIONS and verdict != "FALSE_POSITIVE":
         problems.append(
             f"{cid}: strict: advisory is {disposition} but verdict is {verdict}"
+        )
+    if verdict != "FALSE_POSITIVE" and not has_prose(record):
+        problems.append(
+            f"{cid}: strict: the record needs its prose in one of {', '.join(PROSE_KEYS)}"
         )
 
     granularity = need("bic_granularity").upper()

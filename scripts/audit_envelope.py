@@ -13,6 +13,11 @@ EXTERNAL_VCS = re.compile(
     re.I | re.S,
 )
 TERMINAL = {"NOT_AI", "AI_ROOT_CAUSE", "AI_CODE_FLAWED", "BLOCKED", "FALSE_POSITIVE"}
+PROSE_KEYS = ("reasoning", "bug_semantics", "evidence", "flaw_origin")
+
+
+def has_prose(payload: dict) -> bool:
+    return any(str(payload.get(key) or "").strip() for key in PROSE_KEYS)
 
 
 def status_of_verdict(verdict):
@@ -70,8 +75,8 @@ def violations(row: dict) -> list:
             bad.append(f"non-canonical introducer_sha: {[b[:24] for b in bics if not (isinstance(b, str) and HEX40.match(b))]}")
     if not any(p.get("ai_marker") is not None for p in ps):
         bad.append("ai_marker missing")
-    if not any(p.get("reasoning") or p.get("bug_semantics") or p.get("evidence") for p in ps):
-        bad.append("reasoning/bug_semantics/evidence missing")
+    if not any(has_prose(p) for p in ps):
+        bad.append("/".join(PROSE_KEYS) + " missing")
     return bad
 
 

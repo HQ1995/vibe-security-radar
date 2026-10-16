@@ -26,6 +26,7 @@ GOOD = {
     "ai_on_bic": True,
     "flip_condition": "a PR page showing the tool was not used for that commit",
     "advisory_aliases": [{"id": "GHSA-1234-5678-90ab", "state": "ACTIVE"}],
+    "flaw_origin": "the introducing change added the unguarded upload path",
 }
 
 REFUTED = {
@@ -76,6 +77,12 @@ def test_contract_record_passes_both_gate_sets(verdict):
     record = {**GOOD, "verdict": verdict}
     assert check_record(record) == []
     assert check_record_strict(record) == []
+
+
+def test_record_needs_the_prose_the_ledger_envelope_requires():
+    record = {**GOOD, "flaw_origin": "  "}
+    assert any("needs its prose" in p for p in check_record_strict(record))
+    assert check_record_strict({**record, "reasoning": "the change added the path"}) == []
 
 
 IMPACT = {

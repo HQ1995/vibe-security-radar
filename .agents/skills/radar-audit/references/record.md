@@ -10,7 +10,9 @@ duplicate JSON keys, including nested ones; later values must never silently rep
 evidence.
 
 One JSON record per case, `record.json` in the role's case directory; the accepted
-synthesis lands in the ledger row's `causal_research` in the same shape. Required
+synthesis lands in the ledger row's `causal_research` in the same shape. Except for a
+`FALSE_POSITIVE`, the prose sits in at least one of `reasoning`, `bug_semantics`, `evidence`
+or `flaw_origin`; the ledger refuses a row without it. Required
 fields beyond the verdict and its prose: `protocol_version`, `impact` (except for a
 `FALSE_POSITIVE`), `advisory_disposition`,
 `advisory_aliases`, `introducer_sha`, `landing_commit`, `bic_granularity`,

@@ -43,7 +43,9 @@ def test_envelope_uses_one_accepted_record_without_historical_field_mixing():
     del row["causal_research"]["reasoning"]
     errors = audit_envelope.violations(row)
     assert "ai_marker missing" in errors
-    assert "reasoning/bug_semantics/evidence missing" in errors
+    assert "reasoning/bug_semantics/evidence/flaw_origin missing" in errors
+    row["causal_research"]["flaw_origin"] = "The reviewed change added the unguarded lookup."
+    assert audit_envelope.violations(row) == ["ai_marker missing"]
 
 
 @pytest.mark.parametrize("accepted", [None, {}, "invalid", {"verdict": "NOT_AI"}])

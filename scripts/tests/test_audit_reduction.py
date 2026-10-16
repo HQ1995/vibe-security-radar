@@ -23,6 +23,7 @@ def delivery(tmp_path):
         'identity_class': 'human', 'disclosure_convention': 'CONVENTION_NOT_OBSERVED',
         'flip_condition': 'First-party attribution bound to the introducing change.',
         'remaining_gap': None,
+        'flaw_origin': 'A human-authored change added the unguarded path.',
     }
     paths = {}
     for name in ('a', 'b', 'accepted'):
