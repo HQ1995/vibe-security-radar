@@ -43,6 +43,11 @@ each summary. `features.memories=false` keeps Codex's cross-session memory from 
 into another. The preferred models hold 1M tokens; compacting at 500k instead of a lower
 personal default keeps a long audit from losing and re-reading its references. The prompt goes in on stdin
 so no session can read another's assignment from the process list. `curl -s http://127.0.0.1:3425/v1/models` shows what the gateway serves.
+A session that has written `reply.md` can still linger. Before stopping one, confirm which lane it
+is with `readlink /proc/<pid>/fd/1`, which names its `session.log`; process lists do not show the
+lane. A `429 Too Many Requests` that exhausts Codex's retries ends the session without a reply:
+start the same role again on the same model once the provider answers, and say its directory
+holds an unfinished attempt.
 
 Each session starts with no conversation history. That, the read limits in its assignment
 and sealing keep the lanes independent; isolation is by instruction, not by sandbox, so
