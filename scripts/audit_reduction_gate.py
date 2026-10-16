@@ -7,6 +7,7 @@ import hashlib
 import json
 from pathlib import Path
 
+from audit_envelope import PROSE_KEYS, has_prose
 from audit_record_gates import AI_VERDICTS, check_record, check_record_strict, load_record, review_signals
 from compare_slots import RESEARCH_FIELDS, lane_paths, load_snapshot, research_differences_many
 
@@ -233,6 +234,8 @@ def check_delivery(manifest: Path, accepted: Path, decisions: Path, lanes: dict[
             if not isinstance(bound, dict) or bound.get(name) != hashes[cid]:
                 problems.append(f'{cid}: {name} digest missing or changed since adjudication')
         problems.extend(check_record(final) + check_record_strict(final))
+        if final.get('verdict') != 'FALSE_POSITIVE' and not has_prose(final):
+            problems.append(f'{cid}: the accepted record needs its prose in one of {", ".join(PROSE_KEYS)}')
         status = decision.get('status')
         counts[str(status)] += 1
         if status == 'BLOCKED':

@@ -79,12 +79,6 @@ def test_contract_record_passes_both_gate_sets(verdict):
     assert check_record_strict(record) == []
 
 
-def test_record_needs_the_prose_the_ledger_envelope_requires():
-    record = {**GOOD, "flaw_origin": "  "}
-    assert any("needs its prose" in p for p in check_record_strict(record))
-    assert check_record_strict({**record, "reasoning": "the change added the path"}) == []
-
-
 IMPACT = {
     "affected": "the upload route in releases 2.1.0-2.3.4",
     "prerequisites": "any authenticated user; default configuration",

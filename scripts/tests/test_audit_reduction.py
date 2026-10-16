@@ -112,6 +112,20 @@ def test_valid_frozen_delivery_and_cli(delivery):
     assert json.loads(result.stdout)['research_status'] == {'ACCEPTED': 1}
 
 
+def test_only_the_accepted_record_needs_the_prose_the_ledger_requires(delivery):
+    paths, index = delivery
+    for lane in ('a', 'accepted'):
+        path = paths[lane] / 'case.json'
+        record = json.loads(path.read_text())
+        del record['flaw_origin']
+        path.write_text(json.dumps(record))
+        index['cases']['alias-x']['sha256'][lane] = digest(path)
+    save_index(paths, index)
+    problems = gate(paths)['problems']
+    assert any('accepted record needs its prose' in p for p in problems)
+    assert not any('input_quality' in p for p in problems)
+
+
 def test_explicit_evidence_backed_resolution_can_close_a_difference(delivery):
     paths, index = delivery
     file = paths['b'] / 'case.json'
