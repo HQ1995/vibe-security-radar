@@ -226,6 +226,8 @@ def test_a_returned_review_is_reopened_without_losing_the_original(env):
     fake, prepare = env
     prepare('alias-a')
     case = checked('001', record('alias-a'))
+    with pytest.raises(ValueError, match='returned'):
+        radar_case.reopen('pilot', '001')
     review(case, 'RETURN')
     state = radar_case.land('pilot')[0]
     assert state['phase'] == 'RETURNED' and state['next_question'] == 'Fixture question.'

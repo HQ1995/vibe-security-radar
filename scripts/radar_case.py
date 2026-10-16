@@ -406,9 +406,9 @@ def check(run: str, key: str, dry_run: bool = False) -> dict:
 def reopen(run: str, key: str) -> dict:
     case = case_dir(run, key)
     sealed = read(case / 'SEAL.json')
-    if ('adjudicator' not in sealed or state_of(case)['phase'] == 'LANDED'
+    if ('adjudicator' not in sealed or state_of(case)['phase'] != 'RETURNED'
             or (case / 'land' / 'runs.json').exists() or (case / 'land' / 'patch.jsonl').exists()):
-        raise ValueError('only a checked adjudication that has not started landing can be reopened')
+        raise ValueError('only a returned adjudication that has not started landing can be reopened')
     sealed.pop('reviewer', None)
     version = len(list(case.glob('adjudicator-v*'))) + 1
     for name in ('adjudicator', 'reviewer'):
