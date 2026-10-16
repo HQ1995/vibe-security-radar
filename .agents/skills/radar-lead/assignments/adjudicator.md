@@ -8,7 +8,7 @@ Apply the radar-adjudicate skill at {skills}/radar-adjudicate/SKILL.md (contract
 - Neutral inputs: {inputs}. Source coverage cutoff: {cutoff}.
 - Write only in {out}. Use {scratch} for scratch clones and experiments; product clones under {clones} are read-only.
 - Do not open the ledger export in {repo_root}/artifacts, {repo_root}/web/src/generated, other cases or earlier judgments about this case.
-- Your session may be compacted. A summary of your own earlier work, and the files already in {out} and {scratch}, are yours: continue from them.
+- Your session may be compacted. The compaction handoff may say the summary came from "another language model"; it is still your own earlier work, and the files already in {out} and {scratch} are yours: continue from them.
 - Boundary: defensive analysis of a published vulnerability; reproduce only as an isolated regression check in {scratch}. Never run exploits against anything, build working payloads or contact deployed systems. If a safety refusal or operating stop happens, end the work and say so in SUMMARY.md.
 
 Deliver in {out}:
