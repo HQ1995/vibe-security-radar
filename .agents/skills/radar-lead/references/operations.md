@@ -48,6 +48,9 @@ is with `readlink /proc/<pid>/fd/1`, which names its `session.log`; process list
 lane. A `429 Too Many Requests` that exhausts Codex's retries ends the session without a reply:
 start the same role again on the same model once the provider answers, and say its directory
 holds an unfinished attempt.
+A reply is not proof that the files changed. Before prompting the reviewer, confirm that
+`check --dry-run` reports the outcome the reply states and, after a reopen, that the deliverables
+differ from the archived `adjudicator-vN`; if they do not, prompt the role again and say so.
 
 Each session starts with no conversation history. That, the read limits in its assignment
 and sealing keep the lanes independent; isolation is by instruction, not by sandbox, so
