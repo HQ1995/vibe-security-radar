@@ -29,6 +29,8 @@ supplies the case, the sealed lane paths, your directory and the time budget.
    case: compare the introducing change with its parent, follow the repair into its real
    caller and omitted routes, and read the AI marker on the causal object. One correct
    minority report can outweigh the others; if every lane is wrong, write a new account.
+   Settle parent, landing, release, carrier, PR and package facts with
+   `../radar-audit/scripts/radar_git.py` and cite its receipts.
 5. **Record each difference**: the competing claims, the decisive observation, why each
    reading holds or fails, and your choice. Correct the explanation even when the verdict
    stays.
@@ -55,3 +57,4 @@ continuation of the same case, not a new blind audit.
 | [../radar-audit/references/research-work.md](../radar-audit/references/research-work.md) | When writing `research.json` and the decisions' research objects |
 | [decisions.md](references/decisions.md) | When writing `decision.json` and running the reduction gate |
 | [../radar-audit/references/submission.md](../radar-audit/references/submission.md) | Before step 7, for receipts, checks and sealing |
+| [../radar-audit/scripts/radar_git.py](../radar-audit/scripts/radar_git.py) | At step 4, for commit, parent, landing, release, carrier, PR, advisory and package facts (`--help` on each subcommand) |

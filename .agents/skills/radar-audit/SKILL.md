@@ -30,8 +30,11 @@ the case, your directory, a scratch directory and the time budget.
    at the affected revision; establish who can trigger it and what they obtain.
 4. **History.** Find the introducing or exposing change and compare it with its parent;
    find the repair, follow it into its real callers, and verify the released content.
+   Get parent comparisons, landings, release ranges and package contents from
+   `scripts/radar_git.py`, not hand-written git commands.
 5. **AI role.** Read the marker on the object that carries the causal change and say which
-   activity it discloses. Absence of a marker is not `NOT_AI`.
+   activity it discloses. Absence of a marker is not `NOT_AI`; `radar_git.py carriers`
+   lists every local object that carries the causal content.
 6. **Stop when answered.** End each question when evidence answers it or its bounded probe
    is exhausted; name the observation that would close any remaining gap.
 7. **Write and check.** Write `REPORT.md` first, organized by the four questions, then
@@ -53,3 +56,4 @@ response is an execution failure, never an evidence gap.
 | [record.md](references/record.md) | When deriving `record.json`: fields, enums, verdict rules |
 | [research-work.md](references/research-work.md) | When writing `research.json` |
 | [submission.md](references/submission.md) | Before step 7, for receipts, checks and sealing |
+| [scripts/radar_git.py](scripts/radar_git.py) | For every commit, parent, landing, release, carrier, PR, advisory or package fact: `commit`, `parent-diff`, `landing`, `releases`, `carriers`, `github`, `artifact` (`--help` on each). Write receipts with `--out <your directory>/evidence` |

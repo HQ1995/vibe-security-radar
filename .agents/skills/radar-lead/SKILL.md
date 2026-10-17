@@ -83,6 +83,10 @@ against primary evidence:
 - the object that carries each AI marker, and the activity it discloses;
 - that report, record, `impact` and `remaining_gap` agree.
 
+Check a parent, landing, release, carrier, PR or package claim by rerunning the matching
+`radar-audit/scripts/radar_git.py` query with receipts in your scratch, not by reconstructing
+it by hand.
+
 Write `reviewer/review.json` with `decision` `ACCEPT` or `RETURN`, a substantive `basis`,
 `evidence` entries (absolute path and SHA-256 of sealed files under the case), and for RETURN
 the `next_question`. Accept a BLOCKED outcome only when the blocker is researched, not an

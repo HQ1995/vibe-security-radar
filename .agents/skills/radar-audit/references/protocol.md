@@ -68,7 +68,9 @@ subsequently reviews all reports and completes unresolved research under
    FALSE_POSITIVE, causal introducer/repair fields are explicitly null (not applicable),
    as the [record reference](record.md) defines; keep examined objects in evidence without assigning them
    vulnerability roles. An excluded advisory's disposition does not change the verdict
-   of its broader live alias cluster.
+   of its broader live alias cluster. `radar_git.py github advisories` lists the
+   repository's published advisories, so a later advisory naming a residual of this
+   case's repair is not missed.
 
 1. **Cause.** Trigger → vulnerable code → security effect, with preconditions and
    counterevidence. Separate distinct mechanisms. Trace the real caller, validation
@@ -125,6 +127,10 @@ subsequently reviews all reports and completes unresolved research under
    proof that public history is unavailable: distinguish a commit, its trees/blobs and
    the product repository from a reporter or umbrella clone. If the BIC itself is
    unknown, use the explicit nulls the record reference allows for open records.
+   `radar_git.py parent-diff` compares a commit with each parent at named paths,
+   `landing` names the first first-parent commit of each branch that carries a commit
+   (by ancestry, or by content at `--path` for a squash or cherry-pick), and
+   `github pr` returns the PR, its member commits and its body.
 
 4. **History: repair and release.** Identify the minimum repairing hunks/commit set and
    why it closes the defect. Follow the repair through actual caller wiring, sibling
@@ -142,7 +148,12 @@ subsequently reviews all reports and completes unresolved research under
    source-release finding need not establish every binary or platform, but narrowing
    scope needs evidence. If the remediation is partial, or a claimed patched release
    does not contain the fix, `remaining_gap` names the still-open surface and its
-   closing commit, or none.
+   closing commit, or none. `radar_git.py landing` finds the integration on each
+   maintained branch; `releases` gives each release line's first and last tag by
+   ancestry and by content (`--path` with `--pattern` for a backport; it warns when the
+   pattern already matches the commit's parent, and lists unreadable versions as
+   unknown); `artifact`
+   checks a published package's files against its registry digest.
 
 5. **AI role.** Tie AI evidence to causal changes across the history, within its
    disclosed scope, and record how it was admitted (`ai_admissibility`): first
@@ -165,12 +176,15 @@ subsequently reviews all reports and completes unresolved research under
 
    "No marker" is a statement about every local object that carries the causal
    content, including commits no ref reaches (a pre-force-push iteration of the same PR
-   keeps its trailer while the landed squash drops it): enumerate local commit objects
-   with `git cat-file --batch-all-objects --batch-check`, filtering for commits. Compare
-   their trees at relevant historical paths for the exact causal blob or supported
-   hunk, then read every matching commit's full metadata. `--find-object` and pickaxe
-   select content transitions, not unchanged descendants; neither proves complete
-   carrier coverage. Retain the inspected object and path universe. A marker found
+   keeps its trailer while the landed squash drops it). `radar_git.py carriers` lists
+   every local commit object, reachable or not, whose tree carries the exact causal
+   blob at any path where it ever appeared, or a supported hunk (`--pattern` at named
+   paths). It keeps every commit that shares a root tree, reads each one's full metadata
+   and says when the clone is shallow or missing objects. `--find-object` and pickaxe
+   alone select content transitions, not unchanged descendants, and do not prove
+   complete carrier coverage. The receipt retains the inspected object and path universe;
+   `radar_git.py commit` prints one object's identities, trailers and marker leads.
+   Leads are where to look, not a verdict. A marker found
    there attributes the content only once the record shows the same blob or hunk on
    both objects; a shallow or promisor clone with no such objects is a clone-state gap,
    not evidence of absence. Preserve the exact marker quote and its SHA/source. Read
@@ -182,8 +196,10 @@ subsequently reviews all reports and completes unresolved research under
    raw-output file, and describe the operation actually performed (an archive-member
    extraction is not a Git object read; an anchor match is not a causal check). Verify
    the content of objects used in a conclusion rather than inferring it from a search
-   hit. Shared Git reads use `GIT_NO_LAZY_FETCH=1` and `GIT_OPTIONAL_LOCKS=0`; recover
-   missing objects only in an owned scratch clone. Distinguish a tool's own retrieval
+   hit. Shared Git reads use `GIT_NO_LAZY_FETCH=1` and `GIT_OPTIONAL_LOCKS=0` (as
+   `radar_git.py` does); recover missing objects only in an owned scratch clone. A
+   `radar_git.py` receipt records the command, repository state, capture time, exit code
+   and output, and is cited like any other receipt. Distinguish a tool's own retrieval
    failure, which you diagnose and repair within your permissions, from an explicit
    source access denial, which you honor. State `flip_condition`: what evidence would
    change the verdict. Report, evidence and `remaining_gap` must agree: never carry a

@@ -145,5 +145,6 @@ digest-matching export) plus the committed editorial inputs in `scripts/*.json`;
 `check_advisory_links.py` gate the build. The radar-lead skill's Publish section lists the inputs a
 new or changed AI case needs; [release](release.md) covers build, deploy and live verification.
 
-Offline tests: `python3 -m pytest scripts/tests` and the skill's `scripts/` tests use
+Offline tests: `python3 -m pytest scripts/tests .agents/skills/radar-audit/scripts
+.agents/skills/radar-incremental/scripts`. They use
 fixture deliveries, real gates and fake ledgers; they never contact Neon.

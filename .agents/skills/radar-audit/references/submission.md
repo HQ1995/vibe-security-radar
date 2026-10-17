@@ -4,6 +4,8 @@ What each auditor and the adjudicator deliver, in the directory their assignment
 
 1. Save receipts in `evidence/` as you go: command or URL, repository and full object SHA or
    version, capture time, exit or HTTP status and the raw output. Keep failed probes.
+   `radar_git.py --out <your directory>/evidence` writes such a receipt for each query,
+   including a failed one.
 2. Write `REPORT.md` first, then derive `record.json` and the research-work sidecar
    `research.json` with file writes or a script; never interpolate source text or whole JSON
    documents into shell strings. After a write failure, inspect the files before continuing.
