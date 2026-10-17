@@ -1035,65 +1035,6 @@
   },
   "annotation_mode": "hunk_specific"
  },
- "CVE-2026-54362": {
-  "ai_marker": "Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>",
-  "fix_marker": null,
-  "candidate_url": "https://github.com/MISP/MISP/commit/47bf71cc78d13c06e1eaa4d9842e6f94ddce4bea",
-  "fix_url": "https://github.com/MISP/MISP/commit/8aa2bb6d1af6e8c57c8d8437cf203acb8bce7a53",
-  "advisory_url": "",
-  "summary": "galaxy 47bf71cc EventTemplatesController::__setBuilderConfig() galaxyTypesAvailable 'Galaxy.enabled' => trueorg_id/\u2014\u2014 org galaxy galaxy org-only distribution=0 galaxyfix d3adfe1a orgConditionsite admin Galaxy.org_id= org distribution>0 'Galaxy.distribution' > 0 PHP 8aa2bb6d $this",
-  "steps": [
-   {
-    "title": "AI change",
-    "detail": "new: [event-template(builder)] Tag taxonomy + galaxy type pickers"
-   },
-   {
-    "title": "Fix",
-    "detail": "fix: [security] exposing non visible galaxies for template creation"
-   }
-  ],
-  "display_hunks": [
-   {
-    "file": "app/webroot/js/event-templates/builder.js",
-    "code": "@@ -606,6 +606,29 @@\n         if (el.type === 'object_reference') {\n             refreshObjectFieldSelects($pane, el);\n         }\n+        if (el.type === 'tag_field' || el.type === 'galaxy_field') {\n+            refreshMultipickerSummary($pane, el);\n+        }\n+    }\n+\n+    function refreshMultipickerSummary($pane, el) {\n+        $pane.querySelectorAll('[data-et-multipicker-summary-for]').forEach(function ($s) {\n+            var field = $s.getAttribute('data-et-multipicker-summary-for');\n+            var values = getDeep(el, field);\n+            if (!Array.isArray(values) || values.length === 0) {\n+                $s.innerHTML = '<em>' +\n+                    (field === 'restrict_taxonomies' ? '(any taxonomy)' : '(any galaxy type)') +\n+                    '</em>';\n+                return;\n+            }\n+            $s.innerHTML = '';\n+            values.forEach(function (v) {\n+                var $chip = document.createElement('span');\n+                $chip.className = 'et-chip';\n+                $chip.textContent = v;\n+                $s.appendChild($chip);\n+            });\n+        });\n     }\n \n     function refreshAttributeTypeOptions($pane, el) {\n@@ -771,6 +794,132 @@\n         renderProperties();\n     }\n \n+    // ---------------------------------------------------------------\n+    // Generic multi-picker modal \u2014 used for tag taxonomies + galaxy types.\n+    // ---------------------------------------------------------------\n+\n+    // Tracks which element/field the modal is currently editing.\n+    var multipickerCtx = null;\n+\n+    function wireMultipicker() {\n+        document.addEventListener('click', function (e) {\n+            var $btn = e.target.closest('[data-et-open-multipicker]');\n+            if ($btn) {\n+                e.preventDefault();\n+                openMultipicker(\n+                    $btn.getAttribute('data-et-open-multipicker'),\n+                    $btn.getAttribute('data-et-multipicker-field'),\n+                    $btn.getAttribute('data-et-multipicker-title') || 'Select items'\n+                );\n+            }\n+        });\n+\n+        var $search = document.getElementById('et-multipicker-search');\n+        if ($search) {\n+            $search.addEventListener('input', function () {\n+                filterMultipickerList($search.value);\n+            });\n+        }\n+\n+        var $apply = document.getElementById('et-multipicker-apply');\n+        if ($apply) {\n+            $apply.addEventListener('click', function (e) {\n+                e.preventDefault();\n+                applyMultipicker();\n+            });\n+        }\n+    }\n+\n+    function openMultipicker(source, field, title) {\n+        if (!state.selectedId) { return; }\n+        var el = findElement(state.selectedId);\n+        if (!el) { return; }\n+        var items = (cfg.multipickerSources && cfg.multipickerSources[source]) || [];\n+        var current = getDeep(el, field);\n+        var selectedSet = {};\n+        if (Array.isArray(current)) {\n+            current.forEach(function (v) { selectedSet[v] = true; });\n+        }\n+        multipickerCtx = {source: source, field: field, elementId: el.id};\n+\n+        var $title = document.getElementById('et-multipicker-title');\n+        if ($title) { $title.textContent = title; }\n+\n+        var $list = document.getElementById('et-multipicker-list');\n+        if ($list) {\n+            $list.innerHTML = '';\n+            if (!items.length) {\n+                $list.innerHTML = '<div style=\"padding:20px; text-align:center; color:#888;\">' +",
-    "annotation": "Adds the multipicker summary refresh that writes tag and galaxy field values into `innerHTML` without escaping.",
-    "role": "candidate"
-   },
-   {
-    "file": "app/Controller/EventTemplatesController.php",
-    "code": "@@ -660,6 +660,55 @@ private function __setBuilderConfig()\n             );\n         }\n         $this->set('objectTemplatesAvailable', $objectTemplates);\n+\n+        $this->loadModel('Taxonomy');\n+        $taxonomyRows = $this->Taxonomy->find('all', array(\n+            'recursive' => -1,\n+            'conditions' => array('Taxonomy.enabled' => true),\n+            'fields' => array(\n+                'Taxonomy.namespace',\n+                'Taxonomy.description',\n+                'Taxonomy.version',\n+            ),\n+            'order' => array('Taxonomy.namespace' => 'ASC'),\n+        ));\n+        $taxonomies = array();\n+        foreach ($taxonomyRows as $r) {\n+            $t = $r['Taxonomy'];\n+            $taxonomies[] = array(\n+                'value' => (string)$t['namespace'],\n+                'label' => (string)$t['namespace'],\n+                'description' => (string)($t['description'] ?? ''),\n+            );\n+        }\n+        $this->set('taxonomiesAvailable', $taxonomies);\n+\n+        $this->loadModel('Galaxy');\n+        $galaxyRows = $this->Galaxy->find('all', array(\n+            'recursive' => -1,\n+            'conditions' => array('Galaxy.enabled' => true),\n+            'fields' => array(\n+                'Galaxy.type',\n+                'Galaxy.description',\n+            ),\n+            'group' => array('Galaxy.type'),\n+            'order' => array('Galaxy.type' => 'ASC'),\n+        ));\n+        $galaxyTypes = array();\n+        $seenTypes = array();\n+        foreach ($galaxyRows as $r) {\n+            $t = $r['Galaxy']['type'];\n+            if ($t === null || $t === '' || isset($seenTypes[$t])) {\n+                continue;\n+            }\n+            $seenTypes[$t] = true;\n+            $galaxyTypes[] = array(\n+                'value' => (string)$t,\n+                'label' => (string)$t,\n+                'description' => (string)($r['Galaxy']['description'] ?? ''),\n+            );\n+        }\n+        $this->set('galaxyTypesAvailable', $galaxyTypes);\n     }\n \n     private function __renderDependencyMissing(array $missing)",
-    "annotation": "Queries every enabled taxonomy and galaxy type using only the enabled flag as visibility, handing the template builder galaxy entries that belong to other organizations.",
-    "role": "candidate"
-   },
-   {
-    "file": "app/View/Elements/eventTemplates/builder/shell.ctp",
-    "code": "@@ -32,6 +32,10 @@\n     $objectTemplates = isset($objectTemplatesAvailable)\n         ? $objectTemplatesAvailable\n         : [];\n+    $multipickerSources = [\n+        'taxonomies' => isset($taxonomiesAvailable) ? $taxonomiesAvailable : [],\n+        'galaxyTypes' => isset($galaxyTypesAvailable) ? $galaxyTypesAvailable : [],\n+    ];\n \n     $paletteButtons = [\n         'section'          => ['label' => __('Section'),          'icon' => 'folder'],\n@@ -153,6 +157,29 @@\n #et-ot-picker-modal { width: 640px; max-height: 80vh; }\n #et-ot-picker-modal .modal-body { max-height: calc(80vh - 120px); overflow: hidden; display: flex; flex-direction: column; gap: 8px; }\n #et-ot-picker-list { flex: 1; overflow-y: auto; border: 1px solid #eee; border-radius: 3px; }\n+#et-multipicker-modal { width: 560px; }\n+#et-multipicker-modal .modal-body { display: flex; flex-direction: column; gap: 8px; }\n+#et-multipicker-modal label.et-multipicker-item {\n+    display: block;\n+    padding: 6px 10px;\n+    border-bottom: 1px solid #f3f3f3;\n+    margin: 0;\n+    cursor: pointer;\n+}\n+#et-multipicker-modal label.et-multipicker-item:hover { background: #f0f8ff; }\n+#et-multipicker-modal label.et-multipicker-item input[type=checkbox] { margin-right: 8px; }\n+#et-multipicker-modal .et-multipicker-label { font-weight: 500; }\n+#et-multipicker-modal .et-multipicker-desc { display: block; color: #888; font-size: 11px; margin-left: 24px; }\n+.eventTemplates.builder .et-multipicker-summary { font-size: 12px; color: #333; }\n+.eventTemplates.builder .et-multipicker-summary .et-chip {\n+    display: inline-block;\n+    background: #eef4fa;\n+    border: 1px solid #cde1f2;\n+    border-radius: 3px;\n+    padding: 1px 6px;\n+    margin: 0 2px 2px 0;\n+    font-size: 11px;\n+}\n </style>\n <div class=\"eventTemplates builder form\">\n     <h2><?php echo h($pageTitle); ?></h2>\n@@ -279,6 +306,28 @@\n     </div>\n </div>\n \n+<div id=\"et-multipicker-modal\" class=\"modal hide fade\" tabindex=\"-1\" role=\"dialog\" aria-hidden=\"true\">\n+    <div class=\"modal-header\">\n+        <button type=\"button\" class=\"close\" data-dismiss=\"modal\" aria-hidden=\"true\">\u00d7</button>\n+        <h3 id=\"et-multipicker-title\"><?php echo __('Select items'); ?></h3>\n+    </div>\n+    <div class=\"modal-body\">\n+        <input type=\"text\" id=\"et-multipicker-search\" class=\"input-block-level\"\n+               placeholder=\"<?php echo __('Filter\u2026'); ?>\">\n+        <div id=\"et-multipicker-list\" style=\"max-height:420px; overflow-y:auto; border:1px solid #eee; border-radius:3px;\">\n+            <!-- populated by JS on open -->\n+        </div>\n+    </div>\n+    <div class=\"modal-footer\">\n+        <button type=\"button\" class=\"btn\" data-dismiss=\"modal\">\n+            <?php echo __('Cancel'); ?>\n+        </button>\n+        <button type=\"button\" class=\"btn btn-primary\" id=\"et-multipicker-apply\">\n+            <?php echo __('Apply'); ?>\n+        </button>\n+    </div>\n+</div>\n+\n <script>\n     window.ET_BUILDER_CONFIG = {\n         mode:       <?php echo json_encode($builderMode); ?>,\n@@ -287,7 +336,8 @@\n         envelope:   <?php echo json_encode($envelope); ?>,\n         definition: <?php echo json_encode($initialDefinition); ?>,\n         attrCategories: <?php echo json_encode($attrCategories); ?>,\n-        objectTemplates: <?php echo json_encode($objectTemplates); ?>\n+        objectTemplates: <?php echo json_encode($objectTemplates); ?>,\n+        multipickerSources: <?php echo json_encode($multipickerSources); ?>\n     };\n </script>\n <?php",
-    "annotation": "Ships the shared searchable multipicker modal that streams controller-provided taxonomy and galaxy lists straight into builder state, displaying every entry the picker source query returned without additional distribution checks.",
-    "role": "candidate"
-   },
-   {
-    "file": "app/Controller/EventTemplatesController.php",
-    "code": "@@ -1010,21 +1010,16 @@ private function __setBuilderConfig()\n             );\n         }\n         $this->set('taxonomiesAvailable', $taxonomies);\n-        $orgCondition = $this->_isSiteAdmin()\n-            ? array()\n-            : array(\n-                'OR' => array(\n-                    'Galaxy.org_id' => (int)$this->Auth->user('org_id'),\n-                    'Galaxy.distribution' > 0,\n-                ),\n-            );\n-\n         $this->loadModel('Galaxy');\n         $galaxyRows = $this->Galaxy->find('all', array(\n             'recursive' => -1,\n             'conditions' => array(\n                 'Galaxy.enabled' => true,\n-                $orgCondition,\n+                // Use the canonical galaxy visibility filter. The previous hand-rolled condition\n+                // `'Galaxy.distribution' > 0` was a PHP comparison (always evaluating to true), not a\n+                // query condition, so every org's galaxies - including org-only (distribution 0) custom\n+                // galaxies belonging to other orgs - leaked into the template builder list.\n+                $this->Galaxy->buildConditions($this->Auth->user()),\n             ),\n             'fields' => array(\n                 'Galaxy.type',",
-    "annotation": "Replaces the hand-rolled organization filter, whose distribution-greater-than-zero expression evaluated to constant truth, with the canonical galaxy visibility conditions so restricted entries stay within the owning organization.",
-    "role": "fix"
-   }
-  ],
-  "candidate_patch_sha256": "fc02ff10f0052d9b188240b7757fd63f137d63f70261d2d777ea0f4d73d1b567",
-  "fix_patch_sha256": "b2075a351f2055414840b4f816c30a1225a5d4a9635440b82e672a5725a36723",
-  "required_anchors": {
-   "candidate": [
-    "refreshMultipickerSummary",
-    "filterMultipickerList",
-    "galaxyTypesAvailable"
-   ],
-   "fix": [
-    "buildConditions",
-    "Galaxy",
-    "distribution"
-   ]
-  },
-  "annotation_mode": "hunk_specific"
- },
  "CVE-2026-56679": {
   "ai_marker": "Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>",
   "fix_marker": null,
@@ -7157,67 +7098,36 @@
  "GHSA-X4HG-HFWF-P9MW": {
   "ai_marker": "Co-Authored-By: Claude Opus 4.6 (1M context) <noreply@anthropic.com>",
   "fix_marker": null,
-  "candidate_url": "https://github.com/asymmetric-effort/nogginlessdom/commit/f8ee181be67344f12aeb30ec39e5ab611c65b826",
-  "fix_url": "https://github.com/asymmetric-effort/nogginlessdom/commit/25a3cbac665fae5663f8b71c073b80c3152dbe7b",
+  "candidate_url": "https://github.com/asymmetric-effort/nogginlessdom/commit/25a3cbac665fae5663f8b71c073b80c3152dbe7b",
+  "fix_url": "",
   "advisory_url": "https://github.com/advisories/ghsa-x4hg-hfwf-p9mw",
-  "summary": "AI API (1) GHSA-322x AI ed0124d matchFileSnapshotsrc/assertions/snapshots.ts:511 filePath fs.writeFileSync/readFileSync\u2014\u2014update fix 785e6ac projectRoot resolved.startsWith(root+sep)(2) GHSA-x4hg ReDoSAI f8ee181 checkValidity pattern `new RegExp(`^(?:${this.pattern})$`)`html-eleme",
+  "summary": "checkValidity() in src/dom/html-elements.ts compiles the user-controlled pattern property straight into a regular expression with new RegExp, so a hostile pattern with nested quantifiers drives catastrophic backtracking and freezes the event loop.",
   "steps": [
    {
     "title": "AI change",
-    "detail": "feat: input validation, CSS APIs, live collections, custom element lifecycle"
-   },
-   {
-    "title": "Fix",
     "detail": "fix: prevent ReDoS in HTMLInputElement pattern validation"
    }
+  ],
+  "candidate_patch_sha256": "7abb9cb0613419c652b4c52c2670c4c2258d90e4c750c3ac2677340da0d551c5",
+  "fix_patch_sha256": null,
+  "candidate_patch_files": [
+   "src/dom/html-elements.ts"
   ],
   "display_hunks": [
    {
     "file": "src/dom/html-elements.ts",
-    "code": "@@ -5,6 +5,89 @@\n \n import { Element, Event, Node } from './index.js';\n \n+/**\n+ * ValidityState \u2014 represents the validity states of a form element.\n+ */\n+export class ValidityState {\n+  private _customError: boolean;\n+  private _getFlags: () => ValidityFlags;\n+\n+  constructor(\n+    customErrorGetter: () => boolean,\n+    flagsGetter: () => ValidityFlags,\n+  ) {\n+    this._customError = customErrorGetter();\n+    this._getFlags = flagsGetter;\n+  }\n+\n+  get badInput(): boolean {\n+    return this._getFlags().badInput;\n+  }\n+\n+  get customError(): boolean {\n+    return this._customError;\n+  }\n+\n+  get patternMismatch(): boolean {\n+    return this._getFlags().patternMismatch;\n+  }\n+\n+  get rangeOverflow(): boolean {\n+    return this._getFlags().rangeOverflow;\n+  }\n+\n+  get rangeUnderflow(): boolean {\n+    return this._getFlags().rangeUnderflow;\n+  }\n+\n+  get stepMismatch(): boolean {\n+    return this._getFlags().stepMismatch;\n+  }\n+\n+  get tooLong(): boolean {\n+    return this._getFlags().tooLong;\n+  }\n+\n+  get tooShort(): boolean {\n+    return this._getFlags().tooShort;\n+  }\n+\n+  get typeMismatch(): boolean {\n+    return this._getFlags().typeMismatch;\n+  }\n+\n+  get valueMissing(): boolean {\n+    return this._getFlags().valueMissing;\n+  }\n+\n+  get valid(): boolean {\n+    return (\n+      !this.badInput &&\n+      !this.customError &&\n+      !this.patternMismatch &&\n+      !this.rangeOverflow &&\n+      !this.rangeUnderflow &&\n+      !this.stepMismatch &&\n+      !this.tooLong &&\n+      !this.tooShort &&\n+      !this.typeMismatch &&\n+      !this.valueMissing\n+    );\n+  }\n+}\n+\n+interface ValidityFlags {\n+  badInput: boolean;\n+  patternMismatch: boolean;\n+  rangeOverflow: boolean;\n+  rangeUnderflow: boolean;\n+  stepMismatch: boolean;\n+  tooLong: boolean;\n+  tooShort: boolean;\n+  typeMismatch: boolean;\n+  valueMissing: boolean;\n+}\n+\n /**\n  * HTMLAnchorElement \u2014 <a>\n  */",
-    "annotation": "Introduces the ValidityState flag object for the generated validation API; its patternMismatch getter surfaces the regex evaluation that the same change compiles directly from the input element's pattern attribute.",
-    "role": "candidate"
-   },
-   {
-    "file": "src/index.ts",
-    "code": "@@ -54,6 +54,7 @@ export {\n   HTMLImageElement,\n   HTMLLabelElement,\n   HTMLOptionElement,\n+  ValidityState,\n } from './dom/html-elements.js';\n \n export {",
-    "annotation": "Exports the new ValidityState symbol from the package entrypoint, publishing the generated form validation surface to library consumers.",
-    "role": "candidate"
-   },
-   {
-    "file": "src/dom/window.ts",
-    "code": "@@ -5,6 +5,7 @@\n \n import { URL, URLSearchParams } from 'node:url';\n import { Document, Element, Event } from './index.js';\n+import { CSSStyleDeclaration } from './style.js';\n import { FormData } from './form-data.js';\n import { Headers as NogginHeaders } from './headers.js';\n import {\n@@ -298,6 +299,255 @@ interface ScreenStub {\n   pixelDepth: number;\n }\n \n+/** Set of CSS property names recognized by CSS.supports(). */\n+const KNOWN_CSS_PROPERTIES: Set<string> = new Set([\n+  'display',\n+  'color',\n+  'background',\n+  'background-color',\n+  'background-image',\n+  'background-position',\n+  'background-repeat',\n+  'background-size',\n+  'flex',\n+  'flex-direction',\n+  'flex-wrap',\n+  'flex-flow',\n+  'flex-grow',\n+  'flex-shrink',\n+  'flex-basis',\n+  'grid',\n+  'grid-template',\n+  'grid-template-columns',\n+  'grid-template-rows',\n+  'grid-template-areas',\n+  'grid-area',\n+  'grid-column',\n+  'grid-row',\n+  'grid-gap',\n+  'gap',\n+  'position',\n+  'top',\n+  'right',\n+  'bottom',\n+  'left',\n+  'z-index',\n+  'margin',\n+  'margin-top',\n+  'margin-right',\n+  'margin-bottom',\n+  'margin-left',\n+  'padding',\n+  'padding-top',\n+  'padding-right',\n+  'padding-bottom',\n+  'padding-left',\n+  'width',\n+  'height',\n+  'min-width',\n+  'min-height',\n+  'max-width',\n+  'max-height',\n+  'border',\n+  'border-width',\n+  'border-style',\n+  'border-color',\n+  'border-radius',\n+  'outline',\n+  'font',\n+  'font-size',\n+  'font-family',\n+  'font-weight',\n+  'font-style',\n+  'line-height',\n+  'text-align',\n+  'text-decoration',\n+  'text-transform',\n+  'letter-spacing',\n+  'word-spacing',\n+  'white-space',\n+  'overflow',\n+  'overflow-x',\n+  'overflow-y',\n+  'visibility',\n+  'opacity',\n+  'cursor',\n+  'pointer-events',\n+  'box-sizing',\n+  'float',\n+  'clear',\n+  'transform',",
-    "annotation": "Registers the set of recognized CSS property names that the CSS.supports implementation consults, extending the same generated DOM compatibility layer that also ships the vulnerable input pattern evaluation.",
-    "role": "candidate"
-   },
-   {
-    "file": "src/dom/html-elements.ts",
     "code": "@@ -5,6 +5,16 @@\n \n import { Element, Event, Node } from './index.js';\n \n+/**\n+ * Detect nested quantifiers that can cause catastrophic backtracking.\n+ * Matches patterns like (a+)+, (a*)+, (a+)*, etc.\n+ */\n+function hasNestedQuantifiers(pattern: string): boolean {\n+  return (\n+    /([+*])\\s*[)]\\s*[+*{]/.test(pattern) || /([+*])\\s*\\}\\s*[+*{]/.test(pattern)\n+  );\n+}\n+\n // Helper to collect descendants by tag\n function collectDescendants(root: Node, tagName: string): Element[] {\n   const results: Element[] = [];\n@@ -281,12 +291,20 @@ export class HTMLInputElement extends Element {\n     }\n \n     let patternMismatch = false;\n+    const MAX_PATTERN_LENGTH = 1024;\n     if (this.pattern !== '' && this.value !== '') {\n-      try {\n-        const re = new RegExp(`^(?:${this.pattern})$`);\n-        patternMismatch = !re.test(this.value);\n-      } catch {\n+      if (\n+        this.pattern.length > MAX_PATTERN_LENGTH ||\n+        hasNestedQuantifiers(this.pattern)\n+      ) {\n         patternMismatch = false;\n+      } else {\n+        try {\n+          const re = new RegExp(`^(?:${this.pattern})$`);\n+          patternMismatch = !re.test(this.value);\n+        } catch {\n+          patternMismatch = false;\n+        }\n       }\n     }\n ",
-    "annotation": "Caps input patterns at 1024 characters and rejects nested quantifier shapes before compiling the regex, so hostile patterns cannot drive catastrophic backtracking that freezes the event loop.",
-    "role": "fix"
-   },
-   {
-    "file": "tests/unit/input-validation.test.ts",
-    "code": "@@ -154,6 +154,28 @@ describe('HTMLInputElement validation', () => {\n       input.value = '';\n       assert.strictEqual(input.validity.patternMismatch, false);\n     });\n+\n+    it('should handle excessively long patterns safely', () => {\n+      const input = new HTMLInputElement();\n+      input.pattern = 'a'.repeat(2000);\n+      input.value = 'test';\n+      // Should not hang; pattern exceeding limit is treated as no-match\n+      assert.strictEqual(input.validity.patternMismatch, false);\n+    });\n+\n+    it('should not hang on catastrophic backtracking patterns', () => {\n+      const input = new HTMLInputElement();\n+      input.pattern = '(a+)+$';\n+      input.value = 'a'.repeat(30) + 'b';\n+      // Should complete quickly without hanging; treated as invalid regex\n+      const start = Date.now();\n+      input.checkValidity();\n+      const elapsed = Date.now() - start;\n+      assert.ok(\n+        elapsed < 5000,\n+        `Pattern validation took too long: ${elapsed}ms`,\n+      );\n+    });\n   });\n \n   describe('typeMismatch', () => {",
-    "annotation": "Adds regression tests that feed a 2000-character `pattern` and the backtracking regex `(a+)+$` into `HTMLInputElement`, asserting `checkValidity()` returns promptly rather than hanging.",
-    "role": "fix"
+    "annotation": "Adds a 1024-character cap and a narrow nested-quantifier check before the pattern is compiled, but other backtracking shapes such as overlapping alternation still reach the regular expression unchanged.",
+    "role": "candidate"
    }
   ],
-  "candidate_patch_sha256": "432b31136f15eba9197ca769dabbf27c783cd30600d72ecb48a4a8b61b419cbb",
-  "fix_patch_sha256": "5844216db95424ba647518ce0207c2ddf397d8aa27f1752efc68d942a5a4c649",
+  "annotation_mode": "hunk_specific",
   "required_anchors": {
    "candidate": [
-    "KNOWN_CSS_PROPERTIES",
-    "CSSStyleDeclaration",
-    "ValidityFlags"
-   ],
-   "fix": [
-    "MAX_PATTERN_LENGTH",
-    "HTMLInputElement",
-    "RegExp"
+    "const MAX_PATTERN_LENGTH = 1024;",
+    "function hasNestedQuantifiers(pattern: string): boolean {"
    ]
-  },
-  "annotation_mode": "hunk_specific"
+  }
  },
  "GHSA-FWG7-53P4-G33C": {
   "ai_marker": null,
@@ -7999,55 +7909,52 @@
   }
  },
  "GHSA-HC36-C89J-5F4J": {
-  "candidate_patch_sha256": "0530c84de90fea7d25360594f35edcd65aa57d47d5a5c81fdf5dd3e663fbb247",
+  "ai_marker": "Co-Authored-By: Claude Opus 4.6 (1M context) <noreply@anthropic.com>",
+  "fix_marker": null,
+  "candidate_url": "https://github.com/sgbett/bsv-ruby-sdk/commit/d14dd19f976eb5e92e0ea6755e56864f5b1ae047",
+  "fix_url": "https://github.com/sgbett/bsv-ruby-sdk/commit/db97de475518eef752ed52b25f49f09cbe24c187",
+  "advisory_url": "https://github.com/advisories/ghsa-hc36-c89j-5f4j",
+  "summary": "AI-written code persisted unverified certifier signatures in `acquire_certificate`, letting invalid certificates be stored and trusted in bsv-sdk and bsv-wallet.",
+  "steps": [
+   {
+    "title": "AI change",
+    "detail": "feat(wallet): implement BRC-100 identity certificate methods (Phase 5)"
+   },
+   {
+    "title": "Fix",
+    "detail": "fix(security): A1 security hotfixes from 2026-04-08 compliance review"
+   }
+  ],
+  "candidate_patch_sha256": "84122218d39f05d34456d7ea0bd3411d23a696e4d8f8a2204b9f076a921a3010",
+  "fix_patch_sha256": "9f04663b9520998bd1d2ff7fd0e337d809ccb38b94666f6511e3afc0aaccb831",
+  "candidate_patch_files": [
+   "lib/bsv/wallet_interface/wallet_client.rb"
+  ],
+  "fix_patch_files": [
+   "lib/bsv/wallet_interface/wallet_client.rb"
+  ],
   "display_hunks": [
    {
     "file": "lib/bsv/wallet_interface/wallet_client.rb",
-    "code": "diff --git a/lib/bsv/wallet_interface/wallet_client.rb b/lib/bsv/wallet_interface/wallet_client.rb\nindex ec6e623..de55369 100644\n--- a/lib/bsv/wallet_interface/wallet_client.rb\n+++ b/lib/bsv/wallet_interface/wallet_client.rb\n@@ -2,6 +2,9 @@\n \n require 'securerandom'\n require 'base64'\n+require 'net/http'\n+require 'json'\n+require 'uri'\n \n module BSV\n   module Wallet\n@@ -36,11 +39,13 @@ module BSV\n       # @param storage [StorageAdapter] persistence adapter (default: MemoryStore)\n       # @param network [String] 'mainnet' (default) or 'testnet'\n       # @param chain_provider [ChainProvider] blockchain data provider (default: NullChainProvider)\n-      def initialize(key, storage: MemoryStore.new, network: 'mainnet', chain_provider: NullChainProvider.new)\n+      # @param http_client [#request, nil] injectable HTTP client for certificate issuance\n+      def initialize(key, storage: MemoryStore.new, network: 'mainnet', chain_provider: NullChainProvider.new, http_client: nil)\n         super(key)\n         @storage = storage\n         @network = network\n         @chain_provider = chain_provider\n+        @http_client = http_client\n         @pending = {}\n       end\n \n@@ -254,18 +259,11 @@ module BSV\n       def acquire_certificate(args, _originator: nil)\n         validate_acquire_certificate!(args)\n \n-        raise UnsupportedActionError, 'acquire_certificate with issuance protocol' if args[:acquisition_protocol] == 'issuance'\n-\n-        cert = {\n-          type: args[:type],\n-          subject: @key_deriver.identity_key,\n-          serial_number: args[:serial_number],\n-          certifier: args[:certifier],\n-          revocation_outpoint: args[:revocation_outpoint],\n-          signature: args[:signature],\n-          fields: args[:fields],\n-          keyring: args[:keyring_for_subject]\n-        }\n+        cert = if args[:acquisition_protocol] == 'issuance'\n+                 acquire_via_issuance(args)\n+               else\n+                 acquire_via_direct(args)\n+               end\n \n         @storage.store_certificate(cert)\n         cert_without_keyring(cert)\n@@ -721,12 +719,69 @@ module BSV\n         protocol = args[:acquisition_protocol]\n         raise InvalidParameterError.new('acquisition_protocol', '\"direct\" or \"issuance\"') unless %w[direct issuance].include?(protocol)\n \n-        return unless protocol == 'direct'\n+        if protocol == 'direct'\n+          raise InvalidParameterError.new('serial_number', 'present for direct acquisition') unless args[:serial_number]\n+          raise InvalidParameterError.new('revocation_outpoint', 'present for direct acquisition') unless args[:revocation_outpoint]\n+          raise InvalidParameterError.new('signature', 'present for direct acquisition') unless args[:signature]\n+          raise InvalidParameterError.new('keyring_for_subject', 'a Hash for direct acquisition') unless args[:keyring_for_subject].is_a?(Hash)\n+        elsif protocol == 'issuance'\n+          raise InvalidParameterError.new('certifier_url', 'present for issuance acquisition') unless args[:certifier_url].is_a?(String)\n+        end\n+      end\n \n-        raise InvalidParameterError.new('serial_number', 'present for direct acquisition') unless args[:serial_number]\n-        raise InvalidParameterError.new('revocation_outpoint', 'present for direct acquisition') unless args[:revocation_outpoint]\n-        raise InvalidParameterError.new('signature', 'present for direct acquisition') unless args[:signature]\n-        raise InvalidParameterError.new('keyring_for_subject', 'a Hash for direct acquisition') unless args[:keyring_for_subject].is_a?(Hash)\n+      def acquire_via_direct(args)\n+        {\n+          type: args[:type],\n+          subject: @key_deriver.identity_key,\n+          serial_number: args[:serial_number],\n+          certifier: args[:certifier],\n+          revocation_outpoint: args[:revocation_outpoint],\n+          signature: args[:signature],\n+          fields: args[:fields],\n+          keyring: args[:keyring_for_subject]\n+        }\n+      end\n+\n+      def acquire_via_issuance(args)\n+        uri = URI(args[:certifier_url])\n+        request = Net::HTTP::Post.new(uri)\n+        request['Content-Type'] = 'application/json'\n+        request.body = JSON.generate({\n+                                       type: args[:type],\n+                                       subject: @key_deriver.identity_key,\n+                                       certifier: args[:certifier],\n+                                       fields: args[:fields]\n+                                     })\n+\n+        response = execute_http(uri, request)\n+        code = response.code.to_i\n+\n+        raise WalletError, \"Certificate issuance failed: HTTP #{code}\" unless (200..299).cover?(code)\n+\n+        body = JSON.parse(response.body)\n+\n+        {\n+          type: body['type'] || args[:type],\n+          subject: body['subject'] || @key_deriver.identity_key,\n+          serial_number: body['serialNumber'],\n+          certifier: body['certifier'] || args[:certifier],\n+          revocation_outpoint: body['revocationOutpoint'],\n+          signature: body['signature'],\n+          fields: body['fields'] || args[:fields],\n+          keyring: body['keyringForSubject']\n+        }\n+      rescue JSON::ParserError\n+        raise WalletError, 'Certificate issuance failed: invalid JSON response'\n+      end\n+\n+      def execute_http(uri, request)\n+        if @http_client\n+          @http_client.request(uri, request)\n+        else\n+          Net::HTTP.start(uri.hostname, uri.port, use_ssl: uri.scheme == 'https') do |http|\n+            http.request(request)\n+          end\n+        end\n       end\n \n       def find_stored_certificate(cert_arg)\n",
-    "annotation": "Extends the wallet client to accept an injectable http_client and require net/http, wiring the client so it can fetch certificates during issuance.",
+    "code": "@@ -233,6 +233,167 @@ def wait_for_authentication(_args = {}, _originator: nil)\n         { authenticated: true }\n       end\n \n+      # --- Identity and Certificate Management ---\n+\n+      # Acquires an identity certificate via direct storage.\n+      #\n+      # The 'issuance' protocol (which requires HTTP to a certifier URL) is\n+      # not yet supported and raises {UnsupportedActionError}.\n+      #\n+      # @param args [Hash]\n+      # @option args [String] :type certificate type (base64)\n+      # @option args [String] :certifier certifier public key hex\n+      # @option args [String] :acquisition_protocol 'direct' or 'issuance'\n+      # @option args [Hash] :fields certificate fields (field_name => value)\n+      # @option args [String] :serial_number serial number (required for direct)\n+      # @option args [String] :revocation_outpoint outpoint string (required for direct)\n+      # @option args [String] :signature certifier signature hex (required for direct)\n+      # @option args [String] :keyring_revealer pubkey hex or 'certifier' (required for direct)\n+      # @option args [Hash] :keyring_for_subject field_name => base64 key (required for direct)\n+      # @return [Hash] the stored certificate\n+      def acquire_certificate(args, _originator: nil)\n+        validate_acquire_certificate!(args)\n+\n+        raise UnsupportedActionError, 'acquire_certificate with issuance protocol' if args[:acquisition_protocol] == 'issuance'\n+\n+        cert = {\n+          type: args[:type],\n+          subject: @key_deriver.identity_key,\n+          serial_number: args[:serial_number],\n+          certifier: args[:certifier],\n+          revocation_outpoint: args[:revocation_outpoint],\n+          signature: args[:signature],\n+          fields: args[:fields],\n+          keyring: args[:keyring_for_subject]\n+        }\n+\n+        @storage.store_certificate(cert)\n+        cert_without_keyring(cert)\n+      end\n+\n+      # Lists identity certificates filtered by certifier and type.\n+      #\n+      # @param args [Hash]\n+      # @option args [Array<String>] :certifiers certifier public keys\n+      # @option args [Array<String>] :types certificate types\n+      # @option args [Integer] :limit max results (default 10)\n+      # @option args [Integer] :offset number to skip (default 0)\n+      # @return [Hash] { total_certificates:, certificates: [...] }\n+      def list_certificates(args, _originator: nil)\n+        raise InvalidParameterError.new('certifiers', 'a non-empty Array') unless args[:certifiers].is_a?(Array) && !args[:certifiers].empty?\n+        raise InvalidParameterError.new('types', 'a non-empty Array') unless args[:types].is_a?(Array) && !args[:types].empty?\n+\n+        query = {\n+          certifiers: args[:certifiers],\n+          types: args[:types],\n+          limit: args[:limit] || 10,\n+          offset: args[:offset] || 0\n+        }\n+        total = @storage.count_certificates(query)\n+        certs = @storage.find_certificates(query)\n+        { total_certificates: total, certificates: certs.map { |c| cert_without_keyring(c) } }\n+      end\n+\n+      # Proves select fields of an identity certificate to a verifier.\n+      #\n+      # Encrypts each requested field's keyring entry for the verifier using\n+      # protocol-derived encryption (BRC-2), allowing the verifier to decrypt\n+      # only the revealed fields.\n+      #\n+      # @param args [Hash]\n+      # @option args [Hash] :certificate the certificate to prove\n+      # @option args [Array<String>] :fields_to_reveal field names to reveal\n+      # @option args [String] :verifier verifier public key hex\n+      # @return [Hash] { keyring_for_verifier: { field_name => Array<Integer> } }\n+      def prove_certificate(args, _originator: nil)\n+        cert_arg = args[:certificate]\n+        fields_to_reveal = args[:fields_to_reveal]\n+        verifier = args[:verifier]\n+\n+        raise InvalidParameterError.new('certificate', 'a Hash') unless cert_arg.is_a?(Hash)\n+        raise InvalidParameterError.new('fields_to_reveal', 'a non-empty Array') unless fields_to_reveal.is_a?(Array) && !fields_to_reveal.empty?\n+\n+        Validators.validate_pub_key_hex!(verifier, 'verifier')\n+\n+        # Look up the full certificate (with keyring) from storage\n+        stored = find_stored_certificate(cert_arg)\n+        raise WalletError, 'Certificate not found in wallet' unless stored\n+        raise WalletError, 'Certificate has no keyring' unless stored[:keyring]",
+    "annotation": "Adds acquire_certificate, which builds a certificate from the caller-supplied fields and signature and hands it to storage without checking that the certifier actually signed it.",
     "role": "candidate"
    },
    {
-    "file": "lib/bsv/wallet_interface/certificate_signature.rb",
-    "code": "diff --git a/lib/bsv/wallet_interface/certificate_signature.rb b/lib/bsv/wallet_interface/certificate_signature.rb\nnew file mode 100644\nindex 0000000..a2f8716\n--- /dev/null\n+++ b/lib/bsv/wallet_interface/certificate_signature.rb\n@@ -0,0 +1,173 @@\n+require 'base64'\n+module BSV\n+  module Wallet\n+    module CertificateSignature\n+      PROTOCOL_ID = [2, 'certificate signature'].freeze\n+      class InvalidError < InvalidSignatureError\n+        def initialize(detail)\n+          super(\"certificate signature verification failed: #{detail}\")\n+        end\n+      end\n+      module_function\n+      def verify!(cert, verifier: ProtoWallet.new('anyone'))\n+        signature_hex = cert[:signature]\n+        raise InvalidError, 'signature is missing' if signature_hex.nil? || signature_hex.empty?\n+        preimage = serialise_preimage(cert)\n+        sig_bytes = hex_to_bytes(signature_hex)\n+        verifier.verify_signature({\n+          data: preimage.unpack('C*'),\n+          signature: sig_bytes,\n+          protocol_id: PROTOCOL_ID,\n+          key_id: \"#{cert[:type]} #{cert[:serial_number]}\",\n+          counterparty: cert[:certifier]\n+        })\n+        true\n+      rescue InvalidSignatureError => e\n+        raise if e.is_a?(InvalidError)\n+        raise InvalidError, e.message\n+      rescue ArgumentError => e\n+        raise InvalidError, e.message\n+      end\n+      def serialise_preimage(cert)\n+        buf = String.new(encoding: Encoding::ASCII_8BIT)\n+        buf << decode_base64_exact(cert[:type], 32, 'type')\n+        buf << decode_base64_exact(cert[:serial_number], 32, 'serial_number')\n+        buf << decode_hex_exact(cert[:subject], 33, 'subject')\n+        buf << decode_hex_exact(cert[:certifier], 33, 'certifier')\n+        buf << encode_revocation_outpoint(cert[:revocation_outpoint])\n+        buf << encode_fields(cert[:fields])\n+        buf\n+      end\n+      class << self\n+        private\n+        def encode_revocation_outpoint(outpoint)\n+          raise ArgumentError, 'revocation_outpoint is missing' if outpoint.nil? || outpoint.empty?\n+          txid_hex, output_index_str = outpoint.to_s.split('.', 2)\n+          raise ArgumentError, \"revocation_outpoint #{outpoint.inspect} missing index\" if output_index_str.nil?\n+          raise ArgumentError, \"revocation_outpoint output index must be a non-negative integer\" unless output_index_str.match?(/\\A\\d+\\z/)\n+          decode_hex_exact(txid_hex, 32, 'revocation_outpoint txid') + BSV::Transaction::VarInt.encode(output_index_str.to_i)\n+        end\n+        def encode_fields(fields)\n+          raise ArgumentError, 'fields must be a Hash' unless fields.is_a?(Hash)\n+          sorted_names = fields.keys.map(&:to_s).sort\n+          buf = String.new(encoding: Encoding::ASCII_8BIT) << BSV::Transaction::VarInt.encode(sorted_names.length)\n+          sorted_names.each do |name|\n+            value = (fields[name] || fields[name.to_sym]).to_s\n+            name_bytes = name.encode('UTF-8').b\n+            value_bytes = value.encode('UTF-8').b\n+            buf << BSV::Transaction::VarInt.encode(name_bytes.bytesize) << name_bytes\n+            buf << BSV::Transaction::VarInt.encode(value_bytes.bytesize) << value_bytes\n+          end\n+          buf\n+        end\n+        def decode_base64_exact(value, expected_length, field_name)\n+          raise ArgumentError, \"#{field_name} is missing\" if value.nil? || value.empty?\n+          bytes = Base64.decode64(value)\n+          raise ArgumentError, \"#{field_name} must decode to #{expected_length} bytes, got #{bytes.bytesize}\" if bytes.bytesize != expected_length\n+          bytes.b\n+        end\n+        def decode_hex_exact(value, expected_length, field_name)\n+          raise ArgumentError, \"#{field_name} is missing\" if value.nil? || value.empty?\n+          raise ArgumentError, \"#{field_name} must be a hex string\" unless value.match?(/\\A\\h+\\z/)\n+          raise ArgumentError, \"#{field_name} hex length must be even\" unless value.length.even?\n+          bytes = [value].pack('H*')\n+          raise ArgumentError, \"#{field_name} must decode to #{expected_length} bytes\" if bytes.bytesize != expected_length\n+          bytes.b\n+        end\n+        def hex_to_bytes(hex)\n+          raise ArgumentError, 'signature must be a hex string' unless hex.is_a?(String) && hex.match?(/\\A\\h+\\z/)\n+          [hex].pack('H*').unpack('C*')\n+        end\n+      end\n+    end\n+  end\n+end",
-    "annotation": "Adds CertificateSignature.verify! which reconstructs the signed preimage and checks the certificate signature via the wallet's verifier before a certificate is trusted.",
-    "role": "fix"
-   },
-   {
     "file": "lib/bsv/wallet_interface/wallet_client.rb",
-    "code": "diff --git a/lib/bsv/wallet_interface/wallet_client.rb b/lib/bsv/wallet_interface/wallet_client.rb\nindex 00df46e..b36c13e 100644\n--- a/lib/bsv/wallet_interface/wallet_client.rb\n+++ b/lib/bsv/wallet_interface/wallet_client.rb\n@@ -806 +806 @@ module BSV\n-        {\n+        cert = {\n@@ -815,0 +816,9 @@ module BSV\n+\n+        CertificateSignature.verify!(cert)\n+\n+        cert\n@@ -836 +845 @@ module BSV\n-        {\n+        cert = {\n@@ -845,0 +855,8 @@ module BSV\n+\n+        CertificateSignature.verify!(cert)\n+\n+        cert",
-    "annotation": "Calls CertificateSignature.verify!(cert) right after fetching a certificate, so a certificate whose signature does not verify is rejected instead of persisted as trusted.",
+    "code": "@@ -803,7 +803,7 @@ def validate_acquire_certificate!(args)\n       end\n \n       def acquire_via_direct(args)\n-        {\n+        cert = {\n           type: args[:type],\n           subject: @key_deriver.identity_key,\n           serial_number: args[:serial_number],\n@@ -813,6 +813,15 @@ def acquire_via_direct(args)\n           fields: args[:fields],\n           keyring: args[:keyring_for_subject]\n         }\n+\n+        # BRC-52: verify the certifier's signature against the canonical\n+        # serialisation before persisting. Fixes F8.15 from the 2026-04-08\n+        # cross-SDK compliance review (#305) \u2014 prior to this check, callers\n+        # could pass any value in `args[:signature]` and it would be stored\n+        # as if certifier-authentic.\n+        CertificateSignature.verify!(cert)\n+\n+        cert\n       end\n \n       def acquire_via_issuance(args)\n@@ -833,7 +842,7 @@ def acquire_via_issuance(args)\n \n         body = JSON.parse(response.body)\n \n-        {\n+        cert = {\n           type: body['type'] || args[:type],\n           subject: @key_deriver.identity_key,\n           serial_number: body['serialNumber'],\n@@ -843,6 +852,14 @@ def acquire_via_issuance(args)\n           fields: body['fields'] || args[:fields],\n           keyring: body['keyringForSubject']\n         }\n+\n+        # BRC-52: the certifier's HTTP response is untrusted network data;\n+        # verify the signature before persisting. Closes the F8.15 class of\n+        # bug on the issuance path too (the finding's \"Same issue as F8.15\"\n+        # note from F8.16).\n+        CertificateSignature.verify!(cert)\n+\n+        cert\n       rescue JSON::ParserError\n         raise WalletError, 'Certificate issuance failed: invalid JSON response'\n       end",
+    "annotation": "Builds the certificate first and calls CertificateSignature.verify! on it, so a certificate whose certifier signature does not verify is rejected instead of stored as trusted.",
     "role": "fix"
    }
   ],
-  "ai_marker": "Co-Authored-By: Claude Opus 4.6 (1M context) <noreply@anthropic.com>",
-  "fix_marker": null,
-  "candidate_url": "https://github.com/sgbett/bsv-ruby-sdk/commit/6a4d8984026dc8f533d408f8ea737af7f7b2713d",
-  "fix_url": "https://github.com/sgbett/bsv-ruby-sdk/commit/db97de475518eef752ed52b25f49f09cbe24c187",
-  "advisory_url": "https://github.com/advisories/ghsa-hc36-c89j-5f4j",
-  "summary": null,
-  "steps": [
-   {
-    "detail": "feat(wallet): implement certificate issuance protocol",
-    "title": "AI change"
-   },
-   {
-    "detail": "fix(security): A1 security hotfixes from 2026-04-08 compliance review",
-    "title": "Fix"
-   }
-  ],
-  "fix_patch_sha256": "f0e798f5b7a9a2b3e781dc204678ea9badeae3f55df164b2604f57f35ac95be9",
   "annotation_mode": "hunk_specific",
   "required_anchors": {
    "candidate": [
-    "http_client",
-    "require 'net/http'",
-    "initialize(key, storage"
+    "def acquire_certificate(args, _originator: nil)",
+    "@storage.store_certificate(cert)"
    ],
    "fix": [
-    "CertificateSignature.verify!",
-    "serialise_preimage",
-    "verify_signature"
+    "CertificateSignature.verify!(cert)"
    ]
   }
  },
@@ -14001,64 +13908,6 @@
   "candidate_patch_sha256": "1f598cd834aaadb549e31bdb8eb300b02be4c4b88a8c44f454c7a1c2c51a1879",
   "fix_patch_sha256": "c8df55087bd3d3d42b31998448e6ad83c4e85fa346a441183ac0e43c5b23beec"
  },
- "GHSA-2HFG-4FH4-QP7F": {
-  "ai_marker": "fix(browser): apply three-phase interaction navigation guard to pressKey and type(submit) [AI-assisted] (#63889)",
-  "fix_marker": null,
-  "candidate_url": "https://github.com/openclaw/openclaw/commit/e0b8ddc1a55185aff1cf9e0e095014d2e4f1d894",
-  "fix_url": "https://github.com/openclaw/openclaw/commit/3d93174c4398088066a1de9372ea1103cd713df1",
-  "advisory_url": "https://github.com/advisories/ghsa-2hfg-4fh4-qp7f",
-  "summary": "Browser act interactions could move the tab onto a private-network target that the initial policy check would have refused, letting a caller with browser evaluation read a page the navigation rules had blocked.",
-  "steps": [
-   {
-    "title": "AI change",
-    "detail": "fix(browser): apply three-phase interaction navigation guard to pressKey and type(submit) [AI-assisted] (#63889)"
-   },
-   {
-    "title": "Fix",
-    "detail": "browser: enforce navigation checks for act interactions [AI] (#81070)"
-   }
-  ],
-  "display_hunks": [
-   {
-    "file": "extensions/browser/src/browser/pw-tools-core.interactions.navigation-guard.test.ts",
-    "code": "@@ -398,6 +398,115 @@ describe(\"pw-tools-core interaction navigation guard\", () => {\n     });\n   });\n \n+  it(\"runs the post-keypress navigation guard when navigation starts shortly after the keypress resolves\", async () => {\n+    vi.useFakeTimers();\n+    try {\n+      const listeners = new Set<() => void>();\n+      let currentUrl = \"http://127.0.0.1:9222/json/version\";\n+      const page = {\n+        keyboard: {\n+          press: vi.fn(async () => {\n+            setTimeout(() => {\n+              currentUrl = \"http://127.0.0.1:9222/private-target\";\n+              for (const listener of listeners) {\n+                listener();\n+              }\n+            }, 10);\n+          }),\n+        },\n+        on: vi.fn((event: string, listener: () => void) => {\n+          if (event === \"framenavigated\") {\n+            listeners.add(listener);\n+          }\n+        }),\n+        off: vi.fn((event: string, listener: () => void) => {\n+          if (event === \"framenavigated\") {\n+            listeners.delete(listener);\n+          }\n+        }),\n+        url: vi.fn(() => currentUrl),\n+      };\n+      setPwToolsCoreCurrentPage(page);\n+\n+      const task = mod.pressKeyViaPlaywright({\n+        cdpUrl: \"http://127.0.0.1:18792\",\n+        targetId: \"T1\",\n+        key: \"Enter\",\n+        ssrfPolicy: { allowPrivateNetwork: false },\n+      });\n+\n+      await vi.advanceTimersByTimeAsync(10);\n+      await task;\n+\n+      expect(getPwToolsCoreSessionMocks().assertPageNavigationCompletedSafely).toHaveBeenCalledWith(\n+        {\n+          cdpUrl: \"http://127.0.0.1:18792\",\n+          page,\n+          response: null,\n+          ssrfPolicy: { allowPrivateNetwork: false },\n+          targetId: \"T1\",\n+        },\n+      );\n+    } finally {\n+      vi.useRealTimers();\n+    }\n+  });\n+\n+  it(\"propagates blocked delayed submit navigation instead of reporting type success\", async () => {\n+    vi.useFakeTimers();\n+    try {\n+      const listeners = new Set<() => void>();\n+      let currentUrl = \"https://example.com/form\";\n+      const locator = {\n+        fill: vi.fn(async () => {}),\n+        press: vi.fn(async () => {\n+          setTimeout(() => {\n+            currentUrl = \"http://127.0.0.1:9222/private-target\";\n+            for (const listener of listeners) {\n+              listener();\n+            }\n+          }, 10);\n+        }),\n+      };\n+      const page = {\n+        on: vi.fn((event: string, listener: () => void) => {\n+          if (event === \"framenavigated\") {\n+            listeners.add(listener);\n+          }\n+        }),\n+        off: vi.fn((event: string, listener: () => void) => {\n+          if (event === \"framenavigated\") {\n+            listeners.delete(listener);\n+          }\n+        }),\n+        url: vi.fn(() => currentUrl),\n+      };\n+      setPwToolsCoreCurrentRefLocator(locator);\n+      setPwToolsCoreCurrentPage(page);\n+",
-    "annotation": "Adds delayed-navigation tests showing that keypress and form submission can redirect after the interaction promise resolves, exercising the private-network policy check.",
-    "role": "candidate"
-   },
-   {
-    "file": "extensions/browser/src/browser/pw-tools-core.interactions.ts",
-    "code": "@@ -379,25 +379,6 @@ function createAbortPromiseWithListener(\n     },\n   };\n }\n-\n-async function assertPostInteractionNavigationSafe(opts: {\n-  cdpUrl: string;\n-  page: Awaited<ReturnType<typeof getPageForTargetId>>;\n-  ssrfPolicy?: SsrFPolicy;\n-  targetId?: string;\n-}): Promise<void> {\n-  if (!opts.ssrfPolicy) {\n-    return;\n-  }\n-  await assertPageNavigationCompletedSafely({\n-    cdpUrl: opts.cdpUrl,\n-    page: opts.page,\n-    response: null,\n-    ssrfPolicy: opts.ssrfPolicy,\n-    targetId: opts.targetId,\n-  });\n-}\n-\n export async function highlightViaPlaywright(opts: {\n   cdpUrl: string;\n   targetId?: string;\n@@ -559,12 +540,16 @@ export async function pressKeyViaPlaywright(opts: {\n   }\n   const page = await getPageForTargetId(opts);\n   ensurePageState(page);\n-  await page.keyboard.press(key, {\n-    delay: Math.max(0, Math.floor(opts.delayMs ?? 0)),\n-  });\n-  await assertPostInteractionNavigationSafe({\n+  const previousUrl = page.url();\n+  await assertInteractionNavigationCompletedSafely({\n+    action: async () => {\n+      await page.keyboard.press(key, {\n+        delay: Math.max(0, Math.floor(opts.delayMs ?? 0)),\n+      });\n+    },\n     cdpUrl: opts.cdpUrl,\n     page,\n+    previousUrl,\n     ssrfPolicy: opts.ssrfPolicy,\n     targetId: opts.targetId,\n   });\n@@ -597,10 +582,14 @@ export async function typeViaPlaywright(opts: {\n       await locator.fill(text, { timeout });\n     }\n     if (opts.submit) {\n-      await locator.press(\"Enter\", { timeout });\n-      await assertPostInteractionNavigationSafe({\n+      const previousUrl = page.url();\n+      await assertInteractionNavigationCompletedSafely({\n+        action: async () => {\n+          await locator.press(\"Enter\", { timeout });\n+        },\n         cdpUrl: opts.cdpUrl,\n         page,\n+        previousUrl,\n         ssrfPolicy: opts.ssrfPolicy,\n         targetId: opts.targetId,\n       });",
-    "annotation": "Replaces a post-action URL check with an action wrapper that observes navigation during keyboard and submit operations, closing the timing gap around redirects.",
-    "role": "candidate"
-   },
-   {
-    "file": "CHANGELOG.md",
-    "code": "@@ -126,6 +126,7 @@ Docs: https://docs.openclaw.ai\n - Discord/sandbox: include `image` in sandbox media param normalization so Discord event cover images cannot bypass sandbox path rewriting. (#64377) Thanks @mmaps.\n - Agents/exec: extend exec completion detection to cover local background exec formats so the owner-downgrade fires correctly for all exec paths. (#64376) Thanks @mmaps.\n - Security/dependencies: pin axios to 1.15.0 and add a plugin install dependency denylist that blocks known malicious packages before install. (#63891) Thanks @mmaps.\n+- Browser/security: apply three-phase interaction navigation guard to pressKey and type(submit) so delayed JS redirects from keypress cannot bypass SSRF policy. (#63889) Thanks @mmaps.\n ## 2026.4.9\n \n ### Changes",
-    "annotation": "Records the security release note for guarding press and submit interactions against delayed script redirects into private browser destinations.",
-    "role": "candidate"
-   },
-   {
-    "file": "extensions/browser/src/browser/pw-tools-core.interactions.navigation-guard.test.ts",
-    "code": "@@ -133,6 +133,61 @@ describe(\"pw-tools-core interaction navigation guard\", () => {\n     }\n   });\n \n+  it(\"runs the post-select navigation guard when navigation starts shortly after the select resolves\", async () => {\n+    vi.useFakeTimers();\n+    try {\n+      const listeners = new Set<() => void>();\n+      let currentUrl = \"https://example.com/form\";\n+      const selectOption = vi.fn(async () => {\n+        setTimeout(() => {\n+          currentUrl = \"http://127.0.0.1:9222/private-target\";\n+          for (const listener of listeners) {\n+            listener();\n+          }\n+        }, 10);\n+      });\n+      const page = {\n+        on: vi.fn((event: string, listener: () => void) => {\n+          if (event === \"framenavigated\") {\n+            listeners.add(listener);\n+          }\n+        }),\n+        off: vi.fn((event: string, listener: () => void) => {\n+          if (event === \"framenavigated\") {\n+            listeners.delete(listener);\n+          }\n+        }),\n+        url: vi.fn(() => currentUrl),\n+      };\n+      setPwToolsCoreCurrentRefLocator({ selectOption });\n+      setPwToolsCoreCurrentPage(page);\n+\n+      const task = mod.selectOptionViaPlaywright({\n+        cdpUrl: \"http://127.0.0.1:18792\",\n+        targetId: \"T1\",\n+        ref: \"1\",\n+        values: [\"go\"],\n+        ssrfPolicy: { allowPrivateNetwork: false },\n+      });\n+\n+      await vi.advanceTimersByTimeAsync(0);\n+      await vi.advanceTimersByTimeAsync(10);\n+      await task;\n+\n+      expect(getPwToolsCoreSessionMocks().assertPageNavigationCompletedSafely).toHaveBeenCalledWith(\n+        {\n+          cdpUrl: \"http://127.0.0.1:18792\",\n+          page,\n+          response: null,\n+          ssrfPolicy: { allowPrivateNetwork: false },\n+          targetId: \"T1\",\n+        },\n+      );\n+    } finally {\n+      vi.useRealTimers();\n+    }\n+  });\n+\n   it(\"checks subframe navigations before a later main-frame navigation\", async () => {\n     vi.useFakeTimers();\n     try {\n@@ -500,7 +555,20 @@ describe(\"pw-tools-core interaction navigation guard\", () => {\n       await rejection;\n       expect(\n         getPwToolsCoreSessionMocks().assertPageNavigationCompletedSafely,\n-      ).not.toHaveBeenCalled();\n+      ).toHaveBeenCalledTimes(1);\n+      expect(getPwToolsCoreSessionMocks().assertPageNavigationCompletedSafely).toHaveBeenCalledWith(\n+        {\n+          cdpUrl: \"http://127.0.0.1:18792\",\n+          page,\n+          response: null,\n+          ssrfPolicy: { allowPrivateNetwork: false },\n+          targetId: \"T1\",\n+        },\n+      );\n+      expect(\n+        getPwToolsCoreSessionMocks().assertPageNavigationCompletedSafely.mock\n+          .invocationCallOrder[0],\n+      ).toBeLessThan(page.evaluate.mock.invocationCallOrder[0]);\n     } finally {\n       vi.useRealTimers();\n     }\n@@ -1040,7 +1108,7 @@ describe(\"pw-tools-core interaction navigation guard\", () => {\n     });\n   });\n \n-  it(\"does not run the post-evaluate navigation guard when the url is unchanged\", async () => {\n+  it(\"checks the current page before evaluate and skips the post-evaluate guard when the url is unchanged\", async () => {",
-    "annotation": "Extends navigation tests for select actions and verifies that safety validation occurs before page evaluation, preserving protection across interaction ordering.",
-    "role": "fix"
-   },
-   {
-    "file": "extensions/browser/src/browser/pw-tools-core.browser-ssrf-guard.test.ts",
-    "code": "@@ -79,6 +79,83 @@ describe(\"pw-tools-core browser SSRF guards\", () => {\n     });\n   });\n \n+  it(\"re-checks select-triggered navigations with the session safety helper\", async () => {\n+    let currentUrl = \"https://example.com\";\n+    pageState.page = { url: vi.fn(() => currentUrl) };\n+    pageState.locator = {\n+      selectOption: vi.fn(async () => {\n+        currentUrl = \"https://target.example\";\n+      }),\n+    };\n+\n+    await interactions.selectOptionViaPlaywright({\n+      cdpUrl: \"http://127.0.0.1:18792\",\n+      targetId: \"tab-1\",\n+      ref: \"1\",\n+      values: [\"go\"],\n+      ssrfPolicy: { allowPrivateNetwork: false },\n+    });\n+\n+    expect(sessionMocks.assertPageNavigationCompletedSafely).toHaveBeenCalledWith({\n+      cdpUrl: \"http://127.0.0.1:18792\",\n+      page: pageState.page,\n+      response: null,\n+      ssrfPolicy: { allowPrivateNetwork: false },\n+      targetId: \"tab-1\",\n+    });\n+  });\n+\n+  it(\"re-checks form fill-triggered navigations with the session safety helper\", async () => {\n+    let currentUrl = \"https://example.com\";\n+    pageState.page = { url: vi.fn(() => currentUrl) };\n+    pageState.locator = {\n+      fill: vi.fn(async () => {\n+        currentUrl = \"https://target.example\";\n+      }),\n+    };\n+\n+    await interactions.fillFormViaPlaywright({\n+      cdpUrl: \"http://127.0.0.1:18792\",\n+      targetId: \"tab-1\",\n+      fields: [{ ref: \"1\", type: \"text\", value: \"go\" }],\n+      ssrfPolicy: { allowPrivateNetwork: false },\n+    });\n+\n+    expect(sessionMocks.assertPageNavigationCompletedSafely).toHaveBeenCalledWith({\n+      cdpUrl: \"http://127.0.0.1:18792\",\n+      page: pageState.page,\n+      response: null,\n+      ssrfPolicy: { allowPrivateNetwork: false },\n+      targetId: \"tab-1\",\n+    });\n+  });\n+\n+  it(\"re-checks the current page before evaluating page content\", async () => {\n+    const evaluate = vi.fn(async () => \"ok\");\n+    pageState.page = {\n+      evaluate,\n+      url: vi.fn(() => \"https://example.com\"),\n+    };\n+\n+    await interactions.evaluateViaPlaywright({\n+      cdpUrl: \"http://127.0.0.1:18792\",\n+      targetId: \"tab-1\",\n+      fn: \"() => document.body.innerText\",\n+      ssrfPolicy: { allowPrivateNetwork: false },\n+    });\n+\n+    expect(sessionMocks.assertPageNavigationCompletedSafely).toHaveBeenCalledWith({\n+      cdpUrl: \"http://127.0.0.1:18792\",\n+      page: pageState.page,\n+      response: null,\n+      ssrfPolicy: { allowPrivateNetwork: false },\n+      targetId: \"tab-1\",\n+    });\n+    expect(\n+      sessionMocks.assertPageNavigationCompletedSafely.mock.invocationCallOrder[0],\n+    ).toBeLessThan(evaluate.mock.invocationCallOrder[0]);\n+  });\n+\n   it(\"preserves helper compatibility when no ssrfPolicy is provided\", async () => {\n     pageState.page = { url: vi.fn(() => \"https://example.com\") };\n     pageState.locator = { click: vi.fn(async () => {}) };",
-    "annotation": "Adds browser-level coverage for select, form-fill, and page-evaluation operations, asserting each invokes the session navigation safety helper.",
-    "role": "fix"
-   },
-   {
-    "file": "extensions/browser/src/browser/pw-tools-core.interactions.ts",
-    "code": "@@ -679,6 +679,7 @@ export async function selectOptionViaPlaywright(opts: {\n   selector?: string;\n   values: string[];\n   timeoutMs?: number;\n+  ssrfPolicy?: SsrFPolicy;\n }): Promise<void> {\n   const resolved = requireRefOrSelector(opts.ref, opts.selector);\n   if (!opts.values?.length) {\n@@ -689,9 +690,19 @@ export async function selectOptionViaPlaywright(opts: {\n   const locator = resolved.ref\n     ? refLocator(page, requireRef(resolved.ref))\n     : page.locator(resolved.selector!);\n+  const previousUrl = page.url();\n   try {\n-    await locator.selectOption(opts.values, {\n-      timeout: resolveInteractionTimeoutMs(opts.timeoutMs),\n+    await assertInteractionNavigationCompletedSafely({\n+      action: async () => {\n+        await locator.selectOption(opts.values, {\n+          timeout: resolveInteractionTimeoutMs(opts.timeoutMs),\n+        });\n+      },\n+      cdpUrl: opts.cdpUrl,\n+      page,\n+      previousUrl,\n+      ssrfPolicy: opts.ssrfPolicy,\n+      targetId: opts.targetId,\n     });\n   } catch (err) {\n     throw toAIFriendlyError(err, label);\n@@ -746,17 +757,29 @@ export async function typeViaPlaywright(opts: {\n     : page.locator(resolved.selector!);\n   const timeout = resolveInteractionTimeoutMs(opts.timeoutMs);\n   try {\n+    const previousUrl = page.url();\n     if (opts.slowly) {\n-      await locator.click({ timeout });\n-      await locator.type(text, { timeout, delay: 75 });\n+      await assertInteractionNavigationCompletedSafely({\n+        action: async () => {\n+          await locator.click({ timeout });\n+          await locator.type(text, { timeout, delay: 75 });\n+          if (opts.submit) {\n+            await locator.press(\"Enter\", { timeout });\n+          }\n+        },\n+        cdpUrl: opts.cdpUrl,\n+        page,\n+        previousUrl,\n+        ssrfPolicy: opts.ssrfPolicy,\n+        targetId: opts.targetId,\n+      });\n     } else {\n-      await locator.fill(text, { timeout });\n-    }\n-    if (opts.submit) {\n-      const previousUrl = page.url();\n       await assertInteractionNavigationCompletedSafely({\n         action: async () => {\n-          await locator.press(\"Enter\", { timeout });\n+          await locator.fill(text, { timeout });\n+          if (opts.submit) {\n+            await locator.press(\"Enter\", { timeout });\n+          }\n         },\n         cdpUrl: opts.cdpUrl,\n         page,\n@@ -775,6 +798,7 @@ export async function fillFormViaPlaywright(opts: {\n   targetId?: string;\n   fields: BrowserFormField[];\n   timeoutMs?: number;\n+  ssrfPolicy?: SsrFPolicy;\n }): Promise<void> {\n   const page = await getRestoredPageForTarget(opts);\n   const timeout = resolveInteractionTimeoutMs(opts.timeoutMs);\n@@ -796,14 +820,34 @@ export async function fillFormViaPlaywright(opts: {\n       const checked =\n         rawValue === true || rawValue === 1 || rawValue === \"1\" || rawValue === \"true\";\n       try {\n-        await locator.setChecked(checked, { timeout });\n+        const previousUrl = page.url();\n+        await assertInteractionNavigationCompletedSafely({\n+          action: async () => {\n+            await locator.setChecked(checked, { timeout });\n+          },\n+          cdpUrl: opts.cdpUrl,\n+          page,\n+          previousUrl,\n+          ssrfPolicy: opts.ssrfPolicy,\n+          targetId: opts.targetId,",
-    "annotation": "Threads the SSRF policy through select, typing, and form-fill actions and wraps their browser operations so redirects are checked before completion.",
-    "role": "fix"
-   }
-  ],
-  "candidate_patch_sha256": "c0f4f66a14b59a17e0254d7f930ecea39cc12656994bf2d5b293d7a696a2e42f",
-  "fix_patch_sha256": "c9a03ffeb969232cf56477f9539d70999d988257453895c9a59f294f3bc319a6"
- },
  "GHSA-2944-57XV-2682": {
   "ai_marker": "Co-Authored-By: Claude Opus 4.6 (1M context) <noreply@anthropic.com>",
   "fix_marker": null,
@@ -14840,37 +14689,55 @@
   }
  },
  "GHSA-8J2W-6FMM-M587": {
-  "candidate_url": "https://github.com/openclaw/openclaw/commit/647d929c9d0fd114249230d939a5cb3b36dc70e7",
-  "fix_url": "https://github.com/openclaw/openclaw/commit/da0ba1b73a2c70f20e4519ee580c968d843e9396",
+  "ai_marker": null,
+  "fix_marker": null,
+  "candidate_url": "https://github.com/openclaw/openclaw/commit/04fad99ae1649479ae6acb5257022f140d1def3e",
+  "fix_url": "https://github.com/openclaw/openclaw/commit/93b07240257919f770d1e263e1f22753937b80ea",
   "advisory_url": "https://github.com/advisories/ghsa-8j2w-6fmm-m587",
-  "summary": "An AI-assisted change added gateway authentication for channel HTTP endpoints, but the check tested the raw request path against a single lowercase prefix, so differently encoded variants of the same route skipped authentication.",
+  "summary": "The gateway derived the request path from new URL(req.url).pathname and compared it to the channel prefix with startsWith. That value is the exact text the client sent: percent-encoding is not decoded, letter case is not folded, and repeated or dotted segments are not resolved.",
   "steps": [
    {
     "title": "AI change",
-    "detail": "The new guard read the request path without decoding or case folding it, so it recognized only one exact spelling of the channel prefix."
+    "detail": "fix(an-07): apply security fix"
    },
    {
     "title": "Fix",
-    "detail": "The path is now decoded once and lowercased before the prefix test, and follow-up commits added slash normalization, fail-closed decoding, and dot-segment resolution."
+    "detail": "fix(gateway): fail closed plugin auth path canonicalization"
    }
+  ],
+  "candidate_patch_sha256": "1f493091f2fa97a525bf1e65daaa481b65f45cbe3f94868c49dd2a7d4db02b06",
+  "fix_patch_sha256": "9309cc8b4b47751706ba4d68081bcfa3671bbaf9daff42a964865c252505d040",
+  "candidate_patch_files": [
+   "src/gateway/server-http.ts"
+  ],
+  "fix_patch_files": [
+   "src/gateway/security-path.ts"
   ],
   "display_hunks": [
    {
-    "role": "candidate",
     "file": "src/gateway/server-http.ts",
-    "code": "@@ -333,6 +333,7 @@ export function createGatewayHttpServer(opts: {\n     try {\n       const configSnapshot = loadConfig();\n       const trustedProxies = configSnapshot.gateway?.trustedProxies ?? [];\n+      const requestPath = new URL(req.url ?? \"/\", \"http://localhost\").pathname;\n       if (await handleHooksRequest(req, res)) {\n         return;\n       }\n@@ -347,8 +348,26 @@ export function createGatewayHttpServer(opts: {\n       if (await handleSlackHttpRequest(req, res)) {\n         return;\n       }\n-      if (handlePluginRequest && (await handlePluginRequest(req, res))) {\n-        return;\n+      if (handlePluginRequest) {\n+        // Channel HTTP endpoints are gateway-auth protected by default.\n+        // Non-channel plugin routes remain plugin-owned and must enforce\n+        // their own auth when exposing sensitive functionality.\n+        if (requestPath.startsWith(\"/api/channels/\")) {\n+          const token = getBearerToken(req);\n+          const authResult = await authorizeGatewayConnect({\n+            auth: resolvedAuth,\n+            connectAuth: token ? { token, password: token } : null,\n+            req,\n+            trustedProxies,\n+          });\n+          if (!authResult.ok) {\n+            sendUnauthorized(res);\n+            return;\n+          }\n+        }\n+        if (await handlePluginRequest(req, res)) {\n+          return;\n+        }\n       }\n       if (openResponsesEnabled) {\n         if (",
-    "annotation": "the guard compared the raw request path against a lowercase prefix, so encoded and case-varied spellings of the channel route skipped authentication."
+    "code": "@@ -333,6 +333,7 @@ export function createGatewayHttpServer(opts: {\n     try {\n       const configSnapshot = loadConfig();\n       const trustedProxies = configSnapshot.gateway?.trustedProxies ?? [];\n+      const requestPath = new URL(req.url ?? \"/\", \"http://localhost\").pathname;\n       if (await handleHooksRequest(req, res)) {\n         return;\n       }\n@@ -347,8 +348,23 @@ export function createGatewayHttpServer(opts: {\n       if (await handleSlackHttpRequest(req, res)) {\n         return;\n       }\n-      if (handlePluginRequest && (await handlePluginRequest(req, res))) {\n-        return;\n+      if (handlePluginRequest) {\n+        if (requestPath.startsWith(\"/api/channels/\")) {\n+          const token = getBearerToken(req);\n+          const authResult = await authorizeGatewayConnect({\n+            auth: resolvedAuth,\n+            connectAuth: token ? { token, password: token } : null,\n+            req,\n+            trustedProxies,\n+          });\n+          if (!authResult.ok) {\n+            sendUnauthorized(res);\n+            return;\n+          }\n+        }\n+        if (await handlePluginRequest(req, res)) {\n+          return;\n+        }\n       }\n       if (openResponsesEnabled) {\n         if (\n@@ -372,8 +388,7 @@ export function createGatewayHttpServer(opts: {\n         }\n       }\n       if (canvasHost) {\n-        const url = new URL(req.url ?? \"/\", \"http://localhost\");\n-        if (isCanvasPath(url.pathname)) {\n+        if (isCanvasPath(requestPath)) {\n           const ok = await authorizeCanvasRequest({\n             req,\n             auth: resolvedAuth,",
+    "annotation": "Adds the channel-route gate, which takes the raw request path and tests it with startsWith, so percent-encoded or case-varied spellings of the channel prefix skip gateway authentication.",
+    "role": "candidate"
    },
    {
-    "role": "fix",
-    "file": "src/gateway/server-http.ts",
-    "code": "@@ -88,6 +88,19 @@ function isCanvasPath(pathname: string): boolean {\n   );\n }\n \n+function decodePathnameOnce(pathname: string): string {\n+  try {\n+    return decodeURIComponent(pathname);\n+  } catch {\n+    return pathname;\n+  }\n+}\n+\n+function isProtectedPluginChannelPath(pathname: string): boolean {\n+  const normalized = decodePathnameOnce(pathname).toLowerCase();\n+  return normalized === \"/api/channels\" || normalized.startsWith(\"/api/channels/\");\n+}\n+\n function isNodeWsClient(client: GatewayWsClient): boolean {\n   if (client.connect.role === \"node\") {\n     return true;\n@@ -493,7 +506,7 @@ export function createGatewayHttpServer(opts: {\n         // Channel HTTP endpoints are gateway-auth protected by default.\n         // Non-channel plugin routes remain plugin-owned and must enforce\n         // their own auth when exposing sensitive functionality.\n-        if (requestPath === \"/api/channels\" || requestPath.startsWith(\"/api/channels/\")) {\n+        if (isProtectedPluginChannelPath(requestPath)) {\n           const token = getBearerToken(req);\n           const authResult = await authorizeHttpGatewayConnect({\n             auth: resolvedAuth,",
-    "annotation": "path decoding and lowercasing before the prefix test, so the spellings that previously skipped the gate are now authenticated."
+    "file": "src/gateway/security-path.ts",
+    "code": "@@ -1,11 +1,13 @@\n export type SecurityPathCanonicalization = {\n   canonicalPath: string;\n   candidates: string[];\n+  decodePasses: number;\n+  decodePassLimitReached: boolean;\n   malformedEncoding: boolean;\n   rawNormalizedPath: string;\n };\n \n-const MAX_PATH_DECODE_PASSES = 3;\n+const MAX_PATH_DECODE_PASSES = 32;\n \n function normalizePathSeparators(pathname: string): string {\n   const collapsed = pathname.replace(/\\/{2,}/g, \"/\");\n@@ -43,13 +45,19 @@ function pushNormalizedCandidate(candidates: string[], seen: Set<string>, value:\n export function buildCanonicalPathCandidates(\n   pathname: string,\n   maxDecodePasses = MAX_PATH_DECODE_PASSES,\n-): { candidates: string[]; malformedEncoding: boolean } {\n+): {\n+  candidates: string[];\n+  decodePasses: number;\n+  decodePassLimitReached: boolean;\n+  malformedEncoding: boolean;\n+} {\n   const candidates: string[] = [];\n   const seen = new Set<string>();\n   pushNormalizedCandidate(candidates, seen, pathname);\n \n   let decoded = pathname;\n   let malformedEncoding = false;\n+  let decodePasses = 0;\n   for (let pass = 0; pass < maxDecodePasses; pass++) {\n     let nextDecoded = decoded;\n     try {\n@@ -61,10 +69,24 @@ export function buildCanonicalPathCandidates(\n     if (nextDecoded === decoded) {\n       break;\n     }\n+    decodePasses += 1;\n     decoded = nextDecoded;\n     pushNormalizedCandidate(candidates, seen, decoded);\n   }\n-  return { candidates, malformedEncoding };\n+  let decodePassLimitReached = false;\n+  if (!malformedEncoding) {\n+    try {\n+      decodePassLimitReached = decodeURIComponent(decoded) !== decoded;\n+    } catch {\n+      malformedEncoding = true;\n+    }\n+  }\n+  return {\n+    candidates,\n+    decodePasses,\n+    decodePassLimitReached,\n+    malformedEncoding,\n+  };\n }\n \n export function canonicalizePathVariant(pathname: string): string {\n@@ -82,16 +104,24 @@ function prefixMatch(pathname: string, prefix: string): boolean {\n }\n \n export function canonicalizePathForSecurity(pathname: string): SecurityPathCanonicalization {\n-  const { candidates, malformedEncoding } = buildCanonicalPathCandidates(pathname);\n+  const { candidates, decodePasses, decodePassLimitReached, malformedEncoding } =\n+    buildCanonicalPathCandidates(pathname);\n \n   return {\n     canonicalPath: candidates[candidates.length - 1] ?? \"/\",\n     candidates,\n+    decodePasses,\n+    decodePassLimitReached,\n     malformedEncoding,\n     rawNormalizedPath: normalizePathSeparators(pathname.toLowerCase()) || \"/\",\n   };\n }\n \n+export function hasSecurityPathCanonicalizationAnomaly(pathname: string): boolean {\n+  const canonical = canonicalizePathForSecurity(pathname);\n+  return canonical.malformedEncoding || canonical.decodePassLimitReached;\n+}\n+\n const normalizedPrefixesCache = new WeakMap<readonly string[], readonly string[]>();\n \n function getNormalizedPrefixes(prefixes: readonly string[]): readonly string[] {\n@@ -114,6 +144,10 @@ export function isPathProtectedByPrefixes(pathname: string, prefixes: readonly s\n   ) {",
+    "annotation": "Raises the decoding limit from three passes to thirty-two and records when the limit is reached, so deeper encodings of the channel path no longer slip past the canonicalized check.",
+    "role": "fix"
    }
   ],
-  "candidate_patch_sha256": "64e78909fb1b01acdc2fafac6b67cbaede42b40ca9fdcb6ad7db547735281852",
-  "fix_patch_sha256": "5b9dcad57659e58123ad9cf074b07629d9717748f024aac66b353206b6d1e948",
-  "ai_marker": null
+  "annotation_mode": "hunk_specific",
+  "required_anchors": {
+   "candidate": [
+    "const requestPath = new URL(req.url ?? \"/\", \"http://localhost\").pathname;",
+    "requestPath.startsWith(\"/api/channels/\")"
+   ],
+   "fix": [
+    "const MAX_PATH_DECODE_PASSES = 32;",
+    "decodePassLimitReached: boolean;"
+   ]
+  }
  },
  "GHSA-HX4H-VR3M-45VH": {
   "summary": "n8n read an unchecked array property across its expression sandbox boundary. The repair restricts access to valid array indices and checks returned values before crossing the boundary.",
@@ -16593,59 +16460,54 @@
   }
  },
  "GHSA-956X-8GVW-WG5V": {
+  "ai_marker": null,
+  "fix_marker": null,
+  "candidate_url": "https://github.com/gitpython-developers/gitpython/commit/701ce32fe5ba8cb622c0e0342a376a6beb47d738",
+  "fix_url": "https://github.com/gitpython-developers/gitpython/commit/9ad28cc4c7176d22cd6181d69805058a719dd03b",
+  "advisory_url": "https://github.com/advisories/ghsa-956x-8gvw-wg5v",
   "summary": "GitPython's option guard blocked one external-program option while leaving its equivalent spelling accepted. The repair adds the missing spelling to the blocked options.",
   "steps": [
    {
     "title": "AI-assisted change",
-    "detail": "The new ls-remote option list contains upload-pack without its equivalent exec option."
+    "detail": "The new ls_remote wrapper checks options but never checks the remote URL for an unsafe transport."
    },
    {
     "title": "Fix",
-    "detail": "The repaired blocked-option list also includes the exec spelling."
+    "detail": "ls_remote now checks remote URLs for unsafe transports such as ext:: unless the caller opts in."
    }
+  ],
+  "candidate_patch_sha256": "01f7f5c7bf8eb61870b94f14db5943d38f266fcdc6fccab690e5c8bbedb1b096",
+  "fix_patch_sha256": "1884fef412d554f716ff865085fa9fc7b3b69339ce85a2b160589e250ea455e7",
+  "candidate_patch_files": [
+   "git/cmd.py"
+  ],
+  "fix_patch_files": [
+   "git/cmd.py"
   ],
   "display_hunks": [
    {
-    "role": "candidate",
     "file": "git/cmd.py",
-    "code": "@@ -649,6 +649,11 @@\n \n     re_unsafe_protocol = re.compile(r\"(.+)::.+\")\n \n+    unsafe_git_ls_remote_options = [\n+        # This option allows arbitrary command execution in git-ls-remote.\n+        \"--upload-pack\",\n+    ]\n+\n     def __getstate__(self) -> Dict[str, Any]:\n         return slots_to_dict(self, exclude=self._excluded_)\n ",
-    "annotation": "The new ls-remote option list contains upload-pack without its equivalent exec option."
+    "code": "@@ -649,6 +649,11 @@ class Git(metaclass=_GitMeta):\n \n     re_unsafe_protocol = re.compile(r\"(.+)::.+\")\n \n+    unsafe_git_ls_remote_options = [\n+        # This option allows arbitrary command execution in git-ls-remote.\n+        \"--upload-pack\",\n+    ]\n+\n     def __getstate__(self) -> Dict[str, Any]:\n         return slots_to_dict(self, exclude=self._excluded_)\n \n@@ -1022,6 +1027,20 @@ def check_unsafe_options(cls, options: List[str], unsafe_options: List[str]) ->\n                         f\"{unsafe_option} is not allowed, use `allow_unsafe_options=True` to allow it.\"\n                     )\n \n+    @classmethod\n+    def _option_candidates(cls, args: Sequence[Any] = (), kwargs: Optional[Mapping[str, Any]] = None) -> List[str]:\n+        \"\"\"Collect possible option spellings before command-line transformation.\"\"\"\n+        options = [\n+            option for option in cls._unpack_args([arg for arg in args if arg is not None]) if option.startswith(\"-\")\n+        ]\n+        if kwargs:\n+            for key, value in kwargs.items():\n+                values = value if isinstance(value, (list, tuple)) else (value,)\n+                if any(value is True or (value is not False and value is not None) for value in values):\n+                    key = str(key)\n+                    options.append(f\"-{key}\" if len(key) == 1 else f\"--{dashify(key)}\")\n+        return options\n+\n     AutoInterrupt: TypeAlias = _AutoInterrupt\n \n     CatFileContentStream: TypeAlias = _CatFileContentStream\n@@ -1079,6 +1098,22 @@ def set_persistent_git_options(self, **kwargs: Any) -> None:\n \n         self._persistent_git_options = self.transform_kwargs(split_single_char_options=True, **kwargs)\n \n+    def ls_remote(\n+        self,\n+        *args: Any,\n+        allow_unsafe_options: bool = False,\n+        **kwargs: Any,\n+    ) -> Union[str, bytes, Tuple[int, Union[str, bytes], str], \"Git.AutoInterrupt\"]:\n+        \"\"\"List references in a remote repository.\n+\n+        :param allow_unsafe_options:\n+            Allow unsafe options, like ``--upload-pack``.\n+        \"\"\"\n+        if not allow_unsafe_options:\n+            candidate_options = self._option_candidates(args, kwargs)\n+            Git.check_unsafe_options(options=candidate_options, unsafe_options=self.unsafe_git_ls_remote_options)\n+        return self._call_process(\"ls_remote\", *args, **kwargs)\n+\n     @property\n     def working_dir(self) -> Union[None, PathLike]:\n         \"\"\":return: Git directory we are working on\"\"\"\n@@ -1585,7 +1620,7 @@ def transform_kwargs(self, split_single_char_options: bool = True, **kwargs: Any\n         return args\n \n     @classmethod\n-    def _unpack_args(cls, arg_list: Sequence[str]) -> List[str]:\n+    def _unpack_args(cls, arg_list: Sequence[Any]) -> List[str]:\n         outlist = []\n         if isinstance(arg_list, (list, tuple)):\n             for arg in arg_list:",
+    "annotation": "Adds a dedicated option blocklist and option collector for ls_remote, which reject unsafe command-line options but never check the remote URL for unsafe transport protocols.",
+    "role": "candidate"
    },
    {
-    "role": "fix",
     "file": "git/cmd.py",
-    "code": "@@ -652,6 +652,7 @@\n     unsafe_git_ls_remote_options = [\n         # This option allows arbitrary command execution in git-ls-remote.\n         \"--upload-pack\",\n+        \"--exec\",\n     ]\n \n     unsafe_git_pathspec_from_file_options = [",
-    "annotation": "The repaired blocked-option list also includes the exec spelling."
+    "code": "+    # Match Git's leading transport selector, including an empty helper name.\n+    re_unsafe_protocol = re.compile(r\"([A-Za-z0-9][A-Za-z0-9+.-]*|)::\")\n \n     unsafe_git_ls_remote_options = [\n         # This option allows arbitrary command execution in git-ls-remote.\n@@ -1129,16 +1130,28 @@ def ls_remote(\n         self,\n         *args: Any,\n         allow_unsafe_options: bool = False,\n+        allow_unsafe_protocols: bool = False,\n         **kwargs: Any,\n     ) -> Union[str, bytes, Tuple[int, Union[str, bytes], str], \"Git.AutoInterrupt\"]:\n         \"\"\"List references in a remote repository.\n \n         :param allow_unsafe_options:\n             Allow unsafe options, like ``--upload-pack`` or ``--exec``.\n+\n+        :param allow_unsafe_protocols:\n+            Allow unsafe protocols to be used, like ``ext``. Positional arguments\n+            and split short-option values are checked.\n         \"\"\"\n         if not allow_unsafe_options:\n             candidate_options = self._option_candidates(args, kwargs)\n             Git.check_unsafe_options(options=candidate_options, unsafe_options=self.unsafe_git_ls_remote_options)\n+        if not allow_unsafe_protocols:\n+            protocol_args = list(args)\n+            if kwargs.get(\"split_single_char_options\", True):\n+                # Split short-option values can become the URL after parsing earlier options.\n+                protocol_args.extend(value for key, value in kwargs.items() if len(key) == 1)\n+            for arg in self._unpack_args(protocol_args):\n+                self.check_unsafe_protocols(arg)\n         return self._call_process(\"ls_remote\", *args, **kwargs)\n \n     @property",
+    "annotation": "Gives ls_remote an allow_unsafe_protocols switch and checks remote URLs against the transport-selector pattern, so an ext:: URL is refused unless the caller opts in.",
+    "role": "fix"
    }
   ],
   "annotation_mode": "hunk_specific",
   "required_anchors": {
    "candidate": [
-    "\"--upload-pack\","
+    "\"--upload-pack\",",
+    "def _option_candidates("
    ],
    "fix": [
-    "+        \"--exec\","
+    "allow_unsafe_protocols: bool = False,",
+    "re_unsafe_protocol = re.compile("
    ]
-  },
-  "advisory_url": "https://github.com/advisories/ghsa-956x-8gvw-wg5v",
-  "candidate_url": "https://github.com/gitpython-developers/gitpython/commit/701ce32fe5ba8cb622c0e0342a376a6beb47d738",
-  "candidate_patch_files": [
-   "git/cmd.py"
-  ],
-  "fix_url": "https://github.com/gitpython-developers/gitpython/commit/1b0d2d9b91575f7db44ef4ff58ac37fc9335e5f6",
-  "fix_patch_files": [
-   "git/cmd.py"
-  ],
-  "fix_files": [
-   "git/cmd.py"
-  ],
-  "candidate_patch_sha256": "629f1ec5dd9d9926fc7323eb92868441bb054b3fa8af95059c8580a3388d1b2b",
-  "fix_patch_sha256": "bc135df850d27f9354b5e6b1516723803b9e942a80147947126c9a9e09c6bbd3",
-  "ai_marker": {
-   "state": "PRESENT",
-   "sha": "701ce32fe5ba8cb622c0e0342a376a6beb47d738",
-   "quote": "GPT 5.6 <codex@openai.com>",
-   "source": "commit"
   }
  },
  "GHSA-G4QJ-5VXV-WGGF": {
@@ -16744,62 +16606,6 @@
    }
   ],
   "summary": "AI-written code wrote unsanitized attacker-controlled submodule names into .git/config section headers, enabling config injection and arbitrary directive execution."
- },
- "GHSA-V396-V7Q4-X2QJ": {
-  "summary": "GitPython's unsafe-option check missed short options with an attached value. The repair parses short-option tokens before applying the long-option checks.",
-  "steps": [
-   {
-    "title": "AI-assisted change",
-    "detail": "The option filter skips abbreviation checks for single-dash tokens after checking only exact canonical matches."
-   },
-   {
-    "title": "Fix",
-    "detail": "The repair examines short-option characters and rejects blocked options before processing long-option abbreviations."
-   }
-  ],
-  "display_hunks": [
-   {
-    "role": "candidate",
-    "file": "git/cmd.py",
-    "code": "@@ -976,8 +979,13 @@\n             candidate = cls._canonicalize_option_name(option)\n             if not candidate:\n                 continue\n+            unsafe_option = canonical_unsafe_options.get(candidate)\n+            if unsafe_option is not None:\n+                raise UnsafeOptionError(f\"{unsafe_option} is not allowed, use `allow_unsafe_options=True` to allow it.\")\n+            if not (option.startswith(\"--\") or (options_are_kwargs and len(candidate) > 1)):\n+                continue\n             for canonical, unsafe_option in canonical_unsafe_options.items():\n                 if canonical.startswith(candidate):\n                     raise UnsafeOptionError(\n                         f\"{unsafe_option} is not allowed, use `allow_unsafe_options=True` to allow it.\"\n                     )",
-    "annotation": "The option filter skips abbreviation checks for single-dash tokens after checking only exact canonical matches."
-   },
-   {
-    "role": "fix",
-    "file": "git/cmd.py",
-    "code": "@@ -981,8 +1003,18 @@\n                 continue\n             unsafe_option = canonical_unsafe_options.get(candidate)\n             if unsafe_option is not None:\n                 raise UnsafeOptionError(f\"{unsafe_option} is not allowed, use `allow_unsafe_options=True` to allow it.\")\n+            option_token = option.split(\"=\", 1)[0].split(None, 1)[0]\n+            if option_token.startswith(\"-\") and not option_token.startswith(\"--\"):\n+                for option_char in option_token[1:]:\n+                    unsafe_option = unsafe_short_options.get(option_char)\n+                    if unsafe_option is not None:\n+                        raise UnsafeOptionError(\n+                            f\"{unsafe_option} is not allowed, use `allow_unsafe_options=True` to allow it.\"\n+                        )\n+                    if option_char not in clusterable_short_options:\n+                        break\n             if not (option.startswith(\"--\") or (options_are_kwargs and len(candidate) > 1)):\n                 continue\n             for canonical, unsafe_option in canonical_unsafe_options.items():\n                 if canonical.startswith(candidate):",
-    "annotation": "The repair examines short-option characters and rejects blocked options before processing long-option abbreviations."
-   }
-  ],
-  "annotation_mode": "hunk_specific",
-  "required_anchors": {
-   "candidate": [
-    "if not (option.startswith(\"--\")"
-   ],
-   "fix": [
-    "for option_char in option_token[1:]:"
-   ]
-  },
-  "ai_marker": {
-   "state": "PRESENT",
-   "sha": "181e8ede7543dbbdcee92756cea260f675316c63",
-   "source": "commit",
-   "quote": "author GPT 5.6 <codex@openai.com> 1783856742 +0200"
-  },
-  "advisory_url": "https://github.com/advisories/ghsa-v396-v7q4-x2qj",
-  "candidate_url": "https://github.com/gitpython-developers/gitpython/commit/181e8ede7543dbbdcee92756cea260f675316c63",
-  "candidate_patch_files": [
-   "git/cmd.py"
-  ],
-  "candidate_patch_sha256": "02fc76fac82e93ddc8e520001796e297dfc9ba57d36afb70760e6997ca8491ee",
-  "fix_url": "https://github.com/gitpython-developers/gitpython/commit/56806080c1348749b07daa4a2024ce47b3cad285",
-  "fix_patch_files": [
-   "git/cmd.py"
-  ],
-  "fix_patch_sha256": "735efea27cac64def39c935682a73e6d6ccc95bbf83710272b53d1fe4ebb2a75",
-  "fix_files": [
-   "git/cmd.py"
-  ]
  },
  "GHSA-C3WR-3C4V-6RMH": {
   "summary": "Aider disabled Git commit-hook verification by default. No merged repair was identified in the inspected source; restoring verification as the default is a proposed remedy.",
@@ -17058,5 +16864,64 @@
     "lastChars[state] === '@'"
    ]
   }
+ },
+ "CVE-2026-54362": {
+  "ai_marker": "Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>",
+  "fix_marker": null,
+  "candidate_url": "https://github.com/MISP/MISP/commit/47bf71cc78d13c06e1eaa4d9842e6f94ddce4bea",
+  "fix_url": "https://github.com/MISP/MISP/commit/8aa2bb6d1af6e8c57c8d8437cf203acb8bce7a53",
+  "advisory_url": "",
+  "summary": "galaxy 47bf71cc EventTemplatesController::__setBuilderConfig() galaxyTypesAvailable 'Galaxy.enabled' => trueorg_id/\u2014\u2014 org galaxy galaxy org-only distribution=0 galaxyfix d3adfe1a orgConditionsite admin Galaxy.org_id= org distribution>0 'Galaxy.distribution' > 0 PHP 8aa2bb6d $this",
+  "steps": [
+   {
+    "title": "AI change",
+    "detail": "new: [event-template(builder)] Tag taxonomy + galaxy type pickers"
+   },
+   {
+    "title": "Fix",
+    "detail": "fix: [security] exposing non visible galaxies for template creation"
+   }
+  ],
+  "display_hunks": [
+   {
+    "file": "app/webroot/js/event-templates/builder.js",
+    "code": "@@ -606,6 +606,29 @@\n         if (el.type === 'object_reference') {\n             refreshObjectFieldSelects($pane, el);\n         }\n+        if (el.type === 'tag_field' || el.type === 'galaxy_field') {\n+            refreshMultipickerSummary($pane, el);\n+        }\n+    }\n+\n+    function refreshMultipickerSummary($pane, el) {\n+        $pane.querySelectorAll('[data-et-multipicker-summary-for]').forEach(function ($s) {\n+            var field = $s.getAttribute('data-et-multipicker-summary-for');\n+            var values = getDeep(el, field);\n+            if (!Array.isArray(values) || values.length === 0) {\n+                $s.innerHTML = '<em>' +\n+                    (field === 'restrict_taxonomies' ? '(any taxonomy)' : '(any galaxy type)') +\n+                    '</em>';\n+                return;\n+            }\n+            $s.innerHTML = '';\n+            values.forEach(function (v) {\n+                var $chip = document.createElement('span');\n+                $chip.className = 'et-chip';\n+                $chip.textContent = v;\n+                $s.appendChild($chip);\n+            });\n+        });\n     }\n \n     function refreshAttributeTypeOptions($pane, el) {\n@@ -771,6 +794,132 @@\n         renderProperties();\n     }\n \n+    // ---------------------------------------------------------------\n+    // Generic multi-picker modal \u2014 used for tag taxonomies + galaxy types.\n+    // ---------------------------------------------------------------\n+\n+    // Tracks which element/field the modal is currently editing.\n+    var multipickerCtx = null;\n+\n+    function wireMultipicker() {\n+        document.addEventListener('click', function (e) {\n+            var $btn = e.target.closest('[data-et-open-multipicker]');\n+            if ($btn) {\n+                e.preventDefault();\n+                openMultipicker(\n+                    $btn.getAttribute('data-et-open-multipicker'),\n+                    $btn.getAttribute('data-et-multipicker-field'),\n+                    $btn.getAttribute('data-et-multipicker-title') || 'Select items'\n+                );\n+            }\n+        });\n+\n+        var $search = document.getElementById('et-multipicker-search');\n+        if ($search) {\n+            $search.addEventListener('input', function () {\n+                filterMultipickerList($search.value);\n+            });\n+        }\n+\n+        var $apply = document.getElementById('et-multipicker-apply');\n+        if ($apply) {\n+            $apply.addEventListener('click', function (e) {\n+                e.preventDefault();\n+                applyMultipicker();\n+            });\n+        }\n+    }\n+\n+    function openMultipicker(source, field, title) {\n+        if (!state.selectedId) { return; }\n+        var el = findElement(state.selectedId);\n+        if (!el) { return; }\n+        var items = (cfg.multipickerSources && cfg.multipickerSources[source]) || [];\n+        var current = getDeep(el, field);\n+        var selectedSet = {};\n+        if (Array.isArray(current)) {\n+            current.forEach(function (v) { selectedSet[v] = true; });\n+        }\n+        multipickerCtx = {source: source, field: field, elementId: el.id};\n+\n+        var $title = document.getElementById('et-multipicker-title');\n+        if ($title) { $title.textContent = title; }\n+\n+        var $list = document.getElementById('et-multipicker-list');\n+        if ($list) {\n+            $list.innerHTML = '';\n+            if (!items.length) {\n+                $list.innerHTML = '<div style=\"padding:20px; text-align:center; color:#888;\">' +",
+    "annotation": "Adds the multipicker summary refresh that writes tag and galaxy field values into `innerHTML` without escaping.",
+    "role": "candidate"
+   },
+   {
+    "file": "app/Controller/EventTemplatesController.php",
+    "code": "@@ -660,6 +660,55 @@ private function __setBuilderConfig()\n             );\n         }\n         $this->set('objectTemplatesAvailable', $objectTemplates);\n+\n+        $this->loadModel('Taxonomy');\n+        $taxonomyRows = $this->Taxonomy->find('all', array(\n+            'recursive' => -1,\n+            'conditions' => array('Taxonomy.enabled' => true),\n+            'fields' => array(\n+                'Taxonomy.namespace',\n+                'Taxonomy.description',\n+                'Taxonomy.version',\n+            ),\n+            'order' => array('Taxonomy.namespace' => 'ASC'),\n+        ));\n+        $taxonomies = array();\n+        foreach ($taxonomyRows as $r) {\n+            $t = $r['Taxonomy'];\n+            $taxonomies[] = array(\n+                'value' => (string)$t['namespace'],\n+                'label' => (string)$t['namespace'],\n+                'description' => (string)($t['description'] ?? ''),\n+            );\n+        }\n+        $this->set('taxonomiesAvailable', $taxonomies);\n+\n+        $this->loadModel('Galaxy');\n+        $galaxyRows = $this->Galaxy->find('all', array(\n+            'recursive' => -1,\n+            'conditions' => array('Galaxy.enabled' => true),\n+            'fields' => array(\n+                'Galaxy.type',\n+                'Galaxy.description',\n+            ),\n+            'group' => array('Galaxy.type'),\n+            'order' => array('Galaxy.type' => 'ASC'),\n+        ));\n+        $galaxyTypes = array();\n+        $seenTypes = array();\n+        foreach ($galaxyRows as $r) {\n+            $t = $r['Galaxy']['type'];\n+            if ($t === null || $t === '' || isset($seenTypes[$t])) {\n+                continue;\n+            }\n+            $seenTypes[$t] = true;\n+            $galaxyTypes[] = array(\n+                'value' => (string)$t,\n+                'label' => (string)$t,\n+                'description' => (string)($r['Galaxy']['description'] ?? ''),\n+            );\n+        }\n+        $this->set('galaxyTypesAvailable', $galaxyTypes);\n     }\n \n     private function __renderDependencyMissing(array $missing)",
+    "annotation": "Queries every enabled taxonomy and galaxy type using only the enabled flag as visibility, handing the template builder galaxy entries that belong to other organizations.",
+    "role": "candidate"
+   },
+   {
+    "file": "app/View/Elements/eventTemplates/builder/shell.ctp",
+    "code": "@@ -32,6 +32,10 @@\n     $objectTemplates = isset($objectTemplatesAvailable)\n         ? $objectTemplatesAvailable\n         : [];\n+    $multipickerSources = [\n+        'taxonomies' => isset($taxonomiesAvailable) ? $taxonomiesAvailable : [],\n+        'galaxyTypes' => isset($galaxyTypesAvailable) ? $galaxyTypesAvailable : [],\n+    ];\n \n     $paletteButtons = [\n         'section'          => ['label' => __('Section'),          'icon' => 'folder'],\n@@ -153,6 +157,29 @@\n #et-ot-picker-modal { width: 640px; max-height: 80vh; }\n #et-ot-picker-modal .modal-body { max-height: calc(80vh - 120px); overflow: hidden; display: flex; flex-direction: column; gap: 8px; }\n #et-ot-picker-list { flex: 1; overflow-y: auto; border: 1px solid #eee; border-radius: 3px; }\n+#et-multipicker-modal { width: 560px; }\n+#et-multipicker-modal .modal-body { display: flex; flex-direction: column; gap: 8px; }\n+#et-multipicker-modal label.et-multipicker-item {\n+    display: block;\n+    padding: 6px 10px;\n+    border-bottom: 1px solid #f3f3f3;\n+    margin: 0;\n+    cursor: pointer;\n+}\n+#et-multipicker-modal label.et-multipicker-item:hover { background: #f0f8ff; }\n+#et-multipicker-modal label.et-multipicker-item input[type=checkbox] { margin-right: 8px; }\n+#et-multipicker-modal .et-multipicker-label { font-weight: 500; }\n+#et-multipicker-modal .et-multipicker-desc { display: block; color: #888; font-size: 11px; margin-left: 24px; }\n+.eventTemplates.builder .et-multipicker-summary { font-size: 12px; color: #333; }\n+.eventTemplates.builder .et-multipicker-summary .et-chip {\n+    display: inline-block;\n+    background: #eef4fa;\n+    border: 1px solid #cde1f2;\n+    border-radius: 3px;\n+    padding: 1px 6px;\n+    margin: 0 2px 2px 0;\n+    font-size: 11px;\n+}\n </style>\n <div class=\"eventTemplates builder form\">\n     <h2><?php echo h($pageTitle); ?></h2>\n@@ -279,6 +306,28 @@\n     </div>\n </div>\n \n+<div id=\"et-multipicker-modal\" class=\"modal hide fade\" tabindex=\"-1\" role=\"dialog\" aria-hidden=\"true\">\n+    <div class=\"modal-header\">\n+        <button type=\"button\" class=\"close\" data-dismiss=\"modal\" aria-hidden=\"true\">\u00d7</button>\n+        <h3 id=\"et-multipicker-title\"><?php echo __('Select items'); ?></h3>\n+    </div>\n+    <div class=\"modal-body\">\n+        <input type=\"text\" id=\"et-multipicker-search\" class=\"input-block-level\"\n+               placeholder=\"<?php echo __('Filter\u2026'); ?>\">\n+        <div id=\"et-multipicker-list\" style=\"max-height:420px; overflow-y:auto; border:1px solid #eee; border-radius:3px;\">\n+            <!-- populated by JS on open -->\n+        </div>\n+    </div>\n+    <div class=\"modal-footer\">\n+        <button type=\"button\" class=\"btn\" data-dismiss=\"modal\">\n+            <?php echo __('Cancel'); ?>\n+        </button>\n+        <button type=\"button\" class=\"btn btn-primary\" id=\"et-multipicker-apply\">\n+            <?php echo __('Apply'); ?>\n+        </button>\n+    </div>\n+</div>\n+\n <script>\n     window.ET_BUILDER_CONFIG = {\n         mode:       <?php echo json_encode($builderMode); ?>,\n@@ -287,7 +336,8 @@\n         envelope:   <?php echo json_encode($envelope); ?>,\n         definition: <?php echo json_encode($initialDefinition); ?>,\n         attrCategories: <?php echo json_encode($attrCategories); ?>,\n-        objectTemplates: <?php echo json_encode($objectTemplates); ?>\n+        objectTemplates: <?php echo json_encode($objectTemplates); ?>,\n+        multipickerSources: <?php echo json_encode($multipickerSources); ?>\n     };\n </script>\n <?php",
+    "annotation": "Ships the shared searchable multipicker modal that streams controller-provided taxonomy and galaxy lists straight into builder state, displaying every entry the picker source query returned without additional distribution checks.",
+    "role": "candidate"
+   },
+   {
+    "file": "app/Controller/EventTemplatesController.php",
+    "code": "@@ -1010,21 +1010,16 @@ private function __setBuilderConfig()\n             );\n         }\n         $this->set('taxonomiesAvailable', $taxonomies);\n-        $orgCondition = $this->_isSiteAdmin()\n-            ? array()\n-            : array(\n-                'OR' => array(\n-                    'Galaxy.org_id' => (int)$this->Auth->user('org_id'),\n-                    'Galaxy.distribution' > 0,\n-                ),\n-            );\n-\n         $this->loadModel('Galaxy');\n         $galaxyRows = $this->Galaxy->find('all', array(\n             'recursive' => -1,\n             'conditions' => array(\n                 'Galaxy.enabled' => true,\n-                $orgCondition,\n+                // Use the canonical galaxy visibility filter. The previous hand-rolled condition\n+                // `'Galaxy.distribution' > 0` was a PHP comparison (always evaluating to true), not a\n+                // query condition, so every org's galaxies - including org-only (distribution 0) custom\n+                // galaxies belonging to other orgs - leaked into the template builder list.\n+                $this->Galaxy->buildConditions($this->Auth->user()),\n             ),\n             'fields' => array(\n                 'Galaxy.type',",
+    "annotation": "Replaces the hand-rolled organization filter, whose distribution-greater-than-zero expression evaluated to constant truth, with the canonical galaxy visibility conditions so restricted entries stay within the owning organization.",
+    "role": "fix"
+   }
+  ],
+  "candidate_patch_sha256": "fc02ff10f0052d9b188240b7757fd63f137d63f70261d2d777ea0f4d73d1b567",
+  "fix_patch_sha256": "b2075a351f2055414840b4f816c30a1225a5d4a9635440b82e672a5725a36723",
+  "required_anchors": {
+   "candidate": [
+    "refreshMultipickerSummary",
+    "filterMultipickerList",
+    "galaxyTypesAvailable"
+   ],
+   "fix": [
+    "buildConditions",
+    "Galaxy",
+    "distribution"
+   ]
+  },
+  "annotation_mode": "hunk_specific"
  }
 }

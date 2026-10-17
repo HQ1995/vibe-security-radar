@@ -6871,103 +6871,6 @@
    }
   },
   {
-   "class_id": "alias-51fe77b69f348fed23bad2ab",
-   "case_id": "GHSA-2HFG-4FH4-QP7F",
-   "aliases": [
-    "CVE-2026-53812",
-    "alias-51fe77b69f348fed23bad2ab"
-   ],
-   "repository": "openclaw/openclaw",
-   "repository_metadata": {
-    "full_name": "openclaw/openclaw",
-    "language": "JavaScript",
-    "archived": false
-   },
-   "mechanism": "Only keyboard and submit interactions were wrapped in the interaction navigation check, so act paths such as selectOption, fillForm and type could still trigger a redirect to a private-network page after the URL had been checked, and a later browser evaluation read that page. The fix threads the SSRF policy through every act action and re-checks navigation before the browser operation completes.",
-   "description": "### Summary\n\nOpenClaw's browser control SSRF checks blocked direct navigation to private or loopback URLs, but some Playwright `act` interactions could trigger navigation after the initial check. A later browser evaluation could then read from the page reached by that action-triggered navigation.\n\nThis issue is specific to browser control actions and private-network navigation policy. Browser evaluation remains an intentional trusted-operator feature when it is used on pages that policy allowed the browser to visit.\n\n### Affected configurations\n\nThis affects deployments where browser control is enabled and an authenticated browser-control caller can interact with an attacker-controlled page that redirects or navigates the tab to a private-network target through a UI action.\n\n### Impact\n\nIf the browser reached a private page through an unchecked action-triggered navigation, a caller with browser evaluation capability could read page content that direct navigation policy would have blocked.\n\nThe issue does not grant access to OpenClaw without authentication. It bypasses the private-network navigation guard for a specific browser action path.\n\n### Patched Versions\n\nThe first stable patched version is `2026.5.18`.\n\n### Mitigations\n\nUpgrade to `openclaw@2026.5.18` or later. Before upgrading, restrict browser-control access to trusted operators and avoid using browser control on untrusted pages in environments with sensitive private web services.",
-   "candidate_set": [
-    "e0b8ddc1a55185aff1cf9e0e095014d2e4f1d894"
-   ],
-   "minimum_fix_set": [
-    "3d93174c4398088066a1de9372ea1103cd713df1"
-   ],
-   "ir_chain": {
-    "original_advisory_ids": [
-     "GHSA-2HFG-4FH4-QP7F"
-    ],
-    "original_mechanism": "Browser actions could navigate across trust boundaries without complete URL checks.",
-    "original_sink": "OpenClaw browser interaction dispatch for pressKey, type, select, fill, and evaluate",
-    "original_author_kind": "HUMAN",
-    "original_author_name": "Peter Steinberger",
-    "original_sha": "fa54950d2ee17bb03c95d6222e77b0db8f98926f",
-    "unresolved_reason": null,
-    "attempted_remediation": {
-     "candidate_shas": [
-      "e0b8ddc1a55185aff1cf9e0e095014d2e4f1d894"
-     ],
-     "changed": "Added before, after, and settled URL guards to pressKey and type-submit actions.",
-     "missed": "Did not cover select, fill, evaluate, and other navigation-capable actions."
-    },
-    "residual_bypass": "Uncovered action kinds could navigate to and operate on a disallowed URL.",
-    "final_closure": {
-     "minimum_fix_shas": [
-      "3d93174c4398088066a1de9372ea1103cd713df1"
-     ],
-     "closed": "Extended the interaction guard to the remaining navigation-capable actions."
-    }
-   },
-   "vulnerable_release": {
-    "kind": "advisory_range",
-    "version": "< 2026.5.18",
-    "tag": null
-   },
-   "fixed_release": {
-    "kind": "advisory_version",
-    "version": "2026.5.18",
-    "tag": null
-   },
-   "published_at": "2026-07-02",
-   "severity": "MEDIUM",
-   "cwes": [
-    "CWE-284",
-    "CWE-918"
-   ],
-   "references": [
-    "https://github.com/openclaw/openclaw/security/advisories/GHSA-2hfg-4fh4-qp7f",
-    "https://nvd.nist.gov/vuln/detail/CVE-2026-53812",
-    "https://github.com/openclaw/openclaw",
-    "https://www.vulncheck.com/advisories/openclaw-private-network-navigation-bypass-via-browser-act-interactions"
-   ],
-   "cause_category": "validation_fail_open",
-   "ai_provenance": {
-    "family": null,
-    "coverage": "generic",
-    "candidate_count": 1,
-    "named_candidate_count": 1,
-    "note": "none on flaw-writing commit (candidate has [AI-assisted] subject but no model trailer, author/co-author both humans)"
-   },
-   "fix_authorship": {
-    "classification": "no_ai_marker",
-    "families": [],
-    "fixes": [
-     {
-      "sha": "3d93174c4398088066a1de9372ea1103cd713df1",
-      "classification": "no_ai_marker",
-      "author": {
-       "name": "Pavan Kumar Gondhi",
-       "email": "pavangondhi@gmail.com"
-      }
-     }
-    ]
-   },
-   "code_evidence": {
-    "ai_marker": "fix(browser): apply three-phase interaction navigation guard to pressKey and type(submit) [AI-assisted] (#63889)",
-    "summary": "AI-written browser control code only checked SSRF at initial navigation, so action-triggered redirects bypassed policy and let private-network pages be read.",
-    "candidate_url": "https://github.com/openclaw/openclaw/commit/e0b8ddc1a55185aff1cf9e0e095014d2e4f1d894",
-    "fix_url": "https://github.com/openclaw/openclaw/commit/3d93174c4398088066a1de9372ea1103cd713df1"
-   }
-  },
-  {
    "class_id": "alias-5215e36f51cb38d13f3063ba",
    "case_id": "CVE-2026-46383",
    "aliases": [
@@ -11546,14 +11449,11 @@
     "language": "TypeScript",
     "archived": false
    },
-   "mechanism": "checkValidity() in src/dom/html-elements.ts compiles the user-controlled pattern property straight into a regular expression with new RegExp, so a hostile pattern with nested quantifiers drives catastrophic backtracking and freezes the event loop. The fix caps patterns at 1024 characters and rejects nested quantifier shapes before compiling.",
-   "description": "## Summary\n\nThe `HTMLInputElement.checkValidity()` method constructed a `RegExp` directly from the user-controlled `pattern` property without any sanitization or timeout protection. This allowed an attacker to inject a regex with catastrophic backtracking, freezing the event loop.\n\n## Fix\n\nFixed in commit https://github.com/asymmetric-effort/NogginLessDom/commit/25a3cbac665fae5663f8b71c073b80c3152dbe7b on `main`. Added:\n- Pattern length limit (1024 characters)\n- Nested quantifier detection (`hasNestedQuantifiers`) that rejects patterns like `(a+)+` before constructing the regex\n- Patterns exceeding limits are treated as non-matching (safe default)",
+   "mechanism": "NogginLessDom compiles a page-assigned input pattern straight into a regular expression whenever a validity flag, checkValidity() or reportValidity() is read, with no bound on how long matching can run. A Claude-assisted fix added a 1,024-character cap and a narrow nested-quantifier check, but overlapping alternations and grouped repetitions still pass the check and backtrack exponentially, so a hostile pattern can still freeze the event loop. No later release closes the sink.",
    "candidate_set": [
-    "f8ee181be67344f12aeb30ec39e5ab611c65b826"
-   ],
-   "minimum_fix_set": [
     "25a3cbac665fae5663f8b71c073b80c3152dbe7b"
    ],
+   "minimum_fix_set": [],
    "vulnerable_release": {
     "advisory_range": "<= 0.0.21",
     "contains_candidate": true,
@@ -11569,21 +11469,7 @@
     "tarball_sha256": "47aba8a9ba8e004c13d0cae23af47ffd19ca11344c4bb491ce05216411b5d11b",
     "version": "0.0.21"
    },
-   "fixed_release": {
-    "advisory_first_patched": "0.0.22",
-    "contains_fix": true,
-    "equals_minimum_fix": false,
-    "git_tag_commit": "00dc8ad39071140d1d76c03d93c6e10f19e51138",
-    "github_release_object": "404",
-    "kind": "npm_gitHead_equals_peeled_annotated_tag",
-    "name": "@asymmetric-effort/nogginlessdom",
-    "npm_gitHead": "00dc8ad39071140d1d76c03d93c6e10f19e51138",
-    "sha": "00dc8ad39071140d1d76c03d93c6e10f19e51138",
-    "tag": "v0.0.22",
-    "tarball": "https://registry.npmjs.org/@asymmetric-effort/nogginlessdom/-/nogginlessdom-0.0.22.tgz",
-    "tarball_sha256": "d33559d28bd1ba66c014019271e65b63b198374b8fe160355cff2d9303cf8348",
-    "version": "0.0.22"
-   },
+   "fixed_release": null,
    "published_at": "2026-07-02",
    "severity": "MEDIUM",
    "cwes": [
@@ -11602,38 +11488,12 @@
     "named_candidate_count": 1,
     "note": "ed0124d f8ee181 Co-Authored-By: Claude Opus 4.6 (1M context) <noreply@anthropic.com> Sam Caldwell fix25a3cba/785e6ac trailer commit"
    },
-   "fix_authorship": {
-    "classification": "ai_assisted",
-    "families": [
-     "claude_code"
-    ],
-    "fixes": [
-     {
-      "author": {
-       "email": "github@samcaldwell.net",
-       "name": "Sam Caldwell"
-      },
-      "authored_at": "2026-05-29T04:56:47+00:00",
-      "classification": "ai_assisted",
-      "evidence": [
-       {
-        "family": "claude_code",
-        "kind": "coauthor_trailer",
-        "text": "Co-Authored-By: Claude Opus 4.6 (1M context) <noreply@anthropic.com>"
-       }
-      ],
-      "families": [
-       "claude_code"
-      ],
-      "sha": "25a3cbac665fae5663f8b71c073b80c3152dbe7b"
-     }
-    ]
-   },
+   "fix_authorship": null,
    "code_evidence": {
     "ai_marker": "Co-Authored-By: Claude Opus 4.6 (1M context) <noreply@anthropic.com>",
-    "summary": "AI-generated code built a RegExp directly from a user-controlled pattern, enabling catastrophic backtracking that froze the event loop.",
-    "candidate_url": "https://github.com/asymmetric-effort/nogginlessdom/commit/f8ee181be67344f12aeb30ec39e5ab611c65b826",
-    "fix_url": "https://github.com/asymmetric-effort/nogginlessdom/commit/25a3cbac665fae5663f8b71c073b80c3152dbe7b"
+    "summary": "A Claude-assisted fix for a regular-expression denial of service capped pattern length and rejected one family of nested quantifiers, but other backtracking shapes still reach the regular expression, so the freeze remains possible.",
+    "candidate_url": "https://github.com/asymmetric-effort/nogginlessdom/commit/25a3cbac665fae5663f8b71c073b80c3152dbe7b",
+    "fix_url": ""
    }
   },
   {
@@ -13055,13 +12915,13 @@
     "language": "Ruby",
     "archived": false
    },
-   "mechanism": "unverified certificate signature persisted",
+   "mechanism": "The bsv-ruby-sdk wallet stored an acquired identity certificate without checking the certifier's signature, both when the caller supplied the certificate directly and when it came back from a certifier over the issuance protocol. Listing and proving certificates then trusted those stored records, so anyone who could reach the wallet's acquisition call, or answer for the certifier, could plant a certificate attributed to a certifier that never signed it. The repair verifies the certifier signature on both paths before anything is stored.",
    "description": "# Unverified certifier signatures persisted by `acquire_certificate`\n\n## Affected packages\n\nBoth `bsv-sdk` and `bsv-wallet` are published from the [sgbett/bsv-ruby-sdk](https://github.com/sgbett/bsv-ruby-sdk) repository. The vulnerable code lives in `lib/bsv/wallet_interface/wallet_client.rb`, which is **physically shipped inside both gems** (the `bsv-wallet.gemspec` `files` list bundles the entire `lib/bsv/wallet_interface/` tree). Consumers of either gem are independently vulnerable; the two packages are versioned separately, so each has its own affected range.\n\n| Package | Affected | Patched |\n| --- | --- | --- |\n| `bsv-sdk` | `>= 0.3.1, < 0.8.2` | `0.8.2` |\n| `bsv-wallet` | `>= 0.1.2, < 0.3.4` | `0.3.4` |\n\n## Summary\n\n`BSV::Wallet::WalletClient#acquire_certificate` persists certificate records to storage **without verifying the certifier's signature** over the certificate contents. Both acquisition paths are affected:\n\n- `acquisition_protocol: 'direct'` — the caller supplies all certificate fields (including `signature:`) and the record is written to storage verbatim.\n- `acquisition_protocol: 'issuance'` — the client POSTs to a certifier URL and writes whatever signature the response body contains, also without verification.\n\nAn attacker who can reach either API (or who controls a certifier endpoint targeted by the issuance path) can forge identity certificates that subsequently appear authentic to `list_certificates` and `prove_certificate`.\n\n## Details\n\nBRC-52 requires a certificate's `signature` field to be verified against the claimed certifier's public key over a canonical hashing of `(type, subject, serialNumber, revocationOutpoint, fields)` before the certificate is trusted. The reference TypeScript SDK enforces this in `Certificate.verify()`.\n\n### Direct path\n\nThe Ruby implementation's `acquire_via_direct` path (`lib/bsv/wallet_interface/wallet_client.rb`) constructs the certificate record directly from caller-supplied fields:\n\n```ruby\ndef acquire_via_direct(args)\n {\n type: args[:type],\n subject: @key_deriver.identity_key,\n serial_number: args[:serial_number],\n certifier: args[:certifier],\n revocation_outpoint: args[:revocation_outpoint],\n signature: args[:signature],\n fields: args[:fields],\n keyring: args[:keyring_for_subject]\n }\nend\n```\n\nThe returned record is then written to the storage adapter by `acquire_certificate`. No verification of `args[:signature]` against `args[:certifier]`'s public key occurs at any point in this path.\n\n### Issuance path\n\n`acquire_via_issuance` POSTs to a certifier-supplied URL and parses the response body into a certificate record, which is then written to storage without verifying the returned signature. A hostile or compromised certifier endpoint — or anyone able to redirect/MITM the plain HTTP request — can therefore return an arbitrary `signature` value for any subject and have it stored as authentic. This is the same class of bypass as the direct path; it was tracked separately as finding **F8.16** in the compliance review and is closed by the same fix.\n\n### Downstream impact\n\nDownstream reads via `list_certificates` and selective-disclosure via `prove_certificate` treat stored records as valid without re-verifying, so any forgery that slips past `acquire_certificate` is trusted permanently.\n\n## Impact\n\nAny caller that can invoke `acquire_certificate` — via either acquisition protocol — can forge a certificate attributed to an arbitrary certifier identity key, containing arbitrary fields, and have it persisted as authentic. Applications and downstream gems that rely on the wallet's certificate store as a source of truth for identity attributes (e.g. KYC assertions, role claims, attestations) are subject to credential forgery.\n\nThis is a credential-forgery primitive, not merely a spec divergence from BRC-52.\n\n## CVSS rationale\n\n`AV:N/AC:L/PR:L/UI:N/S:U/C:H/I:H/A:N` → **8.1 (High)**\n\n- **AV:N** — network-reachable in any wallet context that exposes `acquire_certificate` to callers.\n- **AC:L** — low attack complexity: pass arbitrary bytes as `signature:`.\n- **PR:L** — low privileges: any caller authorised to invoke `acquire_certificate`.\n- **UI:N** — no user interaction required.\n- **C:H** — forged credentials via `prove_certificate` can assert attributes about the subject.\n- **I:H** — the wallet's credential store is polluted with attacker-controlled data.\n- **A:N** — availability unaffected.\n\n## Proof of concept\n\n```ruby\nclient = BSV::Wallet::WalletClient.new(key, storage: BSV::Wallet::MemoryStore.new)\n\nclient.acquire_certificate(\n type: 'age-over-18',\n acquisition_protocol: 'direct',\n certifier: claimed_trusted_pubkey_hex,\n serial_number: 'any-serial',\n revocation_outpoint: ('00' * 32) + '.0',\n signature: 'deadbeef' * 16, # arbitrary bytes — never verified\n fields: { 'verified' => 'true' },\n keyring_for_subject: {}\n)\n\nclient.list_certificates(\n certifiers: [claimed_trusted_pubkey_hex],\n types: ['age-over-18']\n)\n# => returns the forged record as if it were a real certificate from that certifier\n```\n\n## Affected versions\n\nThe vulnerable direct-path code was introduced in commit `d14dd19` (\"feat(wallet): implement BRC-100 identity certificate methods (Phase 5)\") on 2026-03-27 20:35 UTC. The vulnerable issuance-path code was added one day later in `6a4d898` (\"feat(wallet): implement certificate issuance protocol\", 2026-03-28 04:38 UTC), which removed an earlier `raise UnsupportedActionError` and replaced it with an unverified HTTP POST.\n\n**`bsv-sdk`:** the v0.3.1 chore bump (`89de3a2`) was committed 28 minutes after `d14dd19`, so the direct-path bypass shipped in the **v0.3.1** tag. The v0.3.1 release raised `UnsupportedActionError` for the issuance path, so the issuance-path bypass first shipped in **v0.3.2** (`5a335de`). Every subsequent release up to and including **v0.8.1** is affected by at least one path, and every release from v0.3.2 onwards is affected by both. Combined affected range: `>= 0.3.1, < 0.8.2`.\n\n**`bsv-wallet`:** at the time both commits landed, the wallet gem was at version 0.1.1. The first wallet release containing any of the vulnerable code was **v0.1.2** (`5a335de`, 2026-03-30), which shipped both paths simultaneously. Every subsequent release up to and including **v0.3.3** is affected on both paths. Affected range: `>= 0.1.2, < 0.3.4`.\n\n## Patches\n\nUpgrade to `bsv-sdk >= 0.8.2` **and/or** `bsv-wallet >= 0.3.4`. Both releases ship the same fix: a new module `BSV::Wallet::CertificateSignature` (`lib/bsv/wallet_interface/certificate_signature.rb`), which builds the BRC-52 canonical preimage (`type`, `serial_number`, `subject`, `certifier`, `revocation_outpoint`, lexicographically-sorted `fields`) and verifies the certifier's signature against it via `ProtoWallet#verify_signature` with protocol ID `[2, 'certificate signature']` and counterparty = the claimed certifier's public key. Both `acquire_via_direct` and `acquire_via_issuance` now call `CertificateSignature.verify!` before returning the certificate to `acquire_certificate`, so invalid certificates raise `BSV::Wallet::CertificateSignature::InvalidError` (a subclass of `InvalidSignatureError`) and are never written to storage.\n\nConsumers should upgrade whichever gem they depend on directly; they do not need both. `bsv-wallet 0.3.4` additionally tightens its dependency on `bsv-sdk` from the stale `~> 0.4` to `>= 0.8.2, < 1.0`, which forces the known-good pairing and pulls in the sibling advisory fixes (F1.3, F5.13) tracked separately.\n\nThe issuance-path fix also partially closes finding **F8.16** from the same compliance review. F8.16's second aspect — switching the issuance transport from ad-hoc JSON POST to BRC-104 AuthFetch — is not addressed here and remains deferred to a future release.\n\nFixed in sgbett/bsv-ruby-sdk#306.\n\n## Workarounds\n\nIf upgrading is not immediately possible:\n\n- Do not expose `acquire_certificate` (either acquisition protocol) to untrusted callers.\n- Do not invoke `acquire_certificate` with `acquisition_protocol: 'issuance'` against a certifier URL you do not fully trust, and require TLS for any such request.\n- Treat any record returned by `list_certificates` / `prove_certificate` as unverified and perform an out-of-band BRC-52 verification against the certifier's public key before acting on it.\n\n## Credit\n\nIdentified during the 2026-04-08 cross-SDK compliance review, tracked as findings F8.15 (direct path) and F8.16 (issuance path, partial).\n\n## References\n\n- HLR: sgbett/bsv-ruby-sdk#305\n- Fix PR: sgbett/bsv-ruby-sdk#306\n- Compliance review: [`.architecture/reviews/20260408-cross-sdk-compliance-review.md`](../../.architecture/reviews/20260408-cross-sdk-compliance-review.md)\n- BRC-52 specification: https://brc.dev/52\n- TypeScript reference: `Certificate.verify()` in `@bsv/sdk`",
    "candidate_set": [
-    "6a4d8984026dc8f533d408f8ea737af7f7b2713d"
+    "d14dd19f976eb5e92e0ea6755e56864f5b1ae047"
    ],
    "minimum_fix_set": [
-    "db97de475518eef752ed52b25f49f09cbe24c187"
+    "4992e8a265fd914a7eeb0405c69d1ff0122a84cc"
    ],
    "vulnerable_release": {
     "contains_candidate_ancestor": true,
@@ -13125,13 +12985,24 @@
        "claude_code"
       ],
       "sha": "db97de475518eef752ed52b25f49f09cbe24c187"
+     },
+     {
+      "author": {
+       "email": "simon@bettison.org",
+       "name": "Simon Bettison"
+      },
+      "authored_at": "2026-04-08T18:48:26+00:00",
+      "classification": "no_ai_marker",
+      "evidence": [],
+      "families": [],
+      "sha": "4992e8a265fd914a7eeb0405c69d1ff0122a84cc"
      }
     ]
    },
    "code_evidence": {
     "ai_marker": "Co-Authored-By: Claude Opus 4.6 (1M context) <noreply@anthropic.com>",
-    "summary": "AI-written code persisted unverified certifier signatures in `acquire_certificate`, letting invalid certificates be stored and trusted in bsv-sdk and bsv-wallet.",
-    "candidate_url": "https://github.com/sgbett/bsv-ruby-sdk/commit/6a4d8984026dc8f533d408f8ea737af7f7b2713d",
+    "summary": "A Claude-assisted change added certificate acquisition that stored certificates without verifying the certifier's signature, so forged certificates could be stored and later presented as trusted.",
+    "candidate_url": "https://github.com/sgbett/bsv-ruby-sdk/commit/d14dd19f976eb5e92e0ea6755e56864f5b1ae047",
     "fix_url": "https://github.com/sgbett/bsv-ruby-sdk/commit/db97de475518eef752ed52b25f49f09cbe24c187"
    }
   },
@@ -18847,11 +18718,31 @@
     "language": "TypeScript",
     "archived": false
    },
-   "mechanism": "The gateway derived the request path from new URL(req.url).pathname and compared it to the channel prefix with startsWith. That value is the exact text the client sent: percent-encoding is not decoded, letter case is not folded, and repeated or dotted segments are not resolved. Requests such as /API/channels/... or /api/channels%2F... therefore failed the prefix test and reached the plugin channel routes without a gateway credential, even though those routes were the ones the check was meant to protect.",
+   "mechanism": "An AI-assisted change added gateway authentication for OpenClaw's plugin channel routes but compared the raw request path, exactly as the client sent it, against a lowercase prefix. Percent-encoded, case-varied or dotted spellings of the same route skipped authentication and could reach a plugin handler that normalizes the path itself. The first repair decoded the path a limited number of times, which still let a four-times-encoded slash through; a later change raised the limit and rejects paths it cannot fully decode.",
    "description": "The change added a gateway authentication gate for the channel HTTP endpoints that plugins register, and the gate itself left the exposure. Before it, a request that a channel plugin could match was served without checking gateway credentials; the new check was meant to close that, but it recognized only one spelling of the prefix. Because the path was never decoded or lowercased, a request written as /API/channels/... or with an encoded slash kept the plugin route reachable without a credential. The repair decodes the path once and lowercases it before the prefix comparison, which closes the case-varied and single-encoded forms, and the commits that continued the same repair added slash normalization, fail-closed handling for malformed percent-encodings, and repeated decoding with dot-segment resolution.",
    "code_evidence": {
-    "summary": "An AI-assisted change added gateway authentication for channel HTTP endpoints, but the check tested the raw request path against a single lowercase prefix, so differently encoded variants of the same route skipped authentication."
-   }
+    "summary": "An AI-assisted change added authentication for plugin channel routes but checked the raw request path, so encoded or case-varied spellings of the same route skipped it.",
+    "candidate_url": "https://github.com/openclaw/openclaw/commit/04fad99ae1649479ae6acb5257022f140d1def3e",
+    "fix_url": "https://github.com/openclaw/openclaw/commit/93b07240257919f770d1e263e1f22753937b80ea"
+   },
+   "fix_authorship": {
+    "classification": "no_ai_marker",
+    "families": [],
+    "fixes": [
+     {
+      "author": {
+       "email": "steipete@gmail.com",
+       "name": "Peter Steinberger"
+      },
+      "authored_at": "2026-03-02T15:54:53+00:00",
+      "classification": "no_ai_marker",
+      "evidence": [],
+      "families": [],
+      "sha": "93b07240257919f770d1e263e1f22753937b80ea"
+     }
+    ]
+   },
+   "cause_category": "auth_access"
   },
   {
    "class_id": "alias-ae3efacc2e57f09986008ee1",
@@ -18976,7 +18867,8 @@
     "kind": "advisory_version",
     "version": "1.123.67 / 2.31.5 / 2.32.1",
     "tag": null
-   }
+   },
+   "cause_category": "injection"
   },
   {
    "class_id": "alias-0c1856ecc9f259fe50edd5af",
@@ -21061,9 +20953,9 @@
    ],
    "published_at": "2026-07-12",
    "description": "GitPython's option guard blocked one external-program option while leaving its equivalent spelling accepted. The repair adds the missing spelling to the blocked options.",
-   "mechanism": "GitPython's option guard blocked one external-program option while leaving its equivalent spelling accepted. The repair adds the missing spelling to the blocked options.",
+   "mechanism": "GitPython passed caller-supplied options and revisions straight to git in several commands, so an application forwarding them could run a helper program or truncate files. An AI-written fix added option checks to those commands and a dedicated ls_remote wrapper, but the wrapper checked only options and never the remote URL, so an ext:: transport URL could still run a helper through ls_remote. A later fix added the missing protocol check, first released in 3.2.0.",
    "code_evidence": {
-    "summary": "GitPython's option guard blocked one external-program option while leaving its equivalent spelling accepted. The repair adds the missing spelling to the blocked options.",
+    "summary": "An AI-written fix for unsafe git options left GitPython's ls_remote accepting unsafe ext:: transport URLs, so applications passing an attacker-chosen remote could still run a helper until 3.2.0.",
     "steps": [
      {
       "title": "AI-assisted change",
@@ -21102,7 +20994,7 @@
     "candidate_patch_files": [
      "git/cmd.py"
     ],
-    "fix_url": "https://github.com/gitpython-developers/gitpython/commit/1b0d2d9b91575f7db44ef4ff58ac37fc9335e5f6",
+    "fix_url": "https://github.com/gitpython-developers/gitpython/commit/9ad28cc4c7176d22cd6181d69805058a719dd03b",
     "fix_patch_files": [
      "git/cmd.py"
     ],
@@ -21346,112 +21238,6 @@
     "summary": "AI-written code wrote unsanitized attacker-controlled submodule names into .git/config section headers, enabling config injection and arbitrary directive execution.",
     "candidate_url": "https://github.com/gitpython-developers/GitPython/commit/54538428f79b0c91ba52cda5229856a6edf7ac06",
     "fix_url": "https://github.com/gitpython-developers/GitPython/commit/1ed1b924f4e2d2ee7bab296df77b978af21853f1"
-   }
-  },
-  {
-   "case_id": "GHSA-V396-V7Q4-X2QJ",
-   "class_id": "alias-b297e4d726a3c16a9c0c76e4",
-   "aliases": [
-    "CVE-2026-67324"
-   ],
-   "repository": "gitpython-developers/gitpython",
-   "repository_metadata": {
-    "full_name": "gitpython-developers/gitpython",
-    "language": "Python"
-   },
-   "published_at": "2026-07-12",
-   "severity": "critical",
-   "cwes": [
-    "CWE-78"
-   ],
-   "references": [
-    "https://github.com/gitpython-developers/GitPython/security/advisories/GHSA-v396-v7q4-x2qj",
-    "https://nvd.nist.gov/vuln/detail/CVE-2026-67324",
-    "https://www.vulncheck.com/advisories/gitpython-authentication-bypass-via-joined-short-options",
-    "https://github.com/advisories/GHSA-cw2r-r7mw-j3hc"
-   ],
-   "description": "GitPython's unsafe-option check missed short options with an attached value. The repair parses short-option tokens before applying the long-option checks.",
-   "mechanism": "GitPython's unsafe-option check missed short options with an attached value. The repair parses short-option tokens before applying the long-option checks.",
-   "code_evidence": {
-    "summary": "GitPython's unsafe-option check missed short options with an attached value. The repair parses short-option tokens before applying the long-option checks.",
-    "steps": [
-     {
-      "title": "AI-assisted change",
-      "detail": "The option filter skips abbreviation checks for single-dash tokens after checking only exact canonical matches."
-     },
-     {
-      "title": "Fix",
-      "detail": "The repair examines short-option characters and rejects blocked options before processing long-option abbreviations."
-     }
-    ],
-    "display_hunks": [
-     {
-      "role": "candidate",
-      "file": "git/cmd.py",
-      "code": "@@ -976,8 +979,13 @@\n             candidate = cls._canonicalize_option_name(option)\n             if not candidate:\n                 continue\n+            unsafe_option = canonical_unsafe_options.get(candidate)\n+            if unsafe_option is not None:\n+                raise UnsafeOptionError(f\"{unsafe_option} is not allowed, use `allow_unsafe_options=True` to allow it.\")\n+            if not (option.startswith(\"--\") or (options_are_kwargs and len(candidate) > 1)):\n+                continue\n             for canonical, unsafe_option in canonical_unsafe_options.items():\n                 if canonical.startswith(candidate):\n                     raise UnsafeOptionError(\n                         f\"{unsafe_option} is not allowed, use `allow_unsafe_options=True` to allow it.\"\n                     )",
-      "annotation": "The option filter skips abbreviation checks for single-dash tokens after checking only exact canonical matches."
-     },
-     {
-      "role": "fix",
-      "file": "git/cmd.py",
-      "code": "@@ -981,8 +1003,18 @@\n                 continue\n             unsafe_option = canonical_unsafe_options.get(candidate)\n             if unsafe_option is not None:\n                 raise UnsafeOptionError(f\"{unsafe_option} is not allowed, use `allow_unsafe_options=True` to allow it.\")\n+            option_token = option.split(\"=\", 1)[0].split(None, 1)[0]\n+            if option_token.startswith(\"-\") and not option_token.startswith(\"--\"):\n+                for option_char in option_token[1:]:\n+                    unsafe_option = unsafe_short_options.get(option_char)\n+                    if unsafe_option is not None:\n+                        raise UnsafeOptionError(\n+                            f\"{unsafe_option} is not allowed, use `allow_unsafe_options=True` to allow it.\"\n+                        )\n+                    if option_char not in clusterable_short_options:\n+                        break\n             if not (option.startswith(\"--\") or (options_are_kwargs and len(candidate) > 1)):\n                 continue\n             for canonical, unsafe_option in canonical_unsafe_options.items():\n                 if canonical.startswith(candidate):",
-      "annotation": "The repair examines short-option characters and rejects blocked options before processing long-option abbreviations."
-     }
-    ],
-    "annotation_mode": "hunk_specific",
-    "required_anchors": {
-     "candidate": [
-      "if not (option.startswith(\"--\")"
-     ],
-     "fix": [
-      "for option_char in option_token[1:]:"
-     ]
-    },
-    "ai_marker": {
-     "state": "PRESENT",
-     "sha": "181e8ede7543dbbdcee92756cea260f675316c63",
-     "source": "commit",
-     "quote": "author GPT 5.6 <codex@openai.com> 1783856742 +0200"
-    },
-    "advisory_url": "https://github.com/advisories/ghsa-cw2r-r7mw-j3hc",
-    "candidate_url": "https://github.com/gitpython-developers/gitpython/commit/181e8ede7543dbbdcee92756cea260f675316c63",
-    "candidate_patch_files": [
-     "git/cmd.py"
-    ],
-    "candidate_patch_sha256": "02fc76fac82e93ddc8e520001796e297dfc9ba57d36afb70760e6997ca8491ee",
-    "fix_url": "https://github.com/gitpython-developers/gitpython/commit/56806080c1348749b07daa4a2024ce47b3cad285",
-    "fix_patch_files": [
-     "git/cmd.py"
-    ],
-    "fix_patch_sha256": "735efea27cac64def39c935682a73e6d6ccc95bbf83710272b53d1fe4ebb2a75",
-    "fix_files": [
-     "git/cmd.py"
-    ]
-   },
-   "fix_authorship": {
-    "classification": "ai_assisted",
-    "families": [],
-    "fixes": [
-     {
-      "sha": "56806080c1348749b07daa4a2024ce47b3cad285",
-      "classification": "ai_assisted",
-      "author": {
-       "name": "GPT 5.6",
-       "email": "codex@openai.com"
-      },
-      "families": []
-     }
-    ]
-   },
-   "vulnerable_release": {
-    "kind": "advisory_range",
-    "version": "3.1.50",
-    "tag": null
-   },
-   "fixed_release": {
-    "kind": "advisory_version",
-    "version": ">= 3.1.51",
-    "tag": null
    }
   },
   {

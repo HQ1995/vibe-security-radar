@@ -2,23 +2,23 @@
  "snapshot": {
   "status": "PUBLISHED",
   "case_set": "TP_FUNNEL",
-  "case_count": 309,
-  "ai_root_cause": 235,
-  "ai_code_flawed": 74,
+  "case_count": 307,
+  "ai_root_cause": 234,
+  "ai_code_flawed": 73,
   "ledger_total": 30377,
   "ledger_reviewed": 3764,
   "ledger_in_progress": 5423,
   "ledger_not_started": 21190,
   "confirmed_cases": 212,
-  "qualified_cases": 64,
-  "provisional_cases": 33,
-  "exact_publication_dates": 309,
+  "qualified_cases": 63,
+  "provisional_cases": 32,
+  "exact_publication_dates": 307,
   "unknown_publication_dates": 0,
   "date_policy": "GHSA_OR_CVE_PUBLISHED_ONLY",
   "coverage_from": "2025-05-01",
   "coverage_to": "2026-09-26",
   "source_cutoff": "2026-09-26",
-  "generated_at": "2026-10-15T22:54:39Z",
+  "generated_at": "2026-10-17T05:03:27Z",
   "ledger": "artifacts/ledger.jsonl"
  },
  "cause_categories": {
@@ -7640,6 +7640,7 @@
   {
    "case_id": "GHSA-HX4H-VR3M-45VH",
    "aliases": [
+    "GHSA-83p6-2p5w-42rc",
     "CVE-2026-72769"
    ],
    "repository": "n8n-io/n8n",
@@ -7657,23 +7658,23 @@
     "2222fe3a6c886a9059f28e1b6d4bdb10ee420624"
    ],
    "gates": {
-    "identity": "UNKNOWN",
     "ai_hunk": "UNKNOWN",
-    "topology": "UNKNOWN",
     "but_for": "UNKNOWN",
     "fix_reversal": "UNKNOWN",
+    "identity": "UNKNOWN",
     "release": "UNKNOWN",
+    "topology": "UNKNOWN",
     "uniqueness": "UNKNOWN"
    },
    "vulnerable_release": {
     "kind": "advisory_range",
-    "version": "< 1.123.67 || >= 2.31.0, < 2.31.5 || >= 2.32.0, < 2.32.1",
-    "tag": null
+    "tag": null,
+    "version": "< 1.123.67 || >= 2.31.0, < 2.31.5 || >= 2.32.0, < 2.32.1"
    },
    "fixed_release": {
     "kind": "advisory_version",
-    "version": "1.123.67 / 2.31.5 / 2.32.1",
-    "tag": null
+    "tag": null,
+    "version": "1.123.67 / 2.31.5 / 2.32.1"
    },
    "published_at": "2026-07-22",
    "severity": "medium",
@@ -7711,7 +7712,43 @@
     ]
    },
    "code_evidence": {
-    "summary": "n8n read an unchecked array property across its expression sandbox boundary. The repair restricts access to valid array indices and checks returned values before crossing the boundary.",
+    "advisory_url": "https://github.com/advisories/ghsa-83p6-2p5w-42rc",
+    "annotation_mode": "hunk_specific",
+    "candidate_patch_files": [
+     "packages/@n8n/expression-runtime/src/bridge/isolated-vm-bridge.ts"
+    ],
+    "candidate_patch_sha256": "a14381ee7fb4cbe9769eff02332795d6638c85d5e64508dc5a49144320df91fc",
+    "candidate_url": "https://github.com/n8n-io/n8n/commit/0a5d656dee6dcc0840dbf9b3fde67ceef996f315",
+    "display_hunks": [
+     {
+      "annotation": "The callback reads the supplied array property without first restricting it to a numeric index.",
+      "code": "@@ -0,0 +321,18 @@\n+\t\t\t\t}\n+\n+\t\t\t\tif (!Array.isArray(arr)) {\n+\t\t\t\t\treturn undefined;\n+\t\t\t\t}\n+\n+\t\t\t\tconst element = arr[index];\n+\n+\t\t\t\t// If element is object/array, return metadata\n+\t\t\t\tif (element !== null && typeof element === 'object') {\n+\t\t\t\t\tif (Array.isArray(element)) {\n+\t\t\t\t\t\tconst smallArrayThreshold = 100;\n+\t\t\t\t\t\treturn {\n+\t\t\t\t\t\t\t__isArray: true,\n+\t\t\t\t\t\t\t__length: element.length,\n+\t\t\t\t\t\t\t__data: element.length <= smallArrayThreshold ? element : null,\n+\t\t\t\t\t\t};\n+\t\t\t\t\t}",
+      "file": "packages/@n8n/expression-runtime/src/bridge/isolated-vm-bridge.ts",
+      "role": "candidate"
+     },
+     {
+      "annotation": "The repaired callback rejects non-integer and negative indices before reading the array.",
+      "code": "@@ -400,5 +400,18 @@\n \t\t\t\t\treturn undefined;\n \t\t\t\t}\n \n+\t\t\t\t// Only genuine array indices are reachable; anything else (e.g.\n+\t\t\t\t// 'constructor', '__lookupGetter__') would read off the prototype\n+\t\t\t\t// chain and could leak a host function reference across the boundary.\n+\t\t\t\tif (!Number.isInteger(index) || index < 0) {\n+\t\t\t\t\treturn undefined;\n+\t\t\t\t}\n+\n \t\t\t\tconst element = arr[index];\n \n+\t\t\t\t// Functions are never reachable through the data surface — mirror the\n+\t\t\t\t// guard in getValueAtPath so a host callable can't cross the boundary.\n+\t\t\t\tif (typeof element === 'function') {\n+\t\t\t\t\treturn undefined;\n+\t\t\t\t}\n+",
+      "file": "packages/@n8n/expression-runtime/src/bridge/isolated-vm-bridge.ts",
+      "role": "fix"
+     }
+    ],
+    "fix_files": [
+     "packages/@n8n/expression-runtime/src/bridge/isolated-vm-bridge.ts"
+    ],
+    "fix_patch_files": [
+     "packages/@n8n/expression-runtime/src/bridge/isolated-vm-bridge.ts"
+    ],
+    "fix_patch_sha256": "9a5cbfd0fa13ab22c2461a8645a27f69cb1b49514dd647c469e8a92de46b89d1",
+    "fix_url": "https://github.com/n8n-io/n8n/commit/2222fe3a6c886a9059f28e1b6d4bdb10ee420624",
+    "required_anchors": {
+     "candidate": [
+      "const element = arr[index]"
+     ],
+     "fix": [
+      "Number.isInteger(index)"
+     ]
+    },
     "steps": [
      {
       "title": "AI-assisted change",
@@ -7722,43 +7759,7 @@
       "detail": "The repaired callback rejects non-integer and negative indices before reading the array."
      }
     ],
-    "display_hunks": [
-     {
-      "role": "candidate",
-      "file": "packages/@n8n/expression-runtime/src/bridge/isolated-vm-bridge.ts",
-      "code": "@@ -0,0 +321,18 @@\n+\t\t\t\t}\n+\n+\t\t\t\tif (!Array.isArray(arr)) {\n+\t\t\t\t\treturn undefined;\n+\t\t\t\t}\n+\n+\t\t\t\tconst element = arr[index];\n+\n+\t\t\t\t// If element is object/array, return metadata\n+\t\t\t\tif (element !== null && typeof element === 'object') {\n+\t\t\t\t\tif (Array.isArray(element)) {\n+\t\t\t\t\t\tconst smallArrayThreshold = 100;\n+\t\t\t\t\t\treturn {\n+\t\t\t\t\t\t\t__isArray: true,\n+\t\t\t\t\t\t\t__length: element.length,\n+\t\t\t\t\t\t\t__data: element.length <= smallArrayThreshold ? element : null,\n+\t\t\t\t\t\t};\n+\t\t\t\t\t}",
-      "annotation": "The callback reads the supplied array property without first restricting it to a numeric index."
-     },
-     {
-      "role": "fix",
-      "file": "packages/@n8n/expression-runtime/src/bridge/isolated-vm-bridge.ts",
-      "code": "@@ -400,5 +400,18 @@\n \t\t\t\t\treturn undefined;\n \t\t\t\t}\n \n+\t\t\t\t// Only genuine array indices are reachable; anything else (e.g.\n+\t\t\t\t// 'constructor', '__lookupGetter__') would read off the prototype\n+\t\t\t\t// chain and could leak a host function reference across the boundary.\n+\t\t\t\tif (!Number.isInteger(index) || index < 0) {\n+\t\t\t\t\treturn undefined;\n+\t\t\t\t}\n+\n \t\t\t\tconst element = arr[index];\n \n+\t\t\t\t// Functions are never reachable through the data surface — mirror the\n+\t\t\t\t// guard in getValueAtPath so a host callable can't cross the boundary.\n+\t\t\t\tif (typeof element === 'function') {\n+\t\t\t\t\treturn undefined;\n+\t\t\t\t}\n+",
-      "annotation": "The repaired callback rejects non-integer and negative indices before reading the array."
-     }
-    ],
-    "annotation_mode": "hunk_specific",
-    "required_anchors": {
-     "candidate": [
-      "const element = arr[index]"
-     ],
-     "fix": [
-      "Number.isInteger(index)"
-     ]
-    },
-    "advisory_url": "https://github.com/advisories/ghsa-83p6-2p5w-42rc",
-    "candidate_url": "https://github.com/n8n-io/n8n/commit/0a5d656dee6dcc0840dbf9b3fde67ceef996f315",
-    "candidate_patch_files": [
-     "packages/@n8n/expression-runtime/src/bridge/isolated-vm-bridge.ts"
-    ],
-    "candidate_patch_sha256": "a14381ee7fb4cbe9769eff02332795d6638c85d5e64508dc5a49144320df91fc",
-    "fix_url": "https://github.com/n8n-io/n8n/commit/2222fe3a6c886a9059f28e1b6d4bdb10ee420624",
-    "fix_patch_files": [
-     "packages/@n8n/expression-runtime/src/bridge/isolated-vm-bridge.ts"
-    ],
-    "fix_patch_sha256": "9a5cbfd0fa13ab22c2461a8645a27f69cb1b49514dd647c469e8a92de46b89d1",
-    "fix_files": [
-     "packages/@n8n/expression-runtime/src/bridge/isolated-vm-bridge.ts"
-    ]
+    "summary": "n8n read an unchecked array property across its expression sandbox boundary. The repair restricts access to valid array indices and checks returned values before crossing the boundary."
    },
    "ir_chain": null,
    "unpatched": null,
@@ -10331,135 +10332,6 @@
    "publication_status": "confirmed"
   },
   {
-   "case_id": "GHSA-V396-V7Q4-X2QJ",
-   "aliases": [
-    "CVE-2026-67324"
-   ],
-   "repository": "gitpython-developers/gitpython",
-   "repository_metadata": {
-    "full_name": "gitpython-developers/gitpython",
-    "language": "Python",
-    "archived": false
-   },
-   "contribution_class": "AI_CODE_FLAWED",
-   "candidate_set": [
-    "181e8ede7543dbbdcee92756cea260f675316c63"
-   ],
-   "carrier_set": [],
-   "minimum_fix_set": [
-    "56806080c1348749b07daa4a2024ce47b3cad285"
-   ],
-   "gates": {
-    "identity": "UNKNOWN",
-    "ai_hunk": "UNKNOWN",
-    "topology": "UNKNOWN",
-    "but_for": "UNKNOWN",
-    "fix_reversal": "UNKNOWN",
-    "release": "UNKNOWN",
-    "uniqueness": "UNKNOWN"
-   },
-   "vulnerable_release": {
-    "kind": "advisory_range",
-    "version": "3.1.50",
-    "tag": null
-   },
-   "fixed_release": {
-    "kind": "advisory_version",
-    "version": ">= 3.1.51",
-    "tag": null
-   },
-   "published_at": "2026-07-12",
-   "severity": "critical",
-   "cwes": [
-    "CWE-78"
-   ],
-   "description": "GitPython's unsafe-option check missed short options with an attached value. The repair parses short-option tokens before applying the long-option checks.",
-   "references": [
-    "https://github.com/gitpython-developers/GitPython/security/advisories/GHSA-v396-v7q4-x2qj",
-    "https://nvd.nist.gov/vuln/detail/CVE-2026-67324",
-    "https://www.vulncheck.com/advisories/gitpython-authentication-bypass-via-joined-short-options",
-    "https://github.com/advisories/GHSA-cw2r-r7mw-j3hc"
-   ],
-   "mechanism": "GitPython's unsafe-option check missed short options with an attached value. The repair parses short-option tokens before applying the long-option checks.",
-   "cause_category": "injection",
-   "ai_provenance": {
-    "family": "openai_gpt_codex",
-    "coverage": "complete",
-    "candidate_count": 1,
-    "named_candidate_count": 1
-   },
-   "fix_authorship": {
-    "classification": "ai_assisted",
-    "families": [],
-    "fixes": [
-     {
-      "sha": "56806080c1348749b07daa4a2024ce47b3cad285",
-      "classification": "ai_assisted",
-      "author": {
-       "name": "GPT 5.6",
-       "email": "codex@openai.com"
-      },
-      "families": []
-     }
-    ]
-   },
-   "code_evidence": {
-    "summary": "GitPython's unsafe-option check missed short options with an attached value. The repair parses short-option tokens before applying the long-option checks.",
-    "steps": [
-     {
-      "title": "AI-assisted change",
-      "detail": "The option filter skips abbreviation checks for single-dash tokens after checking only exact canonical matches."
-     },
-     {
-      "title": "Security fix",
-      "detail": "The repair examines short-option characters and rejects blocked options before processing long-option abbreviations."
-     }
-    ],
-    "display_hunks": [
-     {
-      "role": "candidate",
-      "file": "git/cmd.py",
-      "code": "@@ -976,8 +979,13 @@\n             candidate = cls._canonicalize_option_name(option)\n             if not candidate:\n                 continue\n+            unsafe_option = canonical_unsafe_options.get(candidate)\n+            if unsafe_option is not None:\n+                raise UnsafeOptionError(f\"{unsafe_option} is not allowed, use `allow_unsafe_options=True` to allow it.\")\n+            if not (option.startswith(\"--\") or (options_are_kwargs and len(candidate) > 1)):\n+                continue\n             for canonical, unsafe_option in canonical_unsafe_options.items():\n                 if canonical.startswith(candidate):\n                     raise UnsafeOptionError(\n                         f\"{unsafe_option} is not allowed, use `allow_unsafe_options=True` to allow it.\"\n                     )",
-      "annotation": "The option filter skips abbreviation checks for single-dash tokens after checking only exact canonical matches."
-     },
-     {
-      "role": "fix",
-      "file": "git/cmd.py",
-      "code": "@@ -981,8 +1003,18 @@\n                 continue\n             unsafe_option = canonical_unsafe_options.get(candidate)\n             if unsafe_option is not None:\n                 raise UnsafeOptionError(f\"{unsafe_option} is not allowed, use `allow_unsafe_options=True` to allow it.\")\n+            option_token = option.split(\"=\", 1)[0].split(None, 1)[0]\n+            if option_token.startswith(\"-\") and not option_token.startswith(\"--\"):\n+                for option_char in option_token[1:]:\n+                    unsafe_option = unsafe_short_options.get(option_char)\n+                    if unsafe_option is not None:\n+                        raise UnsafeOptionError(\n+                            f\"{unsafe_option} is not allowed, use `allow_unsafe_options=True` to allow it.\"\n+                        )\n+                    if option_char not in clusterable_short_options:\n+                        break\n             if not (option.startswith(\"--\") or (options_are_kwargs and len(candidate) > 1)):\n                 continue\n             for canonical, unsafe_option in canonical_unsafe_options.items():\n                 if canonical.startswith(candidate):",
-      "annotation": "The repair examines short-option characters and rejects blocked options before processing long-option abbreviations."
-     }
-    ],
-    "annotation_mode": "hunk_specific",
-    "required_anchors": {
-     "candidate": [
-      "if not (option.startswith(\"--\")"
-     ],
-     "fix": [
-      "for option_char in option_token[1:]:"
-     ]
-    },
-    "advisory_url": "https://github.com/advisories/ghsa-cw2r-r7mw-j3hc",
-    "candidate_url": "https://github.com/gitpython-developers/gitpython/commit/181e8ede7543dbbdcee92756cea260f675316c63",
-    "candidate_patch_files": [
-     "git/cmd.py"
-    ],
-    "candidate_patch_sha256": "02fc76fac82e93ddc8e520001796e297dfc9ba57d36afb70760e6997ca8491ee",
-    "fix_url": "https://github.com/gitpython-developers/gitpython/commit/56806080c1348749b07daa4a2024ce47b3cad285",
-    "fix_patch_files": [
-     "git/cmd.py"
-    ],
-    "fix_patch_sha256": "735efea27cac64def39c935682a73e6d6ccc95bbf83710272b53d1fe4ebb2a75",
-    "fix_files": [
-     "git/cmd.py"
-    ]
-   },
-   "ir_chain": null,
-   "unpatched": null,
-   "advisory_url": "https://github.com/advisories/ghsa-cw2r-r7mw-j3hc",
-   "publication_issues": [],
-   "publication_status": "provisional"
-  },
-  {
    "case_id": "GHSA-P9G8-WVH4-2JMX",
    "aliases": [
     "CVE-2026-74870"
@@ -10605,26 +10477,26 @@
    ],
    "carrier_set": [],
    "minimum_fix_set": [
-    "1b0d2d9b91575f7db44ef4ff58ac37fc9335e5f6"
+    "9ad28cc4c7176d22cd6181d69805058a719dd03b"
    ],
    "gates": {
-    "identity": "UNKNOWN",
     "ai_hunk": "UNKNOWN",
-    "topology": "UNKNOWN",
     "but_for": "UNKNOWN",
     "fix_reversal": "UNKNOWN",
+    "identity": "UNKNOWN",
     "release": "UNKNOWN",
+    "topology": "UNKNOWN",
     "uniqueness": "UNKNOWN"
    },
    "vulnerable_release": {
     "kind": "source_scoped_range",
-    "version": ">= 3.1.51, < 3.1.59",
-    "tag": null
+    "tag": null,
+    "version": ">= 3.1.51, < 3.2.0"
    },
    "fixed_release": {
     "kind": "source_verified_version",
-    "version": "3.1.59",
-    "tag": null
+    "tag": "3.2.0",
+    "version": "3.2.0"
    },
    "published_at": "2026-07-12",
    "severity": "high",
@@ -10640,7 +10512,7 @@
     "https://github.com/gitpython-developers/GitPython/releases/tag/3.1.51",
     "https://github.com/advisories/GHSA-956x-8gvw-wg5v"
    ],
-   "mechanism": "GitPython's option guard blocked one external-program option while leaving its equivalent spelling accepted. The repair adds the missing spelling to the blocked options.",
+   "mechanism": "GitPython passed caller-supplied options and revisions straight to git in several commands, so an application forwarding them could run a helper program or truncate files. An AI-written fix added option checks to those commands and a dedicated ls_remote wrapper, but the wrapper checked only options and never the remote URL, so an ext:: transport URL could still run a helper through ls_remote. A later fix added the missing protocol check, first released in 3.2.0.",
    "cause_category": "injection",
    "ai_provenance": {
     "family": "openai_gpt_codex",
@@ -10650,7 +10522,44 @@
    },
    "fix_authorship": null,
    "code_evidence": {
-    "summary": "GitPython's option guard blocked one external-program option while leaving its equivalent spelling accepted. The repair adds the missing spelling to the blocked options.",
+    "advisory_url": "https://github.com/advisories/ghsa-956x-8gvw-wg5v",
+    "annotation_mode": "hunk_specific",
+    "candidate_patch_files": [
+     "git/cmd.py"
+    ],
+    "candidate_patch_sha256": "629f1ec5dd9d9926fc7323eb92868441bb054b3fa8af95059c8580a3388d1b2b",
+    "candidate_url": "https://github.com/gitpython-developers/gitpython/commit/701ce32fe5ba8cb622c0e0342a376a6beb47d738",
+    "display_hunks": [
+     {
+      "annotation": "The new ls-remote option list contains upload-pack without its equivalent exec option.",
+      "code": "@@ -649,6 +649,11 @@\n \n     re_unsafe_protocol = re.compile(r\"(.+)::.+\")\n \n+    unsafe_git_ls_remote_options = [\n+        # This option allows arbitrary command execution in git-ls-remote.\n+        \"--upload-pack\",\n+    ]\n+\n     def __getstate__(self) -> Dict[str, Any]:\n         return slots_to_dict(self, exclude=self._excluded_)\n ",
+      "file": "git/cmd.py",
+      "role": "candidate"
+     },
+     {
+      "file": "git/cmd.py",
+      "code": "+    # Match Git's leading transport selector, including an empty helper name.\n+    re_unsafe_protocol = re.compile(r\"([A-Za-z0-9][A-Za-z0-9+.-]*|)::\")\n \n     unsafe_git_ls_remote_options = [\n         # This option allows arbitrary command execution in git-ls-remote.\n@@ -1129,16 +1130,28 @@ def ls_remote(\n         self,\n         *args: Any,\n         allow_unsafe_options: bool = False,\n+        allow_unsafe_protocols: bool = False,\n         **kwargs: Any,\n     ) -> Union[str, bytes, Tuple[int, Union[str, bytes], str], \"Git.AutoInterrupt\"]:\n         \"\"\"List references in a remote repository.\n \n         :param allow_unsafe_options:\n             Allow unsafe options, like ``--upload-pack`` or ``--exec``.\n+\n+        :param allow_unsafe_protocols:\n+            Allow unsafe protocols to be used, like ``ext``. Positional arguments\n+            and split short-option values are checked.\n         \"\"\"\n         if not allow_unsafe_options:\n             candidate_options = self._option_candidates(args, kwargs)\n             Git.check_unsafe_options(options=candidate_options, unsafe_options=self.unsafe_git_ls_remote_options)\n+        if not allow_unsafe_protocols:\n+            protocol_args = list(args)\n+            if kwargs.get(\"split_single_char_options\", True):\n+                # Split short-option values can become the URL after parsing earlier options.\n+                protocol_args.extend(value for key, value in kwargs.items() if len(key) == 1)\n+            for arg in self._unpack_args(protocol_args):\n+                self.check_unsafe_protocols(arg)\n         return self._call_process(\"ls_remote\", *args, **kwargs)\n \n     @property",
+      "annotation": "Gives ls_remote an allow_unsafe_protocols switch and checks remote URLs against the transport-selector pattern, so an ext:: URL is refused unless the caller opts in.",
+      "role": "fix"
+     }
+    ],
+    "fix_files": [
+     "git/cmd.py"
+    ],
+    "fix_patch_files": [
+     "git/cmd.py"
+    ],
+    "fix_patch_sha256": "1884fef412d554f716ff865085fa9fc7b3b69339ce85a2b160589e250ea455e7",
+    "fix_url": "https://github.com/gitpython-developers/gitpython/commit/9ad28cc4c7176d22cd6181d69805058a719dd03b",
+    "required_anchors": {
+     "candidate": [
+      "\"--upload-pack\","
+     ],
+     "fix": [
+      "allow_unsafe_protocols: bool = False,",
+      "re_unsafe_protocol = re.compile("
+     ]
+    },
     "steps": [
      {
       "title": "AI-assisted change",
@@ -10658,46 +10567,10 @@
      },
      {
       "title": "Security fix",
-      "detail": "The repaired blocked-option list also includes the exec spelling."
+      "detail": "ls_remote now checks remote URLs for unsafe transports such as ext:: unless the caller opts in."
      }
     ],
-    "display_hunks": [
-     {
-      "role": "candidate",
-      "file": "git/cmd.py",
-      "code": "@@ -649,6 +649,11 @@\n \n     re_unsafe_protocol = re.compile(r\"(.+)::.+\")\n \n+    unsafe_git_ls_remote_options = [\n+        # This option allows arbitrary command execution in git-ls-remote.\n+        \"--upload-pack\",\n+    ]\n+\n     def __getstate__(self) -> Dict[str, Any]:\n         return slots_to_dict(self, exclude=self._excluded_)\n ",
-      "annotation": "The new ls-remote option list contains upload-pack without its equivalent exec option."
-     },
-     {
-      "role": "fix",
-      "file": "git/cmd.py",
-      "code": "@@ -652,6 +652,7 @@\n     unsafe_git_ls_remote_options = [\n         # This option allows arbitrary command execution in git-ls-remote.\n         \"--upload-pack\",\n+        \"--exec\",\n     ]\n \n     unsafe_git_pathspec_from_file_options = [",
-      "annotation": "The repaired blocked-option list also includes the exec spelling."
-     }
-    ],
-    "annotation_mode": "hunk_specific",
-    "required_anchors": {
-     "candidate": [
-      "\"--upload-pack\","
-     ],
-     "fix": [
-      "+        \"--exec\","
-     ]
-    },
-    "advisory_url": "https://github.com/advisories/ghsa-956x-8gvw-wg5v",
-    "candidate_url": "https://github.com/gitpython-developers/gitpython/commit/701ce32fe5ba8cb622c0e0342a376a6beb47d738",
-    "candidate_patch_files": [
-     "git/cmd.py"
-    ],
-    "fix_url": "https://github.com/gitpython-developers/gitpython/commit/1b0d2d9b91575f7db44ef4ff58ac37fc9335e5f6",
-    "fix_patch_files": [
-     "git/cmd.py"
-    ],
-    "fix_files": [
-     "git/cmd.py"
-    ],
-    "candidate_patch_sha256": "629f1ec5dd9d9926fc7323eb92868441bb054b3fa8af95059c8580a3388d1b2b",
-    "fix_patch_sha256": "bc135df850d27f9354b5e6b1516723803b9e942a80147947126c9a9e09c6bbd3"
+    "summary": "An AI-written fix for unsafe git options left GitPython's ls_remote accepting unsafe ext:: transport URLs, so applications passing an attacker-chosen remote could still run a helper until 3.2.0."
    },
    "ir_chain": null,
    "unpatched": null,
@@ -12331,21 +12204,19 @@
     "language": "TypeScript",
     "archived": false
    },
-   "contribution_class": "AI_DIRECT_ROOT",
+   "contribution_class": "AI_CODE_FLAWED",
    "candidate_set": [
-    "f8ee181be67344f12aeb30ec39e5ab611c65b826"
-   ],
-   "carrier_set": [],
-   "minimum_fix_set": [
     "25a3cbac665fae5663f8b71c073b80c3152dbe7b"
    ],
+   "carrier_set": [],
+   "minimum_fix_set": [],
    "gates": {
-    "identity": "PASS",
     "ai_hunk": "PASS",
-    "topology": "PASS",
     "but_for": "PASS",
     "fix_reversal": "PASS",
+    "identity": "PASS",
     "release": "PASS",
+    "topology": "PASS",
     "uniqueness": "PASS"
    },
    "vulnerable_release": {
@@ -12363,33 +12234,19 @@
     "tarball_sha256": "47aba8a9ba8e004c13d0cae23af47ffd19ca11344c4bb491ce05216411b5d11b",
     "version": "0.0.21"
    },
-   "fixed_release": {
-    "advisory_first_patched": "0.0.22",
-    "contains_fix": true,
-    "equals_minimum_fix": false,
-    "git_tag_commit": "00dc8ad39071140d1d76c03d93c6e10f19e51138",
-    "github_release_object": "404",
-    "kind": "npm_gitHead_equals_peeled_annotated_tag",
-    "name": "@asymmetric-effort/nogginlessdom",
-    "npm_gitHead": "00dc8ad39071140d1d76c03d93c6e10f19e51138",
-    "sha": "00dc8ad39071140d1d76c03d93c6e10f19e51138",
-    "tag": "v0.0.22",
-    "tarball": "https://registry.npmjs.org/@asymmetric-effort/nogginlessdom/-/nogginlessdom-0.0.22.tgz",
-    "tarball_sha256": "d33559d28bd1ba66c014019271e65b63b198374b8fe160355cff2d9303cf8348",
-    "version": "0.0.22"
-   },
+   "fixed_release": null,
    "published_at": "2026-07-02",
    "severity": "MEDIUM",
    "cwes": [
     "CWE-1333"
    ],
-   "description": "## Summary\n\nThe `HTMLInputElement.checkValidity()` method constructed a `RegExp` directly from the user-controlled `pattern` property without any sanitization or timeout protection. This allowed an attacker to inject a regex with catastrophic backtracking, freezing the event loop.\n\n## Fix\n\nFixed in commit https://github.com/asymmetric-effort/NogginLessDom/commit/25a3cbac665fae5663f8b71c073b80c3152dbe7b on `main`. Added:\n- Pattern length limit (1024 characters)\n- Nested quantifier detection (`hasNestedQuantifiers`) that rejects patterns like `(a+)+` before constructing the regex\n- Patterns exceeding limits are treated as non-matching (safe default)",
+   "description": "A Claude-assisted fix for a regular-expression denial of service capped pattern length and rejected one family of nested quantifiers, but other backtracking shapes still reach the regular expression, so the freeze remains possible.",
    "references": [
     "https://github.com/asymmetric-effort/NogginLessDom/security/advisories/GHSA-x4hg-hfwf-p9mw",
     "https://github.com/asymmetric-effort/NogginLessDom/commit/25a3cbac665fae5663f8b71c073b80c3152dbe7b",
     "https://github.com/asymmetric-effort/NogginLessDom"
    ],
-   "mechanism": "checkValidity() in src/dom/html-elements.ts compiles the user-controlled pattern property straight into a regular expression with new RegExp, so a hostile pattern with nested quantifiers drives catastrophic backtracking and freezes the event loop. The fix caps patterns at 1024 characters and rejects nested quantifier shapes before compiling.",
+   "mechanism": "NogginLessDom compiles a page-assigned input pattern straight into a regular expression whenever a validity flag, checkValidity() or reportValidity() is read, with no bound on how long matching can run. A Claude-assisted fix added a 1,024-character cap and a narrow nested-quantifier check, but overlapping alternations and grouped repetitions still pass the check and backtrack exponentially, so a hostile pattern can still freeze the event loop. No later release closes the sink.",
    "cause_category": "resource_abuse",
    "ai_provenance": {
     "family": "claude",
@@ -12397,100 +12254,48 @@
     "candidate_count": 1,
     "named_candidate_count": 1
    },
-   "fix_authorship": {
-    "classification": "ai_assisted",
-    "families": [
-     "claude_code"
-    ],
-    "fixes": [
-     {
-      "author": {
-       "email": "github@samcaldwell.net",
-       "name": "Sam Caldwell"
-      },
-      "authored_at": "2026-05-29T04:56:47+00:00",
-      "classification": "ai_assisted",
-      "evidence": [
-       {
-        "family": "claude_code",
-        "kind": "coauthor_trailer",
-        "text": "Co-Authored-By: Claude Opus 4.6 (1M context) <noreply@anthropic.com>"
-       }
-      ],
-      "families": [
-       "claude_code"
-      ],
-      "sha": "25a3cbac665fae5663f8b71c073b80c3152dbe7b"
-     }
-    ]
-   },
+   "fix_authorship": null,
    "code_evidence": {
-    "fix_marker": null,
-    "candidate_url": "https://github.com/asymmetric-effort/nogginlessdom/commit/f8ee181be67344f12aeb30ec39e5ab611c65b826",
-    "fix_url": "https://github.com/asymmetric-effort/nogginlessdom/commit/25a3cbac665fae5663f8b71c073b80c3152dbe7b",
+    "candidate_url": "https://github.com/asymmetric-effort/nogginlessdom/commit/25a3cbac665fae5663f8b71c073b80c3152dbe7b",
     "advisory_url": "https://github.com/advisories/ghsa-x4hg-hfwf-p9mw",
-    "summary": "AI-generated code built a RegExp directly from a user-controlled pattern, enabling catastrophic backtracking that froze the event loop.",
+    "summary": "A Claude-assisted fix for a regular-expression denial of service capped pattern length and rejected one family of nested quantifiers, but other backtracking shapes still reach the regular expression, so the freeze remains possible.",
     "steps": [
      {
       "title": "AI change",
-      "detail": "feat: input validation, CSS APIs, live collections, custom element lifecycle"
-     },
-     {
-      "title": "Fix",
       "detail": "fix: prevent ReDoS in HTMLInputElement pattern validation"
      }
+    ],
+    "candidate_patch_sha256": "7abb9cb0613419c652b4c52c2670c4c2258d90e4c750c3ac2677340da0d551c5",
+    "candidate_patch_files": [
+     "src/dom/html-elements.ts"
     ],
     "display_hunks": [
      {
       "file": "src/dom/html-elements.ts",
-      "code": "@@ -5,6 +5,89 @@\n \n import { Element, Event, Node } from './index.js';\n \n+/**\n+ * ValidityState — represents the validity states of a form element.\n+ */\n+export class ValidityState {\n+  private _customError: boolean;\n+  private _getFlags: () => ValidityFlags;\n+\n+  constructor(\n+    customErrorGetter: () => boolean,\n+    flagsGetter: () => ValidityFlags,\n+  ) {\n+    this._customError = customErrorGetter();\n+    this._getFlags = flagsGetter;\n+  }\n+\n+  get badInput(): boolean {\n+    return this._getFlags().badInput;\n+  }\n+\n+  get customError(): boolean {\n+    return this._customError;\n+  }\n+\n+  get patternMismatch(): boolean {\n+    return this._getFlags().patternMismatch;\n+  }\n+\n+  get rangeOverflow(): boolean {\n+    return this._getFlags().rangeOverflow;\n+  }\n+\n+  get rangeUnderflow(): boolean {\n+    return this._getFlags().rangeUnderflow;\n+  }\n+\n+  get stepMismatch(): boolean {\n+    return this._getFlags().stepMismatch;\n+  }\n+\n+  get tooLong(): boolean {\n+    return this._getFlags().tooLong;\n+  }\n+\n+  get tooShort(): boolean {\n+    return this._getFlags().tooShort;\n+  }\n+\n+  get typeMismatch(): boolean {\n+    return this._getFlags().typeMismatch;\n+  }\n+\n+  get valueMissing(): boolean {\n+    return this._getFlags().valueMissing;\n+  }\n+\n+  get valid(): boolean {\n+    return (\n+      !this.badInput &&\n+      !this.customError &&\n+      !this.patternMismatch &&\n+      !this.rangeOverflow &&\n+      !this.rangeUnderflow &&\n+      !this.stepMismatch &&\n+      !this.tooLong &&\n+      !this.tooShort &&\n+      !this.typeMismatch &&\n+      !this.valueMissing\n+    );\n+  }\n+}\n+\n+interface ValidityFlags {\n+  badInput: boolean;\n+  patternMismatch: boolean;\n+  rangeOverflow: boolean;\n+  rangeUnderflow: boolean;\n+  stepMismatch: boolean;\n+  tooLong: boolean;\n+  tooShort: boolean;\n+  typeMismatch: boolean;\n+  valueMissing: boolean;\n+}\n+\n /**\n  * HTMLAnchorElement — <a>\n  */",
-      "annotation": "Introduces the ValidityState flag object for the generated validation API; its patternMismatch getter surfaces the regex evaluation that the same change compiles directly from the input element's pattern attribute.",
-      "role": "candidate"
-     },
-     {
-      "file": "src/index.ts",
-      "code": "@@ -54,6 +54,7 @@ export {\n   HTMLImageElement,\n   HTMLLabelElement,\n   HTMLOptionElement,\n+  ValidityState,\n } from './dom/html-elements.js';\n \n export {",
-      "annotation": "Exports the new ValidityState symbol from the package entrypoint, publishing the generated form validation surface to library consumers.",
-      "role": "candidate"
-     },
-     {
-      "file": "src/dom/window.ts",
-      "code": "@@ -5,6 +5,7 @@\n \n import { URL, URLSearchParams } from 'node:url';\n import { Document, Element, Event } from './index.js';\n+import { CSSStyleDeclaration } from './style.js';\n import { FormData } from './form-data.js';\n import { Headers as NogginHeaders } from './headers.js';\n import {\n@@ -298,6 +299,255 @@ interface ScreenStub {\n   pixelDepth: number;\n }\n \n+/** Set of CSS property names recognized by CSS.supports(). */\n+const KNOWN_CSS_PROPERTIES: Set<string> = new Set([\n+  'display',\n+  'color',\n+  'background',\n+  'background-color',\n+  'background-image',\n+  'background-position',\n+  'background-repeat',\n+  'background-size',\n+  'flex',\n+  'flex-direction',\n+  'flex-wrap',\n+  'flex-flow',\n+  'flex-grow',\n+  'flex-shrink',\n+  'flex-basis',\n+  'grid',\n+  'grid-template',\n+  'grid-template-columns',\n+  'grid-template-rows',\n+  'grid-template-areas',\n+  'grid-area',\n+  'grid-column',\n+  'grid-row',\n+  'grid-gap',\n+  'gap',\n+  'position',\n+  'top',\n+  'right',\n+  'bottom',\n+  'left',\n+  'z-index',\n+  'margin',\n+  'margin-top',\n+  'margin-right',\n+  'margin-bottom',\n+  'margin-left',\n+  'padding',\n+  'padding-top',\n+  'padding-right',\n+  'padding-bottom',\n+  'padding-left',\n+  'width',\n+  'height',\n+  'min-width',\n+  'min-height',\n+  'max-width',\n+  'max-height',\n+  'border',\n+  'border-width',\n+  'border-style',\n+  'border-color',\n+  'border-radius',\n+  'outline',\n+  'font',\n+  'font-size',\n+  'font-family',\n+  'font-weight',\n+  'font-style',\n+  'line-height',\n+  'text-align',\n+  'text-decoration',\n+  'text-transform',\n+  'letter-spacing',\n+  'word-spacing',\n+  'white-space',\n+  'overflow',\n+  'overflow-x',\n+  'overflow-y',\n+  'visibility',\n+  'opacity',\n+  'cursor',\n+  'pointer-events',\n+  'box-sizing',\n+  'float',\n+  'clear',\n+  'transform',",
-      "annotation": "Registers the set of recognized CSS property names that the CSS.supports implementation consults, extending the same generated DOM compatibility layer that also ships the vulnerable input pattern evaluation.",
-      "role": "candidate"
-     },
-     {
-      "file": "src/dom/html-elements.ts",
       "code": "@@ -5,6 +5,16 @@\n \n import { Element, Event, Node } from './index.js';\n \n+/**\n+ * Detect nested quantifiers that can cause catastrophic backtracking.\n+ * Matches patterns like (a+)+, (a*)+, (a+)*, etc.\n+ */\n+function hasNestedQuantifiers(pattern: string): boolean {\n+  return (\n+    /([+*])\\s*[)]\\s*[+*{]/.test(pattern) || /([+*])\\s*\\}\\s*[+*{]/.test(pattern)\n+  );\n+}\n+\n // Helper to collect descendants by tag\n function collectDescendants(root: Node, tagName: string): Element[] {\n   const results: Element[] = [];\n@@ -281,12 +291,20 @@ export class HTMLInputElement extends Element {\n     }\n \n     let patternMismatch = false;\n+    const MAX_PATTERN_LENGTH = 1024;\n     if (this.pattern !== '' && this.value !== '') {\n-      try {\n-        const re = new RegExp(`^(?:${this.pattern})$`);\n-        patternMismatch = !re.test(this.value);\n-      } catch {\n+      if (\n+        this.pattern.length > MAX_PATTERN_LENGTH ||\n+        hasNestedQuantifiers(this.pattern)\n+      ) {\n         patternMismatch = false;\n+      } else {\n+        try {\n+          const re = new RegExp(`^(?:${this.pattern})$`);\n+          patternMismatch = !re.test(this.value);\n+        } catch {\n+          patternMismatch = false;\n+        }\n       }\n     }\n ",
-      "annotation": "Caps input patterns at 1024 characters and rejects nested quantifier shapes before compiling the regex, so hostile patterns cannot drive catastrophic backtracking that freezes the event loop.",
-      "role": "fix"
-     },
-     {
-      "file": "tests/unit/input-validation.test.ts",
-      "code": "@@ -154,6 +154,28 @@ describe('HTMLInputElement validation', () => {\n       input.value = '';\n       assert.strictEqual(input.validity.patternMismatch, false);\n     });\n+\n+    it('should handle excessively long patterns safely', () => {\n+      const input = new HTMLInputElement();\n+      input.pattern = 'a'.repeat(2000);\n+      input.value = 'test';\n+      // Should not hang; pattern exceeding limit is treated as no-match\n+      assert.strictEqual(input.validity.patternMismatch, false);\n+    });\n+\n+    it('should not hang on catastrophic backtracking patterns', () => {\n+      const input = new HTMLInputElement();\n+      input.pattern = '(a+)+$';\n+      input.value = 'a'.repeat(30) + 'b';\n+      // Should complete quickly without hanging; treated as invalid regex\n+      const start = Date.now();\n+      input.checkValidity();\n+      const elapsed = Date.now() - start;\n+      assert.ok(\n+        elapsed < 5000,\n+        `Pattern validation took too long: ${elapsed}ms`,\n+      );\n+    });\n   });\n \n   describe('typeMismatch', () => {",
-      "annotation": "Adds regression tests that feed a 2000-character `pattern` and the backtracking regex `(a+)+$` into `HTMLInputElement`, asserting `checkValidity()` returns promptly rather than hanging.",
-      "role": "fix"
+      "annotation": "Adds a 1024-character cap and a narrow nested-quantifier check before the pattern is compiled, but other backtracking shapes such as overlapping alternation still reach the regular expression unchanged.",
+      "role": "candidate"
      }
     ],
-    "candidate_patch_sha256": "432b31136f15eba9197ca769dabbf27c783cd30600d72ecb48a4a8b61b419cbb",
-    "fix_patch_sha256": "5844216db95424ba647518ce0207c2ddf397d8aa27f1752efc68d942a5a4c649",
+    "annotation_mode": "hunk_specific",
     "required_anchors": {
      "candidate": [
-      "KNOWN_CSS_PROPERTIES",
-      "CSSStyleDeclaration",
-      "ValidityFlags"
-     ],
-     "fix": [
-      "MAX_PATTERN_LENGTH",
-      "HTMLInputElement",
-      "RegExp"
+      "const MAX_PATTERN_LENGTH = 1024;",
+      "function hasNestedQuantifiers(pattern: string): boolean {"
      ]
-    },
-    "annotation_mode": "hunk_specific",
-    "mechanism": "checkValidity() in src/dom/html-elements.ts compiles the user-controlled pattern property straight into a regular expression with new RegExp, so a hostile pattern with nested quantifiers drives catastrophic backtracking and freezes the event loop. The fix caps patterns at 1024 characters and rejects nested quantifier shapes before compiling."
+    }
    },
    "ir_chain": null,
-   "unpatched": null,
+   "unpatched": {
+    "basis": "The 25a3cbac guard does not close the CWE-1333 mechanism in current main: admitted overlapping alternation and grouped-repetition families still synchronously execute the RegExp.",
+    "confirmed": true,
+    "potential_fix": {
+     "approach": "Replace direct synchronous RegExp testing for the public pattern grammar with a bounded compatible validator, or use a parser/executor with an enforced operational timeout and strict complexity policy.",
+     "rationale": "Either option bounds event-loop exposure at the library boundary while preserving validation semantics. Current history has adopted neither; the sink remains reachable and no full closing commit is known."
+    },
+    "scope": "HTMLInputElement pattern validation after a consumer assigns an externally influenced pattern and forces validity, checkValidity(), or reportValidity().",
+    "reason": "The 25a3cbac guard does not close the CWE-1333 mechanism in current main: admitted overlapping alternation and grouped-repetition families still synchronously execute the RegExp."
+   },
    "advisory_url": "https://github.com/advisories/ghsa-x4hg-hfwf-p9mw",
    "publication_issues": [],
    "publication_status": "confirmed"
@@ -14121,166 +13926,6 @@
    "advisory_url": "https://github.com/advisories/ghsa-322x-v876-g883",
    "publication_issues": [],
    "publication_status": "confirmed"
-  },
-  {
-   "case_id": "GHSA-2HFG-4FH4-QP7F",
-   "aliases": [
-    "CVE-2026-53812"
-   ],
-   "repository": "openclaw/openclaw",
-   "repository_metadata": {
-    "full_name": "openclaw/openclaw",
-    "language": "JavaScript",
-    "archived": false
-   },
-   "contribution_class": "AI_INCOMPLETE_REMEDIATION",
-   "candidate_set": [
-    "e0b8ddc1a55185aff1cf9e0e095014d2e4f1d894"
-   ],
-   "carrier_set": [],
-   "minimum_fix_set": [
-    "3d93174c4398088066a1de9372ea1103cd713df1"
-   ],
-   "gates": {
-    "ai_hunk": "NARROW",
-    "but_for": "PASS",
-    "fix_reversal": "PASS",
-    "identity": "PASS",
-    "release": "PASS",
-    "topology": "PASS",
-    "uniqueness": "PASS"
-   },
-   "vulnerable_release": {
-    "kind": "advisory_range",
-    "tag": null,
-    "version": "< 2026.5.18"
-   },
-   "fixed_release": {
-    "kind": "advisory_version",
-    "tag": null,
-    "version": "2026.5.18"
-   },
-   "published_at": "2026-07-02",
-   "severity": "MEDIUM",
-   "cwes": [
-    "CWE-284",
-    "CWE-918"
-   ],
-   "description": "### Summary\n\nOpenClaw's browser control SSRF checks blocked direct navigation to private or loopback URLs, but some Playwright `act` interactions could trigger navigation after the initial check. A later browser evaluation could then read from the page reached by that action-triggered navigation.\n\nThis issue is specific to browser control actions and private-network navigation policy. Browser evaluation remains an intentional trusted-operator feature when it is used on pages that policy allowed the browser to visit.\n\n### Affected configurations\n\nThis affects deployments where browser control is enabled and an authenticated browser-control caller can interact with an attacker-controlled page that redirects or navigates the tab to a private-network target through a UI action.\n\n### Impact\n\nIf the browser reached a private page through an unchecked action-triggered navigation, a caller with browser evaluation capability could read page content that direct navigation policy would have blocked.\n\nThe issue does not grant access to OpenClaw without authentication. It bypasses the private-network navigation guard for a specific browser action path.\n\n### Patched Versions\n\nThe first stable patched version is `2026.5.18`.\n\n### Mitigations\n\nUpgrade to `openclaw@2026.5.18` or later. Before upgrading, restrict browser-control access to trusted operators and avoid using browser control on untrusted pages in environments with sensitive private web services.",
-   "references": [
-    "https://github.com/openclaw/openclaw/security/advisories/GHSA-2hfg-4fh4-qp7f",
-    "https://nvd.nist.gov/vuln/detail/CVE-2026-53812",
-    "https://github.com/openclaw/openclaw",
-    "https://www.vulncheck.com/advisories/openclaw-private-network-navigation-bypass-via-browser-act-interactions"
-   ],
-   "mechanism": "Only keyboard and submit interactions were wrapped in the interaction navigation check, so act paths such as selectOption, fillForm and type could still trigger a redirect to a private-network page after the URL had been checked, and a later browser evaluation read that page. The fix threads the SSRF policy through every act action and re-checks navigation before the browser operation completes.",
-   "cause_category": "validation_fail_open",
-   "ai_provenance": {
-    "family": null,
-    "coverage": "generic",
-    "candidate_count": 1,
-    "named_candidate_count": 1
-   },
-   "fix_authorship": {
-    "classification": "no_ai_marker",
-    "families": [],
-    "fixes": [
-     {
-      "sha": "3d93174c4398088066a1de9372ea1103cd713df1",
-      "classification": "no_ai_marker",
-      "author": {
-       "name": "Pavan Kumar Gondhi",
-       "email": "pavangondhi@gmail.com"
-      }
-     }
-    ]
-   },
-   "code_evidence": {
-    "fix_marker": null,
-    "candidate_url": "https://github.com/openclaw/openclaw/commit/e0b8ddc1a55185aff1cf9e0e095014d2e4f1d894",
-    "fix_url": "https://github.com/openclaw/openclaw/commit/3d93174c4398088066a1de9372ea1103cd713df1",
-    "advisory_url": "https://github.com/advisories/ghsa-2hfg-4fh4-qp7f",
-    "summary": "AI-written browser control code only checked SSRF at initial navigation, so action-triggered redirects bypassed policy and let private-network pages be read.",
-    "steps": [
-     {
-      "title": "AI change",
-      "detail": "fix(browser): apply three-phase interaction navigation guard to pressKey and type(submit) [AI-assisted] (#63889)"
-     },
-     {
-      "title": "Fix",
-      "detail": "browser: enforce navigation checks for act interactions [AI] (#81070)"
-     }
-    ],
-    "display_hunks": [
-     {
-      "file": "extensions/browser/src/browser/pw-tools-core.interactions.navigation-guard.test.ts",
-      "code": "@@ -398,6 +398,115 @@ describe(\"pw-tools-core interaction navigation guard\", () => {\n     });\n   });\n \n+  it(\"runs the post-keypress navigation guard when navigation starts shortly after the keypress resolves\", async () => {\n+    vi.useFakeTimers();\n+    try {\n+      const listeners = new Set<() => void>();\n+      let currentUrl = \"http://127.0.0.1:9222/json/version\";\n+      const page = {\n+        keyboard: {\n+          press: vi.fn(async () => {\n+            setTimeout(() => {\n+              currentUrl = \"http://127.0.0.1:9222/private-target\";\n+              for (const listener of listeners) {\n+                listener();\n+              }\n+            }, 10);\n+          }),\n+        },\n+        on: vi.fn((event: string, listener: () => void) => {\n+          if (event === \"framenavigated\") {\n+            listeners.add(listener);\n+          }\n+        }),\n+        off: vi.fn((event: string, listener: () => void) => {\n+          if (event === \"framenavigated\") {\n+            listeners.delete(listener);\n+          }\n+        }),\n+        url: vi.fn(() => currentUrl),\n+      };\n+      setPwToolsCoreCurrentPage(page);\n+\n+      const task = mod.pressKeyViaPlaywright({\n+        cdpUrl: \"http://127.0.0.1:18792\",\n+        targetId: \"T1\",\n+        key: \"Enter\",\n+        ssrfPolicy: { allowPrivateNetwork: false },\n+      });\n+\n+      await vi.advanceTimersByTimeAsync(10);\n+      await task;\n+\n+      expect(getPwToolsCoreSessionMocks().assertPageNavigationCompletedSafely).toHaveBeenCalledWith(\n+        {\n+          cdpUrl: \"http://127.0.0.1:18792\",\n+          page,\n+          response: null,\n+          ssrfPolicy: { allowPrivateNetwork: false },\n+          targetId: \"T1\",\n+        },\n+      );\n+    } finally {\n+      vi.useRealTimers();\n+    }\n+  });\n+\n+  it(\"propagates blocked delayed submit navigation instead of reporting type success\", async () => {\n+    vi.useFakeTimers();\n+    try {\n+      const listeners = new Set<() => void>();\n+      let currentUrl = \"https://example.com/form\";\n+      const locator = {\n+        fill: vi.fn(async () => {}),\n+        press: vi.fn(async () => {\n+          setTimeout(() => {\n+            currentUrl = \"http://127.0.0.1:9222/private-target\";\n+            for (const listener of listeners) {\n+              listener();\n+            }\n+          }, 10);\n+        }),\n+      };\n+      const page = {\n+        on: vi.fn((event: string, listener: () => void) => {\n+          if (event === \"framenavigated\") {\n+            listeners.add(listener);\n+          }\n+        }),\n+        off: vi.fn((event: string, listener: () => void) => {\n+          if (event === \"framenavigated\") {\n+            listeners.delete(listener);\n+          }\n+        }),\n+        url: vi.fn(() => currentUrl),\n+      };\n+      setPwToolsCoreCurrentRefLocator(locator);\n+      setPwToolsCoreCurrentPage(page);\n+",
-      "annotation": "Adds delayed-navigation tests showing that keypress and form submission can redirect after the interaction promise resolves, exercising the private-network policy check.",
-      "role": "candidate"
-     },
-     {
-      "file": "extensions/browser/src/browser/pw-tools-core.interactions.ts",
-      "code": "@@ -379,25 +379,6 @@ function createAbortPromiseWithListener(\n     },\n   };\n }\n-\n-async function assertPostInteractionNavigationSafe(opts: {\n-  cdpUrl: string;\n-  page: Awaited<ReturnType<typeof getPageForTargetId>>;\n-  ssrfPolicy?: SsrFPolicy;\n-  targetId?: string;\n-}): Promise<void> {\n-  if (!opts.ssrfPolicy) {\n-    return;\n-  }\n-  await assertPageNavigationCompletedSafely({\n-    cdpUrl: opts.cdpUrl,\n-    page: opts.page,\n-    response: null,\n-    ssrfPolicy: opts.ssrfPolicy,\n-    targetId: opts.targetId,\n-  });\n-}\n-\n export async function highlightViaPlaywright(opts: {\n   cdpUrl: string;\n   targetId?: string;\n@@ -559,12 +540,16 @@ export async function pressKeyViaPlaywright(opts: {\n   }\n   const page = await getPageForTargetId(opts);\n   ensurePageState(page);\n-  await page.keyboard.press(key, {\n-    delay: Math.max(0, Math.floor(opts.delayMs ?? 0)),\n-  });\n-  await assertPostInteractionNavigationSafe({\n+  const previousUrl = page.url();\n+  await assertInteractionNavigationCompletedSafely({\n+    action: async () => {\n+      await page.keyboard.press(key, {\n+        delay: Math.max(0, Math.floor(opts.delayMs ?? 0)),\n+      });\n+    },\n     cdpUrl: opts.cdpUrl,\n     page,\n+    previousUrl,\n     ssrfPolicy: opts.ssrfPolicy,\n     targetId: opts.targetId,\n   });\n@@ -597,10 +582,14 @@ export async function typeViaPlaywright(opts: {\n       await locator.fill(text, { timeout });\n     }\n     if (opts.submit) {\n-      await locator.press(\"Enter\", { timeout });\n-      await assertPostInteractionNavigationSafe({\n+      const previousUrl = page.url();\n+      await assertInteractionNavigationCompletedSafely({\n+        action: async () => {\n+          await locator.press(\"Enter\", { timeout });\n+        },\n         cdpUrl: opts.cdpUrl,\n         page,\n+        previousUrl,\n         ssrfPolicy: opts.ssrfPolicy,\n         targetId: opts.targetId,\n       });",
-      "annotation": "Replaces a post-action URL check with an action wrapper that observes navigation during keyboard and submit operations, closing the timing gap around redirects.",
-      "role": "candidate"
-     },
-     {
-      "file": "CHANGELOG.md",
-      "code": "@@ -126,6 +126,7 @@ Docs: https://docs.openclaw.ai\n - Discord/sandbox: include `image` in sandbox media param normalization so Discord event cover images cannot bypass sandbox path rewriting. (#64377) Thanks @mmaps.\n - Agents/exec: extend exec completion detection to cover local background exec formats so the owner-downgrade fires correctly for all exec paths. (#64376) Thanks @mmaps.\n - Security/dependencies: pin axios to 1.15.0 and add a plugin install dependency denylist that blocks known malicious packages before install. (#63891) Thanks @mmaps.\n+- Browser/security: apply three-phase interaction navigation guard to pressKey and type(submit) so delayed JS redirects from keypress cannot bypass SSRF policy. (#63889) Thanks @mmaps.\n ## 2026.4.9\n \n ### Changes",
-      "annotation": "Records the security release note for guarding press and submit interactions against delayed script redirects into private browser destinations.",
-      "role": "candidate"
-     },
-     {
-      "file": "extensions/browser/src/browser/pw-tools-core.interactions.navigation-guard.test.ts",
-      "code": "@@ -133,6 +133,61 @@ describe(\"pw-tools-core interaction navigation guard\", () => {\n     }\n   });\n \n+  it(\"runs the post-select navigation guard when navigation starts shortly after the select resolves\", async () => {\n+    vi.useFakeTimers();\n+    try {\n+      const listeners = new Set<() => void>();\n+      let currentUrl = \"https://example.com/form\";\n+      const selectOption = vi.fn(async () => {\n+        setTimeout(() => {\n+          currentUrl = \"http://127.0.0.1:9222/private-target\";\n+          for (const listener of listeners) {\n+            listener();\n+          }\n+        }, 10);\n+      });\n+      const page = {\n+        on: vi.fn((event: string, listener: () => void) => {\n+          if (event === \"framenavigated\") {\n+            listeners.add(listener);\n+          }\n+        }),\n+        off: vi.fn((event: string, listener: () => void) => {\n+          if (event === \"framenavigated\") {\n+            listeners.delete(listener);\n+          }\n+        }),\n+        url: vi.fn(() => currentUrl),\n+      };\n+      setPwToolsCoreCurrentRefLocator({ selectOption });\n+      setPwToolsCoreCurrentPage(page);\n+\n+      const task = mod.selectOptionViaPlaywright({\n+        cdpUrl: \"http://127.0.0.1:18792\",\n+        targetId: \"T1\",\n+        ref: \"1\",\n+        values: [\"go\"],\n+        ssrfPolicy: { allowPrivateNetwork: false },\n+      });\n+\n+      await vi.advanceTimersByTimeAsync(0);\n+      await vi.advanceTimersByTimeAsync(10);\n+      await task;\n+\n+      expect(getPwToolsCoreSessionMocks().assertPageNavigationCompletedSafely).toHaveBeenCalledWith(\n+        {\n+          cdpUrl: \"http://127.0.0.1:18792\",\n+          page,\n+          response: null,\n+          ssrfPolicy: { allowPrivateNetwork: false },\n+          targetId: \"T1\",\n+        },\n+      );\n+    } finally {\n+      vi.useRealTimers();\n+    }\n+  });\n+\n   it(\"checks subframe navigations before a later main-frame navigation\", async () => {\n     vi.useFakeTimers();\n     try {\n@@ -500,7 +555,20 @@ describe(\"pw-tools-core interaction navigation guard\", () => {\n       await rejection;\n       expect(\n         getPwToolsCoreSessionMocks().assertPageNavigationCompletedSafely,\n-      ).not.toHaveBeenCalled();\n+      ).toHaveBeenCalledTimes(1);\n+      expect(getPwToolsCoreSessionMocks().assertPageNavigationCompletedSafely).toHaveBeenCalledWith(\n+        {\n+          cdpUrl: \"http://127.0.0.1:18792\",\n+          page,\n+          response: null,\n+          ssrfPolicy: { allowPrivateNetwork: false },\n+          targetId: \"T1\",\n+        },\n+      );\n+      expect(\n+        getPwToolsCoreSessionMocks().assertPageNavigationCompletedSafely.mock\n+          .invocationCallOrder[0],\n+      ).toBeLessThan(page.evaluate.mock.invocationCallOrder[0]);\n     } finally {\n       vi.useRealTimers();\n     }\n@@ -1040,7 +1108,7 @@ describe(\"pw-tools-core interaction navigation guard\", () => {\n     });\n   });\n \n-  it(\"does not run the post-evaluate navigation guard when the url is unchanged\", async () => {\n+  it(\"checks the current page before evaluate and skips the post-evaluate guard when the url is unchanged\", async () => {",
-      "annotation": "Extends navigation tests for select actions and verifies that safety validation occurs before page evaluation, preserving protection across interaction ordering.",
-      "role": "fix"
-     },
-     {
-      "file": "extensions/browser/src/browser/pw-tools-core.browser-ssrf-guard.test.ts",
-      "code": "@@ -79,6 +79,83 @@ describe(\"pw-tools-core browser SSRF guards\", () => {\n     });\n   });\n \n+  it(\"re-checks select-triggered navigations with the session safety helper\", async () => {\n+    let currentUrl = \"https://example.com\";\n+    pageState.page = { url: vi.fn(() => currentUrl) };\n+    pageState.locator = {\n+      selectOption: vi.fn(async () => {\n+        currentUrl = \"https://target.example\";\n+      }),\n+    };\n+\n+    await interactions.selectOptionViaPlaywright({\n+      cdpUrl: \"http://127.0.0.1:18792\",\n+      targetId: \"tab-1\",\n+      ref: \"1\",\n+      values: [\"go\"],\n+      ssrfPolicy: { allowPrivateNetwork: false },\n+    });\n+\n+    expect(sessionMocks.assertPageNavigationCompletedSafely).toHaveBeenCalledWith({\n+      cdpUrl: \"http://127.0.0.1:18792\",\n+      page: pageState.page,\n+      response: null,\n+      ssrfPolicy: { allowPrivateNetwork: false },\n+      targetId: \"tab-1\",\n+    });\n+  });\n+\n+  it(\"re-checks form fill-triggered navigations with the session safety helper\", async () => {\n+    let currentUrl = \"https://example.com\";\n+    pageState.page = { url: vi.fn(() => currentUrl) };\n+    pageState.locator = {\n+      fill: vi.fn(async () => {\n+        currentUrl = \"https://target.example\";\n+      }),\n+    };\n+\n+    await interactions.fillFormViaPlaywright({\n+      cdpUrl: \"http://127.0.0.1:18792\",\n+      targetId: \"tab-1\",\n+      fields: [{ ref: \"1\", type: \"text\", value: \"go\" }],\n+      ssrfPolicy: { allowPrivateNetwork: false },\n+    });\n+\n+    expect(sessionMocks.assertPageNavigationCompletedSafely).toHaveBeenCalledWith({\n+      cdpUrl: \"http://127.0.0.1:18792\",\n+      page: pageState.page,\n+      response: null,\n+      ssrfPolicy: { allowPrivateNetwork: false },\n+      targetId: \"tab-1\",\n+    });\n+  });\n+\n+  it(\"re-checks the current page before evaluating page content\", async () => {\n+    const evaluate = vi.fn(async () => \"ok\");\n+    pageState.page = {\n+      evaluate,\n+      url: vi.fn(() => \"https://example.com\"),\n+    };\n+\n+    await interactions.evaluateViaPlaywright({\n+      cdpUrl: \"http://127.0.0.1:18792\",\n+      targetId: \"tab-1\",\n+      fn: \"() => document.body.innerText\",\n+      ssrfPolicy: { allowPrivateNetwork: false },\n+    });\n+\n+    expect(sessionMocks.assertPageNavigationCompletedSafely).toHaveBeenCalledWith({\n+      cdpUrl: \"http://127.0.0.1:18792\",\n+      page: pageState.page,\n+      response: null,\n+      ssrfPolicy: { allowPrivateNetwork: false },\n+      targetId: \"tab-1\",\n+    });\n+    expect(\n+      sessionMocks.assertPageNavigationCompletedSafely.mock.invocationCallOrder[0],\n+    ).toBeLessThan(evaluate.mock.invocationCallOrder[0]);\n+  });\n+\n   it(\"preserves helper compatibility when no ssrfPolicy is provided\", async () => {\n     pageState.page = { url: vi.fn(() => \"https://example.com\") };\n     pageState.locator = { click: vi.fn(async () => {}) };",
-      "annotation": "Adds browser-level coverage for select, form-fill, and page-evaluation operations, asserting each invokes the session navigation safety helper.",
-      "role": "fix"
-     },
-     {
-      "file": "extensions/browser/src/browser/pw-tools-core.interactions.ts",
-      "code": "@@ -679,6 +679,7 @@ export async function selectOptionViaPlaywright(opts: {\n   selector?: string;\n   values: string[];\n   timeoutMs?: number;\n+  ssrfPolicy?: SsrFPolicy;\n }): Promise<void> {\n   const resolved = requireRefOrSelector(opts.ref, opts.selector);\n   if (!opts.values?.length) {\n@@ -689,9 +690,19 @@ export async function selectOptionViaPlaywright(opts: {\n   const locator = resolved.ref\n     ? refLocator(page, requireRef(resolved.ref))\n     : page.locator(resolved.selector!);\n+  const previousUrl = page.url();\n   try {\n-    await locator.selectOption(opts.values, {\n-      timeout: resolveInteractionTimeoutMs(opts.timeoutMs),\n+    await assertInteractionNavigationCompletedSafely({\n+      action: async () => {\n+        await locator.selectOption(opts.values, {\n+          timeout: resolveInteractionTimeoutMs(opts.timeoutMs),\n+        });\n+      },\n+      cdpUrl: opts.cdpUrl,\n+      page,\n+      previousUrl,\n+      ssrfPolicy: opts.ssrfPolicy,\n+      targetId: opts.targetId,\n     });\n   } catch (err) {\n     throw toAIFriendlyError(err, label);\n@@ -746,17 +757,29 @@ export async function typeViaPlaywright(opts: {\n     : page.locator(resolved.selector!);\n   const timeout = resolveInteractionTimeoutMs(opts.timeoutMs);\n   try {\n+    const previousUrl = page.url();\n     if (opts.slowly) {\n-      await locator.click({ timeout });\n-      await locator.type(text, { timeout, delay: 75 });\n+      await assertInteractionNavigationCompletedSafely({\n+        action: async () => {\n+          await locator.click({ timeout });\n+          await locator.type(text, { timeout, delay: 75 });\n+          if (opts.submit) {\n+            await locator.press(\"Enter\", { timeout });\n+          }\n+        },\n+        cdpUrl: opts.cdpUrl,\n+        page,\n+        previousUrl,\n+        ssrfPolicy: opts.ssrfPolicy,\n+        targetId: opts.targetId,\n+      });\n     } else {\n-      await locator.fill(text, { timeout });\n-    }\n-    if (opts.submit) {\n-      const previousUrl = page.url();\n       await assertInteractionNavigationCompletedSafely({\n         action: async () => {\n-          await locator.press(\"Enter\", { timeout });\n+          await locator.fill(text, { timeout });\n+          if (opts.submit) {\n+            await locator.press(\"Enter\", { timeout });\n+          }\n         },\n         cdpUrl: opts.cdpUrl,\n         page,\n@@ -775,6 +798,7 @@ export async function fillFormViaPlaywright(opts: {\n   targetId?: string;\n   fields: BrowserFormField[];\n   timeoutMs?: number;\n+  ssrfPolicy?: SsrFPolicy;\n }): Promise<void> {\n   const page = await getRestoredPageForTarget(opts);\n   const timeout = resolveInteractionTimeoutMs(opts.timeoutMs);\n@@ -796,14 +820,34 @@ export async function fillFormViaPlaywright(opts: {\n       const checked =\n         rawValue === true || rawValue === 1 || rawValue === \"1\" || rawValue === \"true\";\n       try {\n-        await locator.setChecked(checked, { timeout });\n+        const previousUrl = page.url();\n+        await assertInteractionNavigationCompletedSafely({\n+          action: async () => {\n+            await locator.setChecked(checked, { timeout });\n+          },\n+          cdpUrl: opts.cdpUrl,\n+          page,\n+          previousUrl,\n+          ssrfPolicy: opts.ssrfPolicy,\n+          targetId: opts.targetId,",
-      "annotation": "Threads the SSRF policy through select, typing, and form-fill actions and wraps their browser operations so redirects are checked before completion.",
-      "role": "fix"
-     }
-    ],
-    "candidate_patch_sha256": "c0f4f66a14b59a17e0254d7f930ecea39cc12656994bf2d5b293d7a696a2e42f",
-    "fix_patch_sha256": "c9a03ffeb969232cf56477f9539d70999d988257453895c9a59f294f3bc319a6"
-   },
-   "ir_chain": {
-    "original_advisory_ids": [
-     "GHSA-2HFG-4FH4-QP7F"
-    ],
-    "original_mechanism": "Browser actions could navigate across trust boundaries without complete URL checks.",
-    "original_sink": "OpenClaw browser interaction dispatch for pressKey, type, select, fill, and evaluate",
-    "original_author_kind": "HUMAN",
-    "original_author_name": "Peter Steinberger",
-    "original_sha": "fa54950d2ee17bb03c95d6222e77b0db8f98926f",
-    "unresolved_reason": null,
-    "attempted_remediation": {
-     "candidate_shas": [
-      "e0b8ddc1a55185aff1cf9e0e095014d2e4f1d894"
-     ],
-     "changed": "Added before, after, and settled URL guards to pressKey and type-submit actions.",
-     "missed": "Did not cover select, fill, evaluate, and other navigation-capable actions."
-    },
-    "residual_bypass": "Uncovered action kinds could navigate to and operate on a disallowed URL.",
-    "final_closure": {
-     "minimum_fix_shas": [
-      "3d93174c4398088066a1de9372ea1103cd713df1"
-     ],
-     "closed": "Extended the interaction guard to the remaining navigation-capable actions."
-    }
-   },
-   "unpatched": null,
-   "advisory_url": "https://github.com/advisories/ghsa-2hfg-4fh4-qp7f",
-   "publication_issues": [],
-   "publication_status": "qualified"
   },
   {
    "case_id": "GHSA-2CM6-R77W-6G96",
@@ -30410,19 +30055,20 @@
    },
    "contribution_class": "AI_DIRECT_ROOT",
    "candidate_set": [
-    "6a4d8984026dc8f533d408f8ea737af7f7b2713d"
+    "d14dd19f976eb5e92e0ea6755e56864f5b1ae047"
    ],
    "carrier_set": [],
    "minimum_fix_set": [
-    "db97de475518eef752ed52b25f49f09cbe24c187"
+    "db97de475518eef752ed52b25f49f09cbe24c187",
+    "4992e8a265fd914a7eeb0405c69d1ff0122a84cc"
    ],
    "gates": {
-    "identity": "PASS",
     "ai_hunk": "PASS",
-    "topology": "PASS",
     "but_for": "PASS",
     "fix_reversal": "PASS",
+    "identity": "PASS",
     "release": "PASS",
+    "topology": "PASS",
     "uniqueness": "PASS"
    },
    "vulnerable_release": {
@@ -30456,7 +30102,7 @@
     "https://github.com/rubysec/ruby-advisory-db/blob/master/gems/bsv-wallet/CVE-2026-40070.yml",
     "https://github.com/sgbett/bsv-ruby-sdk"
    ],
-   "mechanism": "AI-written code persisted unverified certifier signatures in `acquire_certificate`, letting invalid certificates be stored and trusted in bsv-sdk and bsv-wallet.",
+   "mechanism": "The bsv-ruby-sdk wallet stored an acquired identity certificate without checking the certifier's signature, both when the caller supplied the certificate directly and when it came back from a certifier over the issuance protocol. Listing and proving certificates then trusted those stored records, so anyone who could reach the wallet's acquisition call, or answer for the certifier, could plant a certificate attributed to a certifier that never signed it. The repair verifies the certifier signature on both paths before anything is stored.",
    "cause_category": "validation_fail_open",
    "ai_provenance": {
     "family": "claude",
@@ -30488,58 +30134,66 @@
        "claude_code"
       ],
       "sha": "db97de475518eef752ed52b25f49f09cbe24c187"
+     },
+     {
+      "author": {
+       "email": "simon@bettison.org",
+       "name": "Simon Bettison"
+      },
+      "authored_at": "2026-04-08T18:48:26+00:00",
+      "classification": "no_ai_marker",
+      "evidence": [],
+      "families": [],
+      "sha": "4992e8a265fd914a7eeb0405c69d1ff0122a84cc"
      }
     ]
    },
    "code_evidence": {
-    "candidate_patch_sha256": "0530c84de90fea7d25360594f35edcd65aa57d47d5a5c81fdf5dd3e663fbb247",
+    "fix_marker": null,
+    "candidate_url": "https://github.com/sgbett/bsv-ruby-sdk/commit/d14dd19f976eb5e92e0ea6755e56864f5b1ae047",
+    "fix_url": "https://github.com/sgbett/bsv-ruby-sdk/commit/db97de475518eef752ed52b25f49f09cbe24c187",
+    "advisory_url": "https://github.com/advisories/ghsa-hc36-c89j-5f4j",
+    "summary": "A Claude-assisted change added certificate acquisition that stored certificates without verifying the certifier's signature, so forged certificates could be stored and later presented as trusted.",
+    "steps": [
+     {
+      "title": "AI change",
+      "detail": "feat(wallet): implement BRC-100 identity certificate methods (Phase 5)"
+     },
+     {
+      "title": "Fix",
+      "detail": "fix(security): A1 security hotfixes from 2026-04-08 compliance review"
+     }
+    ],
+    "candidate_patch_sha256": "84122218d39f05d34456d7ea0bd3411d23a696e4d8f8a2204b9f076a921a3010",
+    "fix_patch_sha256": "9f04663b9520998bd1d2ff7fd0e337d809ccb38b94666f6511e3afc0aaccb831",
+    "candidate_patch_files": [
+     "lib/bsv/wallet_interface/wallet_client.rb"
+    ],
+    "fix_patch_files": [
+     "lib/bsv/wallet_interface/wallet_client.rb"
+    ],
     "display_hunks": [
      {
       "file": "lib/bsv/wallet_interface/wallet_client.rb",
-      "code": "diff --git a/lib/bsv/wallet_interface/wallet_client.rb b/lib/bsv/wallet_interface/wallet_client.rb\nindex ec6e623..de55369 100644\n--- a/lib/bsv/wallet_interface/wallet_client.rb\n+++ b/lib/bsv/wallet_interface/wallet_client.rb\n@@ -2,6 +2,9 @@\n \n require 'securerandom'\n require 'base64'\n+require 'net/http'\n+require 'json'\n+require 'uri'\n \n module BSV\n   module Wallet\n@@ -36,11 +39,13 @@ module BSV\n       # @param storage [StorageAdapter] persistence adapter (default: MemoryStore)\n       # @param network [String] 'mainnet' (default) or 'testnet'\n       # @param chain_provider [ChainProvider] blockchain data provider (default: NullChainProvider)\n-      def initialize(key, storage: MemoryStore.new, network: 'mainnet', chain_provider: NullChainProvider.new)\n+      # @param http_client [#request, nil] injectable HTTP client for certificate issuance\n+      def initialize(key, storage: MemoryStore.new, network: 'mainnet', chain_provider: NullChainProvider.new, http_client: nil)\n         super(key)\n         @storage = storage\n         @network = network\n         @chain_provider = chain_provider\n+        @http_client = http_client\n         @pending = {}\n       end\n \n@@ -254,18 +259,11 @@ module BSV\n       def acquire_certificate(args, _originator: nil)\n         validate_acquire_certificate!(args)\n \n-        raise UnsupportedActionError, 'acquire_certificate with issuance protocol' if args[:acquisition_protocol] == 'issuance'\n-\n-        cert = {\n-          type: args[:type],\n-          subject: @key_deriver.identity_key,\n-          serial_number: args[:serial_number],\n-          certifier: args[:certifier],\n-          revocation_outpoint: args[:revocation_outpoint],\n-          signature: args[:signature],\n-          fields: args[:fields],\n-          keyring: args[:keyring_for_subject]\n-        }\n+        cert = if args[:acquisition_protocol] == 'issuance'\n+                 acquire_via_issuance(args)\n+               else\n+                 acquire_via_direct(args)\n+               end\n \n         @storage.store_certificate(cert)\n         cert_without_keyring(cert)\n@@ -721,12 +719,69 @@ module BSV\n         protocol = args[:acquisition_protocol]\n         raise InvalidParameterError.new('acquisition_protocol', '\"direct\" or \"issuance\"') unless %w[direct issuance].include?(protocol)\n \n-        return unless protocol == 'direct'\n+        if protocol == 'direct'\n+          raise InvalidParameterError.new('serial_number', 'present for direct acquisition') unless args[:serial_number]\n+          raise InvalidParameterError.new('revocation_outpoint', 'present for direct acquisition') unless args[:revocation_outpoint]\n+          raise InvalidParameterError.new('signature', 'present for direct acquisition') unless args[:signature]\n+          raise InvalidParameterError.new('keyring_for_subject', 'a Hash for direct acquisition') unless args[:keyring_for_subject].is_a?(Hash)\n+        elsif protocol == 'issuance'\n+          raise InvalidParameterError.new('certifier_url', 'present for issuance acquisition') unless args[:certifier_url].is_a?(String)\n+        end\n+      end\n \n-        raise InvalidParameterError.new('serial_number', 'present for direct acquisition') unless args[:serial_number]\n-        raise InvalidParameterError.new('revocation_outpoint', 'present for direct acquisition') unless args[:revocation_outpoint]\n-        raise InvalidParameterError.new('signature', 'present for direct acquisition') unless args[:signature]\n-        raise InvalidParameterError.new('keyring_for_subject', 'a Hash for direct acquisition') unless args[:keyring_for_subject].is_a?(Hash)\n+      def acquire_via_direct(args)\n+        {\n+          type: args[:type],\n+          subject: @key_deriver.identity_key,\n+          serial_number: args[:serial_number],\n+          certifier: args[:certifier],\n+          revocation_outpoint: args[:revocation_outpoint],\n+          signature: args[:signature],\n+          fields: args[:fields],\n+          keyring: args[:keyring_for_subject]\n+        }\n+      end\n+\n+      def acquire_via_issuance(args)\n+        uri = URI(args[:certifier_url])\n+        request = Net::HTTP::Post.new(uri)\n+        request['Content-Type'] = 'application/json'\n+        request.body = JSON.generate({\n+                                       type: args[:type],\n+                                       subject: @key_deriver.identity_key,\n+                                       certifier: args[:certifier],\n+                                       fields: args[:fields]\n+                                     })\n+\n+        response = execute_http(uri, request)\n+        code = response.code.to_i\n+\n+        raise WalletError, \"Certificate issuance failed: HTTP #{code}\" unless (200..299).cover?(code)\n+\n+        body = JSON.parse(response.body)\n+\n+        {\n+          type: body['type'] || args[:type],\n+          subject: body['subject'] || @key_deriver.identity_key,\n+          serial_number: body['serialNumber'],\n+          certifier: body['certifier'] || args[:certifier],\n+          revocation_outpoint: body['revocationOutpoint'],\n+          signature: body['signature'],\n+          fields: body['fields'] || args[:fields],\n+          keyring: body['keyringForSubject']\n+        }\n+      rescue JSON::ParserError\n+        raise WalletError, 'Certificate issuance failed: invalid JSON response'\n+      end\n+\n+      def execute_http(uri, request)\n+        if @http_client\n+          @http_client.request(uri, request)\n+        else\n+          Net::HTTP.start(uri.hostname, uri.port, use_ssl: uri.scheme == 'https') do |http|\n+            http.request(request)\n+          end\n+        end\n       end\n \n       def find_stored_certificate(cert_arg)\n",
-      "annotation": "Extends the wallet client to accept an injectable http_client and require net/http, wiring the client so it can fetch certificates during issuance.",
+      "code": "@@ -233,6 +233,167 @@ def wait_for_authentication(_args = {}, _originator: nil)\n         { authenticated: true }\n       end\n \n+      # --- Identity and Certificate Management ---\n+\n+      # Acquires an identity certificate via direct storage.\n+      #\n+      # The 'issuance' protocol (which requires HTTP to a certifier URL) is\n+      # not yet supported and raises {UnsupportedActionError}.\n+      #\n+      # @param args [Hash]\n+      # @option args [String] :type certificate type (base64)\n+      # @option args [String] :certifier certifier public key hex\n+      # @option args [String] :acquisition_protocol 'direct' or 'issuance'\n+      # @option args [Hash] :fields certificate fields (field_name => value)\n+      # @option args [String] :serial_number serial number (required for direct)\n+      # @option args [String] :revocation_outpoint outpoint string (required for direct)\n+      # @option args [String] :signature certifier signature hex (required for direct)\n+      # @option args [String] :keyring_revealer pubkey hex or 'certifier' (required for direct)\n+      # @option args [Hash] :keyring_for_subject field_name => base64 key (required for direct)\n+      # @return [Hash] the stored certificate\n+      def acquire_certificate(args, _originator: nil)\n+        validate_acquire_certificate!(args)\n+\n+        raise UnsupportedActionError, 'acquire_certificate with issuance protocol' if args[:acquisition_protocol] == 'issuance'\n+\n+        cert = {\n+          type: args[:type],\n+          subject: @key_deriver.identity_key,\n+          serial_number: args[:serial_number],\n+          certifier: args[:certifier],\n+          revocation_outpoint: args[:revocation_outpoint],\n+          signature: args[:signature],\n+          fields: args[:fields],\n+          keyring: args[:keyring_for_subject]\n+        }\n+\n+        @storage.store_certificate(cert)\n+        cert_without_keyring(cert)\n+      end\n+\n+      # Lists identity certificates filtered by certifier and type.\n+      #\n+      # @param args [Hash]\n+      # @option args [Array<String>] :certifiers certifier public keys\n+      # @option args [Array<String>] :types certificate types\n+      # @option args [Integer] :limit max results (default 10)\n+      # @option args [Integer] :offset number to skip (default 0)\n+      # @return [Hash] { total_certificates:, certificates: [...] }\n+      def list_certificates(args, _originator: nil)\n+        raise InvalidParameterError.new('certifiers', 'a non-empty Array') unless args[:certifiers].is_a?(Array) && !args[:certifiers].empty?\n+        raise InvalidParameterError.new('types', 'a non-empty Array') unless args[:types].is_a?(Array) && !args[:types].empty?\n+\n+        query = {\n+          certifiers: args[:certifiers],\n+          types: args[:types],\n+          limit: args[:limit] || 10,\n+          offset: args[:offset] || 0\n+        }\n+        total = @storage.count_certificates(query)\n+        certs = @storage.find_certificates(query)\n+        { total_certificates: total, certificates: certs.map { |c| cert_without_keyring(c) } }\n+      end\n+\n+      # Proves select fields of an identity certificate to a verifier.\n+      #\n+      # Encrypts each requested field's keyring entry for the verifier using\n+      # protocol-derived encryption (BRC-2), allowing the verifier to decrypt\n+      # only the revealed fields.\n+      #\n+      # @param args [Hash]\n+      # @option args [Hash] :certificate the certificate to prove\n+      # @option args [Array<String>] :fields_to_reveal field names to reveal\n+      # @option args [String] :verifier verifier public key hex\n+      # @return [Hash] { keyring_for_verifier: { field_name => Array<Integer> } }\n+      def prove_certificate(args, _originator: nil)\n+        cert_arg = args[:certificate]\n+        fields_to_reveal = args[:fields_to_reveal]\n+        verifier = args[:verifier]\n+\n+        raise InvalidParameterError.new('certificate', 'a Hash') unless cert_arg.is_a?(Hash)\n+        raise InvalidParameterError.new('fields_to_reveal', 'a non-empty Array') unless fields_to_reveal.is_a?(Array) && !fields_to_reveal.empty?\n+\n+        Validators.validate_pub_key_hex!(verifier, 'verifier')\n+\n+        # Look up the full certificate (with keyring) from storage\n+        stored = find_stored_certificate(cert_arg)\n+        raise WalletError, 'Certificate not found in wallet' unless stored\n+        raise WalletError, 'Certificate has no keyring' unless stored[:keyring]",
+      "annotation": "Adds acquire_certificate, which builds a certificate from the caller-supplied fields and signature and hands it to storage without checking that the certifier actually signed it.",
       "role": "candidate"
      },
      {
-      "file": "lib/bsv/wallet_interface/certificate_signature.rb",
-      "code": "diff --git a/lib/bsv/wallet_interface/certificate_signature.rb b/lib/bsv/wallet_interface/certificate_signature.rb\nnew file mode 100644\nindex 0000000..a2f8716\n--- /dev/null\n+++ b/lib/bsv/wallet_interface/certificate_signature.rb\n@@ -0,0 +1,173 @@\n+require 'base64'\n+module BSV\n+  module Wallet\n+    module CertificateSignature\n+      PROTOCOL_ID = [2, 'certificate signature'].freeze\n+      class InvalidError < InvalidSignatureError\n+        def initialize(detail)\n+          super(\"certificate signature verification failed: #{detail}\")\n+        end\n+      end\n+      module_function\n+      def verify!(cert, verifier: ProtoWallet.new('anyone'))\n+        signature_hex = cert[:signature]\n+        raise InvalidError, 'signature is missing' if signature_hex.nil? || signature_hex.empty?\n+        preimage = serialise_preimage(cert)\n+        sig_bytes = hex_to_bytes(signature_hex)\n+        verifier.verify_signature({\n+          data: preimage.unpack('C*'),\n+          signature: sig_bytes,\n+          protocol_id: PROTOCOL_ID,\n+          key_id: \"#{cert[:type]} #{cert[:serial_number]}\",\n+          counterparty: cert[:certifier]\n+        })\n+        true\n+      rescue InvalidSignatureError => e\n+        raise if e.is_a?(InvalidError)\n+        raise InvalidError, e.message\n+      rescue ArgumentError => e\n+        raise InvalidError, e.message\n+      end\n+      def serialise_preimage(cert)\n+        buf = String.new(encoding: Encoding::ASCII_8BIT)\n+        buf << decode_base64_exact(cert[:type], 32, 'type')\n+        buf << decode_base64_exact(cert[:serial_number], 32, 'serial_number')\n+        buf << decode_hex_exact(cert[:subject], 33, 'subject')\n+        buf << decode_hex_exact(cert[:certifier], 33, 'certifier')\n+        buf << encode_revocation_outpoint(cert[:revocation_outpoint])\n+        buf << encode_fields(cert[:fields])\n+        buf\n+      end\n+      class << self\n+        private\n+        def encode_revocation_outpoint(outpoint)\n+          raise ArgumentError, 'revocation_outpoint is missing' if outpoint.nil? || outpoint.empty?\n+          txid_hex, output_index_str = outpoint.to_s.split('.', 2)\n+          raise ArgumentError, \"revocation_outpoint #{outpoint.inspect} missing index\" if output_index_str.nil?\n+          raise ArgumentError, \"revocation_outpoint output index must be a non-negative integer\" unless output_index_str.match?(/\\A\\d+\\z/)\n+          decode_hex_exact(txid_hex, 32, 'revocation_outpoint txid') + BSV::Transaction::VarInt.encode(output_index_str.to_i)\n+        end\n+        def encode_fields(fields)\n+          raise ArgumentError, 'fields must be a Hash' unless fields.is_a?(Hash)\n+          sorted_names = fields.keys.map(&:to_s).sort\n+          buf = String.new(encoding: Encoding::ASCII_8BIT) << BSV::Transaction::VarInt.encode(sorted_names.length)\n+          sorted_names.each do |name|\n+            value = (fields[name] || fields[name.to_sym]).to_s\n+            name_bytes = name.encode('UTF-8').b\n+            value_bytes = value.encode('UTF-8').b\n+            buf << BSV::Transaction::VarInt.encode(name_bytes.bytesize) << name_bytes\n+            buf << BSV::Transaction::VarInt.encode(value_bytes.bytesize) << value_bytes\n+          end\n+          buf\n+        end\n+        def decode_base64_exact(value, expected_length, field_name)\n+          raise ArgumentError, \"#{field_name} is missing\" if value.nil? || value.empty?\n+          bytes = Base64.decode64(value)\n+          raise ArgumentError, \"#{field_name} must decode to #{expected_length} bytes, got #{bytes.bytesize}\" if bytes.bytesize != expected_length\n+          bytes.b\n+        end\n+        def decode_hex_exact(value, expected_length, field_name)\n+          raise ArgumentError, \"#{field_name} is missing\" if value.nil? || value.empty?\n+          raise ArgumentError, \"#{field_name} must be a hex string\" unless value.match?(/\\A\\h+\\z/)\n+          raise ArgumentError, \"#{field_name} hex length must be even\" unless value.length.even?\n+          bytes = [value].pack('H*')\n+          raise ArgumentError, \"#{field_name} must decode to #{expected_length} bytes\" if bytes.bytesize != expected_length\n+          bytes.b\n+        end\n+        def hex_to_bytes(hex)\n+          raise ArgumentError, 'signature must be a hex string' unless hex.is_a?(String) && hex.match?(/\\A\\h+\\z/)\n+          [hex].pack('H*').unpack('C*')\n+        end\n+      end\n+    end\n+  end\n+end",
-      "annotation": "Adds CertificateSignature.verify! which reconstructs the signed preimage and checks the certificate signature via the wallet's verifier before a certificate is trusted.",
-      "role": "fix"
-     },
-     {
       "file": "lib/bsv/wallet_interface/wallet_client.rb",
-      "code": "diff --git a/lib/bsv/wallet_interface/wallet_client.rb b/lib/bsv/wallet_interface/wallet_client.rb\nindex 00df46e..b36c13e 100644\n--- a/lib/bsv/wallet_interface/wallet_client.rb\n+++ b/lib/bsv/wallet_interface/wallet_client.rb\n@@ -806 +806 @@ module BSV\n-        {\n+        cert = {\n@@ -815,0 +816,9 @@ module BSV\n+\n+        CertificateSignature.verify!(cert)\n+\n+        cert\n@@ -836 +845 @@ module BSV\n-        {\n+        cert = {\n@@ -845,0 +855,8 @@ module BSV\n+\n+        CertificateSignature.verify!(cert)\n+\n+        cert",
-      "annotation": "Calls CertificateSignature.verify!(cert) right after fetching a certificate, so a certificate whose signature does not verify is rejected instead of persisted as trusted.",
+      "code": "@@ -803,7 +803,7 @@ def validate_acquire_certificate!(args)\n       end\n \n       def acquire_via_direct(args)\n-        {\n+        cert = {\n           type: args[:type],\n           subject: @key_deriver.identity_key,\n           serial_number: args[:serial_number],\n@@ -813,6 +813,15 @@ def acquire_via_direct(args)\n           fields: args[:fields],\n           keyring: args[:keyring_for_subject]\n         }\n+\n+        # BRC-52: verify the certifier's signature against the canonical\n+        # serialisation before persisting. Fixes F8.15 from the 2026-04-08\n+        # cross-SDK compliance review (#305) — prior to this check, callers\n+        # could pass any value in `args[:signature]` and it would be stored\n+        # as if certifier-authentic.\n+        CertificateSignature.verify!(cert)\n+\n+        cert\n       end\n \n       def acquire_via_issuance(args)\n@@ -833,7 +842,7 @@ def acquire_via_issuance(args)\n \n         body = JSON.parse(response.body)\n \n-        {\n+        cert = {\n           type: body['type'] || args[:type],\n           subject: @key_deriver.identity_key,\n           serial_number: body['serialNumber'],\n@@ -843,6 +852,14 @@ def acquire_via_issuance(args)\n           fields: body['fields'] || args[:fields],\n           keyring: body['keyringForSubject']\n         }\n+\n+        # BRC-52: the certifier's HTTP response is untrusted network data;\n+        # verify the signature before persisting. Closes the F8.15 class of\n+        # bug on the issuance path too (the finding's \"Same issue as F8.15\"\n+        # note from F8.16).\n+        CertificateSignature.verify!(cert)\n+\n+        cert\n       rescue JSON::ParserError\n         raise WalletError, 'Certificate issuance failed: invalid JSON response'\n       end",
+      "annotation": "Builds the certificate first and calls CertificateSignature.verify! on it, so a certificate whose certifier signature does not verify is rejected instead of stored as trusted.",
       "role": "fix"
      }
     ],
-    "fix_marker": null,
-    "candidate_url": "https://github.com/sgbett/bsv-ruby-sdk/commit/6a4d8984026dc8f533d408f8ea737af7f7b2713d",
-    "fix_url": "https://github.com/sgbett/bsv-ruby-sdk/commit/db97de475518eef752ed52b25f49f09cbe24c187",
-    "advisory_url": "https://github.com/advisories/ghsa-hc36-c89j-5f4j",
-    "summary": "AI-written code persisted unverified certifier signatures in `acquire_certificate`, letting invalid certificates be stored and trusted in bsv-sdk and bsv-wallet.",
-    "steps": [
-     {
-      "detail": "feat(wallet): implement certificate issuance protocol",
-      "title": "AI change"
-     },
-     {
-      "detail": "fix(security): A1 security hotfixes from 2026-04-08 compliance review",
-      "title": "Fix"
-     }
-    ],
-    "fix_patch_sha256": "f0e798f5b7a9a2b3e781dc204678ea9badeae3f55df164b2604f57f35ac95be9",
     "annotation_mode": "hunk_specific",
     "required_anchors": {
      "candidate": [
-      "http_client",
-      "require 'net/http'",
-      "initialize(key, storage"
+      "def acquire_certificate(args, _originator: nil)",
+      "@storage.store_certificate(cert)"
      ],
      "fix": [
-      "CertificateSignature.verify!",
-      "serialise_preimage",
-      "verify_signature"
+      "CertificateSignature.verify!(cert)"
      ]
     }
    },
@@ -34384,11 +34038,13 @@
    },
    "contribution_class": "AI_CODE_FLAWED",
    "candidate_set": [
+    "04fad99ae1649479ae6acb5257022f140d1def3e"
+   ],
+   "carrier_set": [
     "647d929c9d0fd114249230d939a5cb3b36dc70e7"
    ],
-   "carrier_set": [],
    "minimum_fix_set": [
-    "da0ba1b73a2c70f20e4519ee580c968d843e9396"
+    "93b07240257919f770d1e263e1f22753937b80ea"
    ],
    "gates": {
     "ai_hunk": "NARROW",
@@ -34400,22 +34056,22 @@
     "uniqueness": "PASS"
    },
    "vulnerable_release": {
-    "kind": "advisory_range",
+    "kind": "source_scoped_range",
     "tag": null,
-    "version": "<= 2026.2.25"
+    "version": ">= 2026.2.12, < 2026.3.2"
    },
    "fixed_release": {
-    "kind": "advisory_version",
-    "tag": null,
-    "version": "2026.2.26"
+    "kind": "source_verified_version",
+    "tag": "v2026.3.2",
+    "version": "2026.3.2"
    },
    "published_at": "2026-03-19",
    "severity": null,
    "cwes": [],
    "description": "The change added a gateway authentication gate for the channel HTTP endpoints that plugins register, and the gate itself left the exposure. Before it, a request that a channel plugin could match was served without checking gateway credentials; the new check was meant to close that, but it recognized only one spelling of the prefix. Because the path was never decoded or lowercased, a request written as /API/channels/... or with an encoded slash kept the plugin route reachable without a credential. The repair decodes the path once and lowercases it before the prefix comparison, which closes the case-varied and single-encoded forms, and the commits that continued the same repair added slash normalization, fail-closed handling for malformed percent-encodings, and repeated decoding with dot-segment resolution.",
    "references": [],
-   "mechanism": "The gateway derived the request path from new URL(req.url).pathname and compared it to the channel prefix with startsWith. That value is the exact text the client sent: percent-encoding is not decoded, letter case is not folded, and repeated or dotted segments are not resolved. Requests such as /API/channels/... or /api/channels%2F... therefore failed the prefix test and reached the plugin channel routes without a gateway credential, even though those routes were the ones the check was meant to protect.",
-   "cause_category": "injection",
+   "mechanism": "An AI-assisted change added gateway authentication for OpenClaw's plugin channel routes but compared the raw request path, exactly as the client sent it, against a lowercase prefix. Percent-encoded, case-varied or dotted spellings of the same route skipped authentication and could reach a plugin handler that normalizes the path itself. The first repair decoded the path a limited number of times, which still let a four-times-encoded slash through; a later change raised the limit and rejects paths it cannot fully decode.",
+   "cause_category": "auth_access",
    "ai_provenance": {
     "family": "openai_gpt_codex",
     "coverage": "complete",
@@ -34427,46 +34083,67 @@
     "families": [],
     "fixes": [
      {
-      "sha": "da0ba1b73a2c70f20e4519ee580c968d843e9396",
-      "classification": "no_ai_marker",
       "author": {
-       "name": "Peter Steinberger",
-       "email": "steipete@gmail.com"
-      }
+       "email": "steipete@gmail.com",
+       "name": "Peter Steinberger"
+      },
+      "authored_at": "2026-03-02T15:54:53+00:00",
+      "classification": "no_ai_marker",
+      "evidence": [],
+      "families": [],
+      "sha": "93b07240257919f770d1e263e1f22753937b80ea"
      }
     ]
    },
    "code_evidence": {
-    "candidate_url": "https://github.com/openclaw/openclaw/commit/647d929c9d0fd114249230d939a5cb3b36dc70e7",
-    "fix_url": "https://github.com/openclaw/openclaw/commit/da0ba1b73a2c70f20e4519ee580c968d843e9396",
+    "fix_marker": null,
+    "candidate_url": "https://github.com/openclaw/openclaw/commit/04fad99ae1649479ae6acb5257022f140d1def3e",
+    "fix_url": "https://github.com/openclaw/openclaw/commit/93b07240257919f770d1e263e1f22753937b80ea",
     "advisory_url": "https://github.com/advisories/ghsa-8j2w-6fmm-m587",
-    "summary": "An AI-assisted change added gateway authentication for channel HTTP endpoints, but the check tested the raw request path against a single lowercase prefix, so differently encoded variants of the same route skipped authentication.",
+    "summary": "An AI-assisted change added authentication for plugin channel routes but checked the raw request path, so encoded or case-varied spellings of the same route skipped it.",
     "steps": [
      {
       "title": "AI change",
-      "detail": "The new guard read the request path without decoding or case folding it, so it recognized only one exact spelling of the channel prefix."
+      "detail": "fix(an-07): apply security fix"
      },
      {
       "title": "Fix",
-      "detail": "The path is now decoded once and lowercased before the prefix test, and follow-up commits added slash normalization, fail-closed decoding, and dot-segment resolution."
+      "detail": "fix(gateway): fail closed plugin auth path canonicalization"
      }
+    ],
+    "candidate_patch_sha256": "1f493091f2fa97a525bf1e65daaa481b65f45cbe3f94868c49dd2a7d4db02b06",
+    "fix_patch_sha256": "9309cc8b4b47751706ba4d68081bcfa3671bbaf9daff42a964865c252505d040",
+    "candidate_patch_files": [
+     "src/gateway/server-http.ts"
+    ],
+    "fix_patch_files": [
+     "src/gateway/security-path.ts"
     ],
     "display_hunks": [
      {
-      "role": "candidate",
       "file": "src/gateway/server-http.ts",
-      "code": "@@ -333,6 +333,7 @@ export function createGatewayHttpServer(opts: {\n     try {\n       const configSnapshot = loadConfig();\n       const trustedProxies = configSnapshot.gateway?.trustedProxies ?? [];\n+      const requestPath = new URL(req.url ?? \"/\", \"http://localhost\").pathname;\n       if (await handleHooksRequest(req, res)) {\n         return;\n       }\n@@ -347,8 +348,26 @@ export function createGatewayHttpServer(opts: {\n       if (await handleSlackHttpRequest(req, res)) {\n         return;\n       }\n-      if (handlePluginRequest && (await handlePluginRequest(req, res))) {\n-        return;\n+      if (handlePluginRequest) {\n+        // Channel HTTP endpoints are gateway-auth protected by default.\n+        // Non-channel plugin routes remain plugin-owned and must enforce\n+        // their own auth when exposing sensitive functionality.\n+        if (requestPath.startsWith(\"/api/channels/\")) {\n+          const token = getBearerToken(req);\n+          const authResult = await authorizeGatewayConnect({\n+            auth: resolvedAuth,\n+            connectAuth: token ? { token, password: token } : null,\n+            req,\n+            trustedProxies,\n+          });\n+          if (!authResult.ok) {\n+            sendUnauthorized(res);\n+            return;\n+          }\n+        }\n+        if (await handlePluginRequest(req, res)) {\n+          return;\n+        }\n       }\n       if (openResponsesEnabled) {\n         if (",
-      "annotation": "the guard compared the raw request path against a lowercase prefix, so encoded and case-varied spellings of the channel route skipped authentication."
+      "code": "@@ -333,6 +333,7 @@ export function createGatewayHttpServer(opts: {\n     try {\n       const configSnapshot = loadConfig();\n       const trustedProxies = configSnapshot.gateway?.trustedProxies ?? [];\n+      const requestPath = new URL(req.url ?? \"/\", \"http://localhost\").pathname;\n       if (await handleHooksRequest(req, res)) {\n         return;\n       }\n@@ -347,8 +348,23 @@ export function createGatewayHttpServer(opts: {\n       if (await handleSlackHttpRequest(req, res)) {\n         return;\n       }\n-      if (handlePluginRequest && (await handlePluginRequest(req, res))) {\n-        return;\n+      if (handlePluginRequest) {\n+        if (requestPath.startsWith(\"/api/channels/\")) {\n+          const token = getBearerToken(req);\n+          const authResult = await authorizeGatewayConnect({\n+            auth: resolvedAuth,\n+            connectAuth: token ? { token, password: token } : null,\n+            req,\n+            trustedProxies,\n+          });\n+          if (!authResult.ok) {\n+            sendUnauthorized(res);\n+            return;\n+          }\n+        }\n+        if (await handlePluginRequest(req, res)) {\n+          return;\n+        }\n       }\n       if (openResponsesEnabled) {\n         if (\n@@ -372,8 +388,7 @@ export function createGatewayHttpServer(opts: {\n         }\n       }\n       if (canvasHost) {\n-        const url = new URL(req.url ?? \"/\", \"http://localhost\");\n-        if (isCanvasPath(url.pathname)) {\n+        if (isCanvasPath(requestPath)) {\n           const ok = await authorizeCanvasRequest({\n             req,\n             auth: resolvedAuth,",
+      "annotation": "Adds the channel-route gate, which takes the raw request path and tests it with startsWith, so percent-encoded or case-varied spellings of the channel prefix skip gateway authentication.",
+      "role": "candidate"
      },
      {
-      "role": "fix",
-      "file": "src/gateway/server-http.ts",
-      "code": "@@ -88,6 +88,19 @@ function isCanvasPath(pathname: string): boolean {\n   );\n }\n \n+function decodePathnameOnce(pathname: string): string {\n+  try {\n+    return decodeURIComponent(pathname);\n+  } catch {\n+    return pathname;\n+  }\n+}\n+\n+function isProtectedPluginChannelPath(pathname: string): boolean {\n+  const normalized = decodePathnameOnce(pathname).toLowerCase();\n+  return normalized === \"/api/channels\" || normalized.startsWith(\"/api/channels/\");\n+}\n+\n function isNodeWsClient(client: GatewayWsClient): boolean {\n   if (client.connect.role === \"node\") {\n     return true;\n@@ -493,7 +506,7 @@ export function createGatewayHttpServer(opts: {\n         // Channel HTTP endpoints are gateway-auth protected by default.\n         // Non-channel plugin routes remain plugin-owned and must enforce\n         // their own auth when exposing sensitive functionality.\n-        if (requestPath === \"/api/channels\" || requestPath.startsWith(\"/api/channels/\")) {\n+        if (isProtectedPluginChannelPath(requestPath)) {\n           const token = getBearerToken(req);\n           const authResult = await authorizeHttpGatewayConnect({\n             auth: resolvedAuth,",
-      "annotation": "path decoding and lowercasing before the prefix test, so the spellings that previously skipped the gate are now authenticated."
+      "file": "src/gateway/security-path.ts",
+      "code": "@@ -1,11 +1,13 @@\n export type SecurityPathCanonicalization = {\n   canonicalPath: string;\n   candidates: string[];\n+  decodePasses: number;\n+  decodePassLimitReached: boolean;\n   malformedEncoding: boolean;\n   rawNormalizedPath: string;\n };\n \n-const MAX_PATH_DECODE_PASSES = 3;\n+const MAX_PATH_DECODE_PASSES = 32;\n \n function normalizePathSeparators(pathname: string): string {\n   const collapsed = pathname.replace(/\\/{2,}/g, \"/\");\n@@ -43,13 +45,19 @@ function pushNormalizedCandidate(candidates: string[], seen: Set<string>, value:\n export function buildCanonicalPathCandidates(\n   pathname: string,\n   maxDecodePasses = MAX_PATH_DECODE_PASSES,\n-): { candidates: string[]; malformedEncoding: boolean } {\n+): {\n+  candidates: string[];\n+  decodePasses: number;\n+  decodePassLimitReached: boolean;\n+  malformedEncoding: boolean;\n+} {\n   const candidates: string[] = [];\n   const seen = new Set<string>();\n   pushNormalizedCandidate(candidates, seen, pathname);\n \n   let decoded = pathname;\n   let malformedEncoding = false;\n+  let decodePasses = 0;\n   for (let pass = 0; pass < maxDecodePasses; pass++) {\n     let nextDecoded = decoded;\n     try {\n@@ -61,10 +69,24 @@ export function buildCanonicalPathCandidates(\n     if (nextDecoded === decoded) {\n       break;\n     }\n+    decodePasses += 1;\n     decoded = nextDecoded;\n     pushNormalizedCandidate(candidates, seen, decoded);\n   }\n-  return { candidates, malformedEncoding };\n+  let decodePassLimitReached = false;\n+  if (!malformedEncoding) {\n+    try {\n+      decodePassLimitReached = decodeURIComponent(decoded) !== decoded;\n+    } catch {\n+      malformedEncoding = true;\n+    }\n+  }\n+  return {\n+    candidates,\n+    decodePasses,\n+    decodePassLimitReached,\n+    malformedEncoding,\n+  };\n }\n \n export function canonicalizePathVariant(pathname: string): string {\n@@ -82,16 +104,24 @@ function prefixMatch(pathname: string, prefix: string): boolean {\n }\n \n export function canonicalizePathForSecurity(pathname: string): SecurityPathCanonicalization {\n-  const { candidates, malformedEncoding } = buildCanonicalPathCandidates(pathname);\n+  const { candidates, decodePasses, decodePassLimitReached, malformedEncoding } =\n+    buildCanonicalPathCandidates(pathname);\n \n   return {\n     canonicalPath: candidates[candidates.length - 1] ?? \"/\",\n     candidates,\n+    decodePasses,\n+    decodePassLimitReached,\n     malformedEncoding,\n     rawNormalizedPath: normalizePathSeparators(pathname.toLowerCase()) || \"/\",\n   };\n }\n \n+export function hasSecurityPathCanonicalizationAnomaly(pathname: string): boolean {\n+  const canonical = canonicalizePathForSecurity(pathname);\n+  return canonical.malformedEncoding || canonical.decodePassLimitReached;\n+}\n+\n const normalizedPrefixesCache = new WeakMap<readonly string[], readonly string[]>();\n \n function getNormalizedPrefixes(prefixes: readonly string[]): readonly string[] {\n@@ -114,6 +144,10 @@ export function isPathProtectedByPrefixes(pathname: string, prefixes: readonly s\n   ) {",
+      "annotation": "Raises the decoding limit from three passes to thirty-two and records when the limit is reached, so deeper encodings of the channel path no longer slip past the canonicalized check.",
+      "role": "fix"
      }
     ],
-    "candidate_patch_sha256": "64e78909fb1b01acdc2fafac6b67cbaede42b40ca9fdcb6ad7db547735281852",
-    "fix_patch_sha256": "5b9dcad57659e58123ad9cf074b07629d9717748f024aac66b353206b6d1e948"
+    "annotation_mode": "hunk_specific",
+    "required_anchors": {
+     "candidate": [
+      "const requestPath = new URL(req.url ?? \"/\", \"http://localhost\").pathname;",
+      "requestPath.startsWith(\"/api/channels/\")"
+     ],
+     "fix": [
+      "const MAX_PATH_DECODE_PASSES = 32;",
+      "decodePassLimitReached: boolean;"
+     ]
+    }
    },
    "ir_chain": null,
    "unpatched": null,
