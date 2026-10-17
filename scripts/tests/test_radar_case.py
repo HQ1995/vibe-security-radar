@@ -247,7 +247,10 @@ def test_a_review_may_cite_the_case_inputs_but_not_unsealed_files(env):
     advisory = next(p for p in (case / 'inputs').rglob('*') if p.is_file())
     stray = case / 'scratch' / 'reviewer' / 'note.txt'
     stray.write_text('scratch\n')
-    for cited, ok in ((advisory, True), (stray, False)):
+    receipt = case / 'reviewer' / 'evidence' / 'recheck.json'
+    receipt.parent.mkdir()
+    receipt.write_text('{}\n')
+    for cited, ok in ((advisory, True), (receipt, True), (stray, False)):
         (case / 'reviewer' / 'review.json').write_text(json.dumps({
             'decision': 'RETURN', 'basis': 'Fixture review.', 'next_question': 'Fixture question.',
             'evidence': [{'path': str(cited), 'sha256': digest(cited)}]}))

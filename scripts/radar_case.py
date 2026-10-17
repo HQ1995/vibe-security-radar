@@ -430,6 +430,7 @@ def review_of(case: Path) -> dict:
     sealed = {p: sha for name, entry in read(case / 'SEAL.json').items() if name != 'at'
               for p, sha in entry['files'].items()}
     sealed.update({str(p): digest(p) for p in files_of(case / 'inputs')})
+    sealed.update({str(p): digest(p) for p in files_of(case / 'reviewer') if p != path})
     evidence = review.get('evidence')
     if (review.get('decision') not in {'ACCEPT', 'RETURN'} or not str(review.get('basis') or '').strip()
             or not isinstance(evidence, list) or not evidence
