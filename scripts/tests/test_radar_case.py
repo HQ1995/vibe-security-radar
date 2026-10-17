@@ -240,6 +240,24 @@ def test_a_returned_review_is_reopened_without_losing_the_original(env):
     assert radar_case.land('pilot')[0]['phase'] == 'LANDED'
 
 
+def test_a_review_may_cite_the_case_inputs_but_not_unsealed_files(env):
+    fake, prepare = env
+    prepare('alias-a')
+    case = checked('001', record('alias-a'))
+    advisory = next(p for p in (case / 'inputs').rglob('*') if p.is_file())
+    stray = case / 'scratch' / 'reviewer' / 'note.txt'
+    stray.write_text('scratch\n')
+    for cited, ok in ((advisory, True), (stray, False)):
+        (case / 'reviewer' / 'review.json').write_text(json.dumps({
+            'decision': 'RETURN', 'basis': 'Fixture review.', 'next_question': 'Fixture question.',
+            'evidence': [{'path': str(cited), 'sha256': digest(cited)}]}))
+        if ok:
+            assert radar_case.review_of(case)['decision'] == 'RETURN'
+        else:
+            with pytest.raises(ValueError, match='pinned to sealed files'):
+                radar_case.review_of(case)
+
+
 def test_a_researched_blocker_lands_as_blocked(env):
     fake, prepare = env
     prepare('alias-a')

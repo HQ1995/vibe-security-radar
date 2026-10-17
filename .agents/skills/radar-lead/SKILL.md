@@ -88,7 +88,7 @@ Check a parent, landing, release, carrier, PR or package claim by rerunning the 
 it by hand.
 
 Write `reviewer/review.json` with `decision` `ACCEPT` or `RETURN`, a substantive `basis`,
-`evidence` entries (absolute path and SHA-256 of sealed files under the case), and for RETURN
+`evidence` entries (absolute path and SHA-256 of sealed files or neutral inputs under the case), and for RETURN
 the `next_question`. Accept a BLOCKED outcome only when the blocker is researched, not an
 execution failure.
 
