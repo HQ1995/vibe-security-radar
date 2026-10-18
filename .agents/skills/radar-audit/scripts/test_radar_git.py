@@ -54,6 +54,7 @@ def run(tmp_path, *argv):
     code = rg.main([*argv, "--out", str(tmp_path / "evidence"), "--name", name])
     receipt = json.loads((tmp_path / "evidence" / f"{name}.json").read_text())
     assert receipt["exit"] == code and receipt["schema"] == rg.SCHEMA and receipt["captured_utc"]
+    assert "summary" in receipt
     return receipt
 
 

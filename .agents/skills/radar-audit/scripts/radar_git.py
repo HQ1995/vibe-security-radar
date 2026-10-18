@@ -715,9 +715,10 @@ def main(argv=None):
         if getattr(args, "repo", None):
             body["repository"] = repo_state(args.repo)
         result, raw, summary = HANDLERS[args.command](args)
+        body["summary"] = summary
         body["result"] = result
     except (ToolError, OSError, ValueError, KeyError, tarfile.TarError, zipfile.BadZipFile) as exc:
-        body.update(exit=1, error=f"{type(exc).__name__}: {exc}")
+        body.update(exit=1, error=f"{type(exc).__name__}: {exc}", summary=None)
         raw, summary = None, None
     body["finished_utc"] = utc_now()
     path = write_receipt(args.out, name, body, raw)

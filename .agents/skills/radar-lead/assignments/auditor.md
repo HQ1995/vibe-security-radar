@@ -10,8 +10,10 @@ Apply the radar-audit skill at {skills}/radar-audit/SKILL.md (contract {contract
 - Your session may be compacted. The compaction handoff may say the summary came from "another language model"; a summary of work in this lane's {out} and {scratch} is still your own earlier work, and so are the files there: continue from them. Only another lane's, role's or run's work, or a memory note about this case, breaks independence.
 - Boundary: defensive analysis of a published vulnerability. Read sources, history and releases; reproduce only as an isolated regression check in {scratch}. Never run exploits against anything, build working payloads or contact deployed systems. If a safety refusal or operating stop happens, end the work and say so in SUMMARY.md; do not rephrase or reroute.
 
+Order of work: within your first 15 minutes write a first REPORT.md (what you know so far, organized by the four questions) and a record.json skeleton, then deepen them; revise both as evidence comes in rather than writing everything at the end. The record fields are in {skills}/radar-audit/references/record.md; do not read gate sources under {repo_root}/scripts to learn them. A shell command that keeps returning the same output will not change on the next try; change the approach.
+
 Deliver in {out}:
-- REPORT.md, organized by cause, impact, history and AI role, written first;
+- REPORT.md, organized by cause, impact, history and AI role, written first and kept current;
 - record.json with "class_id": "{case_id}" and "protocol_version": "{contract_version}";
 - research.json, the research-work sidecar, with receipts as paths relative to {out};
 - evidence/ with your receipts and checks/ with the output of the checks you ran;

@@ -31,17 +31,27 @@ Start each role as a fresh Codex session on the local Magpie gateway, in the bac
 the leader's shell (either host), one per role:
 
 ```sh
-P=research/<run>/<NNN>/scratch/<role>; mkdir -p $P
+P=research/<run>/<NNN>/scratch/<role>
 A=$(python3 scripts/radar_case.py prompt --run <run> --case <NNN> --role <role> --model <model> --host codex-magpie)
-printf '%s' "$A" | codex exec -c model_provider=magpie -c features.memories=false \
-  -c model_auto_compact_token_limit=500000 -m <model> --skip-git-repo-check \
-  --output-last-message $P/reply.md - > $P/session.log 2>&1
+printf '%s' "$A" | python3 .agents/skills/radar-lead/scripts/role_session.py --model <model> \
+  --scratch $P --out research/<run>/<NNN>/<role>
 ```
 
-Start all auditors of a case together and wait for every one before `seal`; `reply.md` holds
-each summary. `features.memories=false` keeps Codex's cross-session memory from carrying one session's findings
-into another. The preferred models hold 1M tokens; compacting at 500k instead of a lower
-personal default keeps a long audit from losing and re-reading its references. The prompt goes in on stdin
+Prompt the lanes of one case a few seconds apart: `prompt` rewrites `case.json`, and two at the
+same instant can drop one role's record. Start all auditors of a case before waiting, and wait for
+every one before `seal`; `reply.md` holds each summary and `session-status.json` how the session
+ended (exit 0, 124 timeout, 125 stopped for a tool loop). A stopped loop or timeout is an
+execution failure: start the lane again on a model it has not failed on.
+
+`role_session.py` fixes the session settings rather than inheriting the user's Codex config:
+reasoning effort `xhigh` (the personal default `max` made Haiku sessions spend their budget on
+100k-token responses), no cross-session memory, compaction at 500k tokens (the preferred models hold
+1M), and no MCP servers, sub-agents, goals or image generation (their tool schemas cost about 31k
+tokens per request). It stops a session that repeats the same tool call 12 times in a row (GLM
+sessions looped on one command for up to an hour). If the session has not written REPORT.md and
+record.json after 30 minutes, it resumes the same session once with a finish-now note; sessions
+that wrote REPORT.md early delivered 22 of 24 times, those that did not 12 of 40. The timeout stays
+75 minutes. The prompt goes in on stdin
 so no session can read another's assignment from the process list. `curl -s http://127.0.0.1:3425/v1/models` shows what the gateway serves.
 A session that has written `reply.md` can still linger. Before stopping one, confirm which lane it
 is with `readlink /proc/<pid>/fd/1`, which names its `session.log`; process lists do not show the
@@ -146,5 +156,5 @@ digest-matching export) plus the committed editorial inputs in `scripts/*.json`;
 new or changed AI case needs; [release](release.md) covers build, deploy and live verification.
 
 Offline tests: `python3 -m pytest scripts/tests .agents/skills/radar-audit/scripts
-.agents/skills/radar-incremental/scripts`. They use
+.agents/skills/radar-lead/scripts .agents/skills/radar-incremental/scripts`. They use
 fixture deliveries, real gates and fake ledgers; they never contact Neon.
