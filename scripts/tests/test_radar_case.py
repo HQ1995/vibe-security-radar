@@ -132,11 +132,12 @@ def adjudicate(case, value, **decision):
     (case / 'adjudicator' / 'decision.json').write_text(json.dumps(body))
 
 
-def review(case, decision='ACCEPT'):
+def review(case, decision='ACCEPT', follow_ups=None):
     cited = case / 'adjudicator' / 'REPORT.md'
     (case / 'reviewer' / 'review.json').write_text(json.dumps({
         'decision': decision, 'basis': 'Fixture review.',
         'evidence': [{'path': str(cited), 'sha256': digest(cited)}],
+        **({'follow_ups': follow_ups} if follow_ups is not None else {}),
         'next_question': 'Fixture question.' if decision == 'RETURN' else None}))
 
 
@@ -220,6 +221,28 @@ def test_gate_problems_go_back_to_the_adjudicator(env):
     assert os.access(case / 'adjudicator' / 'record.json', os.W_OK)
     adjudicate(case, record('alias-a'))
     assert radar_case.check('pilot', '001')['phase'] == 'CHECKED'
+
+
+def test_accepted_follow_ups_land_in_remaining_gap(env):
+    fake, prepare = env
+    prepare('alias-a')
+    case = checked('001', record('alias-a'))
+    review(case, follow_ups=['Name the merge that carries the repair onto the release branch.'])
+    assert radar_case.land('pilot')[0]['phase'] == 'LANDED'
+    landed = fake.rows['alias-a']['row']['causal_research']
+    assert 'Review follow-ups' in landed['remaining_gap']
+    assert landed['remaining_gap'].endswith('Name the merge that carries the repair onto the release branch.')
+    assert {k: v for k, v in landed.items() if k != 'remaining_gap'} == {
+        k: v for k, v in record('alias-a').items() if k != 'remaining_gap'}
+
+
+def test_follow_ups_must_be_sentences(env):
+    fake, prepare = env
+    prepare('alias-a')
+    case = checked('001', record('alias-a'))
+    review(case, follow_ups=['ok', ''])
+    with pytest.raises(ValueError, match='follow_ups'):
+        radar_case.review_of(case)
 
 
 def test_a_returned_review_is_reopened_without_losing_the_original(env):

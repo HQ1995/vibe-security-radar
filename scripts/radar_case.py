@@ -439,7 +439,19 @@ def review_of(case: Path) -> dict:
         raise ValueError('review.json needs decision ACCEPT or RETURN, a basis and evidence pinned to sealed files')
     if review['decision'] == 'RETURN' and not str(review.get('next_question') or '').strip():
         raise ValueError('a RETURN review needs the next_question')
+    follow_ups = review.get('follow_ups', [])
+    if not isinstance(follow_ups, list) or any(not isinstance(item, str) or not item.strip() for item in follow_ups):
+        raise ValueError('follow_ups must be a list of sentences')
     return review
+
+
+def with_follow_ups(record: dict, review: dict) -> dict:
+    follow_ups = [item.strip() for item in review.get('follow_ups') or []]
+    if not follow_ups:
+        return record
+    note = f"Review follow-ups ({now()[:10]}): " + ' '.join(follow_ups)
+    gap = str(record.get('remaining_gap') or '').strip()
+    return {**record, 'remaining_gap': f'{gap}\n\n{note}' if gap else note}
 
 
 def assessment(case: Path, info: dict, role: str) -> dict:
@@ -546,7 +558,7 @@ def land_case(case: Path) -> dict:
         sealed['reviewer'] = {'files': freeze(case / 'reviewer')}
         write(case / 'SEAL.json', sealed)
     gate = read(case / 'gate.json')
-    record = read(case / 'adjudicator' / 'record.json')
+    record = with_follow_ups(read(case / 'adjudicator' / 'record.json'), review)
     (case / 'land').mkdir(exist_ok=True)
     items = [assessment(case, info, role) for role in roles_of(info)]
     (case / 'land' / 'assessments.jsonl').write_text(

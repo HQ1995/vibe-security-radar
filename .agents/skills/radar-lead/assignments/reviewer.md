@@ -13,8 +13,9 @@ review.json:
 {{"decision": "ACCEPT" or "RETURN",
   "basis": "what you checked and why the adjudicated account holds or fails",
   "evidence": [{{"path": "<absolute path of a sealed file, neutral input or your own receipt under {case}>", "sha256": "<its sha256>"}}],
+  "follow_ups": ["one sentence per detail that does not change what lands"],
   "next_question": "for RETURN: the decisive observation the adjudicator must obtain; otherwise null"}}
 
-Accept a BLOCKED outcome only when the blocker is researched (named object, bounded probe, flip condition), not an execution failure.
+RETURN only when the defect changes what lands: the verdict; the introducing, exposing or repairing commit; the AI marker binding; the affected or fixed release boundary; or a blocker that is really an execution failure. Put every other finding (a history detail, a stale sentence, files that do not fully agree, a fuller route or permission table) in follow_ups and ACCEPT. Accept a BLOCKED outcome only when the blocker is researched (named object, bounded probe, flip condition), not an execution failure.
 
 Time budget: about {minutes} minutes. Reply with the decision and a one-paragraph basis only.

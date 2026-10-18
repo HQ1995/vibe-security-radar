@@ -35,7 +35,7 @@ the leader's shell (either host), one per role:
 P=research/<run>/<NNN>/scratch/<role>
 A=$(python3 scripts/radar_case.py prompt --run <run> --case <NNN> --role <role> --model <model> --host codex-magpie)
 printf '%s' "$A" | python3 .agents/skills/radar-lead/scripts/role_session.py --model <model> \
-  --scratch $P --out research/<run>/<NNN>/<role>
+  --scratch $P --out research/<run>/<NNN>/<role>   # reviewer: add --require review.json
 ```
 
 Prompt the lanes of one case a few seconds apart: `prompt` rewrites `case.json`, and two at the

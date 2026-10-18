@@ -87,9 +87,18 @@ Check a parent, landing, release, carrier, PR or package claim by rerunning the 
 `radar-audit/scripts/radar_git.py` query with receipts in your scratch, not by reconstructing
 it by hand.
 
+RETURN only for a defect that changes what lands: the verdict; the introducing, exposing or
+repairing commit; the AI marker binding; the affected or fixed release boundary; or a researched
+blocker that is really an execution failure. Everything else the review finds (a history detail,
+a stale sentence, a missing cross-reference between the four files, a fuller route or permission
+table) is a follow-up: ACCEPT and list it in `follow_ups`, one sentence each. Landing appends
+the follow-ups to `remaining_gap` with the review's date, so the next re-research starts from
+them. Never RETURN a case twice for a question the earlier return did not raise unless the new
+finding is itself one of the defects above.
+
 Write `reviewer/review.json` with `decision` `ACCEPT` or `RETURN`, a substantive `basis`,
 `evidence` entries (absolute path and SHA-256 of sealed files, neutral inputs or its own receipts in
-`reviewer/evidence`, which landing seals), and for RETURN
+`reviewer/evidence`, which landing seals), `follow_ups` (a list, possibly empty), and for RETURN
 the `next_question`. Accept a BLOCKED outcome only when the blocker is researched, not an
 execution failure.
 
