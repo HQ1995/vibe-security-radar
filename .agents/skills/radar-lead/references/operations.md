@@ -23,8 +23,9 @@ preferred model.
 
 Every role runs on a model from [models.json](../models.json), the project's preferred
 models; `prompt` refuses any other model and refuses giving two auditors of one case the same
-model. Auditors rotate over GLM-5.3-Flash, DeepSeek V4.1 Flash and Claude Haiku 5.5; the
-adjudicator and reviewer use GLM-5.3, or Daybreak when Magpie's codex provider is signed in.
+model. Auditors are DeepSeek V4.1 Flash and Claude Haiku 5.5, one each per case; GLM-5.3-Flash
+is off the auditor list (it delivered 15 of 29 attempts, mostly ending in tool-call loops).
+The adjudicator and reviewer use GLM-5.3, or Daybreak when Magpie's codex provider is signed in.
 Change the list there, not per run.
 
 Start each role as a fresh Codex session on the local Magpie gateway, in the background from
@@ -44,8 +45,9 @@ ended (exit 0, 124 timeout, 125 stopped for a tool loop). A stopped loop or time
 execution failure: start the lane again on a model it has not failed on.
 
 `role_session.py` fixes the session settings rather than inheriting the user's Codex config:
-reasoning effort `xhigh` (the personal default `max` made Haiku sessions spend their budget on
-100k-token responses), no cross-session memory, compaction at 500k tokens (the preferred models hold
+reasoning effort `xhigh` for every model, Haiku included (the personal default `max` made Haiku
+sessions spend their budget on 100k-token responses: 8 of 8 delivered at `xhigh`, 11 of 28 at
+`max`; the gateway usage log shows the effort each request carried), no cross-session memory, compaction at 500k tokens (the preferred models hold
 1M), and no MCP servers, sub-agents, goals or image generation (their tool schemas cost about 31k
 tokens per request). It stops a session that repeats the same tool call 12 times in a row (GLM
 sessions looped on one command for up to an hour). If the session has not written REPORT.md and

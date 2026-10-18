@@ -69,6 +69,17 @@ def test_settings_are_fixed_and_a_finished_session_is_left_alone(tmp_path, monke
     assert first["prompt"] == "the assignment"
 
 
+def test_effort_is_pinned_to_xhigh_whatever_the_model():
+    flags = rs.CODEX_FLAGS
+    pinned = [flags[i + 1] for i, f in enumerate(flags) if f == "-c" and flags[i + 1].startswith("model_reasoning_effort=")]
+    assert pinned == ["model_reasoning_effort=xhigh"]
+
+
+def test_the_auditor_roster_is_deepseek_and_haiku():
+    roster = json.loads((Path(__file__).resolve().parents[1] / "models.json").read_text())
+    assert roster["auditor"] == ["group/auto-deepseek-v4-1-flash", "group/auto-claude-haiku-5-5"]
+
+
 def test_a_repeated_tool_call_is_stopped(tmp_path, monkeypatch):
     fake, out, log = setup(tmp_path, monkeypatch, "loop")
     code = rs.main(["--model", "m", "--scratch", str(tmp_path / "s"), "--out", str(out), "--codex", str(fake),
