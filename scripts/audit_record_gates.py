@@ -165,6 +165,8 @@ def check_record(record: dict) -> list[str]:
     if verdict in OPEN:
         if str(record.get("remaining_gap") or "").strip().lower() in {"", "none", "null", "n/a"}:
             problems.append(f"{cid}: {verdict} requires remaining_gap")
+        if record.get("ai_marker") is None:
+            problems.append(f"{cid}: {verdict} requires an ai_marker; use {{\"state\": \"UNKNOWN\"}} when no causal object is established")
         return problems
     if verdict == "FALSE_POSITIVE":
         if record.get("false_positive_ground") in FP_GROUNDS:

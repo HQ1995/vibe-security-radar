@@ -248,9 +248,11 @@ def test_unknown_granularities_are_explicit_open_gaps_only():
         "landing_commit": None, "bic_granularity": None,
         "fix_sha": None, "fix_granularity": None, "ai_on_bic": None,
         "remaining_gap": "The reporter has not identified the product source revision.",
+        "ai_marker": {"state": "UNKNOWN"},
     }
     for verdict in ("EVIDENCE_GAP", "BLOCKED"):
         assert check_text(json.dumps({**gap, "verdict": verdict}), strict=True) == []
+        assert any("requires an ai_marker" in p for p in check_record({**gap, "verdict": verdict, "ai_marker": None}))
     for change in (
         {"verdict": "NOT_AI"}, {"verdict": "AI_ROOT_CAUSE"},
         {"remaining_gap": "none"}, {"flip_condition": ""},
@@ -298,7 +300,7 @@ def test_legacy_false_positive_label_does_not_close_new_missing_evidence():
               "evidence": "The object could not be retrieved, so the claimed behavior was not inspected."}
     assert check_record(record) == []
     assert any("legacy false-positive" in p for p in check_record_strict(record))
-    open_record = {**record, "verdict": "EVIDENCE_GAP",
+    open_record = {**record, "verdict": "EVIDENCE_GAP", "ai_marker": {"state": "UNKNOWN"},
                    "remaining_gap": "The affected endpoint implementation has not been inspected."}
     assert check_text(json.dumps(open_record), strict=True) == []
 

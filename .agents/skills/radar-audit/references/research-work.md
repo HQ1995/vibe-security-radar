@@ -9,8 +9,15 @@ site data.
 Each decision has a `research` object with `advisory`, `mechanism`, `bic`, `ai`, `fix`
 and `versions` entries. The protocol's four questions map onto them: cause is
 `mechanism`; impact is `mechanism` (prerequisites, effect) plus `versions` (affected
-range); history is `bic`, `fix` and `versions`; AI role is `ai`. Auditors keep the same object in their owned research sidecar,
-linked from the sealed report; adjudicators write their own synthesis in the decision.
+range); history is `bic`, `fix` and `versions`; AI role is `ai`. An auditor's or
+adjudicator's `research.json` is one flat object, not a list of decisions:
+
+```json
+{"class_id": "<case class_id>", "protocol_version": "<contract>", "contract": "causal-work-v1",
+ "research": {"advisory": {...}, "mechanism": {...}, "bic": {...}, "ai": {...}, "fix": {...}, "versions": {...}}}
+```
+
+It is linked from the sealed report; adjudicators also write their synthesis in the decision.
 The existing `basis`, `residual` resolution and per-dimension `missing_fact` describe
 the remaining uncertainty. A single entry has this shape (not a prewritten finding):
 

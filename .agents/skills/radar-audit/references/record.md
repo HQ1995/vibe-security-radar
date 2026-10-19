@@ -40,6 +40,8 @@ How the causal fields read:
   repair SHAs. Both require a substantive `remaining_gap` and `flip_condition`.
   Missing fields and invented enum values are not substitutes. These nulls describe
   unknown evidence; they neither admit a closed verdict nor prove an unpatched state.
+  `ai_marker` is never null, even here: write `{"state": "UNKNOWN"}` (with what is unknown
+  in `remaining_gap`) when no causal object is established; the ledger refuses a null marker.
 - For an affirmatively supported `FALSE_POSITIVE`, use explicit nulls for
   `introducer_sha`, `bic_granularity`, `fix_sha` and `fix_granularity`.
   Here null means not applicable to the refuted/excluded allegation, not unfinished
