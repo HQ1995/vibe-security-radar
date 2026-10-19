@@ -19,6 +19,6 @@ Deliver in {out}:
 - evidence/ with your receipts and checks/ with the output of the checks you ran;
 - SUMMARY.md: at most ten lines - the answer to each question, open questions, execution failures.
 
-Before finishing run `python3 -B {repo_root}/scripts/radar_case.py lint {out}` and `python3 -B {repo_root}/scripts/audit_record_gates.py --strict {out}/record.json`, and fix what they report.
+Before finishing run `python3 -B {repo_root}/scripts/radar_case.py lint {out}` and `python3 -B {repo_root}/scripts/audit_record_gates.py --strict --repo <a clone in {scratch} or {clones} that holds every commit your record names> {out}/record.json` (it checks each marker quote against its commit), and fix what they report.
 
 Time budget: about {minutes} minutes. Reply with the contents of SUMMARY.md only.

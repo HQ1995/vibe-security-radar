@@ -21,6 +21,6 @@ Deliver in {out}:
 
 A reviewer then checks your result as "Review one case" in {skills}/radar-lead/SKILL.md describes; check it that way yourself first. In particular: the matched parent of the introducing change and of every later exposure change and repair; for each of them, which object is the atomic change and which merge first carries it onto the default branch's first-parent history; the real callers and any route you leave out; the complete set of commit objects carrying the causal content, with each one's full marker metadata; and that REPORT.md, record.json, research.json and decision.json agree with each other and with every receipt they cite. Fetch or clone only into {scratch}.
 
-Before finishing run `python3 -B {repo_root}/scripts/radar_case.py check --run {run} --case {key} --dry-run` until it reports ready (a researched BLOCKED decision reports outcome BLOCKED), and fix what it reports.
+Before finishing run `python3 -B {repo_root}/scripts/radar_case.py check --run {run} --case {key} --dry-run` until it reports ready (a researched BLOCKED decision reports outcome BLOCKED) and `python3 -B {repo_root}/scripts/audit_record_gates.py --strict --repo <a clone in {scratch} or {clones} that holds every commit your record names> {out}/record.json` (it checks each marker quote against its commit), and fix what they report.
 
 Time budget: about {minutes} minutes. Reply with the contents of SUMMARY.md only.
