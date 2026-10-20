@@ -157,7 +157,12 @@ describe("canonical research data", () => {
       }
     }
 
-    expect(getResearchCaseById("GHSA-X8QQ-M4QC-RPJ5")).toBeNull();
+    expect(getResearchCaseById("GHSA-X8QQ-M4QC-RPJ5")?.case_id).toBe(
+      "GHSA-X8QQ-M4QC-RPJ5",
+    );
+    expect(getResearchCaseById("GHSA-X8QQ-M4QC-RPJ5")?.aliases).toEqual([
+      "CVE-2026-59237",
+    ]);
 
     for (const item of cases) {
       if (item.contribution_class === "AI_INCOMPLETE_REMEDIATION") {
