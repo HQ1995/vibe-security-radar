@@ -228,6 +228,16 @@ class FetchTests(unittest.TestCase):
         self.assertTrue(all(p["reused"] for p in report["streams"][4]["page_receipts"][:2]))
         self.assertEqual(report["streams"][4]["unique_ids"], 3 * 2001)
 
+    def test_a_failed_one_page_day_reports_the_days_before_it(self):
+        def handler(request):
+            if request.url.host == "api.github.com":
+                return response([])
+            day = int(request.url.params.get("lastModStartDate", request.url.params.get("pubStartDate"))[8:10])
+            return response(nvd(1, 1, 0, day)) if day != 25 else response({}, status=503)
+        report = self.run_capture_days(handler)
+        self.assertEqual(report["streams"][4]["slices_complete"], 1)
+        self.assertEqual(report["streams"][4]["status"], "FAILED")
+
     def run_capture_days(self, handler):
         with httpx.Client(transport=httpx.MockTransport(lambda r: (self.requests.append(r), handler(r))[1])) as client:
             return fetch.Capturer(self.output, DAYS, client, sleep=self.sleeps.append).run()

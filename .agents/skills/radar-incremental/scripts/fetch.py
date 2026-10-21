@@ -336,7 +336,7 @@ class Capturer:
                     raise CaptureError("NVD terminal unique count does not equal total")
                 part, done, expected_index, total = part + 1, done + total, 0, None
                 next_url = stream_url(name, slices[part])
-            if total is not None:
+            if not name.startswith("ghsa-"):
                 result["slices_complete"] = part if next_url else len(slices)
             result["pages"] += 1
             result["rows"] += len(ids)
