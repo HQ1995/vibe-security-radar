@@ -30,6 +30,7 @@ SAFE_HEADERS = {
     "x-ratelimit-reset", "x-ratelimit-resource", "x-ratelimit-used",
 }
 SCHEMA = "radar-incremental-fetch/v1"
+NVD_PAGE = 500
 
 
 class CaptureError(Exception):
@@ -101,7 +102,7 @@ def stream_url(name, window, start_index=0):
     prefix = "lastMod" if name == "nvd-modified" else "pub"
     return NVD + "?" + urlencode({
         prefix + "StartDate": window["start"], prefix + "EndDate": window["end"],
-        "resultsPerPage": 2000, "startIndex": start_index,
+        "resultsPerPage": NVD_PAGE, "startIndex": start_index,
     })
 
 
@@ -316,7 +317,7 @@ class Capturer:
                 total = reported
                 records = data.get("vulnerabilities")
                 if (not isinstance(records, list) or count != len(records)
-                        or count != min(2000, max(0, total - index)) or index > total):
+                        or count != min(NVD_PAGE, max(0, total - index)) or index > total):
                     raise CaptureError("NVD count/total mismatch or incomplete page")
                 for wrapper in records:
                     cve = wrapper.get("cve") if isinstance(wrapper, dict) else None
