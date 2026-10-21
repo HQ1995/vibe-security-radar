@@ -73,7 +73,10 @@ describe("canonical research data", () => {
       caseCount,
     );
     expect(causes.at(-1)?.key).toBe("other_ambiguous");
-    expect(causes[0]?.label).toBe("Injection & unsafe execution");
+    const ranked = causes
+      .filter(({ key }) => key !== "other_ambiguous")
+      .map(({ count }) => count);
+    expect(ranked).toEqual([...ranked].sort((a, b) => b - a));
     const tools = getAiToolDistribution();
     expect(tools.total).toBe(caseCount);
     expect(tools.coverage.partial).toBe(0);

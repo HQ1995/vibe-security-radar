@@ -130,13 +130,80 @@ SCOPE_TO_CLASS = {
     "AI_CODE_FLAWED": "AI_CODE_FLAWED",
 }
 CAUSE_PATTERNS = [
-    ("ssrf_network", re.compile(r"ssrf|server-side request|outbound (url|dial)|private (ip|address)", re.I)),
-    ("injection", re.compile(r"xss|cross-site|injection|command|exec|sqli|ssti|rce|deserializ", re.I)),
-    ("path_link", re.compile(r"travers|symlink|path (confin|bypass|escape)|link following", re.I)),
-    ("auth_access", re.compile(r"auth|access control|permission|privilege|idor|tenant|session", re.I)),
-    ("resource_abuse", re.compile(r"dos|denial|resource|unbounded|memory|overflow|exhaust", re.I)),
-    ("validation_fail_open", re.compile(r"validat|fail[- ]open|saniti|bypass|denylist|allowlist", re.I)),
+    (
+        "ssrf_network",
+        re.compile(
+            r"\bssrf\b|server-side request|\boutbound (?:urls?|dials?|requests?|connections?)\b"
+            r"|\bprivate (?:ips?|address(?:es)?|networks?)\b|\bloopback\b|\bdns\b"
+            r"|\binternal (?:address(?:es)?|networks?|hosts?)\b|\bredirect(?:s|ed|ing)?\b"
+            r"|\bcaller-(?:selected|supplied|controlled) (?:\w+ )?urls?\b",
+            re.I,
+        ),
+    ),
+    (
+        "path_link",
+        re.compile(
+            r"\btravers(?:al|e|es|ed|ing)\b|\bsymlinks?\b|\bsymbolic links?\b|\blink following\b"
+            r"|\bpath (?:confinement|confin\w*|guards?|bypass|escape|checks?)\b|\bparent references?\b"
+            r"|\barchive extraction\b|\bzip slip\b|\bfile reads?\b|\bhost paths?\b",
+            re.I,
+        ),
+    ),
+    (
+        "injection",
+        re.compile(
+            r"\bxss\b|cross-site scripting|\binjection\b|\binject(?:s|ed|ing)?\b|\bshell\b"
+            r"|\bcommand (?:injection|execution|line)\b|\bexec\b|\bexecut(?:e|es|ed|ing|ion)\b"
+            r"|\bsqli?\b|\bssti\b|\brce\b|remote code execution|\bdeserializ\w*|\bescap(?:e|es|ed|ing)\b"
+            r"|\binnerhtml\b|\bhtml\b|\bmarkup\b|\btemplates?\b|\beval\b|\barbitrary code\b",
+            re.I,
+        ),
+    ),
+    (
+        "auth_access",
+        re.compile(
+            r"\bauth(?:n|z|entication|enticated|enticate|orization|orized|orize|orizes)?\b"
+            r"|\baccess control\b|\bpermissions?\b|\bprivileges?\b|\bidor\b|\btenants?\b"
+            r"|\bownership\b|\bbelong(?:s|ed)? to\b|\bapi keys?\b|\bcsrf\b|\bsigned-in\b"
+            r"|\badmin(?:istrator)?s?\b|\bpairing\b|\bsession cookies?\b",
+            re.I,
+        ),
+    ),
+    (
+        "resource_abuse",
+        re.compile(
+            r"\bdos\b|denial of service|\bresource exhaustion\b|\bunbounded\b|\bquadratic\b"
+            r"|\bexhaust\w*|\bmemory\b|\bcrash\w*|\binfinite loop\b|\bthrottl\w*|\bsize caps?\b",
+            re.I,
+        ),
+    ),
+    (
+        "validation_fail_open",
+        re.compile(
+            r"\bvalidat\w*|\bfail[- ]open\b|\bsaniti\w*|\bbypass\w*|\bdenylists?\b"
+            r"|\ballowlists?\b|\bschema\b|\bsignatures?\b",
+            re.I,
+        ),
+    ),
 ]
+CWE_CAUSES = {
+    "injection": (
+        74, 75, 77, 78, 79, 80, 83, 87, 88, 89, 90, 91, 93, 94, 95, 96, 97, 113,
+        116, 117, 134, 150, 470, 502, 564, 643, 652, 917, 943, 1236, 1336, 1427,
+    ),
+    "path_link": (22, 23, 24, 25, 29, 35, 36, 41, 59, 61, 62, 64, 65, 73, 377, 379, 434),
+    "ssrf_network": (350, 441, 918, 1385),
+    "auth_access": (
+        250, 266, 269, 276, 284, 285, 287, 288, 289, 290, 294, 302, 306, 307,
+        346, 352, 425, 522, 552, 566, 639, 640, 732, 798, 862, 863, 942, 1220, 1390,
+    ),
+    "resource_abuse": (400, 401, 405, 407, 409, 674, 770, 772, 776, 789, 834, 835, 1050, 1333),
+    "validation_fail_open": (
+        20, 179, 180, 182, 183, 184, 185, 186, 345, 347, 354, 636, 1173, 1284, 1286, 1287,
+        1288, 1289,
+    ),
+}
+CWE_CAUSE = {cwe: key for key, cwes in CWE_CAUSES.items() for cwe in cwes}
 DEFAULT_GATES = {
     "identity": "UNKNOWN",
     "ai_hunk": "UNKNOWN",
@@ -300,6 +367,33 @@ def cause_of(text: str | None) -> str:
         if pattern.search(text or ""):
             return key
     return "other_ambiguous"
+
+
+def cause_category(cwes: list[str], frozen: str | None, text: str | None) -> str:
+    numbers = [
+        int(match.group(1))
+        for cwe in cwes
+        for match in [re.match(r"\s*CWE-(\d+)\b", str(cwe), re.I)]
+        if match
+    ]
+    if not numbers:
+        numbers = [
+            int(value)
+            for group in re.findall(r"\bCWE-(\d+(?:\s*/\s*\d+)*)\b", text or "", re.I)
+            for value in re.split(r"\s*/\s*", group)
+        ]
+    candidates: list[str] = []
+    for number in numbers:
+        key = CWE_CAUSE.get(number)
+        if key and key not in candidates:
+            candidates.append(key)
+    guess = cause_of(text)
+    for choice in (frozen, guess):
+        if choice in candidates:
+            return choice
+    if candidates:
+        return candidates[0]
+    return frozen or guess
 
 
 def contribution_class(row: dict, rec: dict | None) -> str:
@@ -1669,14 +1763,15 @@ def build_case(row: dict, overlays: Overlays) -> dict:
         "description": ledger_value(row, "description", description, clean=public_prose),
         "references": list((cached or {}).get("references") or []),
         "mechanism": ledger_value(row, "mechanism", mechanism, clean=public_prose),
-        "cause_category": (cached or {}).get("cause_category")
-        or cause_of(
+        "cause_category": cause_category(
+            list((cached or {}).get("cwes") or []),
+            (cached or {}).get("cause_category"),
             first_text(
                 (rec or {}).get("bug_semantics"),
                 (rec or {}).get("flaw_origin"),
                 (rec or {}).get("evidence"),
                 mechanism,
-            )
+            ),
         ),
         "ai_provenance": {
             "family": family or cached_provenance.get("family"),

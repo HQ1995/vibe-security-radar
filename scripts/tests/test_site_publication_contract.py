@@ -163,6 +163,32 @@ def test_canonical_model_identity_uses_only_the_causal_marker() -> None:
         assert (provenance["family"], provenance["coverage"]) == expected
 
 
+def test_cause_category_prefers_advisory_cwes_over_substring_matches() -> None:
+    cause = publish_tp_ledger.cause_category
+
+    assert publish_tp_ledger.cause_of("A Claude-co-authored repair in the source parser") == "other_ambiguous"
+    assert cause(["CWE-918"], "auth_access", "checked literal IP addresses") == "ssrf_network"
+    assert cause(["CWE-407", "CWE-1333"], "injection", "regular expression search") == "resource_abuse"
+    assert cause(["CWE-22", "CWE-89"], "injection", "unsafe SQL patterns") == "injection"
+    assert cause([], None, "CWE-862 missing authorization; the check evaluated roles") == "auth_access"
+    assert cause([], "injection", "Mock Server RCE (CWE-20/502/915)") == "injection"
+    assert cause([], "path_link", "no recognizable detail") == "path_link"
+    assert cause([], None, "route without enforcing the configured API key") == "auth_access"
+
+
+def test_hunk_scrub_keeps_code_verbatim() -> None:
+    code = (
+        "@@ -1,4 +1,5 @@\n"
+        " describe(\"x\", () => {\n"
+        "+    message_zh=\"\u8fde\u63a5\u6210\u529f\u3002\",\n"
+        "+        jest.mocked(fs.pathExists).mockImplementation(async () => true);\n"
+        " });"
+    )
+    hunk = {"role": "candidate", "file": "a.ts", "code": code, "annotation": ""}
+
+    assert publish_tp_ledger._scrub_hunk(hunk, ())["code"] == code
+
+
 def test_publication_status_fails_closed() -> None:
     case = _case()
     case["publication_issues"] = publish_tp_ledger.publication_issues(case)
