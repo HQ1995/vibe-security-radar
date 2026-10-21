@@ -38,7 +38,10 @@ python3 .agents/skills/radar-incremental/scripts/fetch.py --window $R/window.jso
 It captures six streams (GitHub reviewed and unreviewed, both withdrawn streams, NVD
 published and modified) with page receipts, pacing and no automatic retries.
 `capture/coverage.json` must say `COMPLETE`. A failed or empty page is a coverage gap,
-not zero advisories; resume only into the same frozen window.
+not zero advisories; resume only into the same frozen window. NVD streams page each UTC day
+of the window separately (`nvd_slices` in `fetch-contract.json`), so a transport failure or
+NVD total drift stops inside one day: move that day's page files (their receipts name its
+URL) from `capture/` into the run directory and rerun; earlier days are reused.
 
 ## 4. Classify
 

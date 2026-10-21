@@ -12,7 +12,8 @@ spec = importlib.util.spec_from_file_location("incremental_fetch", Path(__file__
 fetch = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(fetch)
 
-WINDOW = {"start": "2026-08-26T00:00:00Z", "end": "2026-09-26T20:42:47Z", "inclusive": True}
+WINDOW = {"start": "2026-09-26T00:00:00Z", "end": "2026-09-26T20:42:47Z", "inclusive": True}
+DAYS = {"start": "2026-09-24T06:00:00Z", "end": "2026-09-26T20:42:47Z", "inclusive": True}
 
 
 def ghsa(ident="GHSA-aaaa-bbbb-cccc"):
@@ -189,6 +190,48 @@ class FetchTests(unittest.TestCase):
                              (2, 2001, 2001))
             self.assertEqual(result["total_results"], 2001)
 
+    def test_nvd_window_is_paged_per_utc_day(self):
+        def handler(request):
+            if request.url.host == "api.github.com":
+                return response([])
+            day = int(request.url.params.get("lastModStartDate", request.url.params.get("pubStartDate"))[8:10])
+            index = int(request.url.params["startIndex"])
+            return response(nvd(2000 if index == 0 else day, 2000 + day, index, 10000 * (day - 23) + index))
+        with httpx.Client(transport=httpx.MockTransport(lambda r: (self.requests.append(r), handler(r))[1])) as client:
+            report = fetch.Capturer(self.output, DAYS, client, sleep=self.sleeps.append).run()
+        self.assertEqual(report["status"], "COMPLETE")
+        nvd_queries = [parse_qs(r.url.query.decode()) for r in self.requests if r.url.host != "api.github.com"]
+        self.assertEqual([(q["lastModStartDate"][0], q["lastModEndDate"][0], q["startIndex"][0]) for q in nvd_queries[:6]], [
+            ("2026-09-24T06:00:00Z", "2026-09-24T23:59:59.999Z", "0"), ("2026-09-24T06:00:00Z", "2026-09-24T23:59:59.999Z", "2000"),
+            ("2026-09-25T00:00:00.000Z", "2026-09-25T23:59:59.999Z", "0"), ("2026-09-25T00:00:00.000Z", "2026-09-25T23:59:59.999Z", "2000"),
+            ("2026-09-26T00:00:00.000Z", "2026-09-26T20:42:47Z", "0"), ("2026-09-26T00:00:00.000Z", "2026-09-26T20:42:47Z", "2000")])
+        for result in report["streams"][4:]:
+            self.assertEqual((result["pages"], result["total_results"], result["unique_ids"], result["slices_complete"]),
+                             (6, 6075, 6075, 3))
+
+    def test_a_drifted_nvd_day_is_recaptured_alone(self):
+        drift = [True]
+        def handler(request):
+            if request.url.host == "api.github.com":
+                return response([])
+            day = int(request.url.params.get("lastModStartDate", request.url.params.get("pubStartDate"))[8:10])
+            index = int(request.url.params["startIndex"])
+            total = 2001 - (day == 25 and index > 0 and drift[0])
+            return response(nvd(2000 if index == 0 else total - 2000, total, index, 10000 * (day - 24) + index))
+        self.assertEqual(self.run_capture_days(handler)["streams"][4]["slices_complete"], 1)
+        for receipt in self.output.glob("nvd-modified-000[23].*"):
+            receipt.rename(self.root / receipt.name)
+        drift[0] = False
+        self.requests.clear()
+        report = self.run_capture_days(handler)
+        self.assertEqual(report["status"], "COMPLETE")
+        self.assertTrue(all(p["reused"] for p in report["streams"][4]["page_receipts"][:2]))
+        self.assertEqual(report["streams"][4]["unique_ids"], 3 * 2001)
+
+    def run_capture_days(self, handler):
+        with httpx.Client(transport=httpx.MockTransport(lambda r: (self.requests.append(r), handler(r))[1])) as client:
+            return fetch.Capturer(self.output, DAYS, client, sleep=self.sleeps.append).run()
+
     def test_nvd_drift_count_duplicate_and_empty_failures(self):
         bad_pages = [
             nvd(1, 2002, 2000, 2000),
@@ -275,7 +318,7 @@ class FetchTests(unittest.TestCase):
 
     def test_probe_wrong_window_rejected(self):
         probe = self.make_probe("ghsa-reviewed-0000", [],
-                                fetch.stream_url("ghsa-reviewed", WINDOW).replace("2026-08-26", "2026-08-25"))
+                                fetch.stream_url("ghsa-reviewed", WINDOW).replace("2026-09-26T00", "2026-09-25T00"))
         report = self.run_capture(adopt_probes=probe)
         self.assertEqual(report["status"], "INCOMPLETE")
         self.assertEqual(self.requests, [])

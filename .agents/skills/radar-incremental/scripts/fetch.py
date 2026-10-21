@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import argparse
 from contextlib import contextmanager
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 import fcntl
 import hashlib
 import json
@@ -74,6 +74,18 @@ def frozen_window(path, start=None, end=None):
             raise CaptureError("CLI date differs from the frozen window")
     return {"start": data["start"], "end": data["end"],
             "inclusive": True}, {"path": str(path.resolve()), "sha256": digest(raw)}
+
+
+def nvd_slices(window):
+    last = timestamp(window["end"])
+    start, cursor, slices = window["start"], timestamp(window["start"]), []
+    while True:
+        midnight = datetime.combine(cursor.date() + timedelta(days=1), datetime.min.time(), timezone.utc)
+        if midnight >= last:
+            return slices + [{"start": start, "end": window["end"]}]
+        before = midnight - timedelta(milliseconds=1)
+        slices.append({"start": start, "end": before.strftime("%Y-%m-%dT%H:%M:%S.") + f"{before.microsecond // 1000:03d}Z"})
+        start, cursor = midnight.strftime("%Y-%m-%dT%H:%M:%S.000Z"), midnight
 
 
 def stream_url(name, window, start_index=0):
@@ -166,7 +178,9 @@ class Capturer:
         self.sleep, self.timeout, self.max_pages = sleep, timeout, max_pages
         self.contract = {
             "schema": SCHEMA, "window": window, "github_api_version": API_VERSION,
-            "streams": {s: stream_url(s, window) for s in STREAMS},
+            "streams": {s: stream_url(s, window if s.startswith("ghsa-") else nvd_slices(window)[0])
+                        for s in STREAMS},
+            "nvd_slices": nvd_slices(window),
             "pacing_seconds": {"ghsa": 0.3, "nvd": 6.1},
             "redirects": False, "automatic_retries": 0,
         }
@@ -266,8 +280,9 @@ class Capturer:
         return payload, receipt, False
 
     def stream(self, name, result):
-        initial = stream_url(name, self.window)
-        url, expected_index, total = initial, 0, None
+        slices = [self.window] if name.startswith("ghsa-") else nvd_slices(self.window)
+        initial = stream_url(name, slices[0])
+        url, expected_index, total, part, done = initial, 0, None, 0, 0
         seen_urls, seen_ids = set(), set()
         for page in range(self.max_pages):
             if url in seen_urls:
@@ -310,12 +325,19 @@ class Capturer:
                         raise CaptureError("NVD CVE identity missing/invalid")
                     ids.append(ident)
                 expected_index += count
-                next_url = (stream_url(name, self.window, expected_index)
+                next_url = (stream_url(name, slices[part], expected_index)
                             if expected_index < total else None)
-                result["total_results"] = total
+                result["total_results"] = done + total
             if len(set(ids)) != len(ids) or seen_ids.intersection(ids):
                 raise CaptureError("Duplicate identity within stream; pagination drift")
             seen_ids.update(ids)
+            if total is not None and next_url is None and part + 1 < len(slices):
+                if len(seen_ids) != done + total:
+                    raise CaptureError("NVD terminal unique count does not equal total")
+                part, done, expected_index, total = part + 1, done + total, 0, None
+                next_url = stream_url(name, slices[part])
+            if total is not None:
+                result["slices_complete"] = part if next_url else len(slices)
             result["pages"] += 1
             result["rows"] += len(ids)
             result["unique_ids"] = len(seen_ids)
@@ -327,7 +349,7 @@ class Capturer:
                 "rows": len(ids), "next_url": next_url,
             })
             if next_url is None:
-                if total is not None and len(seen_ids) != total:
+                if total is not None and len(seen_ids) != done + total:
                     raise CaptureError("NVD terminal unique count does not equal total")
                 result["complete"] = True
                 result["status"] = "COMPLETE"
