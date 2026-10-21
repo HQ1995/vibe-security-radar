@@ -7,7 +7,8 @@ import ErrorPage from "@/app/error";
 import Loading from "@/app/loading";
 import AboutPage from "@/app/about/page";
 import CvesPage from "@/app/cves/page";
-import CveDetailPage from "@/app/cves/[id]/page";
+import CveDetailPage, { generateMetadata } from "@/app/cves/[id]/page";
+import sitemap from "@/app/sitemap";
 import HomePage from "@/app/page";
 import { CanonicalCaseEvidence } from "@/components/canonical-case-evidence";
 import { getIconDimensions } from "@/components/tool-icon";
@@ -18,9 +19,11 @@ import {
 import { ResearchCaseTable } from "@/components/research-case-table";
 import { TrendChart } from "@/components/trend-chart";
 import { getLanguageIconKey } from "@/lib/language-icons";
+import { formatMonthShort } from "@/lib/month-utils";
 import {
   formatContributionClass,
   getAiToolLabel,
+  getCaseHeadline,
   getResearchCaseById,
   getResearchLabels,
   getResearchSnapshot,
@@ -29,7 +32,7 @@ import {
 } from "@/lib/research-data";
 
 describe("server-rendered charts", () => {
-  it("renders trend data without a client chart runtime", () => {
+  it("renders trend data without a chart library", () => {
     const trend = renderToStaticMarkup(
       <TrendChart
         data={[
@@ -43,8 +46,8 @@ describe("server-rendered charts", () => {
       />,
     );
 
-    expect(trend).toContain("Feb 2026: 5 cases");
-    expect(trend).toContain("Mar 2026: 23 cases");
+    expect(trend).toContain("Feb 2026: 5 findings");
+    expect(trend).toContain("Mar 2026: 23 findings");
     expect(trend).toContain("Disclosures over time");
     expect(trend).not.toContain("Exact GHSA dates");
     expect(trend).not.toContain("Unavailable");
@@ -73,8 +76,8 @@ describe("server-rendered charts", () => {
       />,
     );
 
-    expect(trend).toContain("Feb 2026: 5 cases, 4% of 1,000 advisories researched");
-    expect(trend).toContain("4%–18% per month");
+    expect(trend).toContain("Feb 2026: 5 findings, 4% of 1,000 advisories researched");
+    expect(trend).toContain("Only 4%–18% of each month&#x27;s advisories");
     expect(trend).toContain("Share of the month&#x27;s advisories researched");
     expect(trend).toContain("18% of 2,000");
   });
@@ -96,7 +99,7 @@ describe("homepage hierarchy", () => {
     expect(html).toContain("Star on GitHub");
     expect(html).toContain("Covered advisories");
     expect(html).toContain(
-      `${snapshot.coverage_from!.slice(0, 7)} – ${snapshot.coverage_to!.slice(0, 7)}`,
+      `${formatMonthShort(snapshot.coverage_from!.slice(0, 7))} – ${formatMonthShort(snapshot.coverage_to!.slice(0, 7))}`,
     );
     expect(html).not.toContain("Covered Advisories (2025-05-01");
     expect(html).not.toContain("Research ledger");
@@ -123,6 +126,42 @@ describe("homepage hierarchy", () => {
       `All ${getResearchCases().length} research cases`,
     );
     expect(html).not.toContain(`All ${getResearchCases().length} findings`);
+  });
+});
+
+describe("homepage navigation", () => {
+  it("links every pattern row to the matching filtered index", () => {
+    const html = renderToStaticMarkup(<HomePage />);
+
+    expect(html).toContain('href="/cves?tool=Claude"');
+    expect(html).toContain('href="/cves?language=Python"');
+    expect(html).toContain('href="/cves?cause=injection"');
+    expect(html).toContain('href="/cves?repository=openclaw%2Fopenclaw"');
+  });
+
+  it("lists every finding in the sitemap on the canonical domain", () => {
+    const urls = sitemap().map((entry) => entry.url);
+
+    expect(urls).toContain("https://vibesecradar.com/");
+    expect(urls).toContain("https://vibesecradar.com/cves/CVE-2025-4143/");
+    const findingUrls = urls.filter(
+      (url) => url.includes("/cves/") && !url.endsWith("/cves/"),
+    );
+    expect(findingUrls).toHaveLength(getResearchCases().length);
+  });
+
+  it("describes a finding with its plain-language headline", async () => {
+    const metadata = await generateMetadata({
+      params: Promise.resolve({ id: "CVE-2025-4143" }),
+    });
+
+    expect(metadata.title).toBe(
+      "CVE-2025-4143 in cloudflare/workers-oauth-provider",
+    );
+    expect(metadata.description).toBe(
+      getCaseHeadline(getResearchCaseById("CVE-2025-4143")!),
+    );
+    expect(metadata.alternates?.canonical).toBe("/cves/CVE-2025-4143");
   });
 });
 
@@ -195,7 +234,11 @@ describe("canonical case evidence", () => {
       getResearchLabels(),
     );
 
-    expect(JSON.stringify(CvesPage())).not.toContain('"research_status"');
+    const indexPayload = JSON.stringify(CvesPage());
+    expect(indexPayload).not.toContain('"research_status"');
+    for (const heavy of ['"mechanism"', '"fix_authorship"', '"gates"', '"code_evidence"']) {
+      expect(indexPayload).not.toContain(heavy);
+    }
     expect(html).toContain("CVE, GHSA, or repository");
     expect(html).toContain("All root causes");
     expect(html).toContain("All contribution types");
@@ -219,14 +262,13 @@ describe("canonical case evidence", () => {
       />,
     );
 
-    expect(
-      html.match(/class="border-t border-border align-top"/g),
-    ).toHaveLength(getResearchCases().length);
-    expect(html).toContain("sm:grid-cols-2 xl:hidden");
-    expect(html).toContain(
-      "hidden overflow-x-auto border-y border-border xl:block",
+    expect(html.match(/data-finding="/g)).toHaveLength(
+      getResearchCases().length,
     );
-    expect(html).toContain(`All ${getResearchCases().length} findings`);
+    expect(html).toContain(`aria-label="${getResearchCases().length} findings"`);
+    expect(html).toContain(
+      getCaseHeadline(getResearchCaseById("CVE-2026-71556")!).slice(0, 40),
+    );
     expect(html).toContain("CVE-2026-71556");
     expect(html).toContain("/icons/languages/go.svg");
     expect(html).toContain("/icons/tools/claude_code.svg");

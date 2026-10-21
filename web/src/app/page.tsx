@@ -1,8 +1,8 @@
+import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
-import { CalendarDays } from "lucide-react";
 
-import { AiToolBaseRate } from "@/components/ai-tool-base-rate";
+import { AiToolComparison } from "@/components/ai-tool-comparison";
 import { DistributionBars } from "@/components/distribution-bars";
 import { ToolIcon } from "@/components/tool-icon";
 import { TrendChart } from "@/components/trend-chart";
@@ -11,18 +11,23 @@ import {
   formatContributionClass,
   getAiFamilyIconKey,
   getAiToolDistribution,
+  getAiToolLabel,
   getCauseDistribution,
   getCauseCategoryLabel,
-  formatCaseLabel,
   formatCount,
-  getCaseSummary,
+  getCaseHeadline,
   preferredCaseId,
   getLanguageDistribution,
   getRepositoryDistribution,
   getResearchCases,
   getResearchSnapshot,
   getResearchTimeline,
+  type ResearchCase,
 } from "@/lib/research-data";
+
+export const metadata: Metadata = {
+  alternates: { canonical: "/" },
+};
 
 const MEDIA_COVERAGE = [
   {
@@ -70,6 +75,76 @@ function faqs(caseCount: number) {
   ] as const;
 }
 
+function findingsHref(key: string, value: string): string {
+  return `/cves?${new URLSearchParams({ [key]: value })}`;
+}
+
+function StatTile({
+  label,
+  value,
+  detail,
+  icon,
+}: {
+  readonly label: string;
+  readonly value: React.ReactNode;
+  readonly detail: string;
+  readonly icon?: React.ReactNode;
+}) {
+  return (
+    <div className="min-w-0 bg-card p-4 sm:p-5">
+      <dt className="text-xs text-muted-foreground">{label}</dt>
+      <dd className="mt-1.5 flex min-w-0 items-center gap-2 text-xl font-semibold tracking-[-0.02em] sm:text-2xl">
+        {icon}
+        <span className="min-w-0 break-words">{value}</span>
+      </dd>
+      <dd className="mt-1 text-xs text-muted-foreground">{detail}</dd>
+    </div>
+  );
+}
+
+function FindingCard({ item }: { readonly item: ResearchCase }) {
+  const id = preferredCaseId(item);
+  return (
+    <Link
+      href={`/cves/${id}`}
+      className="group flex h-full min-w-0 flex-col rounded-lg border border-border bg-card p-5 transition-colors hover:border-primary/50"
+    >
+      <div className="flex items-center justify-between gap-3 text-xs text-muted-foreground">
+        <span className="flex min-w-0 items-center gap-1.5">
+          <ToolIcon
+            tool={getAiFamilyIconKey(item.ai_provenance.family)}
+            size={16}
+          />
+          <span className="truncate">
+            {getAiToolLabel(item)} ·{" "}
+            {item.repository ?? "Repository not recorded"}
+          </span>
+        </span>
+        <span className="shrink-0 tabular-nums">
+          {item.published_at?.slice(0, 10) ?? "Date unavailable"}
+        </span>
+      </div>
+      <h3 className="mt-3 line-clamp-4 text-[15px] font-semibold leading-6 [overflow-wrap:anywhere] group-hover:text-primary">
+        {getCaseHeadline(item)}
+      </h3>
+      <div className="mt-auto flex flex-wrap gap-1.5 pt-4 text-[11px] font-medium">
+        <span className="rounded-full bg-accent px-2 py-0.5 text-accent-foreground">
+          {formatContributionClass(item.contribution_class)}
+        </span>
+        <span className="rounded-full bg-muted px-2 py-0.5 text-muted-foreground">
+          {getCauseCategoryLabel(item.cause_category)}
+        </span>
+      </div>
+      <p className="mt-3 border-t border-border pt-3 font-mono text-xs text-muted-foreground">
+        {id}
+        <span className="float-right font-sans font-medium text-primary">
+          Root cause and fix →
+        </span>
+      </p>
+    </Link>
+  );
+}
+
 export default function HomePage() {
   const research = getResearchSnapshot();
   const caseCount = research.snapshot.case_count;
@@ -80,14 +155,14 @@ export default function HomePage() {
   const languages = getLanguageDistribution();
   const repositories = getRepositoryDistribution();
   const featuredCases = (() => {
-    const pool = [...getResearchCases()].sort(
-      (a, b) => (b.published_at ?? "").localeCompare(a.published_at ?? ""),
+    const pool = [...getResearchCases()].sort((a, b) =>
+      (b.published_at ?? "").localeCompare(a.published_at ?? ""),
     );
     const picked: typeof pool = [];
     const classOrder = [
       "AI_INCOMPLETE_REMEDIATION",
       "AI_DIRECT_ROOT",
-      "AI_CAUSAL_CONTRIBUTOR",
+      "AI_CODE_FLAWED",
       "AI_NEW_SURFACE_CONTRIBUTOR",
       "AI_ROOT_NEW_COMPONENT",
     ];
@@ -112,251 +187,193 @@ export default function HomePage() {
     7,
   );
   const coveredTo = (research.snapshot.coverage_to ?? "2026-08-16").slice(0, 7);
+  const [repoOwner, repoName] = (topRepository?.label ?? "").split("/");
 
   return (
     <main>
       <header className="border-b border-border">
-        <div className="mx-auto w-full max-w-[96rem] px-4 py-5 sm:px-6 sm:py-7 2xl:px-8 min-[1920px]:max-w-[112rem] min-[2400px]:max-w-[128rem]">
-          <div className="grid gap-7 xl:grid-cols-[minmax(24rem,0.72fr)_minmax(0,1.28fr)] xl:items-start xl:gap-10 2xl:grid-cols-[minmax(27rem,0.68fr)_minmax(0,1.32fr)] 2xl:gap-14">
-            <div className="md:grid md:grid-cols-[minmax(0,1.25fr)_minmax(15rem,0.75fr)] md:gap-8 xl:block xl:py-5">
-              <div>
-                <p className="section-kicker">
-                  Georgia Tech SSLab · security research
-                </p>
-                <h1 className="mt-3 text-balance text-[clamp(2rem,1.6rem_+_1.8vw,3rem)] font-semibold leading-[1.08] tracking-[-0.04em]">
-                  Vibe Security Radar
-                </h1>
-                <p className="mt-3 max-w-xl text-lg font-medium leading-7 tracking-[-0.02em] sm:text-xl sm:leading-8">
-                  {caseCount} AI-contributed vulnerabilities cataloged and
-                  evidence-linked across their full causal chain.
-                </p>
-              </div>
-              <div className="mt-6 md:mt-0 xl:mt-6">
-                <div className="flex flex-wrap items-center gap-3 border-t border-border pt-4 text-sm">
-                  <Link
-                    href="/cves"
-                    className="inline-flex min-h-10 w-full items-center justify-center bg-primary px-4 font-semibold text-primary-foreground hover:opacity-90 sm:w-auto"
-                  >
-                    Browse all {caseCount} findings →
-                  </Link>
-                  <a
-                    href="https://github.com/HQ1995/vibe-security-radar"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex min-h-10 w-full items-center justify-center border border-foreground px-4 font-semibold text-foreground hover:bg-foreground hover:text-background sm:w-auto"
-                  >
-                    Star on GitHub ↗
-                  </a>
-                  <Link
-                    href="/about"
-                    className="px-1 text-muted-foreground hover:text-foreground"
-                  >
-                    How we verify
-                  </Link>
-                </div>
-                <dl className="mt-6 divide-y divide-border border-y border-border text-sm">
-                  <div className="flex items-start justify-between gap-4 py-2.5">
-                    <dt className="flex items-center gap-2 text-muted-foreground">
-                      Cataloged findings
-                    </dt>
-                    <dd className="text-right font-semibold">
-                      {formatCount(caseCount)} findings
-                    </dd>
-                  </div>
-                  <div className="flex items-start justify-between gap-4 py-2.5">
-                    <dt className="text-muted-foreground">
-                      Covered advisories
-                      <span className="block text-xs font-normal">
-                        {coveredFrom} – {coveredTo}
-                      </span>
-                    </dt>
-                    <dd className="text-right font-semibold">
-                      {formatCount(research.snapshot.ledger_total ?? 0)}{" "}
-                      advisories
-                    </dd>
-                  </div>
-                  <div className="flex items-start justify-between gap-4 py-2.5">
-                    <dt className="flex items-center gap-2 text-muted-foreground">
-                      <CalendarDays
-                        className="h-4 w-4 shrink-0 text-primary"
-                        aria-hidden
-                      />
-                      Peak advisory month
-                    </dt>
-                    <dd className="text-right font-semibold">
-                      {peak.month
-                        ? formatMonthShort(peak.month)
-                        : "Unavailable"}
-                      {" · "}
-                      {peak.count} cases
-                    </dd>
-                  </div>
-                  <div className="flex items-start justify-between gap-4 py-2.5">
-                    <dt className="flex items-center gap-2 text-muted-foreground">
-                      {topTool ? (
-                        <ToolIcon
-                          tool={getAiFamilyIconKey(topTool.key)}
-                          size={16}
-                        />
-                      ) : null}
-                      Most common AI tool
-                    </dt>
-                    <dd className="text-right font-semibold">
-                      {topTool?.label ?? "Unavailable"}
-                      {" · "}
-                      {topTool?.count ?? 0} of {research.snapshot.case_count}
-                    </dd>
-                  </div>
-                  <div className="flex items-start justify-between gap-4 py-2.5">
-                    <dt className="flex items-center gap-2 text-muted-foreground">
-                      {topRepository ? (
-                        <Image
-                          src={`https://github.com/${topRepository.label.split("/")[0]}.png?size=40`}
-                          alt=""
-                          width={18}
-                          height={18}
-                          className="shrink-0 rounded-full"
-                        />
-                      ) : null}
-                      Most represented project
-                    </dt>
-                    <dd className="text-right font-semibold">
-                      {topRepository?.label ?? "Unavailable"}
-                      <span className="block whitespace-nowrap 2xl:inline">
-                        <span className="hidden 2xl:inline"> · </span>
-                        {topRepository?.count ?? 0} of{" "}
-                        {research.snapshot.case_count}
-                      </span>
-                    </dd>
-                  </div>
-                </dl>
-              </div>
+        <div className="page-container grid gap-8 py-10 sm:py-14 lg:grid-cols-[minmax(0,1fr)_minmax(0,32rem)] lg:items-center lg:gap-14">
+          <div>
+            <p className="section-kicker">
+              Georgia Tech SSLab · Security research
+            </p>
+            <h1 className="mt-3 text-[2.5rem] font-semibold leading-[1.05] tracking-[-0.04em] sm:text-5xl">
+              Vibe Security Radar
+            </h1>
+            <p className="mt-4 max-w-xl text-lg leading-7 text-muted-foreground sm:text-xl sm:leading-8">
+              {caseCount} AI-contributed vulnerabilities cataloged and
+              evidence-linked across their full causal chain.
+            </p>
+            <div className="mt-7 flex flex-wrap items-center gap-3 text-sm">
+              <Link
+                href="/cves"
+                className="inline-flex h-10 items-center rounded-md bg-primary px-4 font-semibold text-primary-foreground transition-colors hover:bg-primary/90"
+              >
+                Browse all {caseCount} findings →
+              </Link>
+              <a
+                href="https://github.com/HQ1995/vibe-security-radar"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex h-10 items-center rounded-md border border-border bg-card px-4 font-semibold transition-colors hover:border-foreground/40"
+              >
+                Star on GitHub ↗
+              </a>
+              <Link
+                href="/about"
+                className="px-1 font-medium text-muted-foreground hover:text-foreground"
+              >
+                How we verify
+              </Link>
             </div>
-            <TrendChart
-              data={timeline}
-              caseCount={research.snapshot.case_count}
-              datedCount={research.snapshot.exact_publication_dates}
-              unknownDateCount={research.snapshot.unknown_publication_dates}
-              sourceCutoff={research.snapshot.source_cutoff}
-            />
           </div>
+          <dl className="grid grid-cols-2 gap-px overflow-hidden rounded-lg border border-border bg-border">
+            <StatTile
+              label="Covered advisories"
+              value={formatCount(research.snapshot.ledger_total ?? 0)}
+              detail={`${formatMonthShort(coveredFrom)} – ${formatMonthShort(coveredTo)}`}
+            />
+            <StatTile
+              label="Peak advisory month"
+              value={peak.count}
+              detail={
+                peak.month
+                  ? `findings in ${formatMonthShort(peak.month)}`
+                  : "Unavailable"
+              }
+            />
+            <StatTile
+              label="Most common AI tool"
+              value={topTool?.label ?? "Unavailable"}
+              icon={
+                topTool ? (
+                  <ToolIcon tool={getAiFamilyIconKey(topTool.key)} size={22} />
+                ) : null
+              }
+              detail={`${topTool?.count ?? 0} of ${caseCount} findings`}
+            />
+            <StatTile
+              label="Most represented project"
+              value={
+                topRepository ? (
+                  <span className="text-base sm:text-lg">
+                    {repoOwner}/<wbr />
+                    {repoName}
+                  </span>
+                ) : (
+                  "Unavailable"
+                )
+              }
+              icon={
+                topRepository ? (
+                  <Image
+                    src={`https://github.com/${repoOwner}.png?size=40`}
+                    alt=""
+                    width={20}
+                    height={20}
+                    className="shrink-0 rounded-full"
+                  />
+                ) : null
+              }
+              detail={`${topRepository?.count ?? 0} of ${caseCount} findings`}
+            />
+          </dl>
         </div>
       </header>
 
-      <div className="mx-auto w-full max-w-[96rem] px-4 sm:px-6 2xl:px-8 min-[1920px]:max-w-[112rem] min-[2400px]:max-w-[128rem]">
-        <section className="py-9 sm:py-11">
+      <div className="page-container">
+        <div className="py-10 sm:py-14">
+          <TrendChart
+            data={timeline}
+            caseCount={caseCount}
+            datedCount={research.snapshot.exact_publication_dates}
+            unknownDateCount={research.snapshot.unknown_publication_dates}
+            sourceCutoff={research.snapshot.source_cutoff}
+          />
+        </div>
+
+        <section className="border-t border-border py-10 sm:py-14">
           <p className="section-kicker">Patterns</p>
-          <h2 className="mt-2 text-2xl font-semibold tracking-[-0.025em]">
+          <h2 className="mt-2 text-xl font-semibold tracking-[-0.02em] sm:text-2xl">
             Who, where, and why
           </h2>
-          <div className="mt-7 grid gap-8 sm:grid-cols-2 2xl:grid-cols-6">
-            <div className="grid min-w-0 gap-8 sm:col-span-2 sm:grid-cols-2 2xl:col-span-3">
-              <DistributionBars
-                eyebrow="AI tooling"
-                title="Who appears on the AI-assisted change"
-                description={`${aiTools.coverage.complete} of ${aiTools.total} findings name a tool on every AI-assisted change.`}
-                items={aiTools.items.map((item) => ({
-                  ...item,
-                  iconKey: getAiFamilyIconKey(item.key),
-                }))}
-              />
-              <AiToolBaseRate />
-            </div>
+          <div className="mt-8 grid gap-x-14 gap-y-12 md:grid-cols-2">
+            <AiToolComparison />
             <DistributionBars
-              eyebrow="Root causes"
-              title="What went wrong"
+              title="Root causes"
               description="One root-cause category per finding."
               items={causes.map((item) => ({
                 ...item,
                 muted: item.key === "other_ambiguous",
+                href: findingsHref("cause", item.key),
+                hint: item.definition,
               }))}
             />
             <DistributionBars
-              eyebrow="Languages"
-              title="Where the vulnerable code lives"
-              description="Top languages, including findings whose language is not yet recorded."
+              title="Languages"
+              description="Where the vulnerable code lives, including findings whose language is not yet recorded."
               iconMode="language"
-              items={languages.slice(0, 6)}
+              items={languages.slice(0, 6).map((item) => ({
+                ...item,
+                href:
+                  item.label === "Unknown"
+                    ? undefined
+                    : findingsHref("language", item.label),
+              }))}
             />
             <DistributionBars
-              eyebrow="Projects"
-              title="Repositories with the most findings"
-              description="Top repositories; filter the full index in Findings."
-              items={repositories.slice(0, 6)}
+              title="Repositories"
+              description="Repositories with the most findings. Filter the full index by repository in Findings."
+              items={repositories.slice(0, 6).map((item) => ({
+                ...item,
+                href: findingsHref("repository", item.label),
+              }))}
             />
           </div>
         </section>
 
         <section
           id="cases"
-          className="scroll-mt-20 border-t border-border py-9 sm:py-11"
+          className="scroll-mt-20 border-t border-border py-10 sm:py-14"
         >
-          <div className="mb-7 flex flex-col justify-between gap-3 sm:flex-row sm:items-end">
+          <div className="flex flex-wrap items-end justify-between gap-3">
             <div>
               <p className="section-kicker">Featured findings</p>
-              <h2 className="mt-3 text-3xl font-semibold tracking-[-0.035em]">
+              <h2 className="mt-2 text-xl font-semibold tracking-[-0.02em] sm:text-2xl">
                 See the vulnerable code and fix
               </h2>
             </div>
-            <Link href="/cves" className="text-sm text-primary hover:underline">
-              Browse all {research.snapshot.case_count} findings →
+            <Link
+              href="/cves"
+              className="text-sm font-medium text-primary hover:underline"
+            >
+              Browse all {caseCount} findings →
             </Link>
           </div>
-          <div className="grid gap-4 sm:grid-cols-2">
-            {featuredCases.map((item) => {
-              const id = preferredCaseId(item);
-              return (
-                <article
-                  key={item.case_id}
-                  className="border border-border bg-card p-5"
-                >
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <p className="font-mono text-xs text-primary">
-                      {formatCaseLabel(item, id)}
-                    </p>
-                    <p className="font-mono text-[10px] text-muted-foreground">
-                      {item.published_at?.slice(0, 10) ?? "Date unavailable"}
-                    </p>
-                  </div>
-                  <p className="mt-3 text-xs text-muted-foreground">
-                    {item.repository ?? "Repository not recorded"}
-                  </p>
-                  <h3 className="mt-3 text-lg font-semibold leading-7">
-                    {getCaseSummary(item)}
-                  </h3>
-                  <p className="mt-3 text-xs leading-5 text-muted-foreground">
-                    {getCauseCategoryLabel(item.cause_category)} ·{" "}
-                    {formatContributionClass(item.contribution_class)}
-                  </p>
-                  <Link
-                    href={`/cves/${id}`}
-                    className="mt-5 inline-block text-sm font-medium text-primary hover:underline"
-                  >
-                    See root cause and fix →
-                  </Link>
-                </article>
-              );
-            })}
+          <div className="mt-6 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            {featuredCases.map((item) => (
+              <FindingCard key={item.case_id} item={item} />
+            ))}
           </div>
         </section>
 
-        <section className="border-t border-border py-9 sm:py-11">
+        <section className="border-t border-border py-10 sm:py-14">
           <div className="grid gap-12 lg:grid-cols-2 lg:gap-16">
             <div>
               <p className="section-kicker">Media coverage</p>
-              <div className="mt-5 divide-y divide-border border-y border-border">
+              <div className="mt-4 divide-y divide-border border-y border-border">
                 {MEDIA_COVERAGE.map((item) => (
                   <a
                     key={item.href}
                     href={item.href}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="block py-4 hover:text-primary"
+                    className="group block py-4"
                   >
-                    <p className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
+                    <p className="text-xs text-muted-foreground">
                       {item.source} · {item.date}
                     </p>
-                    <p className="mt-1.5 text-sm font-medium leading-6">
+                    <p className="mt-1 font-medium leading-6 group-hover:text-primary">
                       {item.title} ↗
                     </p>
                   </a>
@@ -366,11 +383,11 @@ export default function HomePage() {
 
             <div>
               <p className="section-kicker">Q&amp;A</p>
-              <dl className="mt-5 divide-y divide-border border-y border-border">
+              <dl className="mt-4 divide-y divide-border border-y border-border">
                 {faqItems.map((item) => (
                   <div key={item.question} className="py-4">
-                    <dt className="text-sm font-medium">{item.question}</dt>
-                    <dd className="mt-1.5 text-sm leading-6 text-muted-foreground">
+                    <dt className="font-medium">{item.question}</dt>
+                    <dd className="mt-1 text-sm leading-6 text-muted-foreground">
                       {item.answer}
                     </dd>
                   </div>

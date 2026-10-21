@@ -5,9 +5,11 @@ import { stripMarkdown } from "@/lib/markdown-utils";
 import { formatPublished } from "@/lib/commit-utils";
 import { severityBadgeClass } from "@/lib/constants";
 import { Badge } from "@/components/ui/badge";
+import { ToolIcon } from "@/components/tool-icon";
 import {
   formatCaseLabel,
   formatContributionClass,
+  getAiFamilyIconKey,
   getAiToolLabel,
   getCauseCategoryLabel,
   preferredCaseId,
@@ -268,27 +270,25 @@ function CauseFixCard({
 }) {
   const toneClass = {
     bad: {
-      border: "border-l-destructive bg-red-50/55",
+      border: "border-l-destructive bg-red-50/55 dark:bg-red-500/[0.08]",
       kicker: "text-destructive",
     },
     warn: {
-      border: "border-l-amber-600 bg-amber-50/55",
-      kicker: "text-amber-800",
+      border: "border-l-amber-600 bg-amber-50/55 dark:bg-amber-500/[0.08]",
+      kicker: "text-amber-800 dark:text-amber-300",
     },
     good: {
-      border: "border-l-emerald-600 bg-emerald-50/55",
-      kicker: "text-emerald-700",
+      border: "border-l-emerald-600 bg-emerald-50/55 dark:bg-emerald-500/[0.08]",
+      kicker: "text-emerald-700 dark:text-emerald-400",
     },
   }[tone];
   return (
     <article
-      className={`min-w-0 border border-border border-l-4 p-5 ${toneClass.border} ${
-        muted ? "opacity-75" : ""
-      }`}
+      className={`min-w-0 rounded-lg border border-border border-l-4 p-5 ${toneClass.border}`}
     >
       <div className="flex flex-wrap items-center justify-between gap-2">
         <p
-          className={`font-mono text-[10px] font-semibold uppercase tracking-wider ${toneClass.kicker}`}
+          className={`text-xs font-semibold ${toneClass.kicker}`}
         >
           {kicker}
         </p>
@@ -304,10 +304,10 @@ function CauseFixCard({
           </span>
         ) : null}
       </div>
-      <h3 className="mt-3 text-lg font-semibold">{title}</h3>
+      <h3 className="mt-2 text-lg font-semibold leading-7">{title}</h3>
       <p className="mt-2 text-sm leading-6 text-muted-foreground">{detail}</p>
       {missed ? (
-        <p className="mt-3 text-sm font-medium leading-6 text-amber-900">
+        <p className="mt-3 text-sm font-medium leading-6 text-amber-900 dark:text-amber-300">
           Missed: {missed}
         </p>
       ) : null}
@@ -409,6 +409,15 @@ function CaseFactsCard({ item }: { readonly item: ResearchCase }) {
       value: item.repository_metadata.language || "Unknown",
     },
     {
+      label: "AI tool",
+      value: (
+        <span className="inline-flex items-center gap-1.5">
+          <ToolIcon tool={getAiFamilyIconKey(item.ai_provenance.family)} size={16} />
+          {getAiToolLabel(item)}
+        </span>
+      ),
+    },
+    {
       label: "AI role",
       value: formatContributionClass(item.contribution_class),
     },
@@ -436,12 +445,12 @@ function CaseFactsCard({ item }: { readonly item: ResearchCase }) {
       : []),
   ];
   return (
-    <aside className="h-fit rounded-lg border border-border bg-card p-5 text-sm shadow-sm xl:sticky xl:top-6">
-      <p className="section-kicker">Case facts</p>
+    <div className="h-fit rounded-lg border border-border bg-card p-5 text-sm xl:sticky xl:top-20">
+      <p className="text-sm font-semibold">Case facts</p>
       <dl className="mt-4 space-y-3.5">
         {facts.map(({ label, value }) => (
           <div key={label} className="flex min-w-0 items-baseline justify-between gap-4">
-            <dt className="shrink-0 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+            <dt className="shrink-0 text-muted-foreground">
               {label}
             </dt>
             <dd className="min-w-0 break-words text-right">{value}</dd>
@@ -473,7 +482,7 @@ function CaseFactsCard({ item }: { readonly item: ResearchCase }) {
           Advisory source <ExternalLink className="h-3 w-3" />
         </a>
       ) : null}
-    </aside>
+    </div>
   );
 }
 
@@ -519,7 +528,7 @@ function ThisAdvisoryFrame({
   readonly children: ReactNode;
 }) {
   return (
-    <div className="border-2 border-primary bg-primary/[0.04] p-3 sm:p-4">
+    <div className="rounded-lg border-2 border-primary bg-primary/[0.04] p-3 sm:p-4">
       <p className="mb-3 flex flex-wrap items-center gap-2 font-mono text-[10px] font-semibold uppercase tracking-wider text-primary">
         <span className="bg-primary px-1.5 py-0.5 text-primary-foreground">
           This advisory
@@ -719,9 +728,9 @@ function DiffHunk({
           key={`${start + offset}-${line}`}
           className={`block min-w-max px-4 ${
             line.startsWith("+")
-              ? "bg-emerald-50 text-emerald-900"
+              ? "bg-emerald-50 text-emerald-900 dark:bg-emerald-500/[0.12] dark:text-emerald-200"
               : line.startsWith("-")
-                ? "bg-red-50 text-red-900"
+                ? "bg-red-50 text-red-900 dark:bg-red-500/[0.12] dark:text-red-200"
                 : line.startsWith("@@")
                   ? "text-primary"
                   : ""
@@ -735,37 +744,37 @@ function DiffHunk({
   const header = (
     <span className="flex items-center justify-between gap-3 px-4 py-2.5">
       <span className="flex min-w-0 flex-wrap items-center gap-2 text-[11px]">
-        <span className="shrink-0 border border-border bg-muted/50 px-1.5 py-0.5 font-mono text-[9px] font-semibold uppercase tracking-wide text-muted-foreground">
+        <span className="shrink-0 rounded bg-muted px-1.5 py-0.5 text-[11px] font-medium text-muted-foreground">
           {label}
         </span>
         <FileLink repository={repository} sha={sha} file={hunk.file} />
         <SourceLink repository={repository} sha={sha} />
       </span>
       <span className="flex shrink-0 items-center gap-2 font-mono text-[10px] tabular-nums">
-        <span className="text-emerald-700">+{added}</span>
-        <span className="text-red-700">−{removed}</span>
+        <span className="text-emerald-700 dark:text-emerald-400">+{added}</span>
+        <span className="text-red-700 dark:text-red-400">−{removed}</span>
       </span>
     </span>
   );
   if (!keyed) {
     return (
-      <details className="group overflow-hidden border border-border bg-card">
+      <details className="group overflow-hidden rounded-lg border border-border bg-card">
         <summary className="cursor-pointer select-none [&::-webkit-details-marker]:hidden">
           {header}
         </summary>
-        <pre className="overflow-x-auto border-t border-border py-3 text-[12px] leading-5 [contain:paint]">
+        <pre tabIndex={0} className="overflow-x-auto border-t border-border py-3 text-[12px] leading-5 [contain:paint]">
           {renderLines()}
         </pre>
       </details>
     );
   }
   return (
-    <div className="overflow-hidden border border-border bg-card">
+    <div className="overflow-hidden rounded-lg border border-border bg-card">
       {header}
       <div className="border-t border-border">
         {segments.map(({ start, end, key }) =>
           key ? (
-            <pre key={`${start}-${end}`} className="overflow-x-auto py-1 text-[12px] leading-5 [contain:paint]">
+            <pre key={`${start}-${end}`} tabIndex={0} className="overflow-x-auto py-1 text-[12px] leading-5 [contain:paint]">
               {renderLines(start, end)}
             </pre>
           ) : (
@@ -773,25 +782,26 @@ function DiffHunk({
               <summary className="cursor-pointer px-4 py-1.5 text-[11px] text-muted-foreground">
                 Show {end - start} hidden lines
               </summary>
-              <pre className="overflow-x-auto py-1 text-[12px] leading-5 [contain:paint]">
+              <pre tabIndex={0} className="overflow-x-auto py-1 text-[12px] leading-5 [contain:paint]">
                 {renderLines(start, end)}
               </pre>
             </details>
           ),
         )}
         {annotation ? (
-          <aside
+          <div
+            role="note"
             aria-label="Key code note"
             className={`border-t-4 px-4 py-3 text-sm leading-6 ${
               label === "AI-assisted change"
-                ? "border-amber-500 bg-amber-50/70 text-amber-950"
+                ? "border-amber-500 bg-amber-50/70 text-amber-950 dark:bg-amber-500/10 dark:text-amber-100"
                 : label === "Fix"
-                  ? "border-emerald-600 bg-emerald-50/70 text-emerald-950"
+                  ? "border-emerald-600 bg-emerald-50/70 text-emerald-950 dark:bg-emerald-500/10 dark:text-emerald-100"
                   : "border-primary bg-primary/[0.04] text-foreground"
             }`}
           >
             {annotation}
-          </aside>
+          </div>
         ) : null}
       </div>
     </div>
@@ -890,7 +900,7 @@ export function CanonicalCaseEvidence({
           <div>
             <div className="flex flex-wrap items-center gap-3">
               <p className="section-kicker">How AI contributed</p>
-              <span className="border border-primary/25 bg-primary/[0.05] px-2 py-1 font-mono text-[10px] font-semibold text-primary">
+              <span className="rounded-full bg-accent px-2 py-0.5 text-xs font-medium text-accent-foreground">
                 {formatContributionClass(item.contribution_class)}
               </span>
             </div>
@@ -919,9 +929,7 @@ export function CanonicalCaseEvidence({
             </div>
           ) : null}
 
-          {incomplete ? (
-            <IncompleteRemediationFlow item={item} displayId={visibleId} />
-          ) : (
+          {incomplete ? null : (
             <div className="grid min-w-0 items-stretch gap-3 sm:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)]">
               <CauseFixCard
                 tone="bad"
@@ -959,16 +967,20 @@ export function CanonicalCaseEvidence({
         <CaseFactsCard item={item} />
       </div>
 
+      {incomplete ? (
+        <IncompleteRemediationFlow item={item} displayId={visibleId} />
+      ) : null}
+
       {evidence && hasCode ? (
         <div className="space-y-8" aria-label="Code evidence">
           {codeGroups.map((group) => (
             <section key={group.label} className="space-y-3">
               <div
-                className={`border-l-4 px-4 py-2 ${
+                className={`rounded-md border-l-4 px-4 py-2 ${
                   group.label === "AI-assisted change"
-                    ? "border-amber-500 bg-amber-50/70"
+                    ? "border-amber-500 bg-amber-50/70 dark:bg-amber-500/10"
                     : group.label === "Fix"
-                      ? "border-emerald-600 bg-emerald-50/70"
+                      ? "border-emerald-600 bg-emerald-50/70 dark:bg-emerald-500/10"
                       : "border-primary bg-primary/[0.04]"
                 }`}
               >

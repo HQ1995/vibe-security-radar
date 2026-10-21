@@ -1,3 +1,5 @@
+export const SITE_URL = "https://vibesecradar.com";
+
 export const TOOL_DISPLAY_NAMES: Readonly<Record<string, string>> = {
   claude_code: "Claude Code",
   cursor: "Cursor",
@@ -8,9 +10,9 @@ export const TOOL_DISPLAY_NAMES: Readonly<Record<string, string>> = {
 
 export const SEVERITY_COLORS: Readonly<Record<string, string>> = {
   CRITICAL: "bg-red-600 text-white hover:bg-red-600",
-  HIGH: "bg-orange-500 text-white hover:bg-orange-500",
+  HIGH: "bg-orange-700 text-white hover:bg-orange-700",
   MEDIUM: "bg-yellow-500 text-black hover:bg-yellow-500",
-  LOW: "bg-green-600 text-white hover:bg-green-600",
+  LOW: "bg-green-700 text-white hover:bg-green-700",
   UNKNOWN: "bg-zinc-500 text-white hover:bg-zinc-500",
 };
 

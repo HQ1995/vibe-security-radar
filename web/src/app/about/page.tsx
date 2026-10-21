@@ -3,9 +3,10 @@ import type { Metadata } from "next";
 import { getResearchSnapshot } from "@/lib/research-data";
 
 export const metadata: Metadata = {
-  title: "How we verify — Vibe Security Radar",
+  title: "How we verify",
   description:
     "How Vibe Security Radar verifies AI-contributed vulnerabilities.",
+  alternates: { canonical: "/about" },
 };
 
 const STEPS = [
@@ -59,7 +60,7 @@ export default function AboutPage() {
   const snapshot = getResearchSnapshot().snapshot;
   const caseCount = snapshot.case_count;
   return (
-    <main className="mx-auto w-full max-w-[96rem] px-4 py-10 sm:px-6 sm:py-14 2xl:px-8 min-[1920px]:max-w-[112rem] min-[2400px]:max-w-[128rem]">
+    <main className="page-container py-10 sm:py-14">
       <header className="border-b border-border pb-8">
         <p className="section-kicker">How we verify</p>
         <h1 className="mt-3 text-balance text-4xl font-semibold tracking-[-0.045em] sm:text-5xl">
@@ -76,7 +77,7 @@ export default function AboutPage() {
             href="https://gts3.org"
             target="_blank"
             rel="noopener noreferrer"
-            className="text-primary hover:underline"
+            className="text-primary underline decoration-primary/40 underline-offset-2 hover:decoration-primary"
           >
             Georgia Tech SSLab
           </a>
@@ -161,7 +162,7 @@ export default function AboutPage() {
         Found a false positive? Email{" "}
         <a
           href="mailto:hanqing@gatech.edu"
-          className="text-primary hover:underline"
+          className="text-primary underline decoration-primary/40 underline-offset-2 hover:decoration-primary"
         >
           hanqing@gatech.edu
         </a>

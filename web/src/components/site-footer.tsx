@@ -5,7 +5,7 @@ export function SiteFooter() {
 
   return (
     <footer className="border-t border-border/70 bg-card/35">
-      <div className="mx-auto grid w-full max-w-[96rem] gap-8 px-4 py-10 text-xs text-muted-foreground sm:px-6 md:grid-cols-[1fr_auto] md:items-end 2xl:px-8 min-[1920px]:max-w-[112rem] min-[2400px]:max-w-[128rem]">
+      <div className="page-container grid gap-8 py-10 text-xs text-muted-foreground md:grid-cols-[1fr_auto] md:items-end">
         <div className="max-w-2xl space-y-2">
           <p className="text-sm font-semibold tracking-tight text-foreground">
             Vibe Security Radar

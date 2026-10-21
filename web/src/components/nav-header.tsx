@@ -14,14 +14,40 @@ export function NavHeader() {
 
   return (
     <header className="sticky top-0 z-50 border-b border-border/70 bg-background/80 backdrop-blur-xl">
-      <div className="mx-auto flex h-16 w-full max-w-[96rem] items-center justify-between gap-3 px-4 sm:px-6 2xl:px-8 min-[1920px]:max-w-[112rem] min-[2400px]:max-w-[128rem]">
+      <div className="page-container flex h-14 items-center justify-between gap-3">
         <div className="flex min-w-0 items-center gap-3">
           <Link
             href="/"
             aria-label="Vibe Security Radar home"
-            className="min-w-0"
+            className="flex min-w-0 items-center gap-2"
           >
-            <span className="truncate text-sm font-semibold tracking-[-0.02em] sm:hidden">
+            <svg
+              viewBox="0 0 64 64"
+              aria-hidden="true"
+              className="h-6 w-6 shrink-0"
+            >
+              <rect width="64" height="64" rx="14" fill="#2357e6" />
+              <g fill="none" stroke="#fff" strokeLinecap="round">
+                <circle
+                  cx="32"
+                  cy="32"
+                  r="21"
+                  strokeWidth="3.5"
+                  strokeOpacity=".4"
+                />
+                <circle
+                  cx="32"
+                  cy="32"
+                  r="12"
+                  strokeWidth="3.5"
+                  strokeOpacity=".7"
+                />
+                <path d="M32 32 47 17" strokeWidth="4" />
+              </g>
+              <circle cx="32" cy="32" r="4" fill="#fff" />
+              <circle cx="42.5" cy="42" r="4" fill="#ffb020" />
+            </svg>
+            <span className="hidden truncate text-sm font-semibold tracking-[-0.02em] min-[400px]:inline sm:hidden">
               VSR
             </span>
             <span className="hidden truncate text-sm font-semibold tracking-[-0.02em] sm:inline">
@@ -42,7 +68,7 @@ export function NavHeader() {
                 key={link.href}
                 href={link.href}
                 aria-current={isActive ? "page" : undefined}
-                className={`rounded-full px-2.5 py-1.5 text-xs transition-colors sm:px-3.5 sm:text-sm ${
+                className={`whitespace-nowrap rounded-full px-2.5 py-1.5 text-xs transition-colors sm:px-3.5 sm:text-sm ${
                   isActive
                     ? "bg-primary/10 font-medium text-primary"
                     : "text-muted-foreground hover:bg-muted/60 hover:text-foreground"

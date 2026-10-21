@@ -1,7 +1,7 @@
 export default function Loading() {
   return (
     <main
-      className="mx-auto w-full max-w-[96rem] px-4 py-10 sm:px-6 2xl:px-8"
+      className="page-container py-8 sm:py-10"
       aria-busy="true"
       aria-label="Loading case details"
     >

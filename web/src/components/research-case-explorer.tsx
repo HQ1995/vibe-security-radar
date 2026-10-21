@@ -1,14 +1,17 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useSyncExternalStore } from "react";
+import { Search } from "lucide-react";
 
 import { ResearchCaseTable } from "@/components/research-case-table";
+import { rememberFindingsUrl } from "@/lib/findings-url";
 import { formatMonthShort } from "@/lib/month-utils";
-import type { ResearchCase } from "@/lib/research-data";
 import {
   aiToolLabel,
   causeCategoryLabel,
   formatContributionClass,
+  getCaseHeadline,
+  type FindingRow,
   type ResearchLabels,
 } from "@/lib/research-format";
 
@@ -22,55 +25,53 @@ export interface ResearchCaseFilters {
   readonly month: string;
 }
 
-const SEARCH_EXCLUDED_KEYS = new Set(["code_evidence", "ir_chain", "description", "references"]);
+const searchIndex = new WeakMap<FindingRow, string>();
 
-function scalarValues(value: unknown): string[] {
-  if (typeof value === "string" || typeof value === "number")
-    return [String(value)];
-  if (Array.isArray(value)) return value.flatMap(scalarValues);
-  if (value && typeof value === "object") {
-    return Object.entries(value).flatMap(([key, child]) =>
-      SEARCH_EXCLUDED_KEYS.has(key) ? [] : scalarValues(child),
-    );
-  }
-  return [];
-}
-
-export function filterResearchCases(
-  cases: readonly ResearchCase[],
-  filters: ResearchCaseFilters,
-  labels: ResearchLabels,
-): ResearchCase[] {
-  const query = filters.query.trim().toLowerCase();
-  return cases.filter((item) => {
-    const cause = causeCategoryLabel(item.cause_category, labels);
-    const contribution = formatContributionClass(item.contribution_class);
-    const tool = aiToolLabel(item, labels);
-    const searchable = [
-      ...scalarValues(item),
-      cause,
-      contribution,
-      tool,
-      item.published_at ? "" : "Date unavailable",
-      item.repository ? "" : "Not recorded",
+function searchableText(item: FindingRow, labels: ResearchLabels): string {
+  let text = searchIndex.get(item);
+  if (text === undefined) {
+    text = [
+      item.case_id,
+      ...item.aliases,
+      ...item.candidate_set,
+      ...item.carrier_set,
+      ...item.minimum_fix_set,
+      item.repository ?? "Not recorded",
+      item.repository_metadata.language,
+      item.published_at ?? "Date unavailable",
+      getCaseHeadline(item),
+      causeCategoryLabel(item.cause_category, labels),
+      formatContributionClass(item.contribution_class),
+      aiToolLabel(item, labels),
     ]
       .join(" ")
       .toLowerCase();
-    return (
-      (!query || searchable.includes(query)) &&
+    searchIndex.set(item, text);
+  }
+  return text;
+}
+
+export function filterResearchCases<T extends FindingRow>(
+  cases: readonly T[],
+  filters: ResearchCaseFilters,
+  labels: ResearchLabels,
+): T[] {
+  const query = filters.query.trim().toLowerCase();
+  return cases.filter(
+    (item) =>
+      (!query || searchableText(item, labels).includes(query)) &&
       (!filters.cause || item.cause_category === filters.cause) &&
       (!filters.contribution ||
         item.contribution_class === filters.contribution) &&
-      (!filters.tool || tool === filters.tool) &&
+      (!filters.tool || aiToolLabel(item, labels) === filters.tool) &&
       (!filters.language ||
         item.repository_metadata.language === filters.language) &&
       (!filters.repository || item.repository === filters.repository) &&
       (!filters.month ||
         (filters.month === "undated"
           ? !item.published_at
-          : item.published_at?.startsWith(filters.month) === true))
-    );
-  });
+          : item.published_at?.startsWith(filters.month) === true)),
+  );
 }
 
 function unique(values: readonly string[]): string[] {
@@ -89,19 +90,77 @@ const EMPTY_FILTERS: ResearchCaseFilters = {
   month: "",
 };
 
+const URL_PARAMS: Readonly<Record<keyof ResearchCaseFilters, string>> = {
+  query: "q",
+  cause: "cause",
+  contribution: "contribution",
+  tool: "tool",
+  language: "language",
+  repository: "repository",
+  month: "month",
+};
+
+const FILTER_KEYS = Object.keys(URL_PARAMS) as (keyof ResearchCaseFilters)[];
+
+const URL_EVENT = "findings-url-change";
+
+function subscribeToUrl(callback: () => void) {
+  window.addEventListener("popstate", callback);
+  window.addEventListener(URL_EVENT, callback);
+  return () => {
+    window.removeEventListener("popstate", callback);
+    window.removeEventListener(URL_EVENT, callback);
+  };
+}
+
+function parseUrlState(search: string) {
+  const params = new URLSearchParams(search);
+  const filters = { ...EMPTY_FILTERS };
+  for (const key of FILTER_KEYS) {
+    filters[key as keyof typeof filters] = params.get(URL_PARAMS[key]) ?? "";
+  }
+  return {
+    filters,
+    page: Math.max(1, Math.floor(Number(params.get("page"))) || 1),
+  };
+}
+
+function writeUrlState(filters: ResearchCaseFilters, page: number) {
+  const params = new URLSearchParams();
+  for (const key of FILTER_KEYS) {
+    if (filters[key]) params.set(URL_PARAMS[key], filters[key]);
+  }
+  if (page > 1) params.set("page", String(page));
+  const query = params.toString();
+  const url = `${window.location.pathname}${query ? `?${query}` : ""}`;
+  if (url !== `${window.location.pathname}${window.location.search}`) {
+    window.history.replaceState(null, "", url);
+    window.dispatchEvent(new Event(URL_EVENT));
+  }
+}
+
 const PAGE_SIZE = 20;
 
 export function ResearchCaseExplorer({
   cases,
   labels,
 }: {
-  readonly cases: readonly ResearchCase[];
+  readonly cases: readonly FindingRow[];
   readonly labels: ResearchLabels;
 }) {
-  const [filters, setFilters] = useState(EMPTY_FILTERS);
-  const [page, setPage] = useState(1);
+  const search = useSyncExternalStore(
+    subscribeToUrl,
+    () => window.location.search,
+    () => "",
+  );
+  const { filters, page: requestedPage } = parseUrlState(search);
+  const resultsRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    rememberFindingsUrl(`${window.location.pathname}${search}`);
+  }, [search]);
   const filtered = filterResearchCases(cases, filters, labels);
   const pageCount = Math.ceil(filtered.length / PAGE_SIZE);
+  const page = Math.min(requestedPage, Math.max(1, pageCount));
   const start = (page - 1) * PAGE_SIZE;
   const visible = filtered.slice(start, start + PAGE_SIZE);
   const causes = unique(
@@ -115,135 +174,143 @@ export function ResearchCaseExplorer({
       .filter((language) => Boolean(language)),
   );
   const repositories = unique(
-    cases
-      .map((item) => item.repository)
-      .filter((v): v is string => v != null),
+    cases.map((item) => item.repository).filter((v): v is string => v != null),
   );
   const months = unique(
     cases.flatMap((item) =>
       item.published_at ? [item.published_at.slice(0, 7)] : [],
     ),
   ).reverse();
-  const update = (key: keyof ResearchCaseFilters, value: string) => {
-    setFilters((current) => ({ ...current, [key]: value }));
-    setPage(1);
+  const update = (key: keyof ResearchCaseFilters, value: string) =>
+    writeUrlState({ ...filters, [key]: value }, 1);
+  const clearFilters = () => writeUrlState(EMPTY_FILTERS, 1);
+  const goToPage = (next: number) => {
+    writeUrlState(filters, next);
+    resultsRef.current?.scrollIntoView({ block: "start" });
   };
-  const clearFilters = () => {
-    setFilters(EMPTY_FILTERS);
-    setPage(1);
-  };
+
+  const selects: {
+    readonly key: Exclude<keyof ResearchCaseFilters, "query">;
+    readonly label: string;
+    readonly all: string;
+    readonly options: readonly {
+      readonly value: string;
+      readonly label: string;
+    }[];
+  }[] = [
+    {
+      key: "cause",
+      label: "Root cause",
+      all: "All root causes",
+      options: causes.map((cause) => ({
+        value: cause,
+        label: causeCategoryLabel(cause, labels),
+      })),
+    },
+    {
+      key: "contribution",
+      label: "AI contribution",
+      all: "All contribution types",
+      options: contributions.map((contribution) => ({
+        value: contribution,
+        label: formatContributionClass(contribution),
+      })),
+    },
+    {
+      key: "tool",
+      label: "AI tool",
+      all: "All tools",
+      options: tools.map((tool) => ({ value: tool, label: tool })),
+    },
+    {
+      key: "language",
+      label: "Language",
+      all: "All languages",
+      options: languages.map((language) => ({
+        value: language,
+        label: language,
+      })),
+    },
+    {
+      key: "repository",
+      label: "Repository",
+      all: "All repositories",
+      options: repositories.map((repository) => ({
+        value: repository,
+        label: repository,
+      })),
+    },
+    {
+      key: "month",
+      label: "Advisory month",
+      all: "All months",
+      options: [
+        ...months.map((month) => ({
+          value: month,
+          label: formatMonthShort(month),
+        })),
+        { value: "undated", label: "Date unavailable" },
+      ],
+    },
+  ];
+  const active = Object.values(filters).some(Boolean);
 
   return (
     <section aria-label="Finding search and filters">
-      <div className="grid gap-3 border-y border-border py-4 sm:grid-cols-2 lg:grid-cols-4">
-        <label className="text-xs text-muted-foreground lg:col-span-2">
-          Search
+      <div className="space-y-3">
+        <label className="relative block">
+          <span className="sr-only">Search</span>
+          <Search
+            aria-hidden="true"
+            className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
+          />
           <input
             type="search"
             value={filters.query}
             onChange={(event) => update("query", event.target.value)}
             placeholder="CVE, GHSA, or repository"
-            className="mt-1.5 h-10 w-full border border-input bg-background px-3 text-sm text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/15"
+            className="h-11 w-full rounded-md border border-input bg-card pl-9 pr-3 text-sm text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/15"
           />
         </label>
-        <label className="text-xs text-muted-foreground">
-          Root cause
-          <select
-            value={filters.cause}
-            onChange={(event) => update("cause", event.target.value)}
-            className="mt-1.5 h-10 w-full border border-input bg-background px-3 text-sm text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/15"
-          >
-            <option value="">All root causes</option>
-            {causes.map((cause) => (
-              <option key={cause} value={cause}>
-                {causeCategoryLabel(cause, labels)}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="text-xs text-muted-foreground">
-          AI contribution
-          <select
-            value={filters.contribution}
-            onChange={(event) => update("contribution", event.target.value)}
-            className="mt-1.5 h-10 w-full border border-input bg-background px-3 text-sm text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/15"
-          >
-            <option value="">All contribution types</option>
-            {contributions.map((contribution) => (
-              <option key={contribution} value={contribution}>
-                {formatContributionClass(contribution)}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="text-xs text-muted-foreground">
-          AI tool
-          <select
-            value={filters.tool}
-            onChange={(event) => update("tool", event.target.value)}
-            className="mt-1.5 h-10 w-full border border-input bg-background px-3 text-sm text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/15"
-          >
-            <option value="">All tools</option>
-            {tools.map((tool) => (
-              <option key={tool}>{tool}</option>
-            ))}
-          </select>
-        </label>
-        <label className="text-xs text-muted-foreground">
-          Language
-          <select
-            value={filters.language}
-            onChange={(event) => update("language", event.target.value)}
-            className="mt-1.5 h-10 w-full border border-input bg-background px-3 text-sm text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/15"
-          >
-            <option value="">All languages</option>
-            {languages.map((language) => (
-              <option key={language}>{language}</option>
-            ))}
-          </select>
-        </label>
-        <label className="text-xs text-muted-foreground">
-          Repository
-          <select
-            value={filters.repository}
-            onChange={(event) => update("repository", event.target.value)}
-            className="mt-1.5 h-10 w-full border border-input bg-background px-3 text-sm text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/15"
-          >
-            <option value="">All repositories</option>
-            {repositories.map((repository) => (
-              <option key={repository}>{repository}</option>
-            ))}
-          </select>
-        </label>
-        <label className="text-xs text-muted-foreground">
-          Advisory month
-          <select
-            value={filters.month}
-            onChange={(event) => update("month", event.target.value)}
-            className="mt-1.5 h-10 w-full border border-input bg-background px-3 text-sm text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/15"
-          >
-            <option value="">All months</option>
-            {months.map((month) => (
-              <option key={month} value={month}>
-                {formatMonthShort(month)}
-              </option>
-            ))}
-            <option value="undated">Date unavailable</option>
-          </select>
-        </label>
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
+          {selects.map((select) => (
+            <label key={select.key} className="min-w-0">
+              <span className="sr-only">{select.label}</span>
+              <select
+                value={filters[select.key]}
+                onChange={(event) => update(select.key, event.target.value)}
+                className={`h-9 w-full min-w-0 truncate rounded-md border bg-card px-2.5 text-[13px] outline-none focus:border-primary focus:ring-2 focus:ring-primary/15 ${
+                  filters[select.key]
+                    ? "border-primary/60 text-foreground"
+                    : "border-input text-muted-foreground"
+                }`}
+              >
+                <option value="">{select.all}</option>
+                {select.options.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+          ))}
+        </div>
       </div>
 
-      <div className="flex items-center justify-between gap-4 py-4 text-xs text-muted-foreground">
+      <div
+        ref={resultsRef}
+        className="flex scroll-mt-20 items-center justify-between gap-4 pb-3 pt-6 text-sm text-muted-foreground"
+      >
         <p>
           {filtered.length
-            ? `${start + 1}–${Math.min(start + PAGE_SIZE, filtered.length)} of ${filtered.length} cases`
-            : `0 of ${cases.length} cases`}
+            ? `Showing ${start + 1}–${Math.min(start + PAGE_SIZE, filtered.length)} of ${filtered.length} ${filtered.length === 1 ? "finding" : "findings"}`
+            : `0 of ${cases.length} findings`}
         </p>
-        {Object.values(filters).some(Boolean) ? (
+        {active ? (
           <button
             type="button"
             onClick={clearFilters}
-            className="text-primary hover:underline"
+            className="font-medium text-primary hover:underline"
           >
             Clear filters
           </button>
@@ -256,26 +323,24 @@ export function ResearchCaseExplorer({
           {pageCount > 1 ? (
             <nav
               aria-label="Finding pages"
-              className="flex items-center justify-between gap-4 border-b border-border py-4 text-sm"
+              className="flex items-center justify-between gap-4 pt-5 text-sm"
             >
               <button
                 type="button"
                 disabled={page === 1}
-                onClick={() => setPage((current) => Math.max(1, current - 1))}
-                className="border border-border px-3 py-1.5 disabled:cursor-not-allowed disabled:opacity-35"
+                onClick={() => goToPage(Math.max(1, page - 1))}
+                className="rounded-md border border-border bg-card px-3 py-1.5 font-medium transition-colors hover:border-foreground/40 disabled:cursor-not-allowed disabled:opacity-35"
               >
                 Previous
               </button>
-              <span className="font-mono text-xs text-muted-foreground">
+              <span className="text-xs tabular-nums text-muted-foreground">
                 Page {page} of {pageCount}
               </span>
               <button
                 type="button"
                 disabled={page === pageCount}
-                onClick={() =>
-                  setPage((current) => Math.min(pageCount, current + 1))
-                }
-                className="border border-border px-3 py-1.5 disabled:cursor-not-allowed disabled:opacity-35"
+                onClick={() => goToPage(Math.min(pageCount, page + 1))}
+                className="rounded-md border border-border bg-card px-3 py-1.5 font-medium transition-colors hover:border-foreground/40 disabled:cursor-not-allowed disabled:opacity-35"
               >
                 Next
               </button>
@@ -284,7 +349,7 @@ export function ResearchCaseExplorer({
         </>
       ) : (
         <p className="border-y border-border py-12 text-center text-sm text-muted-foreground">
-          No cases match these filters.
+          No findings match these filters.
         </p>
       )}
     </section>

@@ -1,12 +1,13 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, ExternalLink } from "lucide-react";
-import { stripMarkdown } from "@/lib/markdown-utils";
+import { ExternalLink } from "lucide-react";
 
+import { BackToFindings } from "@/components/back-to-findings";
 import { CanonicalCaseEvidence } from "@/components/canonical-case-evidence";
 import {
   formatCaseLabel,
+  getCaseHeadline,
   getResearchCaseById,
   preferredCaseId,
   getResearchCases,
@@ -14,6 +15,13 @@ import {
 } from "@/lib/research-data";
 
 export const dynamicParams = false;
+
+const SHARE_IMAGE = {
+  url: "/opengraph-image",
+  width: 1200,
+  height: 630,
+  alt: "Vibe Security Radar",
+};
 export function generateStaticParams() {
   const ids = new Set<string>();
   for (const item of getResearchCases()) {
@@ -35,17 +43,31 @@ export async function generateMetadata({
   const item = getResearchCaseById(id);
   if (!item) return { title: "Finding not found" };
   const canonicalId = preferredCaseId(item);
-  const raw = stripMarkdown(item.description ?? "");
-  const description = (
-    raw || `Mechanism-level evidence for ${canonicalId}.`
-  ).slice(0, 200);
-  const title = `${canonicalId} — AI contribution evidence`;
+  const headline = getCaseHeadline(item);
+  const description =
+    headline.length > 200
+      ? `${headline.slice(0, 197).replace(/\s+\S*$/, "")}…`
+      : headline;
+  const title = item.repository
+    ? `${canonicalId} in ${item.repository}`
+    : canonicalId;
   return {
     title,
     description,
     alternates: { canonical: `/cves/${canonicalId}` },
-    openGraph: { title, description, url: `/cves/${canonicalId}` },
-    twitter: { title, description },
+    openGraph: {
+      title,
+      description,
+      url: `/cves/${canonicalId}`,
+      type: "article",
+      images: [SHARE_IMAGE],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title,
+      description,
+      images: [SHARE_IMAGE],
+    },
   };
 }
 
@@ -59,49 +81,52 @@ function PageHeader({
   const repository = item.repository;
   const owner = repository?.split("/")[0];
   const repoUrl = repository ? `https://github.com/${repository}` : undefined;
-  const avatarUrl = owner ? `https://github.com/${owner}.png?size=32` : undefined;
+  const avatarUrl = owner
+    ? `https://github.com/${owner}.png?size=32`
+    : undefined;
+  const siblings = repository
+    ? getResearchCases().filter((other) => other.repository === repository)
+        .length
+    : 0;
 
   return (
-    <header className="space-y-4">
-      <Link
-        href="/cves"
-        className="inline-flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground"
-      >
-        <ArrowLeft className="h-3.5 w-3.5" />
-        Back to findings
-      </Link>
-
-      <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-start">
-        <div>
-          <p className="section-kicker">Evidence</p>
-          <h1 className="mt-2 font-mono text-2xl font-bold tracking-tight sm:text-3xl">
-            {formatCaseLabel(item, id)}
-          </h1>
-          {repoUrl ? (
-            <a
-              href={repoUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="mt-3 inline-flex items-center gap-1.5 text-sm font-medium text-foreground transition-colors hover:text-primary"
-            >
-              {avatarUrl ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={avatarUrl}
-                  alt=""
-                  width={16}
-                  height={16}
-                  loading="lazy"
-                  className="h-4 w-4 rounded-full border border-border"
-                />
-              ) : null}
-              {repository}
-              <ExternalLink className="h-3 w-3 text-muted-foreground" />
-            </a>
-          ) : null}
-        </div>
+    <header>
+      <BackToFindings />
+      <h1 className="mt-4 break-words font-mono text-xl font-semibold tracking-tight sm:text-2xl">
+        {formatCaseLabel(item, id)}
+      </h1>
+      <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
+        {repoUrl ? (
+          <a
+            href={repoUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex min-w-0 items-center gap-1.5 break-all font-medium text-foreground transition-colors hover:text-primary"
+          >
+            {avatarUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={avatarUrl}
+                alt=""
+                width={16}
+                height={16}
+                loading="lazy"
+                className="h-4 w-4 rounded-full border border-border"
+              />
+            ) : null}
+            {repository}
+            <ExternalLink className="h-3 w-3 text-muted-foreground" />
+          </a>
+        ) : null}
+        {repository && siblings > 1 ? (
+          <Link
+            href={`/cves?${new URLSearchParams({ repository })}`}
+            className="whitespace-nowrap text-primary hover:underline"
+          >
+            All {siblings} findings in this repository →
+          </Link>
+        ) : null}
       </div>
-
     </header>
   );
 }
@@ -118,7 +143,7 @@ export default async function CveDetailPage({
   const references = item.references ?? [];
 
   return (
-    <main className="mx-auto w-full max-w-[96rem] space-y-12 px-4 py-10 sm:px-6 2xl:px-8 min-[1920px]:max-w-[112rem] min-[2400px]:max-w-[128rem]">
+    <main className="page-container space-y-10 py-8 sm:py-10">
       <PageHeader id={id} item={item} />
 
       <CanonicalCaseEvidence item={item} displayId={id} />

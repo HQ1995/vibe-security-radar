@@ -1,4 +1,31 @@
+import { stripMarkdown } from "@/lib/markdown-utils";
 import type { ResearchCase } from "@/lib/research-data";
+
+type CaseIdentity = Pick<ResearchCase, "case_id" | "aliases">;
+
+export type FindingRow = CaseIdentity &
+  Pick<
+    ResearchCase,
+    | "repository"
+    | "contribution_class"
+    | "cause_category"
+    | "published_at"
+    | "candidate_set"
+    | "carrier_set"
+    | "minimum_fix_set"
+  > & {
+    readonly repository_metadata: Pick<
+      ResearchCase["repository_metadata"],
+      "language"
+    >;
+    readonly ai_provenance: Pick<
+      ResearchCase["ai_provenance"],
+      "family" | "coverage"
+    >;
+    readonly headline?: string;
+    readonly code_evidence?: { readonly summary: string } | null;
+    readonly description?: string | null;
+  };
 
 export interface ResearchLabels {
   readonly causeCategories: Readonly<
@@ -18,7 +45,7 @@ export function getAiFamilyIconKey(family: string | null): string {
   return family ? (AI_FAMILY_ICON_KEYS[family] ?? "unknown_ai") : "unknown_ai";
 }
 
-function officialIds(item: ResearchCase): {
+function officialIds(item: CaseIdentity): {
   readonly cve: string | null;
   readonly ghsa: string | null;
 } {
@@ -29,12 +56,15 @@ function officialIds(item: ResearchCase): {
   };
 }
 
-export function preferredCaseId(item: ResearchCase): string {
+export function preferredCaseId(item: CaseIdentity): string {
   const { cve, ghsa } = officialIds(item);
   return cve ?? ghsa ?? item.case_id;
 }
 
-export function formatCaseLabel(item: ResearchCase, displayId?: string): string {
+export function formatCaseLabel(
+  item: CaseIdentity,
+  displayId?: string,
+): string {
   const shown = displayId ?? preferredCaseId(item);
   const { cve, ghsa } = officialIds(item);
   const other = shown.toUpperCase().startsWith("CVE-")
@@ -73,7 +103,10 @@ export function causeCategoryLabel(
   return key ? (labels.causeCategories[key]?.label ?? key) : "Not classified";
 }
 
-export function aiToolLabel(item: ResearchCase, labels: ResearchLabels): string {
+export function aiToolLabel(
+  item: Pick<FindingRow, "ai_provenance">,
+  labels: ResearchLabels,
+): string {
   const family = item.ai_provenance.family
     ? labels.aiFamilies[item.ai_provenance.family]?.label
     : null;
@@ -85,4 +118,44 @@ export function aiToolLabel(item: ResearchCase, labels: ResearchLabels): string 
     return "AI-assisted; tool not identified";
   }
   return "Tool not identified";
+}
+
+export function getCaseHeadline(item: FindingRow): string {
+  if (item.headline) return item.headline;
+  const summary = stripMarkdown(item.code_evidence?.summary).replace(
+    /\s+/g,
+    " ",
+  );
+  if (summary) return summary;
+  const generic = /^(summary|details|description|overview):?$/i;
+  const cjk = /[\u4e00-\u9fff]/;
+  const first = stripMarkdown(item.description)
+    .split("\n")
+    .map((line) => line.trim())
+    .find((line) => line && !generic.test(line) && !cjk.test(line));
+  return (
+    first ??
+    formatContributionClass(item.contribution_class) +
+      (item.repository ? " in " + item.repository : "")
+  );
+}
+
+export function toFindingRow(item: ResearchCase): FindingRow {
+  return {
+    case_id: item.case_id,
+    aliases: item.aliases,
+    repository: item.repository,
+    repository_metadata: { language: item.repository_metadata.language },
+    contribution_class: item.contribution_class,
+    cause_category: item.cause_category,
+    published_at: item.published_at,
+    candidate_set: item.candidate_set,
+    carrier_set: item.carrier_set,
+    minimum_fix_set: item.minimum_fix_set,
+    ai_provenance: {
+      family: item.ai_provenance.family,
+      coverage: item.ai_provenance.coverage,
+    },
+    headline: getCaseHeadline(item),
+  };
 }

@@ -21,3 +21,9 @@ const LANGUAGE_ICON_KEYS: Readonly<Record<string, string>> = {
 export function getLanguageIconKey(language: string): string | null {
   return LANGUAGE_ICON_KEYS[language] ?? null;
 }
+
+const MONOCHROME_ICONS = new Set(["rust"]);
+
+export function languageIconClass(iconKey: string): string {
+  return MONOCHROME_ICONS.has(iconKey) ? "shrink-0 dark:invert" : "shrink-0";
+}

@@ -1,9 +1,7 @@
 import researchData from "@/generated/research-data.json";
-import { stripMarkdown } from "@/lib/markdown-utils";
 import {
   aiToolLabel,
   causeCategoryLabel,
-  formatContributionClass,
   type ResearchLabels,
 } from "@/lib/research-format";
 
@@ -12,6 +10,7 @@ export {
   formatCount,
   formatContributionClass,
   getAiFamilyIconKey,
+  getCaseHeadline,
   preferredCaseId,
 } from "@/lib/research-format";
 
@@ -244,19 +243,6 @@ export function getResearchCaseById(id: string): ResearchCase | null {
       item.aliases.some((alias) => alias.toUpperCase() === normalized),
     ) ??
     null
-  );
-}
-
-export function getCaseSummary(item: ResearchCase): string {
-  const desc = stripMarkdown(item.description);
-  const lines = desc.split("\n").map((l) => l.trim()).filter((l) => l.length > 0);
-  const generic = /^(summary|details|description|overview):?$/i;
-  const cjk = /[\u4e00-\u9fff]/;
-  const first = lines.find((l) => !generic.test(l) && !cjk.test(l));
-  if (first) return first.length > 160 ? first.slice(0, 157) + "..." : first;
-  return (
-    formatContributionClass(item.contribution_class) +
-    (item.repository ? " in " + item.repository : "")
   );
 }
 

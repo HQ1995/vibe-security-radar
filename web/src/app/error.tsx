@@ -7,7 +7,7 @@ export default function Error({
   readonly reset: () => void;
 }) {
   return (
-    <main className="mx-auto flex max-w-6xl flex-col items-center justify-center px-4 py-32 text-center sm:px-6">
+    <main className="page-container flex flex-col items-center justify-center py-32 text-center">
       <h1 className="text-2xl font-semibold tracking-tight">
         Something went wrong
       </h1>
@@ -17,7 +17,7 @@ export default function Error({
       <button
         type="button"
         onClick={reset}
-        className="mt-6 inline-flex items-center rounded-lg bg-foreground px-4 py-2 text-sm font-semibold text-background transition-opacity hover:opacity-90"
+        className="mt-6 inline-flex h-10 items-center rounded-md bg-primary px-4 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90"
       >
         Try again
       </button>

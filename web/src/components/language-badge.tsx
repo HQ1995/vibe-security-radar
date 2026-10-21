@@ -1,7 +1,7 @@
 import Image from "next/image";
 
 import { getLanguageColor } from "@/lib/constants";
-import { getLanguageIconKey } from "@/lib/language-icons";
+import { getLanguageIconKey, languageIconClass } from "@/lib/language-icons";
 
 export function LanguageBadge({ language }: { readonly language: string }) {
   const iconKey = getLanguageIconKey(language);
@@ -14,7 +14,7 @@ export function LanguageBadge({ language }: { readonly language: string }) {
           alt=""
           width={16}
           height={16}
-          className="shrink-0"
+          className={languageIconClass(iconKey)}
         />
       ) : (
         <span
