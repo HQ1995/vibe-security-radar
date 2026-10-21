@@ -75,9 +75,9 @@ def test_effort_is_pinned_to_xhigh_whatever_the_model():
     assert pinned == ["model_reasoning_effort=xhigh"]
 
 
-def test_the_auditor_roster_is_deepseek_and_haiku():
+def test_the_auditor_roster_is_opus_deepseek_and_haiku():
     roster = json.loads((Path(__file__).resolve().parents[1] / "models.json").read_text())
-    assert roster["auditor"] == ["group/auto-deepseek-v4-1-flash", "group/auto-claude-haiku-5-5"]
+    assert roster["auditor"] == ["claude-opus-5-5", "group/auto-deepseek-v4-1-flash", "group/auto-claude-haiku-5-5"]
 
 
 def test_a_repeated_tool_call_is_stopped(tmp_path, monkeypatch):

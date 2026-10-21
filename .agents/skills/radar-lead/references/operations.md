@@ -23,10 +23,14 @@ preferred model.
 
 Every role runs on a model from [models.json](../models.json), the project's preferred
 models; `prompt` refuses any other model and refuses giving two auditors of one case the same
-model. Auditors are DeepSeek V4.1 Flash and Claude Haiku 5.5, one each per case; GLM-5.3-Flash
-is off the auditor list (it delivered 15 of 29 attempts, mostly ending in tool-call loops).
-The adjudicator and reviewer use GLM-5.3, or Daybreak when Magpie's codex provider is signed in.
-Change the list there, not per run.
+model. Auditors are Claude Opus 5.5, DeepSeek V4.1 Flash and Claude Haiku 5.5, two different
+ones per case; GLM-5.3-Flash is off the auditor list (it delivered 15 of 29 attempts, mostly
+ending in tool-call loops). The adjudicator and reviewer use Opus 5.5, GLM-5.3, or Daybreak when
+Magpie's codex provider is signed in. Change the list there, not per run.
+
+`claude-opus-5-5` runs as a fresh Claude Code subagent of the leader session (Agent tool,
+`model: opus`, `effort: xhigh`, general-purpose, never a fork), with `--host claude-code` and
+the printed assignment as its whole prompt; the subagent's final message is its reply.
 
 Start each role as a fresh Codex session on the local Magpie gateway, in the background from
 the leader's shell (either host), one per role:
