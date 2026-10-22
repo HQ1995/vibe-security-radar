@@ -1960,6 +1960,75 @@ def test_required_role_needs_matching_source_hunk_and_patch_witness() -> None:
     )
 
 
+def test_live_fix_object_witness_retries_throttling_and_network_errors() -> None:
+    from urllib.error import HTTPError, URLError
+
+    sha = "d" * 40
+    url = f"https://github.com/fictional-owner/fictional-repo/commit/{sha}"
+    witness = {
+        "objects": [
+            {
+                "case_id": "CVE-2026-12345",
+                "sha": sha,
+                "repository": "fictional-owner/fictional-repo",
+                "object_type": "commit",
+            }
+        ]
+    }
+    body = (
+        '<meta property="og:url" content="'
+        f'/fictional-owner/fictional-repo/commit/{sha}" />'
+    ).encode()
+    outcomes = [
+        URLError("timed out"),
+        HTTPError(url, 429, "Too Many Requests", {"Retry-After": "1"}, None),
+        (url, body),
+    ]
+    calls: list[str] = []
+    sleeps: list[float] = []
+
+    class Response:
+        def __init__(self, final_url: str, payload: bytes) -> None:
+            self.final_url = final_url
+            self.payload = payload
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_):
+            return None
+
+        def geturl(self) -> str:
+            return self.final_url
+
+        def read(self, _: int) -> bytes:
+            return self.payload
+
+    def open_request(request, timeout: int):
+        calls.append(request.full_url)
+        outcome = outcomes.pop(0)
+        if isinstance(outcome, Exception):
+            raise outcome
+        return Response(*outcome)
+
+    original_open = site_preflight.urlopen
+    original_sleep = site_preflight.time.sleep
+    original_cache = site_preflight.VERIFY_CACHE_ACTIVE
+    try:
+        site_preflight.VERIFY_CACHE_ACTIVE = False
+        site_preflight.urlopen = open_request
+        site_preflight.time.sleep = sleeps.append
+        errors = site_preflight.live_fix_object_witness_errors(witness)
+    finally:
+        site_preflight.VERIFY_CACHE_ACTIVE = original_cache
+        site_preflight.urlopen = original_open
+        site_preflight.time.sleep = original_sleep
+
+    assert errors == []
+    assert calls == [url] * 3
+    assert len(sleeps) == 2
+
+
 def test_required_role_cannot_silently_outlive_its_published_identity() -> None:
     required = "GHSA-1111-2222-3333:candidate"
     errors = site_preflight.evidence_role_allowlist_errors(

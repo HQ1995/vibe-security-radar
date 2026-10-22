@@ -652,16 +652,24 @@ def live_fix_object_witness_errors(witness: dict) -> list[str]:
 
     def verify(target: tuple[str, str]) -> tuple[str, str, str | None]:
         repository, sha = target
-        for attempt in range(4):
+        attempts = 6
+        for attempt in range(attempts):
+            delay = 2.0 * (2**attempt)
             try:
                 return repository, sha, github_commit_sha(repository, sha)
             except HTTPError as error:
-                if error.code in (429, 502, 503) and attempt < 3:
-                    time.sleep(2.0 * (2**attempt))
-                    continue
+                if error.code not in (429, 500, 502, 503, 504) or attempt == attempts - 1:
+                    return repository, sha, None
+                retry_after = (error.headers or {}).get("Retry-After", "")
+                if str(retry_after).isdigit():
+                    delay = max(delay, float(retry_after))
+            except (OSError, TimeoutError):
+                if attempt == attempts - 1:
+                    return repository, sha, None
+            except (UnicodeError, ValueError):
                 return repository, sha, None
-            except (OSError, TimeoutError, UnicodeError, ValueError):
-                return repository, sha, None
+            time.sleep(min(60.0, delay))
+        return repository, sha, None
 
     force_online = not VERIFY_CACHE_ACTIVE or "--force-online" in (sys.argv[1:] if len(sys.argv) > 1 else [])
     cache = {} if force_online else cache_load()
@@ -677,7 +685,7 @@ def live_fix_object_witness_errors(witness: dict) -> list[str]:
 
     online: list[tuple[str, str, str | None]] = []
     if stale:
-        with ThreadPoolExecutor(max_workers=min(12, len(stale))) as pool:
+        with ThreadPoolExecutor(max_workers=min(6, len(stale))) as pool:
             online = list(pool.map(verify, stale))
         for repository, sha, actual in online:
             if actual == sha:
