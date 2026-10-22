@@ -14,13 +14,6 @@ const nextConfig: NextConfig = {
   devIndicators: false,
   images: {
     unoptimized: true,
-    remotePatterns: [
-      {
-        protocol: "https",
-        hostname: "github.com",
-        pathname: "/*.png",
-      },
-    ],
   },
 };
 

@@ -102,7 +102,6 @@ function Breadcrumb({
 
 function FindingMeta({ item }: { readonly item: ResearchCase }) {
   const repository = item.repository;
-  const owner = repository?.split("/")[0];
   const siblings = repository
     ? getResearchCases().filter((other) => other.repository === repository)
         .length
@@ -129,17 +128,6 @@ function FindingMeta({ item }: { readonly item: ResearchCase }) {
               rel="noopener noreferrer"
               className="inline-flex items-center gap-1 break-all font-medium text-foreground hover:text-primary hover:underline"
             >
-              {owner ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={`https://github.com/${owner}.png?size=32`}
-                  alt=""
-                  width={14}
-                  height={14}
-                  loading="lazy"
-                  className="h-3.5 w-3.5 rounded-full"
-                />
-              ) : null}
               {repository}
               <ExternalLink className="h-3 w-3 text-muted-foreground" />
             </a>

@@ -97,6 +97,7 @@ Only when a landed change needs publishing, run in `web/`:
 
 ```sh
 npm run research:data:sync
+npm run verify:live
 npm run build
 npm run research:data:check
 ```
@@ -107,8 +108,10 @@ Neon snapshot, otherwise the publisher reads Neon rows. Never hand-edit exports 
 generated payload. Update required editorial inputs from the accepted evidence, then
 regenerate; do not use an allowlist or drop a failing case to make a gate pass.
 
-The build checks committed publication adjudications, site preflight, live fix objects,
-advisory links and tests. Inspect changed case content, additions/removals and counts
+`verify:live` fetches every published fix commit and advisory link; run it whenever the
+payload changes and do not push data that fails it. The build itself stays offline: it checks
+committed publication adjudications, the offline site preflight (including the committed
+fix-object witness) and tests, so a deploy never depends on GitHub or advisory hosts. Inspect changed case content, additions/removals and counts
 against the landed rows. For the offline payload check, run `publish_tp_ledger.py
 --from-export` in a scratch root with the same inputs and compare the generated payload:
 only `snapshot.generated_at`, ledger counters and `snapshot.ledger` provenance may differ.
