@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { NavHeader } from "@/components/nav-header";
+import { PrintExpander } from "@/components/print-expander";
 import { SiteFooter } from "@/components/site-footer";
 import { SITE_URL } from "@/lib/constants";
 import { getResearchSnapshot } from "@/lib/research-data";
@@ -66,6 +67,7 @@ export default function RootLayout({
             {children}
           </div>
           <SiteFooter />
+          <PrintExpander />
         </div>
       </body>
     </html>

@@ -153,6 +153,26 @@ function writeUrlState(
 
 const PAGE_SIZE = 20;
 
+function pageNumbers(page: number, count: number): (number | null)[] {
+  const wanted = new Set(
+    [1, count, page - 1, page, page + 1].filter(
+      (value) => value >= 1 && value <= count,
+    ),
+  );
+  const sorted = [...wanted].sort((a, b) => a - b);
+  const out: (number | null)[] = [];
+  for (const value of sorted) {
+    const previous = out.at(-1);
+    if (typeof previous === "number" && value - previous === 2) {
+      out.push(previous + 1);
+    } else if (typeof previous === "number" && value - previous > 2) {
+      out.push(null);
+    }
+    out.push(value);
+  }
+  return out;
+}
+
 export function ResearchCaseExplorer({
   cases,
   labels,
@@ -518,9 +538,40 @@ export function ResearchCaseExplorer({
                 >
                   Previous
                 </button>
-                <span className="text-xs tabular-nums text-muted-foreground">
+                <span className="text-xs tabular-nums text-muted-foreground sm:hidden">
                   Page {page} of {pageCount}
                 </span>
+                <ol className="hidden items-center gap-1 sm:flex">
+                  <li className="sr-only">
+                    Page {page} of {pageCount}
+                  </li>
+                  {pageNumbers(page, pageCount).map((value, index) =>
+                    value === null ? (
+                      <li
+                        key={`gap-${index}`}
+                        aria-hidden="true"
+                        className="px-1 text-muted-foreground"
+                      >
+                        …
+                      </li>
+                    ) : (
+                      <li key={value}>
+                        <button
+                          type="button"
+                          aria-current={value === page ? "page" : undefined}
+                          onClick={() => goToPage(value)}
+                          className={`min-w-8 rounded-md px-2 py-1 text-sm tabular-nums transition-colors ${
+                            value === page
+                              ? "bg-primary font-semibold text-primary-foreground"
+                              : "hover:bg-muted"
+                          }`}
+                        >
+                          {value}
+                        </button>
+                      </li>
+                    ),
+                  )}
+                </ol>
                 <button
                   type="button"
                   disabled={page === pageCount}
@@ -533,9 +584,23 @@ export function ResearchCaseExplorer({
             ) : null}
           </>
         ) : (
-          <p className="py-12 text-center text-sm text-muted-foreground">
-            No findings match these filters.
-          </p>
+          <div className="py-12 text-center text-sm text-muted-foreground">
+            <p className="text-base font-medium text-foreground">
+              No findings match these filters.
+            </p>
+            <p className="mt-2">
+              Try a CVE or GHSA ID, a repository name, or fewer filters.
+            </p>
+            {active ? (
+              <button
+                type="button"
+                onClick={clearFilters}
+                className="mt-4 rounded-md border border-border bg-card px-3 py-1.5 font-medium text-foreground transition-colors hover:border-foreground/40"
+              >
+                Clear all filters
+              </button>
+            ) : null}
+          </div>
         )}
       </div>
     </section>
