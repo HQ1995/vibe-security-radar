@@ -4,6 +4,8 @@ import { ArrowRight, ChevronDown, ExternalLink } from "lucide-react";
 import { stripMarkdown } from "@/lib/markdown-utils";
 import { formatPublished } from "@/lib/commit-utils";
 import { ToolIcon } from "@/components/tool-icon";
+import { CopyButton } from "@/components/copy-button";
+import { SITE_URL } from "@/lib/constants";
 import { SeverityLabel } from "@/components/severity-label";
 import { severityLevel } from "@/lib/research-format";
 import {
@@ -387,15 +389,37 @@ function MechanismDisclosure({
 }
 
 function CaseFactsCard({ item }: { readonly item: ResearchCase }) {
+  const publicId = preferredCaseId(item);
+  const citation = `Vibe Security Radar, "${publicId}${item.repository ? ` in ${item.repository}` : ""}," Georgia Tech SSLab, ${SITE_URL}/cves/${publicId}/`;
   const identities = [item.case_id, ...item.aliases];
   const cveId = identities.find((value) => /^CVE-/i.test(value));
   const ghsaId = identities.find((value) => /^GHSA-/i.test(value));
   const facts: { label: string; value: ReactNode }[] = [
     ...(cveId
-      ? [{ label: "CVE ID", value: <span className="font-mono">{cveId}</span> }]
+      ? [
+          {
+            label: "CVE ID",
+            value: (
+              <span className="inline-flex items-center gap-1">
+                <span className="font-mono">{cveId}</span>
+                <CopyButton value={cveId} label="CVE ID" />
+              </span>
+            ),
+          },
+        ]
       : []),
     ...(ghsaId
-      ? [{ label: "GHSA ID", value: <span className="font-mono">{ghsaId}</span> }]
+      ? [
+          {
+            label: "GHSA ID",
+            value: (
+              <span className="inline-flex items-center gap-1">
+                <span className="font-mono">{ghsaId}</span>
+                <CopyButton value={ghsaId} label="GHSA ID" />
+              </span>
+            ),
+          },
+        ]
       : []),
     {
       label: "Published",
@@ -477,16 +501,38 @@ function CaseFactsCard({ item }: { readonly item: ResearchCase }) {
           ))}
         </div>
       ) : null}
-      {item.advisory_url ? (
+      <div className="mt-4 space-y-2 border-t border-border pt-4">
+        {item.advisory_url ? (
+          <a
+            href={item.advisory_url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-1 text-primary hover:underline"
+          >
+            Advisory source <ExternalLink className="h-3 w-3" />
+          </a>
+        ) : null}
         <a
-          href={item.advisory_url}
+          href={`https://github.com/HQ1995/vibe-security-radar/issues/new?${new URLSearchParams({
+            title: `Correction: ${publicId}`,
+            body: `Finding: ${SITE_URL}/cves/${publicId}/\n\nWhat should change, and the advisory, commit or release evidence for it:\n`,
+          })}`}
           target="_blank"
           rel="noopener noreferrer"
-          className="mt-4 inline-flex items-center gap-1 border-t border-border pt-4 text-primary hover:underline"
+          className="flex items-center gap-1 text-primary hover:underline"
         >
-          Advisory source <ExternalLink className="h-3 w-3" />
+          Suggest a correction <ExternalLink className="h-3 w-3" />
         </a>
-      ) : null}
+      </div>
+      <div className="mt-4 border-t border-border pt-4">
+        <div className="flex items-center justify-between gap-2">
+          <p className="font-medium">Cite this finding</p>
+          <CopyButton value={citation} label="citation" />
+        </div>
+        <p className="mt-2 text-xs leading-5 text-muted-foreground [overflow-wrap:anywhere]">
+          {citation}
+        </p>
+      </div>
     </div>
   );
 }

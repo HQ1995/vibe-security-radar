@@ -673,6 +673,17 @@ describe("canonical case evidence", () => {
     );
   });
 
+  it("offers a correction issue and a citation for every finding", () => {
+    const item = getResearchCaseById("CVE-2025-4143")!;
+    const html = renderToStaticMarkup(<CanonicalCaseEvidence item={item} />);
+
+    expect(html).toContain("Suggest a correction");
+    expect(html).toContain("issues/new?title=Correction%3A+CVE-2025-4143");
+    expect(html).toContain(
+      "Vibe Security Radar, &quot;CVE-2025-4143 in cloudflare/workers-oauth-provider,&quot; Georgia Tech SSLab, https://vibesecradar.com/cves/CVE-2025-4143/",
+    );
+  });
+
   it("shows release facts in the case facts card without not-recorded rows", () => {
     const withRelease = getResearchCaseById("GHSA-3RP5-JJMW-4WV2");
     const withoutRelease = getResearchCaseById("GHSA-C7RR-QHWX-6Q49");
