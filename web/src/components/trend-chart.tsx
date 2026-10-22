@@ -178,7 +178,7 @@ export function TrendChart({
           </p>
         </div>
         {columns.length ? (
-          <div className="flex shrink-0 flex-wrap items-end gap-x-5 gap-y-2">
+          <div className="flex min-w-0 flex-wrap items-end gap-x-5 gap-y-2">
             {breakdowns.length ? (
               <label className="flex items-center gap-2 text-sm text-muted-foreground">
                 Break down by
