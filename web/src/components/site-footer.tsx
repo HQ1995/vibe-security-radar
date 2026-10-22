@@ -39,12 +39,12 @@ export function SiteFooter() {
           {DIRECTORY.map((group) => (
             <div key={group.kind}>
               <p className="font-semibold text-foreground">{group.title}</p>
-              <ul className="mt-2 space-y-1.5">
+              <ul className="mt-1">
                 {getTopics(group.kind).map((topic) => (
                   <li key={topic.key}>
                     <Link
                       href={topicPath(topic)}
-                      className="transition-colors hover:text-foreground"
+                      className="inline-block py-1 transition-colors hover:text-foreground"
                     >
                       {topic.label}
                     </Link>
@@ -54,34 +54,34 @@ export function SiteFooter() {
             </div>
           ))}
         </nav>
-        <div className="flex flex-wrap items-start gap-x-5 gap-y-1.5 lg:flex-col">
-          <p className="hidden font-semibold text-foreground lg:block">
+        <div className="flex flex-wrap items-start gap-x-5 lg:flex-col lg:gap-0">
+          <p className="hidden pb-1 font-semibold text-foreground lg:block">
             Project
           </p>
           <a
             href="https://github.com/HQ1995/vibe-security-radar"
             target="_blank"
             rel="noopener noreferrer"
-            className="transition-colors hover:text-foreground"
+            className="inline-block py-1 transition-colors hover:text-foreground"
           >
             GitHub
           </a>
           <a
             href="/data/findings.csv"
             download
-            className="transition-colors hover:text-foreground"
+            className="inline-block py-1 transition-colors hover:text-foreground"
           >
             Data (CSV)
           </a>
           <a
             href="/feed.xml"
-            className="transition-colors hover:text-foreground"
+            className="inline-block py-1 transition-colors hover:text-foreground"
           >
             Atom feed
           </a>
           <a
             href="mailto:hanqing@gatech.edu"
-            className="transition-colors hover:text-foreground"
+            className="inline-block py-1 transition-colors hover:text-foreground"
           >
             Contact
           </a>
