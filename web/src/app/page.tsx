@@ -5,8 +5,10 @@ import { Search } from "lucide-react";
 import { AiToolComparison } from "@/components/ai-tool-comparison";
 import { DistributionBars } from "@/components/distribution-bars";
 import { OverviewPanel } from "@/components/overview-panel";
+import { SeverityLabel } from "@/components/severity-label";
 import { ToolIcon } from "@/components/tool-icon";
 import { TrendChart } from "@/components/trend-chart";
+import { SITE_URL } from "@/lib/constants";
 import { formatMonthShort } from "@/lib/month-utils";
 import {
   formatContributionClass,
@@ -27,7 +29,10 @@ import {
 } from "@/lib/research-data";
 
 export const metadata: Metadata = {
-  alternates: { canonical: "/" },
+  alternates: {
+    canonical: "/",
+    types: { "application/atom+xml": "/feed.xml" },
+  },
 };
 
 const MEDIA_COVERAGE = [
@@ -113,6 +118,7 @@ function FindingRow({ item }: { readonly item: ResearchCase }) {
         {getCaseHeadline(item)}
       </Link>
       <p className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
+        <SeverityLabel severity={item.severity} />
         <span className="font-mono">{id}</span>
         <span aria-hidden="true">·</span>
         <span>{item.repository ?? "Repository not recorded"}</span>
@@ -177,11 +183,46 @@ export default function HomePage() {
 
   return (
     <main>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
+            "@context": "https://schema.org",
+            "@type": "Dataset",
+            name: "Vibe Security Radar",
+            description: `${caseCount} publicly disclosed vulnerabilities where an AI-assisted code change introduced the flaw, exposed the vulnerable path, or left a security fix incomplete, each linked to first-party evidence.`,
+            url: SITE_URL,
+            creator: { "@type": "Organization", name: "Georgia Tech SSLab" },
+            license: "https://opensource.org/licenses/MIT",
+            temporalCoverage: `${research.snapshot.coverage_from ?? ""}/${research.snapshot.coverage_to ?? ""}`,
+            dateModified: research.snapshot.source_cutoff.slice(0, 10),
+            keywords: [
+              "AI-generated code",
+              "vulnerabilities",
+              "CVE",
+              "GHSA",
+              "software security",
+            ],
+            distribution: [
+              {
+                "@type": "DataDownload",
+                encodingFormat: "text/csv",
+                contentUrl: `${SITE_URL}/data/findings.csv`,
+              },
+            ],
+          }).replace(/</g, "\\u003c"),
+        }}
+      />
       <header className="border-b border-border">
         <div className="page-container grid gap-8 py-8 sm:py-10 lg:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)] lg:items-center lg:gap-12">
           <div>
             <p className="text-sm text-muted-foreground">
-              Georgia Tech SSLab · Security research
+              Georgia Tech SSLab · Security research · Data through{" "}
+              {formatMonthShort(
+                research.snapshot.source_cutoff.slice(0, 7),
+              ).slice(0, 3)}{" "}
+              {Number(research.snapshot.source_cutoff.slice(8, 10))},{" "}
+              {research.snapshot.source_cutoff.slice(0, 4)}
             </p>
             <h1 className="mt-3 text-[2.5rem] font-semibold leading-[1.05] tracking-[-0.04em] sm:text-5xl">
               Vibe Security Radar

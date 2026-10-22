@@ -23,6 +23,7 @@ export interface ResearchCaseFilters {
   readonly language: string;
   readonly repository: string;
   readonly month: string;
+  readonly severity?: string;
 }
 
 const searchIndex = new WeakMap<FindingRow, string>();
@@ -67,6 +68,7 @@ export function filterResearchCases<T extends FindingRow>(
       (!filters.language ||
         item.repository_metadata.language === filters.language) &&
       (!filters.repository || item.repository === filters.repository) &&
+      (!filters.severity || (item.severity ?? "none") === filters.severity) &&
       (!filters.month ||
         (filters.month === "undated"
           ? !item.published_at
@@ -88,6 +90,7 @@ const EMPTY_FILTERS: ResearchCaseFilters = {
   language: "",
   repository: "",
   month: "",
+  severity: "",
 };
 
 const URL_PARAMS: Readonly<Record<keyof ResearchCaseFilters, string>> = {
@@ -98,6 +101,7 @@ const URL_PARAMS: Readonly<Record<keyof ResearchCaseFilters, string>> = {
   language: "language",
   repository: "repository",
   month: "month",
+  severity: "severity",
 };
 
 const FILTER_KEYS = Object.keys(URL_PARAMS) as (keyof ResearchCaseFilters)[];
@@ -163,6 +167,24 @@ export function ResearchCaseExplorer({
   );
   const { filters, page: requestedPage, sort } = parseUrlState(search);
   const resultsRef = useRef<HTMLDivElement>(null);
+  const searchRef = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    const focusSearch = (event: KeyboardEvent) => {
+      const target = event.target as HTMLElement | null;
+      if (
+        event.key !== "/" ||
+        event.metaKey ||
+        event.ctrlKey ||
+        event.altKey ||
+        target?.closest("input, textarea, select, [contenteditable='true']")
+      )
+        return;
+      event.preventDefault();
+      searchRef.current?.focus();
+    };
+    document.addEventListener("keydown", focusSearch);
+    return () => document.removeEventListener("keydown", focusSearch);
+  }, []);
   useEffect(() => {
     rememberFindingsUrl(`${window.location.pathname}${search}`);
   }, [search]);
@@ -241,6 +263,18 @@ export function ResearchCaseExplorer({
       })),
     },
     {
+      key: "severity",
+      label: "Severity",
+      all: "All severities",
+      options: [
+        { value: "CRITICAL", label: "Critical" },
+        { value: "HIGH", label: "High" },
+        { value: "MEDIUM", label: "Medium" },
+        { value: "LOW", label: "Low" },
+        { value: "none", label: "Not scored" },
+      ],
+    },
+    {
       key: "repository",
       label: "Repository",
       all: "All repositories",
@@ -276,6 +310,7 @@ export function ResearchCaseExplorer({
     contribution: count((item) => item.contribution_class),
     cause: count((item) => item.cause_category),
     language: count((item) => item.repository_metadata.language || null),
+    severity: count((item) => item.severity ?? "none"),
   };
   const facets = selects
     .filter((select) => select.key in facetCounts)
@@ -289,12 +324,20 @@ export function ResearchCaseExplorer({
               option.value,
             ) ?? 0,
         }))
-        .sort((a, b) => b.count - a.count || a.label.localeCompare(b.label)),
+        .sort((a, b) =>
+          select.key === "severity"
+            ? 0
+            : b.count - a.count || a.label.localeCompare(b.label),
+        ),
     }))
     .sort(
       (a, b) =>
-        ["tool", "contribution", "cause", "language"].indexOf(a.key) -
-        ["tool", "contribution", "cause", "language"].indexOf(b.key),
+        ["tool", "contribution", "severity", "cause", "language"].indexOf(
+          a.key,
+        ) -
+        ["tool", "contribution", "severity", "cause", "language"].indexOf(
+          b.key,
+        ),
     );
   const headerSelects = selects.filter(
     (select) => select.key === "repository" || select.key === "month",
@@ -365,12 +408,19 @@ export function ResearchCaseExplorer({
             className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
           />
           <input
+            ref={searchRef}
             type="search"
             value={filters.query}
             onChange={(event) => update("query", event.target.value)}
             placeholder="CVE, GHSA, or repository"
-            className="h-10 w-full rounded-md border border-input bg-card pl-9 pr-3 text-sm text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/15"
+            className="h-10 w-full rounded-md border border-input bg-card pl-9 pr-10 text-sm text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/15"
           />
+          <kbd
+            aria-hidden="true"
+            className="pointer-events-none absolute right-3 top-1/2 hidden -translate-y-1/2 rounded border border-border px-1.5 font-mono text-[11px] text-muted-foreground sm:block"
+          >
+            /
+          </kbd>
         </label>
 
         <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4 lg:hidden">
@@ -378,9 +428,9 @@ export function ResearchCaseExplorer({
             <label key={facet.key} className="min-w-0">
               <span className="sr-only">{facet.label}</span>
               <select
-                value={filters[facet.key]}
+                value={filters[facet.key] ?? ""}
                 onChange={(event) => update(facet.key, event.target.value)}
-                className={`${selectClass(filters[facet.key])} w-full`}
+                className={`${selectClass(filters[facet.key] ?? "")} w-full`}
               >
                 <option value="">{facet.all}</option>
                 {facet.options.map((option) => (
@@ -416,9 +466,9 @@ export function ResearchCaseExplorer({
               <label key={select.key} className="min-w-0">
                 <span className="sr-only">{select.label}</span>
                 <select
-                  value={filters[select.key]}
+                  value={filters[select.key] ?? ""}
                   onChange={(event) => update(select.key, event.target.value)}
-                  className={`${selectClass(filters[select.key])} w-40`}
+                  className={`${selectClass(filters[select.key] ?? "")} w-40`}
                 >
                   <option value="">{select.all}</option>
                   {select.options.map((option) => (

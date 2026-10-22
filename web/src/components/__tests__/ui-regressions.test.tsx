@@ -10,6 +10,8 @@ import CvesPage from "@/app/cves/page";
 import CveDetailPage, { generateMetadata } from "@/app/cves/[id]/page";
 import sitemap from "@/app/sitemap";
 import { GET as findingsCsv } from "@/app/data/findings.csv/route";
+import { GET as findingsFeed } from "@/app/feed.xml/route";
+import { SeverityLabel } from "@/components/severity-label";
 import HomePage from "@/app/page";
 import { CanonicalCaseEvidence } from "@/components/canonical-case-evidence";
 import { getIconDimensions } from "@/components/tool-icon";
@@ -161,6 +163,28 @@ describe("homepage navigation", () => {
     expect(lines).toHaveLength(getResearchCases().length + 1);
     expect(text).toContain("https://vibesecradar.com/cves/CVE-2025-4143/");
     expect(text).not.toContain("alias-");
+  });
+
+  it("publishes an Atom feed of the newest findings", async () => {
+    const xml = await findingsFeed().text();
+
+    expect(xml).toContain('<feed xmlns="http://www.w3.org/2005/Atom">');
+    expect(xml.match(/<entry>/g)).toHaveLength(50);
+    expect(xml).toContain("https://vibesecradar.com/cves/");
+  });
+
+  it("describes the catalog as a schema.org Dataset with a CSV download", () => {
+    const html = renderToStaticMarkup(<HomePage />);
+
+    expect(html).toContain('"@type":"Dataset"');
+    expect(html).toContain("https://vibesecradar.com/data/findings.csv");
+  });
+
+  it("labels severity regardless of the source casing", () => {
+    expect(renderToStaticMarkup(<SeverityLabel severity="high" />)).toContain(
+      ">High<",
+    );
+    expect(renderToStaticMarkup(<SeverityLabel severity={null} />)).toBe("");
   });
 
   it("describes a finding with its plain-language headline", async () => {

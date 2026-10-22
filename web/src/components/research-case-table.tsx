@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { LanguageBadge } from "@/components/language-badge";
+import { SeverityLabel } from "@/components/severity-label";
 import { ToolIcon } from "@/components/tool-icon";
 import {
   aiToolLabel,
@@ -37,6 +38,7 @@ export function ResearchCaseTable({
               {getCaseHeadline(item)}
             </Link>
             <p className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
+              <SeverityLabel severity={item.severity} />
               <span className="break-all font-mono font-medium text-foreground">
                 {formatCaseLabel(item, id)}
               </span>

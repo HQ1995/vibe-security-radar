@@ -3,9 +3,9 @@ import { ArrowRight, ChevronDown, ExternalLink } from "lucide-react";
 
 import { stripMarkdown } from "@/lib/markdown-utils";
 import { formatPublished } from "@/lib/commit-utils";
-import { severityBadgeClass } from "@/lib/constants";
-import { Badge } from "@/components/ui/badge";
 import { ToolIcon } from "@/components/tool-icon";
+import { SeverityLabel } from "@/components/severity-label";
+import { severityLevel } from "@/lib/research-format";
 import {
   formatCaseLabel,
   formatContributionClass,
@@ -403,8 +403,8 @@ function CaseFactsCard({ item }: { readonly item: ResearchCase }) {
     },
     {
       label: "Severity",
-      value: item.severity ? (
-        <Badge className={severityBadgeClass(item.severity)}>{item.severity}</Badge>
+      value: severityLevel(item.severity) ? (
+        <SeverityLabel severity={item.severity} />
       ) : (
         "Not scored"
       ),

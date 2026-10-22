@@ -14,6 +14,7 @@ export type FindingRow = CaseIdentity &
     | "carrier_set"
     | "minimum_fix_set"
   > & {
+    readonly severity?: string | null;
     readonly repository_metadata: Pick<
       ResearchCase["repository_metadata"],
       "language"
@@ -152,10 +153,24 @@ export function toFindingRow(item: ResearchCase): FindingRow {
     candidate_set: item.candidate_set,
     carrier_set: item.carrier_set,
     minimum_fix_set: item.minimum_fix_set,
+    severity: severityLevel(item.severity),
     ai_provenance: {
       family: item.ai_provenance.family,
       coverage: item.ai_provenance.coverage,
     },
     headline: getCaseHeadline(item),
   };
+}
+
+const SEVERITY_LEVELS = ["CRITICAL", "HIGH", "MEDIUM", "LOW"] as const;
+
+export type SeverityLevel = (typeof SEVERITY_LEVELS)[number];
+
+export function severityLevel(
+  value: string | null | undefined,
+): SeverityLevel | null {
+  const level = String(value ?? "").trim().toUpperCase();
+  return (SEVERITY_LEVELS as readonly string[]).includes(level)
+    ? (level as SeverityLevel)
+    : null;
 }

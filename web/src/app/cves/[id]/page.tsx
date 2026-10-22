@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { ExternalLink } from "lucide-react";
 
 import { BackToFindings } from "@/components/back-to-findings";
+import { SeverityLabel } from "@/components/severity-label";
 import { formatPublished } from "@/lib/commit-utils";
 import { CanonicalCaseEvidence } from "@/components/canonical-case-evidence";
 import {
@@ -104,6 +105,12 @@ function FindingMeta({ item }: { readonly item: ResearchCase }) {
     : 0;
   return (
     <>
+      {item.severity ? (
+        <>
+          <span aria-hidden="true">·</span>
+          <SeverityLabel severity={item.severity} />
+        </>
+      ) : null}
       <span aria-hidden="true">·</span>
       <span>
         {item.published_at
