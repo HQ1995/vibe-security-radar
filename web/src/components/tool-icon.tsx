@@ -35,7 +35,7 @@ export function ToolIcon({ tool, size = 20 }: ToolIconProps) {
   const dimensions = getIconDimensions(tool, size);
   const source =
     tool === "openai_codex"
-      ? "/icons/tools/chatgpt.png"
+      ? "/icons/tools/chatgpt-64.png"
       : `/icons/tools/${tool}.svg`;
 
   if (!TOOLS_WITH_ICONS.has(tool)) {

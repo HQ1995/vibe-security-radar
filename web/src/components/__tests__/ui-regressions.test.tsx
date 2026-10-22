@@ -122,7 +122,7 @@ describe("homepage hierarchy", () => {
     expect(html).toContain("Featured findings");
     expect(html).toContain("/icons/tools/claude_code.svg");
     expect(html).toContain("/icons/tools/github_copilot.svg");
-    expect(html).toContain("chatgpt.png");
+    expect(html).toContain("chatgpt-64.png");
     expect(html).not.toContain("/icons/tools/openai_codex_dark.svg");
     expect(html).toContain("What counts as an AI-contributed vulnerability?");
     expect(html).not.toContain(
@@ -709,6 +709,9 @@ describe("chart icon contracts", () => {
     expect(createHash("sha256").update(icon).digest("hex")).toBe(
       "e799e2fa0d4149a2ec28fc595c8bfb4990bcbb478649791b42acff7cde6e805e",
     );
+    const small = readFileSync("public/icons/tools/chatgpt-64.png");
+    expect(small.readUInt32BE(16)).toBe(64);
+    expect(small.readUInt32BE(20)).toBe(64);
   });
 
   it("skips unavailable language assets", () => {
