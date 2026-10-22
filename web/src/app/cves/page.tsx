@@ -1,15 +1,16 @@
 import type { Metadata } from "next";
 
 import { ResearchCaseExplorer } from "@/components/research-case-explorer";
+import { pageMetadata } from "@/lib/page-metadata";
 import { getResearchCases, getResearchLabels } from "@/lib/research-data";
 import { toFindingRow } from "@/lib/research-format";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = pageMetadata({
   title: "Findings",
   description:
-    "Search every AI-contributed vulnerability finding by advisory, repository, AI tool, root cause, language and month.",
-  alternates: { canonical: "/cves" },
-};
+    "Search every published vulnerability traced to AI-generated code by CVE, GHSA, repository, AI tool, root cause, language and month.",
+  path: "/cves",
+});
 
 export default function CvesPage() {
   const cases = [...getResearchCases()]

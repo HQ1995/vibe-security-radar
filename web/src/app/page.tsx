@@ -4,11 +4,14 @@ import { Search } from "lucide-react";
 
 import { AiToolComparison } from "@/components/ai-tool-comparison";
 import { DistributionBars } from "@/components/distribution-bars";
+import { HeadlineStat } from "@/components/headline-stat";
 import { OverviewPanel } from "@/components/overview-panel";
 import { SeverityLabel } from "@/components/severity-label";
 import { ToolIcon } from "@/components/tool-icon";
 import { TrendChart } from "@/components/trend-chart";
 import { SITE_URL } from "@/lib/constants";
+import { pageMetadata } from "@/lib/page-metadata";
+import { topicHref } from "@/lib/topics";
 import { formatDay, formatMonthShort } from "@/lib/month-utils";
 import {
   formatContributionClass,
@@ -28,9 +31,21 @@ import {
   type ResearchCase,
 } from "@/lib/research-data";
 
+const toolNames = getAiToolDistribution()
+  .items.slice(0, 3)
+  .map((item) => item.label)
+  .join(", ");
+const homeMetadata = pageMetadata({
+  title: "Vibe Security Radar: CVEs traced to AI-generated code",
+  description: `${getResearchSnapshot().snapshot.case_count} published CVE and GitHub advisories where code written with ${toolNames} and other AI coding tools introduced or exposed the vulnerability, each traced to the responsible commit.`,
+  path: "/",
+  absoluteTitle: true,
+});
+
 export const metadata: Metadata = {
+  ...homeMetadata,
   alternates: {
-    canonical: "/",
+    ...homeMetadata.alternates,
     types: { "application/atom+xml": "/feed.xml" },
   },
 };
@@ -83,28 +98,6 @@ function faqs(caseCount: number) {
 
 function findingsHref(key: string, value: string): string {
   return `/cves?${new URLSearchParams({ [key]: value })}`;
-}
-
-function HeadlineStat({
-  label,
-  value,
-  detail,
-}: {
-  readonly label: string;
-  readonly value: string;
-  readonly detail: string;
-}) {
-  return (
-    <div className="min-w-0">
-      <dt className="text-xs text-muted-foreground">{label}</dt>
-      <dd className="mt-1 text-2xl font-semibold tracking-[-0.02em]">
-        {value}
-      </dd>
-      <dd className="mt-0.5 line-clamp-2 text-xs text-muted-foreground [overflow-wrap:anywhere]">
-        {detail}
-      </dd>
-    </div>
-  );
 }
 
 function FindingRow({ item }: { readonly item: ResearchCase }) {
@@ -389,7 +382,9 @@ export default function HomePage() {
               items={causes.map((item) => ({
                 ...item,
                 muted: item.key === "other_ambiguous",
-                href: findingsHref("cause", item.key),
+                href:
+                  topicHref("cause", item.key) ??
+                  findingsHref("cause", item.key),
                 hint: item.definition,
               }))}
             />

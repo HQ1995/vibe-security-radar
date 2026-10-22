@@ -6,6 +6,7 @@ import {
   getAiToolBaseRate,
   getAiToolDistribution,
 } from "@/lib/research-data";
+import { topicHref } from "@/lib/topics";
 
 const pct = (value: number) =>
   value >= 0.1 || value === 0
@@ -50,7 +51,10 @@ export function AiToolComparison() {
         {rows.map((row) => (
           <li key={row.key}>
             <Link
-              href={`/cves?${new URLSearchParams({ tool: row.label })}`}
+              href={
+                topicHref("tool", row.key) ??
+                `/cves?${new URLSearchParams({ tool: row.label })}`
+              }
               className="group -mx-2 block rounded-md px-2 py-1.5 transition-colors hover:bg-card"
             >
               <div className="flex items-center justify-between gap-3 text-sm">

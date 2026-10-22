@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { ExternalLink } from "lucide-react";
 
 import { BackToFindings } from "@/components/back-to-findings";
+import { BreadcrumbJsonLd } from "@/components/json-ld";
 import { ResearchCaseTable } from "@/components/research-case-table";
 import { toFindingRow } from "@/lib/research-format";
 import { SeverityLabel } from "@/components/severity-label";
@@ -19,15 +20,11 @@ import {
   getResearchLabels,
   type ResearchCase,
 } from "@/lib/research-data";
+import { clampDescription, pageMetadata } from "@/lib/page-metadata";
+import { topicHref } from "@/lib/topics";
 
 export const dynamicParams = false;
 
-const SHARE_IMAGE = {
-  url: "/opengraph-image",
-  width: 1200,
-  height: 630,
-  alt: "Vibe Security Radar",
-};
 export function generateStaticParams() {
   const ids = new Set<string>();
   for (const item of getResearchCases()) {
@@ -49,32 +46,14 @@ export async function generateMetadata({
   const item = getResearchCaseById(id);
   if (!item) return { title: "Finding not found" };
   const canonicalId = preferredCaseId(item);
-  const headline = getCaseHeadline(item);
-  const description =
-    headline.length > 200
-      ? `${headline.slice(0, 197).replace(/\s+\S*$/, "")}…`
-      : headline;
-  const title = item.repository
-    ? `${canonicalId} in ${item.repository}`
-    : canonicalId;
-  return {
-    title,
-    description,
-    alternates: { canonical: `/cves/${canonicalId}` },
-    openGraph: {
-      title,
-      description,
-      url: `/cves/${canonicalId}`,
-      type: "article",
-      images: [SHARE_IMAGE],
-    },
-    twitter: {
-      card: "summary_large_image",
-      title,
-      description,
-      images: [SHARE_IMAGE],
-    },
-  };
+  return pageMetadata({
+    title: item.repository
+      ? `${canonicalId} in ${item.repository}`
+      : canonicalId,
+    description: clampDescription(getCaseHeadline(item)),
+    path: `/cves/${canonicalId}`,
+    type: "article",
+  });
 }
 
 function Breadcrumb({
@@ -182,7 +161,8 @@ function RelatedFindings({ item }: { readonly item: ResearchCase }) {
       ]
     : [
         `More ${getCauseCategoryLabel(item.cause_category)} findings`,
-        `/cves?${new URLSearchParams({ cause: item.cause_category ?? "" })}`,
+        topicHref("cause", item.cause_category) ??
+          `/cves?${new URLSearchParams({ cause: item.cause_category ?? "" })}`,
       ];
   return (
     <section
@@ -217,6 +197,15 @@ export default async function CveDetailPage({
 
   return (
     <main className="page-container space-y-6 py-8 sm:py-10">
+      <BreadcrumbJsonLd
+        items={[
+          { name: "Findings", path: "/cves/" },
+          {
+            name: preferredCaseId(item),
+            path: `/cves/${preferredCaseId(item)}/`,
+          },
+        ]}
+      />
       <Breadcrumb id={id} item={item} />
 
       <CanonicalCaseEvidence

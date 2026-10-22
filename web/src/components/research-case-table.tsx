@@ -53,7 +53,7 @@ export function ResearchCaseTable({
               <span aria-hidden="true" className="hidden sm:inline">
                 ·
               </span>
-              <span className="hidden sm:inline [&>span]:text-xs">
+              <span className="hidden items-center sm:inline-flex [&>span]:text-xs">
                 <LanguageBadge language={item.repository_metadata.language} />
               </span>
               <span aria-hidden="true">·</span>

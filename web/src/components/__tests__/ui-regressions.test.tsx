@@ -6,11 +6,17 @@ import { describe, expect, it } from "vitest";
 import ErrorPage from "@/app/error";
 import Loading from "@/app/loading";
 import AboutPage from "@/app/about/page";
-import CvesPage from "@/app/cves/page";
+import CvesPage, { metadata as cvesMetadata } from "@/app/cves/page";
+import {
+  generateMetadata as causeMetadata,
+  generateStaticParams as causeParams,
+} from "@/app/causes/[slug]/page";
+import ToolPage from "@/app/tools/[slug]/page";
 import CveDetailPage, { generateMetadata } from "@/app/cves/[id]/page";
 import sitemap from "@/app/sitemap";
 import { GET as findingsCsv } from "@/app/data/findings.csv/route";
 import { GET as findingsFeed } from "@/app/feed.xml/route";
+import { JsonLd } from "@/components/json-ld";
 import { SeverityLabel } from "@/components/severity-label";
 import HomePage from "@/app/page";
 import { CanonicalCaseEvidence } from "@/components/canonical-case-evidence";
@@ -23,6 +29,7 @@ import { ResearchCaseTable } from "@/components/research-case-table";
 import { TrendChart } from "@/components/trend-chart";
 import { getLanguageIconKey } from "@/lib/language-icons";
 import { formatMonthShort } from "@/lib/month-utils";
+import { getTopic, getTopics } from "@/lib/topics";
 import {
   formatContributionClass,
   getAiToolLabel,
@@ -133,13 +140,24 @@ describe("homepage hierarchy", () => {
 });
 
 describe("homepage navigation", () => {
-  it("links every pattern row to the matching filtered index", () => {
+  it("links pattern rows to landing pages or the filtered index", () => {
     const html = renderToStaticMarkup(<HomePage />);
 
-    expect(html).toContain('href="/cves?tool=Claude"');
+    expect(html).toContain('href="/tools/claude"');
+    expect(html).toContain('href="/causes/injection"');
+    expect(html).toContain('href="/cves?cause=other_ambiguous"');
     expect(html).toContain('href="/cves?language=Python"');
-    expect(html).toContain('href="/cves?cause=injection"');
     expect(html).toContain('href="/cves?repository=openclaw%2Fopenclaw"');
+  });
+
+  it("lists landing pages in the sitemap", () => {
+    const urls = sitemap().map((entry) => entry.url);
+
+    expect(urls).toContain("https://vibesecradar.com/tools/claude/");
+    expect(urls).toContain("https://vibesecradar.com/causes/injection/");
+    expect(urls).not.toContain(
+      "https://vibesecradar.com/causes/other-ambiguous/",
+    );
   });
 
   it("lists every finding in the sitemap on the canonical domain", () => {
@@ -700,6 +718,81 @@ describe("canonical case evidence", () => {
     expect(
       renderToStaticMarkup(<CanonicalCaseEvidence item={withoutRelease!} />),
     ).not.toContain("Not recorded");
+  });
+});
+
+describe("topic landing pages", () => {
+  it("renders the latest findings for an AI tool with crawlable links", async () => {
+    const topic = getTopic("tool", "claude")!;
+    const html = renderToStaticMarkup(
+      await ToolPage({ params: Promise.resolve({ slug: "claude" }) }),
+    );
+
+    expect(html).toContain("Vulnerabilities in code written with Claude");
+    expect(html).toContain(`Latest 50 of ${topic.cases.length} findings`);
+    expect(html.match(/data-finding=/g)).toHaveLength(50);
+    expect(html).toContain('href="/cves?tool=Claude"');
+    expect(html).toContain('href="/cves?tool=Claude&amp;cause=injection"');
+    expect(html).toContain('"@type":"BreadcrumbList"');
+  });
+
+  it("only pages root causes and tools with enough findings", () => {
+    expect(getTopics("cause").map((topic) => topic.slug)).not.toContain(
+      "other-ambiguous",
+    );
+    for (const kind of ["tool", "cause"] as const) {
+      for (const topic of getTopics(kind)) {
+        expect(topic.cases.length).toBeGreaterThanOrEqual(5);
+      }
+    }
+    expect(causeParams().map((entry) => entry.slug)).toContain("injection");
+  });
+
+  it("gives each landing page its own title, description and canonical", async () => {
+    const meta = await causeMetadata({
+      params: Promise.resolve({ slug: "injection" }),
+    });
+
+    expect(meta.title).toBe("Injection & unsafe execution in AI-generated code");
+    expect(meta.description).toMatch(
+      new RegExp(
+        `^${getTopic("cause", "injection")!.cases.length} published CVEs and GitHub advisories where AI-generated code caused injection & unsafe execution flaws`,
+      ),
+    );
+    expect(meta.alternates?.canonical).toBe("/causes/injection");
+    expect(meta.openGraph?.title).toBe(meta.title);
+  });
+});
+
+describe("structured data", () => {
+  it("adds a breadcrumb trail to finding pages", async () => {
+    const html = renderToStaticMarkup(
+      await CveDetailPage({ params: Promise.resolve({ id: "CVE-2025-4143" }) }),
+    );
+    const [json] = [
+      ...html.matchAll(
+        /<script type="application\/ld\+json">(.*?)<\/script>/g,
+      ),
+    ].map((match) => JSON.parse(match[1]));
+
+    expect(json["@type"]).toBe("BreadcrumbList");
+    expect(json.itemListElement.at(-1).item).toBe(
+      "https://vibesecradar.com/cves/CVE-2025-4143/",
+    );
+  });
+
+  it("escapes markup inside JSON-LD", () => {
+    const html = renderToStaticMarkup(
+      <JsonLd data={{ name: "</script><b>x</b>" }} />,
+    );
+
+    expect(html).not.toContain("</script><b>");
+    expect(html).toContain("\\u003c/script>");
+  });
+
+  it("gives index pages their own social title", () => {
+    expect(cvesMetadata.openGraph?.title).toBe("Findings");
+    expect(cvesMetadata.openGraph?.url).toBe("/cves");
   });
 });
 

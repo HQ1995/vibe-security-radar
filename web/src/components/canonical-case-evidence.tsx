@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import Link from "next/link";
 import { ArrowRight, ChevronDown, ExternalLink } from "lucide-react";
 
 import { stripMarkdown } from "@/lib/markdown-utils";
@@ -19,6 +20,23 @@ import {
   type ResearchCodeHunk,
   type ResearchRelease,
 } from "@/lib/research-data";
+import { topicHref } from "@/lib/topics";
+
+function TopicLink({
+  href,
+  children,
+}: {
+  readonly href: string | null;
+  readonly children: ReactNode;
+}) {
+  return href ? (
+    <Link href={href} className="text-primary hover:underline">
+      {children}
+    </Link>
+  ) : (
+    children
+  );
+}
 
 function shortSha(value: string): string {
   return value.slice(0, 10);
@@ -440,15 +458,31 @@ function CaseFactsCard({ item }: { readonly item: ResearchCase }) {
     {
       label: "AI tool",
       value: (
-        <span className="inline-flex items-center gap-1.5">
-          <ToolIcon tool={getAiFamilyIconKey(item.ai_provenance.family)} size={16} />
-          {getAiToolLabel(item)}
-        </span>
+        <TopicLink
+          href={
+            item.ai_provenance.coverage === "complete"
+              ? topicHref("tool", item.ai_provenance.family)
+              : null
+          }
+        >
+          <span className="inline-flex items-center gap-1.5">
+            <ToolIcon tool={getAiFamilyIconKey(item.ai_provenance.family)} size={16} />
+            {getAiToolLabel(item)}
+          </span>
+        </TopicLink>
       ),
     },
     {
       label: "AI role",
       value: formatContributionClass(item.contribution_class),
+    },
+    {
+      label: "Root cause",
+      value: (
+        <TopicLink href={topicHref("cause", item.cause_category)}>
+          {getCauseCategoryLabel(item.cause_category)}
+        </TopicLink>
+      ),
     },
     ...(item.vulnerable_release
       ? [

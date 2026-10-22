@@ -18,7 +18,7 @@ const geistMono = Geist_Mono({
 });
 
 const DESCRIPTION =
-  "Mechanism-level research tracing publicly disclosed vulnerabilities to AI-authored code changes.";
+  "Research tracing published CVEs and GitHub advisories to the AI-generated code changes that introduced them.";
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),

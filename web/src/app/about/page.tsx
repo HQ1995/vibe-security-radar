@@ -1,13 +1,14 @@
 import type { Metadata } from "next";
 
+import { pageMetadata } from "@/lib/page-metadata";
 import { getResearchSnapshot } from "@/lib/research-data";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = pageMetadata({
   title: "How we verify",
   description:
-    "How Vibe Security Radar verifies AI-contributed vulnerabilities.",
-  alternates: { canonical: "/about" },
-};
+    "How Vibe Security Radar traces a published CVE to the AI-assisted change behind it: match the advisory, locate the AI-assisted commit, prove cause and fix, and confirm the release.",
+  path: "/about",
+});
 
 const STEPS = [
   {
