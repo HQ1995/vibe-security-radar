@@ -160,7 +160,7 @@ export default function AboutPage() {
                     {href ? (
                       <Link
                         href={href}
-                        className="hover:text-primary hover:underline"
+                        className="text-primary hover:underline"
                       >
                         {cause.label}
                       </Link>
