@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
-import Image from "next/image";
 import Link from "next/link";
 
 import { AiToolComparison } from "@/components/ai-tool-comparison";
 import { DistributionBars } from "@/components/distribution-bars";
+import { OverviewPanel } from "@/components/overview-panel";
 import { ToolIcon } from "@/components/tool-icon";
 import { TrendChart } from "@/components/trend-chart";
 import { formatMonthShort } from "@/lib/month-utils";
@@ -79,25 +79,24 @@ function findingsHref(key: string, value: string): string {
   return `/cves?${new URLSearchParams({ [key]: value })}`;
 }
 
-function StatTile({
+function HeadlineStat({
   label,
   value,
   detail,
-  icon,
 }: {
   readonly label: string;
-  readonly value: React.ReactNode;
+  readonly value: string;
   readonly detail: string;
-  readonly icon?: React.ReactNode;
 }) {
   return (
-    <div className="min-w-0 bg-card p-4 sm:p-5">
+    <div className="min-w-0">
       <dt className="text-xs text-muted-foreground">{label}</dt>
-      <dd className="mt-1.5 flex min-w-0 items-center gap-2 text-xl font-semibold tracking-[-0.02em] sm:text-2xl">
-        {icon}
-        <span className="min-w-0 break-words">{value}</span>
+      <dd className="mt-1 text-2xl font-semibold tracking-[-0.02em]">
+        {value}
       </dd>
-      <dd className="mt-1 text-xs text-muted-foreground">{detail}</dd>
+      <dd className="mt-0.5 line-clamp-2 text-xs text-muted-foreground [overflow-wrap:anywhere]">
+        {detail}
+      </dd>
     </div>
   );
 }
@@ -176,23 +175,17 @@ export default function HomePage() {
     }
     return picked;
   })();
-  const peak = timeline.reduce(
-    (best, item) => (item.count > best.count ? item : best),
-    timeline[0] ?? { month: "", count: 0 },
-  );
-  const topTool = aiTools.items[0];
   const topRepository = repositories[0];
   const coveredFrom = (research.snapshot.coverage_from ?? "2025-05-01").slice(
     0,
     7,
   );
   const coveredTo = (research.snapshot.coverage_to ?? "2026-08-16").slice(0, 7);
-  const [repoOwner, repoName] = (topRepository?.label ?? "").split("/");
 
   return (
     <main>
       <header className="border-b border-border">
-        <div className="page-container grid gap-8 py-10 sm:py-14 lg:grid-cols-[minmax(0,1fr)_minmax(0,32rem)] lg:items-center lg:gap-14">
+        <div className="page-container grid gap-8 py-8 sm:py-10 lg:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)] lg:items-center lg:gap-12">
           <div>
             <p className="section-kicker">
               Georgia Tech SSLab · Security research
@@ -200,11 +193,11 @@ export default function HomePage() {
             <h1 className="mt-3 text-[2.5rem] font-semibold leading-[1.05] tracking-[-0.04em] sm:text-5xl">
               Vibe Security Radar
             </h1>
-            <p className="mt-4 max-w-xl text-lg leading-7 text-muted-foreground sm:text-xl sm:leading-8">
+            <p className="mt-4 max-w-xl text-lg leading-7 text-muted-foreground">
               {caseCount} AI-contributed vulnerabilities cataloged and
               evidence-linked across their full causal chain.
             </p>
-            <div className="mt-7 flex flex-wrap items-center gap-3 text-sm">
+            <div className="mt-6 flex flex-wrap items-center gap-3 text-sm">
               <Link
                 href="/cves"
                 className="inline-flex h-10 items-center rounded-md bg-primary px-4 font-semibold text-primary-foreground transition-colors hover:bg-primary/90"
@@ -226,58 +219,35 @@ export default function HomePage() {
                 How we verify
               </Link>
             </div>
+            <dl className="mt-8 grid grid-cols-2 gap-x-8 gap-y-5 border-t border-border pt-6">
+              <HeadlineStat
+                label="Findings"
+                value={formatCount(caseCount)}
+                detail="AI-contributed vulnerabilities"
+              />
+              <HeadlineStat
+                label="Covered advisories"
+                value={formatCount(research.snapshot.ledger_total ?? 0)}
+                detail={`${formatMonthShort(coveredFrom)} – ${formatMonthShort(coveredTo)}`}
+              />
+              <HeadlineStat
+                label="Fully researched"
+                value={formatCount(research.snapshot.ledger_reviewed ?? 0)}
+                detail={`${Math.round(((research.snapshot.ledger_reviewed ?? 0) / Math.max(1, research.snapshot.ledger_total ?? 0)) * 100)}% of covered advisories so far`}
+              />
+              <HeadlineStat
+                label="Projects"
+                value={formatCount(repositories.length)}
+                detail={`Most represented project: ${topRepository?.label ?? "—"}`}
+              />
+            </dl>
           </div>
-          <dl className="grid grid-cols-2 gap-px overflow-hidden rounded-lg border border-border bg-border">
-            <StatTile
-              label="Covered advisories"
-              value={formatCount(research.snapshot.ledger_total ?? 0)}
-              detail={`${formatMonthShort(coveredFrom)} – ${formatMonthShort(coveredTo)}`}
-            />
-            <StatTile
-              label="Peak advisory month"
-              value={peak.count}
-              detail={
-                peak.month
-                  ? `findings in ${formatMonthShort(peak.month)}`
-                  : "Unavailable"
-              }
-            />
-            <StatTile
-              label="Most common AI tool"
-              value={topTool?.label ?? "Unavailable"}
-              icon={
-                topTool ? (
-                  <ToolIcon tool={getAiFamilyIconKey(topTool.key)} size={22} />
-                ) : null
-              }
-              detail={`${topTool?.count ?? 0} of ${caseCount} findings`}
-            />
-            <StatTile
-              label="Most represented project"
-              value={
-                topRepository ? (
-                  <span className="text-base sm:text-lg">
-                    {repoOwner}/<wbr />
-                    {repoName}
-                  </span>
-                ) : (
-                  "Unavailable"
-                )
-              }
-              icon={
-                topRepository ? (
-                  <Image
-                    src={`https://github.com/${repoOwner}.png?size=40`}
-                    alt=""
-                    width={20}
-                    height={20}
-                    className="shrink-0 rounded-full"
-                  />
-                ) : null
-              }
-              detail={`${topRepository?.count ?? 0} of ${caseCount} findings`}
-            />
-          </dl>
+          <OverviewPanel
+            timeline={timeline}
+            tools={aiTools.items}
+            causes={causes}
+            sourceCutoff={research.snapshot.source_cutoff}
+          />
         </div>
       </header>
 
@@ -292,7 +262,10 @@ export default function HomePage() {
           />
         </div>
 
-        <section className="border-t border-border py-10 sm:py-14">
+        <section
+          id="patterns"
+          className="scroll-mt-20 border-t border-border py-10 sm:py-14"
+        >
           <p className="section-kicker">Patterns</p>
           <h2 className="mt-2 text-xl font-semibold tracking-[-0.02em] sm:text-2xl">
             Who, where, and why
