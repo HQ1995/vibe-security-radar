@@ -61,15 +61,15 @@ export default function AboutPage() {
   const caseCount = snapshot.case_count;
   return (
     <main className="page-container py-10 sm:py-14">
-      <header className="border-b border-border pb-8">
-        <p className="section-kicker">How we verify</p>
-        <h1 className="mt-3 text-balance text-4xl font-semibold tracking-[-0.045em] sm:text-5xl">
+      <article className="max-w-3xl">
+        <p className="text-sm text-muted-foreground">How we verify</p>
+        <h1 className="mt-2 text-balance text-4xl font-semibold tracking-[-0.04em] sm:text-5xl">
           Evidence before attribution.
         </h1>
-        <p className="mt-4 max-w-3xl text-lg leading-7 text-muted-foreground">
+        <p className="mt-4 text-lg leading-8 text-muted-foreground">
           This public index covers {caseCount} findings. Each case links its
-          vulnerability, contributing change, AI signal, and closing fix back
-          to first-party evidence.
+          vulnerability, contributing change, AI signal, and closing fix back to
+          first-party evidence.
         </p>
         <p className="mt-3 text-sm text-muted-foreground">
           Real disclosed vulnerabilities from{" "}
@@ -81,93 +81,87 @@ export default function AboutPage() {
           >
             Georgia Tech SSLab
           </a>
-          —not synthetic benchmarks.
+          , not synthetic benchmarks.
         </p>
-      </header>
 
-      <section className="py-10 sm:py-12" aria-labelledby="method-steps">
-        <p className="section-kicker">Four steps</p>
-        <h2 id="method-steps" className="mt-3 text-2xl font-semibold">
-          From disclosure to a verified finding
-        </h2>
-        <ol className="mt-7 grid border-y border-border lg:grid-cols-4">
-          {STEPS.map((step) => (
-            <li
-              key={step.number}
-              className="border-b border-border py-5 last:border-b-0 lg:border-r lg:border-b-0 lg:px-5 lg:first:pl-0 lg:last:border-r-0 lg:last:pr-0"
-            >
-              <span className="font-mono text-xs text-primary">
-                {step.number}
-              </span>
-              <h3 className="mt-3 font-semibold">{step.title}</h3>
-              <p className="mt-2 text-sm leading-6 text-muted-foreground">
-                {step.detail}
-              </p>
-            </li>
-          ))}
-        </ol>
-      </section>
+        <section className="mt-12" aria-labelledby="method-steps">
+          <h2 id="method-steps" className="text-xl font-semibold">
+            From disclosure to a verified finding
+          </h2>
+          <p className="mt-2 leading-7 text-muted-foreground">
+            Every finding passes four checks before it is published.
+          </p>
+          <ol className="mt-4 list-decimal space-y-3 pl-5 leading-7 marker:font-medium marker:text-muted-foreground">
+            {STEPS.map((step) => (
+              <li key={step.number} className="pl-1">
+                <span className="font-semibold">{step.title}.</span>{" "}
+                <span className="text-muted-foreground">{step.detail}</span>
+              </li>
+            ))}
+          </ol>
+        </section>
 
-      <section
-        className="border-t border-border py-10 sm:py-12"
-        aria-labelledby="claim-boundary"
-      >
-        <p className="section-kicker">Claim boundary</p>
-        <h2 id="claim-boundary" className="mt-3 text-2xl font-semibold">
-          What the dataset means
-        </h2>
-        <div className="mt-7 grid gap-7 sm:grid-cols-3">
-          {BOUNDARIES.map((boundary) => (
-            <div
-              key={boundary.title}
-              className="border-l-2 border-primary pl-4"
-            >
-              <h3 className="font-semibold">{boundary.title}</h3>
-              <p className="mt-2 text-sm leading-6 text-muted-foreground">
-                {boundary.body}
-              </p>
-            </div>
-          ))}
-        </div>
-      </section>
+        <section className="mt-12" aria-labelledby="claim-boundary">
+          <h2 id="claim-boundary" className="text-xl font-semibold">
+            What the dataset means
+          </h2>
+          <dl className="mt-4 divide-y divide-border border-y border-border">
+            {BOUNDARIES.map((boundary) => (
+              <div
+                key={boundary.title}
+                className="grid gap-1 py-4 sm:grid-cols-[11rem_minmax(0,1fr)] sm:gap-6"
+              >
+                <dt className="font-semibold">{boundary.title}</dt>
+                <dd className="leading-7 text-muted-foreground">
+                  {boundary.body}
+                </dd>
+              </div>
+            ))}
+          </dl>
+        </section>
 
-      <section
-        className="border-y border-border py-6"
-        aria-labelledby="sources"
-      >
-        <h2 id="sources" className="font-semibold">
-          Sources
-        </h2>
-        <div className="mt-3 flex flex-wrap gap-x-6 gap-y-2 text-sm">
-          {SOURCES.map(([label, href]) => (
+        <section className="mt-12" aria-labelledby="sources">
+          <h2 id="sources" className="text-xl font-semibold">
+            Sources
+          </h2>
+          <p className="mt-2 leading-7 text-muted-foreground">
+            Public and repository advisories identify disclosed vulnerabilities.
+            Git history and released artifacts determine the AI contribution and
+            each finding&apos;s verification status.
+          </p>
+          <ul className="mt-3 flex flex-wrap gap-x-6 gap-y-2">
+            {SOURCES.map(([label, href]) => (
+              <li key={label}>
+                <a
+                  href={href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-primary underline decoration-primary/40 underline-offset-2 hover:decoration-primary"
+                >
+                  {label}
+                </a>
+              </li>
+            ))}
+          </ul>
+        </section>
+
+        <section className="mt-12" aria-labelledby="corrections">
+          <h2 id="corrections" className="text-xl font-semibold">
+            Corrections
+          </h2>
+          <p className="mt-2 leading-7 text-muted-foreground">
+            Found a false positive? Email{" "}
             <a
-              key={label}
-              href={href}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-primary hover:underline"
+              href="mailto:hanqing@gatech.edu"
+              className="text-primary underline decoration-primary/40 underline-offset-2 hover:decoration-primary"
             >
-              {label} →
-            </a>
-          ))}
-        </div>
-        <p className="mt-4 max-w-3xl text-xs leading-5 text-muted-foreground">
-          Public and repository advisories identify disclosed vulnerabilities.
-          Git history and released artifacts determine the AI contribution and
-          each finding&apos;s verification status.
-        </p>
-      </section>
-
-      <p className="py-8 text-sm text-muted-foreground">
-        Found a false positive? Email{" "}
-        <a
-          href="mailto:hanqing@gatech.edu"
-          className="text-primary underline decoration-primary/40 underline-offset-2 hover:decoration-primary"
-        >
-          hanqing@gatech.edu
-        </a>
-        .
-      </p>
+              hanqing@gatech.edu
+            </a>{" "}
+            with the advisory, commit, or release evidence that changes the
+            conclusion.
+          </p>
+        </section>
+      </article>
     </main>
   );
 }
