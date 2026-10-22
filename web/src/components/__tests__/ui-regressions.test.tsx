@@ -304,7 +304,7 @@ describe("canonical case evidence", () => {
     for (const heavy of ['"mechanism"', '"fix_authorship"', '"gates"', '"code_evidence"']) {
       expect(indexPayload).not.toContain(heavy);
     }
-    expect(html).toContain("CVE, GHSA, or repository");
+    expect(html).toContain("CVE, GHSA, repository or keyword");
     expect(html).toContain("All root causes");
     expect(html).toContain("All contribution types");
     expect(html).toContain("All tools");

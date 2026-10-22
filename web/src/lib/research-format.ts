@@ -116,7 +116,7 @@ export function aiToolLabel(
     return `${family} + unidentified tool`;
   }
   if (item.ai_provenance.coverage === "generic") {
-    return "AI-assisted; tool not identified";
+    return "Unidentified AI tool";
   }
   return "Tool not identified";
 }

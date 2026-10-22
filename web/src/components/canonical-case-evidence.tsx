@@ -571,10 +571,12 @@ function CaseFactsCard({ item }: { readonly item: ResearchCase }) {
   );
 }
 
-function ChainArrow() {
+function ChainArrow({ vertical = false }: { readonly vertical?: boolean }) {
   return (
     <div className="flex items-center justify-center" aria-hidden="true">
-      <ArrowRight className="h-5 w-5 rotate-90 text-muted-foreground sm:rotate-0" />
+      <ArrowRight
+        className={`h-5 w-5 rotate-90 text-muted-foreground ${vertical ? "" : "sm:rotate-0"}`}
+      />
     </div>
   );
 }
@@ -716,7 +718,7 @@ function IncompleteRemediationFlow({
         Only the highlighted steps are this advisory. The first step is the
         earlier flaw the AI tried, and failed, to close.
       </p>
-      <div className="grid items-stretch gap-3 xl:grid-cols-[minmax(0,0.9fr)_auto_minmax(0,1.4fr)]">
+      <div className="grid gap-3">
         <CauseFixCard
           tone="bad"
           kicker="Original flaw"
@@ -742,7 +744,7 @@ function IncompleteRemediationFlow({
           badge={earlierId ? `Earlier advisory · ${earlierId}` : "Earlier flaw"}
           muted
         />
-        <ChainArrow />
+        <ChainArrow vertical />
         {thisAdvisoryPair}
       </div>
     </div>
@@ -1002,7 +1004,7 @@ export function CanonicalCaseEvidence({
             <h1 className="text-2xl font-semibold leading-snug tracking-[-0.025em] sm:text-[1.75rem]">
               {summary ?? contributionHeadline(item.contribution_class)}
             </h1>
-            <p className="mt-3 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-muted-foreground">
+            <p className="meta-list mt-3 text-sm text-muted-foreground">
               <span>
                 How AI contributed:{" "}
                 <span className="font-medium text-foreground">
@@ -1023,37 +1025,36 @@ export function CanonicalCaseEvidence({
             {jumpLinks.length > 1 ? (
               <nav
                 aria-label="On this page"
-                className="mt-5 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm print:hidden"
+                className="mt-5 flex gap-2 text-sm print:hidden"
               >
-                <span className="text-muted-foreground">Jump to:</span>
-                {jumpLinks.map((link, index) => (
-                  <span key={link.id} className="inline-flex items-center gap-2">
-                    {index ? (
-                      <span aria-hidden="true" className="text-muted-foreground">
-                        ·
-                      </span>
-                    ) : null}
-                    <a href={`#${link.id}`} className="text-primary hover:underline">
-                      {link.label}
-                    </a>
-                  </span>
-                ))}
+                <span className="shrink-0 text-muted-foreground">Jump to:</span>
+                <span className="meta-list">
+                  {jumpLinks.map((link) => (
+                    <span key={link.id}>
+                      <a href={`#${link.id}`} className="text-primary hover:underline">
+                        {link.label}
+                      </a>
+                    </span>
+                  ))}
+                </span>
               </nav>
             ) : null}
           </div>
 
           {introStep && !incomplete ? (
             <div className="grid gap-2 border-y border-border py-4 sm:grid-cols-[8rem_1fr]">
-              <p className="font-mono text-[10px] font-semibold uppercase tracking-wider text-primary">
-                AI-assisted change
-              </p>
+              <p className="text-sm font-medium">AI-assisted change</p>
               <p className="text-sm leading-6 text-muted-foreground">
                 {introStep.detail}
               </p>
             </div>
           ) : null}
 
-          {incomplete ? null : (
+          {incomplete ? (
+            <div id="cause-and-fix" className="scroll-mt-20">
+              <IncompleteRemediationFlow item={item} displayId={visibleId} />
+            </div>
+          ) : (
             <div
               id="cause-and-fix"
               className="grid min-w-0 scroll-mt-20 items-stretch gap-3 sm:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)]"
@@ -1093,12 +1094,6 @@ export function CanonicalCaseEvidence({
         </div>
         <CaseFactsCard item={item} />
       </div>
-
-      {incomplete ? (
-        <div id="cause-and-fix" className="scroll-mt-20">
-          <IncompleteRemediationFlow item={item} displayId={visibleId} />
-        </div>
-      ) : null}
 
       {evidence && hasCode ? (
         <div className="space-y-8" aria-label="Code evidence">

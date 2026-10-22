@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+import { formatDay } from "@/lib/month-utils";
 import { getResearchSnapshot } from "@/lib/research-data";
 import { getTopics, topicPath } from "@/lib/topics";
 
@@ -27,10 +28,7 @@ export function SiteFooter() {
             Sources: first-party security advisories &middot; public Git history
             &middot; release artifacts
           </p>
-          <p className="font-mono text-[10px] uppercase tracking-[0.1em] tabular-nums">
-            Advisory-date source cutoff{" "}
-            {research.snapshot.source_cutoff.slice(0, 10)}
-          </p>
+          <p>Data through {formatDay(research.snapshot.source_cutoff)}</p>
         </div>
         <nav
           aria-label="Browse findings"

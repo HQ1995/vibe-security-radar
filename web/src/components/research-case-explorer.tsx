@@ -373,7 +373,7 @@ export function ResearchCaseExplorer({
   return (
     <section
       aria-label="Finding search and filters"
-      className="grid gap-x-10 gap-y-6 lg:grid-cols-[14rem_minmax(0,1fr)]"
+      className="grid gap-x-10 gap-y-6 lg:grid-cols-[16rem_minmax(0,1fr)]"
     >
       <nav aria-label="Filter findings" className="hidden lg:block">
         <div className="space-y-6">
@@ -433,7 +433,7 @@ export function ResearchCaseExplorer({
             type="search"
             value={filters.query}
             onChange={(event) => update("query", event.target.value)}
-            placeholder="CVE, GHSA, or repository"
+            placeholder="CVE, GHSA, repository or keyword"
             className="h-10 w-full rounded-md border border-input bg-card pl-9 pr-10 text-sm text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/15"
           />
           <kbd

@@ -38,25 +38,27 @@ export function ResearchCaseTable({
             >
               {getCaseHeadline(item)}
             </Link>
-            <p className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
-              <SeverityLabel severity={item.severity} />
-              <span
-                className="break-all font-mono font-medium text-foreground"
-                title={formatCaseLabel(item, id)}
-              >
-                {id}
+            <p className="meta-list mt-1 text-xs text-muted-foreground">
+              <span className="inline-flex items-center gap-2">
+                <SeverityLabel severity={item.severity} />
+                <span
+                  className="break-all font-mono font-medium text-foreground"
+                  title={formatCaseLabel(item, id)}
+                >
+                  {id}
+                </span>
               </span>
-              <span aria-hidden="true">·</span>
+              <span className="whitespace-nowrap">
+                {item.published_at
+                  ? formatDay(item.published_at)
+                  : "Date unavailable"}
+              </span>
               <span className="break-all">
                 {item.repository ?? "Not recorded"}
-              </span>
-              <span aria-hidden="true" className="hidden sm:inline">
-                ·
               </span>
               <span className="hidden items-center sm:inline-flex [&>span]:text-xs">
                 <LanguageBadge language={item.repository_metadata.language} />
               </span>
-              <span aria-hidden="true">·</span>
               <span className="inline-flex items-center gap-1">
                 <ToolIcon
                   tool={getAiFamilyIconKey(item.ai_provenance.family)}
@@ -64,19 +66,9 @@ export function ResearchCaseTable({
                 />
                 {aiToolLabel(item, labels)}
               </span>
-              <span aria-hidden="true">·</span>
               <span>{formatContributionClass(item.contribution_class)}</span>
-              <span aria-hidden="true" className="hidden sm:inline">
-                ·
-              </span>
               <span className="hidden sm:inline">
                 {causeCategoryLabel(item.cause_category, labels)}
-              </span>
-              <span aria-hidden="true">·</span>
-              <span className="whitespace-nowrap">
-                {item.published_at
-                  ? formatDay(item.published_at)
-                  : "Date unavailable"}
               </span>
             </p>
           </li>

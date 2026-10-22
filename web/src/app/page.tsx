@@ -6,30 +6,25 @@ import { AiToolComparison } from "@/components/ai-tool-comparison";
 import { DistributionBars } from "@/components/distribution-bars";
 import { HeadlineStat } from "@/components/headline-stat";
 import { OverviewPanel } from "@/components/overview-panel";
-import { SeverityLabel } from "@/components/severity-label";
-import { ToolIcon } from "@/components/tool-icon";
+import { ResearchCaseTable } from "@/components/research-case-table";
 import { TrendChart } from "@/components/trend-chart";
 import { SITE_URL } from "@/lib/constants";
 import { pageMetadata } from "@/lib/page-metadata";
 import { topicHref } from "@/lib/topics";
-import { formatDay, formatMonthShort } from "@/lib/month-utils";
+import { formatMonthShort } from "@/lib/month-utils";
 import {
-  formatContributionClass,
-  getAiFamilyIconKey,
   getAiToolDistribution,
-  getAiToolLabel,
   getCauseDistribution,
-  getCauseCategoryLabel,
   formatCount,
-  getCaseHeadline,
-  preferredCaseId,
   getLanguageDistribution,
   getRepositoryDistribution,
   getResearchCases,
+  getResearchLabels,
   getResearchSnapshot,
   getResearchTimeline,
   type ResearchCase,
 } from "@/lib/research-data";
+import { toFindingRow } from "@/lib/research-format";
 
 const toolNames = getAiToolDistribution()
   .items.slice(0, 3)
@@ -98,44 +93,6 @@ function faqs(caseCount: number) {
 
 function findingsHref(key: string, value: string): string {
   return `/cves?${new URLSearchParams({ [key]: value })}`;
-}
-
-function FindingRow({ item }: { readonly item: ResearchCase }) {
-  const id = preferredCaseId(item);
-  return (
-    <li className="py-4">
-      <Link
-        href={`/cves/${id}`}
-        className="line-clamp-2 font-medium leading-6 [overflow-wrap:anywhere] hover:text-primary hover:underline"
-      >
-        {getCaseHeadline(item)}
-      </Link>
-      <p className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
-        <SeverityLabel severity={item.severity} />
-        <span className="font-mono">{id}</span>
-        <span aria-hidden="true">·</span>
-        <span>{item.repository ?? "Repository not recorded"}</span>
-        <span aria-hidden="true">·</span>
-        <span className="inline-flex items-center gap-1">
-          <ToolIcon
-            tool={getAiFamilyIconKey(item.ai_provenance.family)}
-            size={13}
-          />
-          {getAiToolLabel(item)}
-        </span>
-        <span aria-hidden="true">·</span>
-        <span>{formatContributionClass(item.contribution_class)}</span>
-        <span aria-hidden="true">·</span>
-        <span>{getCauseCategoryLabel(item.cause_category)}</span>
-        <span aria-hidden="true">·</span>
-        <span className="whitespace-nowrap">
-          {item.published_at
-            ? formatDay(item.published_at)
-            : "Date unavailable"}
-        </span>
-      </p>
-    </li>
-  );
 }
 
 export default function HomePage() {
@@ -432,11 +389,12 @@ export default function HomePage() {
               Browse all {caseCount} findings →
             </Link>
           </div>
-          <ol className="mt-4 divide-y divide-border border-y border-border">
-            {featuredCases.map((item) => (
-              <FindingRow key={item.case_id} item={item} />
-            ))}
-          </ol>
+          <div className="mt-4 border-t border-border">
+            <ResearchCaseTable
+              cases={featuredCases.map(toFindingRow)}
+              labels={getResearchLabels()}
+            />
+          </div>
         </section>
 
         <section className="border-t border-border py-10 sm:py-14">

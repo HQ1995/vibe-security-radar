@@ -220,13 +220,24 @@ const snapshot = researchData as {
   readonly cases: readonly ResearchCase[];
 };
 
+const CAUSE_LABELS: Readonly<Record<string, string>> = {
+  other_ambiguous: "Other or unclear",
+};
+
+const causeCategories = Object.fromEntries(
+  Object.entries(snapshot.cause_categories).map(([key, value]) => [
+    key,
+    { ...value, label: CAUSE_LABELS[key] ?? value.label },
+  ]),
+);
+
 export function getResearchSnapshot() {
   return snapshot;
 }
 
 export function getResearchLabels(): ResearchLabels {
   return {
-    causeCategories: snapshot.cause_categories,
+    causeCategories,
     aiFamilies: snapshot.ai_provenance_families,
   };
 }
@@ -306,8 +317,8 @@ export function getCauseDistribution(): ResearchDistributionItem[] {
     .map(([key, count]) => ({
       key,
       count,
-      label: snapshot.cause_categories[key]?.label ?? key,
-      definition: snapshot.cause_categories[key]?.definition,
+      label: causeCategories[key]?.label ?? key,
+      definition: causeCategories[key]?.definition,
     }))
     .sort(
       (a, b) =>

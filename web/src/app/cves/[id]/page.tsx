@@ -89,12 +89,10 @@ function FindingMeta({ item }: { readonly item: ResearchCase }) {
   return (
     <>
       {item.severity ? (
-        <>
-          <span aria-hidden="true">·</span>
+        <span className="inline-flex">
           <SeverityLabel severity={item.severity} />
-        </>
+        </span>
       ) : null}
-      <span aria-hidden="true">·</span>
       <span>
         {item.published_at
           ? `Published ${formatPublished(item.published_at)}`
@@ -115,15 +113,14 @@ function FindingMeta({ item }: { readonly item: ResearchCase }) {
         ) : null}
       </span>
       {repository && siblings > 1 ? (
-        <>
-          <span aria-hidden="true">·</span>
+        <span className="whitespace-nowrap">
           <Link
             href={`/cves?${new URLSearchParams({ repository })}`}
-            className="whitespace-nowrap text-primary hover:underline"
+            className="text-primary hover:underline"
           >
             All {siblings} findings in this repository
           </Link>
-        </>
+        </span>
       ) : null}
     </>
   );
