@@ -177,6 +177,54 @@ export default function HomePage() {
     return picked;
   })();
   const topRepository = repositories[0];
+  const monthIndex = new Map(
+    timeline.map((entry, index) => [entry.month, index]),
+  );
+  const seriesBy = (
+    top: readonly { key: string; label: string }[],
+    keyOf: (item: ResearchCase) => string | null,
+    otherLabel: string,
+  ) => {
+    const series = [...top, { key: "other", label: otherLabel }].map(
+      (entry) => ({
+        key: entry.key,
+        label: entry.label,
+        counts: timeline.map(() => 0),
+      }),
+    );
+    for (const item of getResearchCases()) {
+      const index = monthIndex.get(item.published_at?.slice(0, 7) ?? "");
+      if (index === undefined) continue;
+      const key = keyOf(item);
+      (series.find((entry) => entry.key === key) ?? series.at(-1)!).counts[
+        index
+      ] += 1;
+    }
+    return series.filter((entry) => entry.counts.some(Boolean));
+  };
+  const breakdowns = [
+    {
+      key: "tool",
+      label: "AI tool",
+      series: seriesBy(
+        aiTools.items.slice(0, 4),
+        (item) =>
+          item.ai_provenance.coverage === "complete"
+            ? item.ai_provenance.family
+            : null,
+        "Other or unidentified",
+      ),
+    },
+    {
+      key: "cause",
+      label: "Root cause",
+      series: seriesBy(
+        causes.filter((item) => item.key !== "other_ambiguous").slice(0, 5),
+        (item) => item.cause_category,
+        "Other root causes",
+      ),
+    },
+  ];
   const coveredFrom = (research.snapshot.coverage_from ?? "2025-05-01").slice(
     0,
     7,
@@ -320,6 +368,7 @@ export default function HomePage() {
             datedCount={research.snapshot.exact_publication_dates}
             unknownDateCount={research.snapshot.unknown_publication_dates}
             sourceCutoff={research.snapshot.source_cutoff}
+            breakdowns={breakdowns}
           />
         </div>
 

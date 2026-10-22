@@ -6,12 +6,39 @@ import { useState } from "react";
 import { formatDay, formatMonthShort } from "@/lib/month-utils";
 import type { ResearchMonth } from "@/lib/research-data";
 
+export interface TrendSeries {
+  readonly key: string;
+  readonly label: string;
+  readonly counts: readonly number[];
+}
+
+export interface TrendBreakdown {
+  readonly key: string;
+  readonly label: string;
+  readonly series: readonly TrendSeries[];
+}
+
 export interface TrendChartProps {
   readonly data: readonly ResearchMonth[];
   readonly caseCount: number;
   readonly datedCount: number;
   readonly unknownDateCount: number;
   readonly sourceCutoff: string;
+  readonly breakdowns?: readonly TrendBreakdown[];
+}
+
+const SERIES_COLORS = [
+  "var(--chart-1)",
+  "var(--chart-2)",
+  "var(--chart-3)",
+  "var(--chart-4)",
+  "var(--chart-5)",
+];
+
+function seriesColor(series: TrendSeries, index: number): string {
+  return series.key === "other"
+    ? "color-mix(in srgb, var(--muted-foreground) 45%, transparent)"
+    : SERIES_COLORS[index % SERIES_COLORS.length];
 }
 
 interface AxisLabel {
@@ -71,8 +98,11 @@ export function TrendChart({
   datedCount,
   unknownDateCount,
   sourceCutoff,
+  breakdowns = [],
 }: TrendChartProps) {
   const [view, setView] = useState<"chart" | "table">("chart");
+  const [mode, setMode] = useState("total");
+  const breakdown = breakdowns.find((item) => item.key === mode) ?? null;
   const [active, setActive] = useState<number | null>(null);
   const [hovering, setHovering] = useState(false);
   const maxCount = Math.max(1, ...data.map((entry) => entry.count));
@@ -148,22 +178,41 @@ export function TrendChart({
           </p>
         </div>
         {columns.length ? (
-          <div className="flex shrink-0 gap-4 border-b border-border text-sm">
-            {(["chart", "table"] as const).map((option) => (
-              <button
-                key={option}
-                type="button"
-                aria-pressed={view === option}
-                onClick={() => setView(option)}
-                className={`-mb-px border-b-2 pb-1.5 font-medium transition-colors ${
-                  view === option
-                    ? "border-foreground text-foreground"
-                    : "border-transparent text-muted-foreground hover:text-foreground"
-                }`}
-              >
-                {option === "chart" ? "Chart" : "Table"}
-              </button>
-            ))}
+          <div className="flex shrink-0 flex-wrap items-end gap-x-5 gap-y-2">
+            {breakdowns.length ? (
+              <label className="flex items-center gap-2 text-sm text-muted-foreground">
+                Break down by
+                <select
+                  value={mode}
+                  onChange={(event) => setMode(event.target.value)}
+                  className="h-8 rounded-md border border-input bg-card px-2 text-sm text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/15"
+                >
+                  <option value="total">Total</option>
+                  {breakdowns.map((item) => (
+                    <option key={item.key} value={item.key}>
+                      {item.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            ) : null}
+            <div className="flex shrink-0 gap-4 border-b border-border text-sm">
+              {(["chart", "table"] as const).map((option) => (
+                <button
+                  key={option}
+                  type="button"
+                  aria-pressed={view === option}
+                  onClick={() => setView(option)}
+                  className={`-mb-px border-b-2 pb-1.5 font-medium transition-colors ${
+                    view === option
+                      ? "border-foreground text-foreground"
+                      : "border-transparent text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  {option === "chart" ? "Chart" : "Table"}
+                </button>
+              ))}
+            </div>
           </div>
         ) : null}
       </div>
@@ -194,9 +243,17 @@ export function TrendChart({
                       {focused.partial ? "*" : ""}
                     </span>
                     {` · ${findings(focused.count)}`}
-                    {focused.share === null
-                      ? ""
-                      : ` · ${percent(focused.share)} of ${focused.advisories?.toLocaleString("en-US")} researched`}
+                    {breakdown
+                      ? `: ${breakdown.series
+                          .filter((series) => series.counts[focused.index])
+                          .map(
+                            (series) =>
+                              `${series.label} ${series.counts[focused.index]}`,
+                          )
+                          .join(", ")}`
+                      : focused.share === null
+                        ? ""
+                        : ` · ${percent(focused.share)} of ${focused.advisories?.toLocaleString("en-US")} researched`}
                     {focused.count ? (
                       <Link
                         href={`/cves?month=${focused.month}`}
@@ -212,6 +269,23 @@ export function TrendChart({
               </span>
             </div>
           </div>
+          {breakdown ? (
+            <div className={AXIS}>
+              <span />
+              <ul className="mb-3 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
+                {breakdown.series.map((series, index) => (
+                  <li key={series.key} className="flex items-center gap-1.5">
+                    <span
+                      aria-hidden="true"
+                      className="h-2.5 w-2.5 rounded-[2px]"
+                      style={{ background: seriesColor(series, index) }}
+                    />
+                    {series.label}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
           <div className={AXIS} aria-hidden="true">
             <div className="relative h-44 sm:h-56">
               {ticks.map((tick) => (
@@ -249,7 +323,32 @@ export function TrendChart({
                         {column.count}
                       </span>
                     ) : null}
-                    {column.height ? (
+                    {column.height && breakdown ? (
+                      <span
+                        className={`flex w-[62%] max-w-6 flex-col-reverse gap-[2px] overflow-hidden rounded-t-[4px] transition-opacity ${
+                          dimmed(column.index)
+                            ? "opacity-60"
+                            : column.partial
+                              ? "opacity-45"
+                              : ""
+                        }`}
+                        style={{ height: `${column.height}%` }}
+                      >
+                        {breakdown.series.map((series, index) =>
+                          series.counts[column.index] ? (
+                            <span
+                              key={series.key}
+                              className="block w-full"
+                              style={{
+                                flexGrow: series.counts[column.index],
+                                flexBasis: 0,
+                                background: seriesColor(series, index),
+                              }}
+                            />
+                          ) : null,
+                        )}
+                      </span>
+                    ) : column.height ? (
                       <span
                         className={`w-[62%] max-w-6 rounded-t-[4px] bg-primary transition-opacity ${
                           dimmed(column.index)
@@ -331,7 +430,13 @@ export function TrendChart({
       ) : null}
 
       {columns.length ? (
-        <div className={view === "table" ? "mt-5 max-w-xl" : "sr-only"}>
+        <div
+          className={
+            view === "table"
+              ? `mt-5 overflow-x-auto ${breakdown ? "" : "max-w-xl"}`
+              : "sr-only"
+          }
+        >
           <table className="w-full text-sm">
             <caption className="sr-only">
               Findings by advisory publication month
@@ -340,6 +445,16 @@ export function TrendChart({
               <tr className="border-b border-border text-xs text-muted-foreground">
                 <th className="py-2 text-left font-medium">Month</th>
                 <th className="py-2 text-right font-medium">Findings</th>
+                {breakdown
+                  ? breakdown.series.map((series) => (
+                      <th
+                        key={series.key}
+                        className="py-2 pl-3 text-right font-medium"
+                      >
+                        {series.label}
+                      </th>
+                    ))
+                  : null}
                 {hasCoverage ? (
                   <th className="py-2 text-right font-medium">
                     Advisories researched
@@ -373,6 +488,16 @@ export function TrendChart({
                   <td className="py-1.5 text-right tabular-nums">
                     {column.count}
                   </td>
+                  {breakdown
+                    ? breakdown.series.map((series) => (
+                        <td
+                          key={series.key}
+                          className="py-1.5 pl-3 text-right tabular-nums text-muted-foreground"
+                        >
+                          {series.counts[column.index]}
+                        </td>
+                      ))
+                    : null}
                   {hasCoverage ? (
                     <td className="py-1.5 text-right tabular-nums text-muted-foreground">
                       {column.share === null
