@@ -277,13 +277,6 @@ export default function HomePage() {
               >
                 How we verify
               </Link>
-              <a
-                href="/data/findings.csv"
-                download
-                className="text-muted-foreground hover:text-foreground"
-              >
-                Download data (CSV)
-              </a>
             </p>
             <dl className="mt-8 grid grid-cols-2 gap-x-8 gap-y-5 border-t border-border pt-6">
               <HeadlineStat

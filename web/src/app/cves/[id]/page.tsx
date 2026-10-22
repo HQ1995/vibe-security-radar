@@ -4,6 +4,8 @@ import { notFound } from "next/navigation";
 import { ExternalLink } from "lucide-react";
 
 import { BackToFindings } from "@/components/back-to-findings";
+import { ResearchCaseTable } from "@/components/research-case-table";
+import { toFindingRow } from "@/lib/research-format";
 import { SeverityLabel } from "@/components/severity-label";
 import { formatPublished } from "@/lib/commit-utils";
 import { CanonicalCaseEvidence } from "@/components/canonical-case-evidence";
@@ -13,6 +15,8 @@ import {
   getResearchCaseById,
   preferredCaseId,
   getResearchCases,
+  getCauseCategoryLabel,
+  getResearchLabels,
   type ResearchCase,
 } from "@/lib/research-data";
 
@@ -157,6 +161,47 @@ function FindingMeta({ item }: { readonly item: ResearchCase }) {
   );
 }
 
+function RelatedFindings({ item }: { readonly item: ResearchCase }) {
+  const others = getResearchCases().filter(
+    (other) => other.case_id !== item.case_id,
+  );
+  const sameRepository = item.repository
+    ? others.filter((other) => other.repository === item.repository)
+    : [];
+  const pool = sameRepository.length
+    ? sameRepository
+    : others.filter((other) => other.cause_category === item.cause_category);
+  if (!pool.length) return null;
+  const related = [...pool]
+    .sort((a, b) => (b.published_at ?? "").localeCompare(a.published_at ?? ""))
+    .slice(0, 5)
+    .map(toFindingRow);
+  const [title, href] = sameRepository.length
+    ? [
+        `More findings in ${item.repository}`,
+        `/cves?${new URLSearchParams({ repository: item.repository! })}`,
+      ]
+    : [
+        `More ${getCauseCategoryLabel(item.cause_category)} findings`,
+        `/cves?${new URLSearchParams({ cause: item.cause_category ?? "" })}`,
+      ];
+  return (
+    <section className="border-t border-border pt-8" aria-labelledby="related">
+      <div className="flex flex-wrap items-baseline justify-between gap-3 border-b border-border pb-3">
+        <h2 id="related" className="text-base font-semibold">
+          {title}
+        </h2>
+        {pool.length > related.length ? (
+          <Link href={href} className="text-sm text-primary hover:underline">
+            All {pool.length} →
+          </Link>
+        ) : null}
+      </div>
+      <ResearchCaseTable cases={related} labels={getResearchLabels()} />
+    </section>
+  );
+}
+
 export default async function CveDetailPage({
   params,
 }: {
@@ -177,6 +222,8 @@ export default async function CveDetailPage({
         displayId={id}
         meta={<FindingMeta item={item} />}
       />
+
+      <RelatedFindings item={item} />
 
       {references.length > 0 ? (
         <section

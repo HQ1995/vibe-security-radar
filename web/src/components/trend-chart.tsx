@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 
-import { formatMonthShort } from "@/lib/month-utils";
+import { formatDay, formatMonthShort } from "@/lib/month-utils";
 import type { ResearchMonth } from "@/lib/research-data";
 
 export interface TrendChartProps {
@@ -61,11 +61,6 @@ function percent(value: number): string {
 
 function findings(count: number): string {
   return `${count} ${count === 1 ? "finding" : "findings"}`;
-}
-
-function formatDay(value: string): string {
-  const [year, month, day] = value.slice(0, 10).split("-");
-  return `${formatMonthShort(`${year}-${month}`).slice(0, 3)} ${Number(day)}, ${year}`;
 }
 
 const AXIS = "grid grid-cols-[2rem_minmax(0,1fr)] gap-x-2";

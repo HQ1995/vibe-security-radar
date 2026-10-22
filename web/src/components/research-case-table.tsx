@@ -3,6 +3,7 @@ import Link from "next/link";
 import { LanguageBadge } from "@/components/language-badge";
 import { SeverityLabel } from "@/components/severity-label";
 import { ToolIcon } from "@/components/tool-icon";
+import { formatDay } from "@/lib/month-utils";
 import {
   aiToolLabel,
   causeCategoryLabel,
@@ -39,8 +40,11 @@ export function ResearchCaseTable({
             </Link>
             <p className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
               <SeverityLabel severity={item.severity} />
-              <span className="break-all font-mono font-medium text-foreground">
-                {formatCaseLabel(item, id)}
+              <span
+                className="break-all font-mono font-medium text-foreground"
+                title={formatCaseLabel(item, id)}
+              >
+                {id}
               </span>
               <span aria-hidden="true">·</span>
               <span className="break-all">
@@ -63,9 +67,9 @@ export function ResearchCaseTable({
               <span aria-hidden="true">·</span>
               <span>{causeCategoryLabel(item.cause_category, labels)}</span>
               <span aria-hidden="true">·</span>
-              <span className="tabular-nums">
+              <span className="whitespace-nowrap">
                 {item.published_at
-                  ? `published ${item.published_at.slice(0, 10)}`
+                  ? formatDay(item.published_at)
                   : "Date unavailable"}
               </span>
             </p>
