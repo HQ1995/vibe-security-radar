@@ -53,6 +53,7 @@ export async function generateMetadata({
     description: clampDescription(getCaseHeadline(item)),
     path: `/cves/${canonicalId}`,
     type: "article",
+    sharedImage: false,
   });
 }
 

@@ -12,7 +12,11 @@ import {
   generateStaticParams as causeParams,
 } from "@/app/causes/[slug]/page";
 import ToolPage from "@/app/tools/[slug]/page";
-import CveDetailPage, { generateMetadata } from "@/app/cves/[id]/page";
+import CveDetailPage, {
+  generateMetadata,
+  generateStaticParams,
+} from "@/app/cves/[id]/page";
+import { generateStaticParams as imageParams } from "@/app/cves/[id]/opengraph-image";
 import sitemap from "@/app/sitemap";
 import { GET as findingsCsv } from "@/app/data/findings.csv/route";
 import { GET as findingsFeed } from "@/app/feed.xml/route";
@@ -217,6 +221,12 @@ describe("homepage navigation", () => {
       getCaseHeadline(getResearchCaseById("CVE-2025-4143")!),
     );
     expect(metadata.alternates?.canonical).toBe("/cves/CVE-2025-4143");
+    expect(metadata.openGraph).not.toHaveProperty("images");
+    expect(metadata.twitter).not.toHaveProperty("images");
+  });
+
+  it("generates a share image for every finding page", () => {
+    expect(imageParams()).toEqual(generateStaticParams());
   });
 });
 

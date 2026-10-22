@@ -16,13 +16,16 @@ export function pageMetadata({
   path,
   type = "website",
   absoluteTitle = false,
+  sharedImage = true,
 }: {
   readonly title: string;
   readonly description: string;
   readonly path: string;
   readonly type?: "website" | "article";
   readonly absoluteTitle?: boolean;
+  readonly sharedImage?: boolean;
 }): Metadata {
+  const images = sharedImage ? { images: [SHARE_IMAGE] } : {};
   return {
     title: absoluteTitle ? { absolute: title } : title,
     description,
@@ -33,13 +36,13 @@ export function pageMetadata({
       url: path,
       type,
       siteName: SITE_NAME,
-      images: [SHARE_IMAGE],
+      ...images,
     },
     twitter: {
       card: "summary_large_image",
       title,
       description,
-      images: [SHARE_IMAGE],
+      ...images,
     },
   };
 }
