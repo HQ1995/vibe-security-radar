@@ -34,6 +34,13 @@ export function SiteFooter() {
             GitHub
           </a>
           <a
+            href="/data/findings.csv"
+            download
+            className="transition-colors hover:text-foreground"
+          >
+            Data (CSV)
+          </a>
+          <a
             href="mailto:hanqing@gatech.edu"
             className="transition-colors hover:text-foreground"
           >

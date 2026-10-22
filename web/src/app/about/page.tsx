@@ -145,6 +145,35 @@ export default function AboutPage() {
           </ul>
         </section>
 
+        <section className="mt-12" aria-labelledby="cite">
+          <h2 id="cite" className="text-xl font-semibold">
+            Cite and download
+          </h2>
+          <p className="mt-2 leading-7 text-muted-foreground">
+            Every published finding is available as{" "}
+            <a
+              href="/data/findings.csv"
+              download
+              className="text-primary underline decoration-primary/40 underline-offset-2 hover:decoration-primary"
+            >
+              one CSV file
+            </a>{" "}
+            with its identifiers, repository, AI tool, AI role, root cause and
+            summary. To cite the dataset:
+          </p>
+          <pre
+            tabIndex={0}
+            className="mt-3 overflow-x-auto rounded-md border border-border bg-card p-4 font-mono text-xs leading-5"
+          >
+            {`@misc{vibesecradar,
+  title        = {Vibe Security Radar},
+  author       = {{Georgia Tech SSLab}},
+  howpublished = {\\url{https://vibesecradar.com}},
+  note         = {${caseCount} findings, data through ${snapshot.source_cutoff.slice(0, 10)}}
+}`}
+          </pre>
+        </section>
+
         <section className="mt-12" aria-labelledby="corrections">
           <h2 id="corrections" className="text-xl font-semibold">
             Corrections

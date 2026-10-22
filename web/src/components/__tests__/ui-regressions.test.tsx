@@ -9,6 +9,7 @@ import AboutPage from "@/app/about/page";
 import CvesPage from "@/app/cves/page";
 import CveDetailPage, { generateMetadata } from "@/app/cves/[id]/page";
 import sitemap from "@/app/sitemap";
+import { GET as findingsCsv } from "@/app/data/findings.csv/route";
 import HomePage from "@/app/page";
 import { CanonicalCaseEvidence } from "@/components/canonical-case-evidence";
 import { getIconDimensions } from "@/components/tool-icon";
@@ -148,6 +149,18 @@ describe("homepage navigation", () => {
       (url) => url.includes("/cves/") && !url.endsWith("/cves/"),
     );
     expect(findingUrls).toHaveLength(getResearchCases().length);
+  });
+
+  it("exports every finding as CSV with public columns only", async () => {
+    const text = await findingsCsv().text();
+    const lines = text.trim().split("\n");
+
+    expect(lines[0]).toBe(
+      "id,aliases,repository,language,published,ai_tool,ai_role,root_cause,summary,url",
+    );
+    expect(lines).toHaveLength(getResearchCases().length + 1);
+    expect(text).toContain("https://vibesecradar.com/cves/CVE-2025-4143/");
+    expect(text).not.toContain("alias-");
   });
 
   it("describes a finding with its plain-language headline", async () => {

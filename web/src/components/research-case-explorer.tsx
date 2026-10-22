@@ -122,14 +122,22 @@ function parseUrlState(search: string) {
   return {
     filters,
     page: Math.max(1, Math.floor(Number(params.get("page"))) || 1),
+    sort: (params.get("sort") === "oldest" ? "oldest" : "newest") as SortOrder,
   };
 }
 
-function writeUrlState(filters: ResearchCaseFilters, page: number) {
+type SortOrder = "newest" | "oldest";
+
+function writeUrlState(
+  filters: ResearchCaseFilters,
+  page: number,
+  sort: SortOrder = "newest",
+) {
   const params = new URLSearchParams();
   for (const key of FILTER_KEYS) {
     if (filters[key]) params.set(URL_PARAMS[key], filters[key]);
   }
+  if (sort !== "newest") params.set("sort", sort);
   if (page > 1) params.set("page", String(page));
   const query = params.toString();
   const url = `${window.location.pathname}${query ? `?${query}` : ""}`;
@@ -153,12 +161,13 @@ export function ResearchCaseExplorer({
     () => window.location.search,
     () => "",
   );
-  const { filters, page: requestedPage } = parseUrlState(search);
+  const { filters, page: requestedPage, sort } = parseUrlState(search);
   const resultsRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     rememberFindingsUrl(`${window.location.pathname}${search}`);
   }, [search]);
-  const filtered = filterResearchCases(cases, filters, labels);
+  const matched = filterResearchCases(cases, filters, labels);
+  const filtered = sort === "oldest" ? [...matched].reverse() : matched;
   const pageCount = Math.ceil(filtered.length / PAGE_SIZE);
   const page = Math.min(requestedPage, Math.max(1, pageCount));
   const start = (page - 1) * PAGE_SIZE;
@@ -182,10 +191,10 @@ export function ResearchCaseExplorer({
     ),
   ).reverse();
   const update = (key: keyof ResearchCaseFilters, value: string) =>
-    writeUrlState({ ...filters, [key]: value }, 1);
-  const clearFilters = () => writeUrlState(EMPTY_FILTERS, 1);
+    writeUrlState({ ...filters, [key]: value }, 1, sort);
+  const clearFilters = () => writeUrlState(EMPTY_FILTERS, 1, sort);
   const goToPage = (next: number) => {
-    writeUrlState(filters, next);
+    writeUrlState(filters, next, sort);
     resultsRef.current?.scrollIntoView({ block: "start" });
   };
 
@@ -254,10 +263,101 @@ export function ResearchCaseExplorer({
     },
   ];
   const active = Object.values(filters).some(Boolean);
+  const count = (pick: (item: FindingRow) => string | null) => {
+    const tally = new Map<string, number>();
+    for (const item of cases) {
+      const value = pick(item);
+      if (value) tally.set(value, (tally.get(value) ?? 0) + 1);
+    }
+    return tally;
+  };
+  const facetCounts = {
+    tool: count((item) => aiToolLabel(item, labels)),
+    contribution: count((item) => item.contribution_class),
+    cause: count((item) => item.cause_category),
+    language: count((item) => item.repository_metadata.language || null),
+  };
+  const facets = selects
+    .filter((select) => select.key in facetCounts)
+    .map((select) => ({
+      ...select,
+      options: select.options
+        .map((option) => ({
+          ...option,
+          count:
+            facetCounts[select.key as keyof typeof facetCounts].get(
+              option.value,
+            ) ?? 0,
+        }))
+        .sort((a, b) => b.count - a.count || a.label.localeCompare(b.label)),
+    }))
+    .sort(
+      (a, b) =>
+        ["tool", "contribution", "cause", "language"].indexOf(a.key) -
+        ["tool", "contribution", "cause", "language"].indexOf(b.key),
+    );
+  const headerSelects = selects.filter(
+    (select) => select.key === "repository" || select.key === "month",
+  );
+  const selectClass = (value: string) =>
+    `h-8 min-w-0 max-w-full truncate rounded-md border bg-card px-2 text-[13px] outline-none focus:border-primary focus:ring-2 focus:ring-primary/15 ${
+      value
+        ? "border-primary/60 text-foreground"
+        : "border-input text-muted-foreground"
+    }`;
 
   return (
-    <section aria-label="Finding search and filters">
-      <div className="space-y-3">
+    <section
+      aria-label="Finding search and filters"
+      className="grid gap-x-10 gap-y-6 lg:grid-cols-[14rem_minmax(0,1fr)]"
+    >
+      <nav aria-label="Filter findings" className="hidden lg:block">
+        <div className="space-y-6">
+          {facets.map((facet) => (
+            <div key={facet.key}>
+              <h2 className="px-3 text-xs font-semibold text-muted-foreground">
+                {facet.label}
+              </h2>
+              <ul className="mt-1.5 space-y-px text-sm">
+                {facet.options.map((option) => {
+                  const selected = filters[facet.key] === option.value;
+                  return (
+                    <li key={option.value}>
+                      <button
+                        type="button"
+                        aria-pressed={selected}
+                        onClick={() =>
+                          update(facet.key, selected ? "" : option.value)
+                        }
+                        className={`flex w-full items-baseline justify-between gap-3 rounded-md px-3 py-1.5 text-left transition-colors ${
+                          selected
+                            ? "bg-primary text-primary-foreground"
+                            : "hover:bg-muted"
+                        }`}
+                      >
+                        <span className="min-w-0 leading-5">
+                          {option.label}
+                        </span>
+                        <span
+                          className={`shrink-0 text-xs tabular-nums ${
+                            selected
+                              ? "text-primary-foreground"
+                              : "text-muted-foreground"
+                          }`}
+                        >
+                          {option.count}
+                        </span>
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+          ))}
+        </div>
+      </nav>
+
+      <div className="min-w-0">
         <label className="relative block">
           <span className="sr-only">Search</span>
           <Search
@@ -269,89 +369,125 @@ export function ResearchCaseExplorer({
             value={filters.query}
             onChange={(event) => update("query", event.target.value)}
             placeholder="CVE, GHSA, or repository"
-            className="h-11 w-full rounded-md border border-input bg-card pl-9 pr-3 text-sm text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/15"
+            className="h-10 w-full rounded-md border border-input bg-card pl-9 pr-3 text-sm text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/15"
           />
         </label>
-        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
-          {selects.map((select) => (
-            <label key={select.key} className="min-w-0">
-              <span className="sr-only">{select.label}</span>
+
+        <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4 lg:hidden">
+          {facets.map((facet) => (
+            <label key={facet.key} className="min-w-0">
+              <span className="sr-only">{facet.label}</span>
               <select
-                value={filters[select.key]}
-                onChange={(event) => update(select.key, event.target.value)}
-                className={`h-9 w-full min-w-0 truncate rounded-md border bg-card px-2.5 text-[13px] outline-none focus:border-primary focus:ring-2 focus:ring-primary/15 ${
-                  filters[select.key]
-                    ? "border-primary/60 text-foreground"
-                    : "border-input text-muted-foreground"
-                }`}
+                value={filters[facet.key]}
+                onChange={(event) => update(facet.key, event.target.value)}
+                className={`${selectClass(filters[facet.key])} w-full`}
               >
-                <option value="">{select.all}</option>
-                {select.options.map((option) => (
+                <option value="">{facet.all}</option>
+                {facet.options.map((option) => (
                   <option key={option.value} value={option.value}>
-                    {option.label}
+                    {option.label} ({option.count})
                   </option>
                 ))}
               </select>
             </label>
           ))}
         </div>
-      </div>
 
-      <div
-        ref={resultsRef}
-        className="flex scroll-mt-20 items-center justify-between gap-4 pb-3 pt-6 text-sm text-muted-foreground"
-      >
-        <p>
-          {filtered.length
-            ? `Showing ${start + 1}–${Math.min(start + PAGE_SIZE, filtered.length)} of ${filtered.length} ${filtered.length === 1 ? "finding" : "findings"}`
-            : `0 of ${cases.length} findings`}
-        </p>
-        {active ? (
-          <button
-            type="button"
-            onClick={clearFilters}
-            className="font-medium text-primary hover:underline"
-          >
-            Clear filters
-          </button>
-        ) : null}
-      </div>
-
-      {filtered.length ? (
-        <>
-          <ResearchCaseTable cases={visible} labels={labels} />
-          {pageCount > 1 ? (
-            <nav
-              aria-label="Finding pages"
-              className="flex items-center justify-between gap-4 pt-5 text-sm"
+        <div
+          ref={resultsRef}
+          className="mt-4 flex scroll-mt-20 flex-wrap items-center justify-between gap-x-4 gap-y-2 border-b border-border pb-3"
+        >
+          <p className="text-sm font-semibold">
+            {filtered.length === cases.length
+              ? `${cases.length} findings`
+              : `${filtered.length} of ${cases.length} ${filtered.length === 1 ? "finding" : "findings"}`}
+            {active ? (
+              <button
+                type="button"
+                onClick={clearFilters}
+                className="ml-3 text-sm font-normal text-primary hover:underline"
+              >
+                Clear filters
+              </button>
+            ) : null}
+          </p>
+          <div className="flex min-w-0 flex-wrap items-center gap-2">
+            {headerSelects.map((select) => (
+              <label key={select.key} className="min-w-0">
+                <span className="sr-only">{select.label}</span>
+                <select
+                  value={filters[select.key]}
+                  onChange={(event) => update(select.key, event.target.value)}
+                  className={`${selectClass(filters[select.key])} w-40`}
+                >
+                  <option value="">{select.all}</option>
+                  {select.options.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            ))}
+            <a
+              href="/data/findings.csv"
+              download
+              className="px-1 text-[13px] text-muted-foreground hover:text-foreground"
             >
-              <button
-                type="button"
-                disabled={page === 1}
-                onClick={() => goToPage(Math.max(1, page - 1))}
-                className="rounded-md border border-border bg-card px-3 py-1.5 font-medium transition-colors hover:border-foreground/40 disabled:cursor-not-allowed disabled:opacity-35"
+              CSV
+            </a>
+            <label className="min-w-0">
+              <span className="sr-only">Sort</span>
+              <select
+                value={sort}
+                onChange={(event) =>
+                  writeUrlState(filters, 1, event.target.value as SortOrder)
+                }
+                className={`${selectClass("")} w-32`}
               >
-                Previous
-              </button>
-              <span className="text-xs tabular-nums text-muted-foreground">
-                Page {page} of {pageCount}
-              </span>
-              <button
-                type="button"
-                disabled={page === pageCount}
-                onClick={() => goToPage(Math.min(pageCount, page + 1))}
-                className="rounded-md border border-border bg-card px-3 py-1.5 font-medium transition-colors hover:border-foreground/40 disabled:cursor-not-allowed disabled:opacity-35"
+                <option value="newest">Newest first</option>
+                <option value="oldest">Oldest first</option>
+              </select>
+            </label>
+          </div>
+        </div>
+
+        {filtered.length ? (
+          <>
+            <ResearchCaseTable cases={visible} labels={labels} />
+            {pageCount > 1 ? (
+              <nav
+                aria-label="Finding pages"
+                className="flex items-center justify-between gap-4 pt-5 text-sm"
               >
-                Next
-              </button>
-            </nav>
-          ) : null}
-        </>
-      ) : (
-        <p className="border-y border-border py-12 text-center text-sm text-muted-foreground">
-          No findings match these filters.
-        </p>
-      )}
+                <button
+                  type="button"
+                  disabled={page === 1}
+                  onClick={() => goToPage(Math.max(1, page - 1))}
+                  className="rounded-md border border-border bg-card px-3 py-1.5 font-medium transition-colors hover:border-foreground/40 disabled:cursor-not-allowed disabled:opacity-35"
+                >
+                  Previous
+                </button>
+                <span className="text-xs tabular-nums text-muted-foreground">
+                  Page {page} of {pageCount}
+                </span>
+                <button
+                  type="button"
+                  disabled={page === pageCount}
+                  onClick={() => goToPage(Math.min(pageCount, page + 1))}
+                  className="rounded-md border border-border bg-card px-3 py-1.5 font-medium transition-colors hover:border-foreground/40 disabled:cursor-not-allowed disabled:opacity-35"
+                >
+                  Next
+                </button>
+              </nav>
+            ) : null}
+          </>
+        ) : (
+          <p className="py-12 text-center text-sm text-muted-foreground">
+            No findings match these filters.
+          </p>
+        )}
+      </div>
     </section>
   );
 }

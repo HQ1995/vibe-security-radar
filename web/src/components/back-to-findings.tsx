@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { useSyncExternalStore } from "react";
-import { ArrowLeft } from "lucide-react";
 
 import { rememberedFindingsUrl } from "@/lib/findings-url";
 
@@ -15,12 +14,8 @@ export function BackToFindings() {
     () => "/cves",
   );
   return (
-    <Link
-      href={href}
-      className="inline-flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground"
-    >
-      <ArrowLeft className="h-3.5 w-3.5" />
-      Back to findings
+    <Link href={href} className="text-primary hover:underline">
+      Findings
     </Link>
   );
 }

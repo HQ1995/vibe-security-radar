@@ -300,7 +300,7 @@ function CauseFixCard({
           </span>
         ) : null}
       </div>
-      <h3 className="mt-2 text-lg font-semibold leading-7">{title}</h3>
+      <h2 className="mt-2 text-lg font-semibold leading-7">{title}</h2>
       <p className="mt-2 text-sm leading-6 text-muted-foreground">{detail}</p>
       {missed ? (
         <p className="mt-3 text-sm font-medium leading-6 text-amber-900 dark:text-amber-300">
@@ -387,7 +387,16 @@ function MechanismDisclosure({
 }
 
 function CaseFactsCard({ item }: { readonly item: ResearchCase }) {
+  const identities = [item.case_id, ...item.aliases];
+  const cveId = identities.find((value) => /^CVE-/i.test(value));
+  const ghsaId = identities.find((value) => /^GHSA-/i.test(value));
   const facts: { label: string; value: ReactNode }[] = [
+    ...(cveId
+      ? [{ label: "CVE ID", value: <span className="font-mono">{cveId}</span> }]
+      : []),
+    ...(ghsaId
+      ? [{ label: "GHSA ID", value: <span className="font-mono">{ghsaId}</span> }]
+      : []),
     {
       label: "Published",
       value: item.published_at ? formatPublished(item.published_at) : "Unavailable",
@@ -799,9 +808,11 @@ function DiffHunk({
 export function CanonicalCaseEvidence({
   item,
   displayId,
+  meta,
 }: {
   readonly item: ResearchCase;
   readonly displayId?: string;
+  readonly meta?: ReactNode;
 }) {
   const visibleId = displayId ?? preferredCaseId(item);
   const evidence = item.code_evidence;
@@ -882,24 +893,27 @@ export function CanonicalCaseEvidence({
   ].filter((group) => group.hunks.length > 0);
   const hasCode = codeHunks.length > 0;
   return (
-    <section className="space-y-12 border-t border-border pt-8">
+    <section className="space-y-12">
       <div className="grid items-start gap-8 xl:grid-cols-[minmax(0,1fr)_22rem]">
         <div className="min-w-0 space-y-8">
           <div>
-            <div className="flex flex-wrap items-center gap-3">
-              <p className="section-kicker">How AI contributed</p>
-              <span className="text-sm font-medium text-foreground">
-                {formatContributionClass(item.contribution_class)}
+            <h1 className="text-2xl font-semibold leading-snug tracking-[-0.025em] sm:text-[1.75rem]">
+              {summary ?? contributionHeadline(item.contribution_class)}
+            </h1>
+            <p className="mt-3 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-muted-foreground">
+              <span>
+                How AI contributed:{" "}
+                <span className="font-medium text-foreground">
+                  {formatContributionClass(item.contribution_class)}
+                </span>
               </span>
-            </div>
+              {meta}
+            </p>
             {item.publication_status === "provisional" ? (
               <p className="mt-3 border-l-2 border-amber-500 pl-3 text-sm text-muted-foreground">
                 Provisional finding. Full causal and release verification remains incomplete.
               </p>
             ) : null}
-            <h2 className="mt-3 text-xl font-semibold tracking-[-0.025em] sm:text-2xl">
-              {summary ?? contributionHeadline(item.contribution_class)}
-            </h2>
             {blurb && blurb !== summary ? (
               <AdvisoryDisclosure text={blurb} className="mt-3" />
             ) : null}
@@ -963,7 +977,7 @@ export function CanonicalCaseEvidence({
         <div className="space-y-8" aria-label="Code evidence">
           {codeGroups.map((group) => (
             <section key={group.label} className="space-y-3">
-              <h3 className="flex items-center gap-2 text-base font-semibold">
+              <h2 className="flex items-center gap-2 text-base font-semibold">
                 <span
                   aria-hidden="true"
                   className={`h-2.5 w-2.5 rounded-full ${
@@ -975,7 +989,7 @@ export function CanonicalCaseEvidence({
                   }`}
                 />
                 {group.title}
-              </h3>
+              </h2>
               {group.hunks.map(({ hunk, label, repository, sha, annotation, anchors }, index) => (
                 <DiffHunk
                   key={`${label}-${index}-${hunk.file}`}
@@ -1003,9 +1017,9 @@ export function CanonicalCaseEvidence({
         <div className="space-y-4 border-y border-border py-5">
           <div>
             <p className="section-kicker">What went wrong</p>
-            <h3 className="mt-2 text-lg font-semibold">
+            <h2 className="mt-2 text-lg font-semibold">
               {rootCauseTitle(item)}
-            </h3>
+            </h2>
           </div>
           {blurb ? (
             <p className="max-w-3xl text-sm leading-6 text-muted-foreground">

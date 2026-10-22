@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { ExternalLink } from "lucide-react";
 
 import { BackToFindings } from "@/components/back-to-findings";
+import { formatPublished } from "@/lib/commit-utils";
 import { CanonicalCaseEvidence } from "@/components/canonical-case-evidence";
 import {
   formatCaseLabel,
@@ -71,63 +72,81 @@ export async function generateMetadata({
   };
 }
 
-function PageHeader({
+function Breadcrumb({
   id,
   item,
 }: {
   readonly id: string;
   readonly item: ResearchCase;
 }) {
+  return (
+    <nav
+      aria-label="Breadcrumb"
+      className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm"
+    >
+      <BackToFindings />
+      <span aria-hidden="true" className="text-muted-foreground">
+        /
+      </span>
+      <span className="break-all font-mono text-foreground">
+        {formatCaseLabel(item, id)}
+      </span>
+    </nav>
+  );
+}
+
+function FindingMeta({ item }: { readonly item: ResearchCase }) {
   const repository = item.repository;
   const owner = repository?.split("/")[0];
-  const repoUrl = repository ? `https://github.com/${repository}` : undefined;
-  const avatarUrl = owner
-    ? `https://github.com/${owner}.png?size=32`
-    : undefined;
   const siblings = repository
     ? getResearchCases().filter((other) => other.repository === repository)
         .length
     : 0;
-
   return (
-    <header>
-      <BackToFindings />
-      <h1 className="mt-4 break-words font-mono text-xl font-semibold tracking-tight sm:text-2xl">
-        {formatCaseLabel(item, id)}
-      </h1>
-      <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
-        {repoUrl ? (
-          <a
-            href={repoUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex min-w-0 items-center gap-1.5 break-all font-medium text-foreground transition-colors hover:text-primary"
-          >
-            {avatarUrl ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={avatarUrl}
-                alt=""
-                width={16}
-                height={16}
-                loading="lazy"
-                className="h-4 w-4 rounded-full border border-border"
-              />
-            ) : null}
-            {repository}
-            <ExternalLink className="h-3 w-3 text-muted-foreground" />
-          </a>
+    <>
+      <span aria-hidden="true">·</span>
+      <span>
+        {item.published_at
+          ? `Published ${formatPublished(item.published_at)}`
+          : "Publication date unavailable"}
+        {repository ? (
+          <>
+            {" in "}
+            <a
+              href={`https://github.com/${repository}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1 break-all font-medium text-foreground hover:text-primary hover:underline"
+            >
+              {owner ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={`https://github.com/${owner}.png?size=32`}
+                  alt=""
+                  width={14}
+                  height={14}
+                  loading="lazy"
+                  className="h-3.5 w-3.5 rounded-full"
+                />
+              ) : null}
+              {repository}
+              <ExternalLink className="h-3 w-3 text-muted-foreground" />
+            </a>
+          </>
         ) : null}
-        {repository && siblings > 1 ? (
+      </span>
+      {repository && siblings > 1 ? (
+        <>
+          <span aria-hidden="true">·</span>
           <Link
             href={`/cves?${new URLSearchParams({ repository })}`}
             className="whitespace-nowrap text-primary hover:underline"
           >
-            All {siblings} findings in this repository →
+            All {siblings} findings in this repository
           </Link>
-        ) : null}
-      </div>
-    </header>
+        </>
+      ) : null}
+    </>
   );
 }
 
@@ -143,18 +162,21 @@ export default async function CveDetailPage({
   const references = item.references ?? [];
 
   return (
-    <main className="page-container space-y-10 py-8 sm:py-10">
-      <PageHeader id={id} item={item} />
+    <main className="page-container space-y-6 py-8 sm:py-10">
+      <Breadcrumb id={id} item={item} />
 
-      <CanonicalCaseEvidence item={item} displayId={id} />
+      <CanonicalCaseEvidence
+        item={item}
+        displayId={id}
+        meta={<FindingMeta item={item} />}
+      />
 
       {references.length > 0 ? (
         <section
           className="border-t border-border pt-8"
           aria-labelledby="sources"
         >
-          <p className="section-kicker">Advisory references</p>
-          <h2 id="sources" className="sr-only">
+          <h2 id="sources" className="text-base font-semibold">
             Advisory references
           </h2>
           <ul className="mt-4 space-y-2">

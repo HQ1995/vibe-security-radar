@@ -22,10 +22,12 @@ export default function CvesPage() {
   return (
     <main className="page-container py-8 sm:py-12">
       <header className="mb-6">
-        <h1 className="text-3xl font-semibold tracking-[-0.035em] sm:text-4xl">
-          All {cases.length} findings
+        <h1 className="text-3xl font-semibold tracking-[-0.03em]">
+          Findings
         </h1>
-        <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
+        <p className="mt-2 max-w-3xl text-sm leading-6 text-muted-foreground">
+          Published vulnerabilities where an AI-assisted change introduced the
+          flaw, exposed the vulnerable path, or left a security fix incomplete.
           Open a finding to see its evidence, caveats, contributing change, and
           fix status.
         </p>

@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { Search } from "lucide-react";
 
 import { AiToolComparison } from "@/components/ai-tool-comparison";
 import { DistributionBars } from "@/components/distribution-bars";
@@ -189,10 +190,35 @@ export default function HomePage() {
               {caseCount} AI-contributed vulnerabilities cataloged and
               evidence-linked across their full causal chain.
             </p>
-            <div className="mt-6 flex flex-wrap items-center gap-3 text-sm">
+            <form
+              action="/cves/"
+              method="get"
+              className="mt-6 flex max-w-xl gap-2"
+            >
+              <label className="relative min-w-0 flex-1">
+                <span className="sr-only">Search findings</span>
+                <Search
+                  aria-hidden="true"
+                  className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
+                />
+                <input
+                  type="search"
+                  name="q"
+                  placeholder="Search by CVE, GHSA, repository or keyword"
+                  className="h-10 w-full rounded-md border border-input bg-card pl-9 pr-3 text-sm text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/15"
+                />
+              </label>
+              <button
+                type="submit"
+                className="h-10 shrink-0 rounded-md bg-primary px-4 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90"
+              >
+                Search
+              </button>
+            </form>
+            <p className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
               <Link
                 href="/cves"
-                className="inline-flex h-10 items-center rounded-md bg-primary px-4 font-semibold text-primary-foreground transition-colors hover:bg-primary/90"
+                className="font-medium text-primary hover:underline"
               >
                 Browse all {caseCount} findings →
               </Link>
@@ -200,17 +226,24 @@ export default function HomePage() {
                 href="https://github.com/HQ1995/vibe-security-radar"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex h-10 items-center rounded-md border border-border bg-card px-4 font-semibold transition-colors hover:border-foreground/40"
+                className="text-muted-foreground hover:text-foreground"
               >
                 Star on GitHub ↗
               </a>
               <Link
                 href="/about"
-                className="px-1 font-medium text-muted-foreground hover:text-foreground"
+                className="text-muted-foreground hover:text-foreground"
               >
                 How we verify
               </Link>
-            </div>
+              <a
+                href="/data/findings.csv"
+                download
+                className="text-muted-foreground hover:text-foreground"
+              >
+                Download data (CSV)
+              </a>
+            </p>
             <dl className="mt-8 grid grid-cols-2 gap-x-8 gap-y-5 border-t border-border pt-6">
               <HeadlineStat
                 label="Findings"
