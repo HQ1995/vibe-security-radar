@@ -50,8 +50,10 @@ export function ResearchCaseTable({
               <span className="break-all">
                 {item.repository ?? "Not recorded"}
               </span>
-              <span aria-hidden="true">·</span>
-              <span className="[&>span]:text-xs">
+              <span aria-hidden="true" className="hidden sm:inline">
+                ·
+              </span>
+              <span className="hidden sm:inline [&>span]:text-xs">
                 <LanguageBadge language={item.repository_metadata.language} />
               </span>
               <span aria-hidden="true">·</span>
@@ -64,8 +66,12 @@ export function ResearchCaseTable({
               </span>
               <span aria-hidden="true">·</span>
               <span>{formatContributionClass(item.contribution_class)}</span>
-              <span aria-hidden="true">·</span>
-              <span>{causeCategoryLabel(item.cause_category, labels)}</span>
+              <span aria-hidden="true" className="hidden sm:inline">
+                ·
+              </span>
+              <span className="hidden sm:inline">
+                {causeCategoryLabel(item.cause_category, labels)}
+              </span>
               <span aria-hidden="true">·</span>
               <span className="whitespace-nowrap">
                 {item.published_at

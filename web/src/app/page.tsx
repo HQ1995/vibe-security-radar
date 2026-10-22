@@ -9,7 +9,7 @@ import { SeverityLabel } from "@/components/severity-label";
 import { ToolIcon } from "@/components/tool-icon";
 import { TrendChart } from "@/components/trend-chart";
 import { SITE_URL } from "@/lib/constants";
-import { formatMonthShort } from "@/lib/month-utils";
+import { formatDay, formatMonthShort } from "@/lib/month-utils";
 import {
   formatContributionClass,
   getAiFamilyIconKey,
@@ -135,8 +135,10 @@ function FindingRow({ item }: { readonly item: ResearchCase }) {
         <span aria-hidden="true">·</span>
         <span>{getCauseCategoryLabel(item.cause_category)}</span>
         <span aria-hidden="true">·</span>
-        <span className="tabular-nums">
-          {item.published_at?.slice(0, 10) ?? "Date unavailable"}
+        <span className="whitespace-nowrap">
+          {item.published_at
+            ? formatDay(item.published_at)
+            : "Date unavailable"}
         </span>
       </p>
     </li>
@@ -245,7 +247,7 @@ export default function HomePage() {
                 <input
                   type="search"
                   name="q"
-                  placeholder="Search by CVE, GHSA, repository or keyword"
+                  placeholder="CVE, GHSA, repository or keyword"
                   className="h-10 w-full rounded-md border border-input bg-card pl-9 pr-3 text-sm text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/15"
                 />
               </label>
