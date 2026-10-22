@@ -66,7 +66,7 @@ export function ResearchCaseTable({
                   />
                   {aiToolLabel(item, labels)}
                 </span>
-                <span className="rounded-full bg-accent px-2 py-0.5 font-medium text-accent-foreground">
+                <span className="text-muted-foreground">
                   {formatContributionClass(item.contribution_class)}
                 </span>
               </div>

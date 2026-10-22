@@ -153,17 +153,17 @@ export function TrendChart({
           </p>
         </div>
         {columns.length ? (
-          <div className="inline-flex shrink-0 rounded-md border border-border bg-card p-0.5 text-xs">
+          <div className="flex shrink-0 gap-4 border-b border-border text-sm">
             {(["chart", "table"] as const).map((option) => (
               <button
                 key={option}
                 type="button"
                 aria-pressed={view === option}
                 onClick={() => setView(option)}
-                className={`rounded-[5px] px-3 py-1 font-medium transition-colors ${
+                className={`-mb-px border-b-2 pb-1.5 font-medium transition-colors ${
                   view === option
-                    ? "bg-foreground text-background"
-                    : "text-muted-foreground hover:text-foreground"
+                    ? "border-foreground text-foreground"
+                    : "border-transparent text-muted-foreground hover:text-foreground"
                 }`}
               >
                 {option === "chart" ? "Chart" : "Table"}
@@ -172,12 +172,6 @@ export function TrendChart({
           </div>
         ) : null}
       </div>
-
-      {hasCoverage ? (
-        <p className="mt-4 rounded-md bg-muted px-3 py-2 text-xs leading-5 text-muted-foreground">
-          {`Only ${coverageRange} of each month's advisories have been researched so far, so a short bar can mean little research rather than few AI-caused vulnerabilities.`}
-        </p>
-      ) : null}
 
       {!columns.length ? (
         <p className="py-10 text-sm text-muted-foreground">
@@ -398,6 +392,12 @@ export function TrendChart({
         </div>
       ) : null}
 
+      {hasCoverage ? (
+        <p className="mt-4 max-w-3xl text-sm leading-6 text-muted-foreground">
+          <span className="font-medium text-foreground">Note: </span>
+          {`Only ${coverageRange} of each month's advisories have been researched so far, so a short bar can mean little research rather than few AI-caused vulnerabilities.`}
+        </p>
+      ) : null}
       {cutoffIsPartial ? (
         <p className="mt-3 text-xs text-muted-foreground">
           * {formatMonthShort(cutoffMonth)} is partial, so its bar is lighter.

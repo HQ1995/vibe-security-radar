@@ -101,46 +101,38 @@ function HeadlineStat({
   );
 }
 
-function FindingCard({ item }: { readonly item: ResearchCase }) {
+function FindingRow({ item }: { readonly item: ResearchCase }) {
   const id = preferredCaseId(item);
   return (
-    <Link
-      href={`/cves/${id}`}
-      className="group flex h-full min-w-0 flex-col rounded-lg border border-border bg-card p-5 transition-colors hover:border-primary/50"
-    >
-      <div className="flex items-center justify-between gap-3 text-xs text-muted-foreground">
-        <span className="flex min-w-0 items-center gap-1.5">
+    <li className="py-4">
+      <Link
+        href={`/cves/${id}`}
+        className="line-clamp-2 font-medium leading-6 [overflow-wrap:anywhere] hover:text-primary hover:underline"
+      >
+        {getCaseHeadline(item)}
+      </Link>
+      <p className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
+        <span className="font-mono">{id}</span>
+        <span aria-hidden="true">·</span>
+        <span>{item.repository ?? "Repository not recorded"}</span>
+        <span aria-hidden="true">·</span>
+        <span className="inline-flex items-center gap-1">
           <ToolIcon
             tool={getAiFamilyIconKey(item.ai_provenance.family)}
-            size={16}
+            size={13}
           />
-          <span className="truncate">
-            {getAiToolLabel(item)} ·{" "}
-            {item.repository ?? "Repository not recorded"}
-          </span>
+          {getAiToolLabel(item)}
         </span>
-        <span className="shrink-0 tabular-nums">
+        <span aria-hidden="true">·</span>
+        <span>{formatContributionClass(item.contribution_class)}</span>
+        <span aria-hidden="true">·</span>
+        <span>{getCauseCategoryLabel(item.cause_category)}</span>
+        <span aria-hidden="true">·</span>
+        <span className="tabular-nums">
           {item.published_at?.slice(0, 10) ?? "Date unavailable"}
         </span>
-      </div>
-      <h3 className="mt-3 line-clamp-4 text-[15px] font-semibold leading-6 [overflow-wrap:anywhere] group-hover:text-primary">
-        {getCaseHeadline(item)}
-      </h3>
-      <div className="mt-auto flex flex-wrap gap-1.5 pt-4 text-[11px] font-medium">
-        <span className="rounded-full bg-accent px-2 py-0.5 text-accent-foreground">
-          {formatContributionClass(item.contribution_class)}
-        </span>
-        <span className="rounded-full bg-muted px-2 py-0.5 text-muted-foreground">
-          {getCauseCategoryLabel(item.cause_category)}
-        </span>
-      </div>
-      <p className="mt-3 border-t border-border pt-3 font-mono text-xs text-muted-foreground">
-        {id}
-        <span className="float-right font-sans font-medium text-primary">
-          Root cause and fix →
-        </span>
       </p>
-    </Link>
+    </li>
   );
 }
 
@@ -187,7 +179,7 @@ export default function HomePage() {
       <header className="border-b border-border">
         <div className="page-container grid gap-8 py-8 sm:py-10 lg:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)] lg:items-center lg:gap-12">
           <div>
-            <p className="section-kicker">
+            <p className="text-sm text-muted-foreground">
               Georgia Tech SSLab · Security research
             </p>
             <h1 className="mt-3 text-[2.5rem] font-semibold leading-[1.05] tracking-[-0.04em] sm:text-5xl">
@@ -266,10 +258,11 @@ export default function HomePage() {
           id="patterns"
           className="scroll-mt-20 border-t border-border py-10 sm:py-14"
         >
-          <p className="section-kicker">Patterns</p>
-          <h2 className="mt-2 text-xl font-semibold tracking-[-0.02em] sm:text-2xl">
-            Who, where, and why
-          </h2>
+          <h2 className="text-xl font-semibold tracking-[-0.02em]">Patterns</h2>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Who, where, and why: the AI tools involved, what went wrong, and
+            where the vulnerable code lives.
+          </p>
           <div className="mt-8 grid gap-x-14 gap-y-12 md:grid-cols-2">
             <AiToolComparison />
             <DistributionBars
@@ -309,12 +302,15 @@ export default function HomePage() {
           id="cases"
           className="scroll-mt-20 border-t border-border py-10 sm:py-14"
         >
-          <div className="flex flex-wrap items-end justify-between gap-3">
+          <div className="flex flex-wrap items-baseline justify-between gap-3">
             <div>
-              <p className="section-kicker">Featured findings</p>
-              <h2 className="mt-2 text-xl font-semibold tracking-[-0.02em] sm:text-2xl">
-                See the vulnerable code and fix
+              <h2 className="text-xl font-semibold tracking-[-0.02em]">
+                Featured findings
               </h2>
+              <p className="mt-1 text-sm text-muted-foreground">
+                See the vulnerable code and fix: one recent example of each kind
+                of AI contribution.
+              </p>
             </div>
             <Link
               href="/cves"
@@ -323,17 +319,17 @@ export default function HomePage() {
               Browse all {caseCount} findings →
             </Link>
           </div>
-          <div className="mt-6 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          <ol className="mt-4 divide-y divide-border border-y border-border">
             {featuredCases.map((item) => (
-              <FindingCard key={item.case_id} item={item} />
+              <FindingRow key={item.case_id} item={item} />
             ))}
-          </div>
+          </ol>
         </section>
 
         <section className="border-t border-border py-10 sm:py-14">
           <div className="grid gap-12 lg:grid-cols-2 lg:gap-16">
             <div>
-              <p className="section-kicker">Media coverage</p>
+              <h2 className="text-lg font-semibold">Media coverage</h2>
               <div className="mt-4 divide-y divide-border border-y border-border">
                 {MEDIA_COVERAGE.map((item) => (
                   <a
@@ -355,7 +351,7 @@ export default function HomePage() {
             </div>
 
             <div>
-              <p className="section-kicker">Q&amp;A</p>
+              <h2 className="text-lg font-semibold">Q&amp;A</h2>
               <dl className="mt-4 divide-y divide-border border-y border-border">
                 {faqItems.map((item) => (
                   <div key={item.question} className="py-4">

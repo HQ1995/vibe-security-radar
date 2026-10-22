@@ -270,21 +270,21 @@ function CauseFixCard({
 }) {
   const toneClass = {
     bad: {
-      border: "border-l-destructive bg-red-50/55 dark:bg-red-500/[0.08]",
+      border: "border-t-destructive",
       kicker: "text-destructive",
     },
     warn: {
-      border: "border-l-amber-600 bg-amber-50/55 dark:bg-amber-500/[0.08]",
+      border: "border-t-amber-600",
       kicker: "text-amber-800 dark:text-amber-300",
     },
     good: {
-      border: "border-l-emerald-600 bg-emerald-50/55 dark:bg-emerald-500/[0.08]",
+      border: "border-t-emerald-600",
       kicker: "text-emerald-700 dark:text-emerald-400",
     },
   }[tone];
   return (
     <article
-      className={`min-w-0 rounded-lg border border-border border-l-4 p-5 ${toneClass.border}`}
+      className={`min-w-0 border-t-2 pt-4 ${toneClass.border}`}
     >
       <div className="flex flex-wrap items-center justify-between gap-2">
         <p
@@ -294,11 +294,7 @@ function CauseFixCard({
         </p>
         {badge ? (
           <span
-            className={`font-mono text-[10px] font-semibold uppercase tracking-wider ${
-              muted
-                ? "text-muted-foreground"
-                : "bg-primary px-1.5 py-0.5 text-primary-foreground"
-            }`}
+            className={`text-xs ${muted ? "text-muted-foreground" : "font-medium text-primary"}`}
           >
             {badge}
           </span>
@@ -445,7 +441,7 @@ function CaseFactsCard({ item }: { readonly item: ResearchCase }) {
       : []),
   ];
   return (
-    <div className="h-fit rounded-lg border border-border bg-card p-5 text-sm xl:sticky xl:top-20">
+    <div className="h-fit border-t border-border pt-4 text-sm xl:sticky xl:top-20 xl:border-l xl:border-t-0 xl:pl-8 xl:pt-0">
       <p className="text-sm font-semibold">Case facts</p>
       <dl className="mt-4 space-y-3.5">
         {facts.map(({ label, value }) => (
@@ -528,12 +524,10 @@ function ThisAdvisoryFrame({
   readonly children: ReactNode;
 }) {
   return (
-    <div className="rounded-lg border-2 border-primary bg-primary/[0.04] p-3 sm:p-4">
-      <p className="mb-3 flex flex-wrap items-center gap-2 font-mono text-[10px] font-semibold uppercase tracking-wider text-primary">
-        <span className="bg-primary px-1.5 py-0.5 text-primary-foreground">
-          This advisory
-        </span>
-        <span className="normal-case tracking-normal">{label}</span>
+    <div className="border-l-2 border-primary pl-4 sm:pl-6">
+      <p className="mb-4 flex flex-wrap items-baseline gap-2 text-sm">
+        <span className="font-semibold text-primary">This advisory</span>
+        <span className="font-mono text-xs text-muted-foreground">{label}</span>
       </p>
       {children}
     </div>
@@ -630,7 +624,7 @@ function IncompleteRemediationFlow({
   return (
     <div className="space-y-3">
       <p className="text-sm text-muted-foreground">
-        Only the highlighted steps are this advisory. The first card is the
+        Only the highlighted steps are this advisory. The first step is the
         earlier flaw the AI tried, and failed, to close.
       </p>
       <div className="grid items-stretch gap-3 xl:grid-cols-[minmax(0,0.9fr)_auto_minmax(0,1.4fr)]">
@@ -792,13 +786,7 @@ function DiffHunk({
           <div
             role="note"
             aria-label="Key code note"
-            className={`border-t-4 px-4 py-3 text-sm leading-6 ${
-              label === "AI-assisted change"
-                ? "border-amber-500 bg-amber-50/70 text-amber-950 dark:bg-amber-500/10 dark:text-amber-100"
-                : label === "Fix"
-                  ? "border-emerald-600 bg-emerald-50/70 text-emerald-950 dark:bg-emerald-500/10 dark:text-emerald-100"
-                  : "border-primary bg-primary/[0.04] text-foreground"
-            }`}
+            className="border-t border-border bg-muted/50 px-4 py-3 text-sm leading-6 text-foreground"
           >
             {annotation}
           </div>
@@ -900,7 +888,7 @@ export function CanonicalCaseEvidence({
           <div>
             <div className="flex flex-wrap items-center gap-3">
               <p className="section-kicker">How AI contributed</p>
-              <span className="rounded-full bg-accent px-2 py-0.5 text-xs font-medium text-accent-foreground">
+              <span className="text-sm font-medium text-foreground">
                 {formatContributionClass(item.contribution_class)}
               </span>
             </div>
@@ -975,17 +963,19 @@ export function CanonicalCaseEvidence({
         <div className="space-y-8" aria-label="Code evidence">
           {codeGroups.map((group) => (
             <section key={group.label} className="space-y-3">
-              <div
-                className={`rounded-md border-l-4 px-4 py-2 ${
-                  group.label === "AI-assisted change"
-                    ? "border-amber-500 bg-amber-50/70 dark:bg-amber-500/10"
-                    : group.label === "Fix"
-                      ? "border-emerald-600 bg-emerald-50/70 dark:bg-emerald-500/10"
-                      : "border-primary bg-primary/[0.04]"
-                }`}
-              >
-                <h3 className="text-sm font-semibold">{group.title}</h3>
-              </div>
+              <h3 className="flex items-center gap-2 text-base font-semibold">
+                <span
+                  aria-hidden="true"
+                  className={`h-2.5 w-2.5 rounded-full ${
+                    group.label === "AI-assisted change"
+                      ? "bg-amber-500"
+                      : group.label === "Fix"
+                        ? "bg-emerald-600"
+                        : "bg-primary"
+                  }`}
+                />
+                {group.title}
+              </h3>
               {group.hunks.map(({ hunk, label, repository, sha, annotation, anchors }, index) => (
                 <DiffHunk
                   key={`${label}-${index}-${hunk.file}`}

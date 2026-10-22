@@ -68,10 +68,10 @@ export function NavHeader() {
                 key={link.href}
                 href={link.href}
                 aria-current={isActive ? "page" : undefined}
-                className={`whitespace-nowrap rounded-full px-2.5 py-1.5 text-xs transition-colors sm:px-3.5 sm:text-sm ${
+                className={`whitespace-nowrap border-b-2 px-2 py-4 text-xs transition-colors sm:px-3 sm:text-sm ${
                   isActive
-                    ? "bg-primary/10 font-medium text-primary"
-                    : "text-muted-foreground hover:bg-muted/60 hover:text-foreground"
+                    ? "border-foreground font-medium text-foreground"
+                    : "border-transparent text-muted-foreground hover:text-foreground"
                 }`}
               >
                 {link.label}

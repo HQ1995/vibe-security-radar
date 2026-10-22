@@ -51,7 +51,7 @@ export function OverviewPanel({
   return (
     <section
       aria-label="At a glance"
-      className="rounded-lg border border-border bg-card p-5 sm:p-6"
+      className="border-t border-border pt-5 lg:border-l lg:border-t-0 lg:pl-10 lg:pt-0"
     >
       <div className="flex items-baseline justify-between gap-3">
         <h2 className="text-sm font-semibold">Findings per month</h2>
@@ -118,7 +118,7 @@ export function OverviewPanel({
             {tools.map((item, index) => (
               <span
                 key={item.key}
-                className="h-full border-r-2 border-card last:border-r-0"
+                className="h-full border-r-2 border-background last:border-r-0"
                 style={{
                   width: `${(item.count / Math.max(1, toolTotal)) * 100}%`,
                   background: TOOL_COLORS[index % TOOL_COLORS.length],
