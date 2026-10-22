@@ -105,7 +105,7 @@ describe("homepage hierarchy", () => {
     expect(html).toContain("Vibe Security Radar");
     expect(html).toContain("See the vulnerable code and fix");
     expect(html).toContain(
-      `${snapshot.case_count} AI-contributed vulnerabilities cataloged`,
+      `${snapshot.case_count} published CVEs and GitHub advisories traced to`,
     );
     expect(html).toContain(
       `Browse all ${getResearchCases().length} findings`,

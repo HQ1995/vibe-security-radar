@@ -228,8 +228,9 @@ export default function HomePage() {
               Vibe Security Radar
             </h1>
             <p className="mt-4 max-w-xl text-lg leading-7 text-muted-foreground">
-              {caseCount} AI-contributed vulnerabilities cataloged and
-              evidence-linked across their full causal chain.
+              {caseCount} published CVEs and GitHub advisories traced to
+              AI-assisted code changes, each with the vulnerable code and the
+              fix.
             </p>
             <form
               action="/cves/"
@@ -245,7 +246,7 @@ export default function HomePage() {
                 <input
                   type="search"
                   name="q"
-                  placeholder="CVE, GHSA, repository or keyword"
+                  placeholder="CVE, GHSA, repo or keyword"
                   className="h-10 w-full rounded-md border border-input bg-card pl-9 pr-3 text-sm text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/15"
                 />
               </label>

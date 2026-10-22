@@ -24,7 +24,7 @@ export default function NotFound() {
             <input
               type="search"
               name="q"
-              placeholder="CVE, GHSA, repository or keyword"
+              placeholder="CVE, GHSA, repo or keyword"
               className="h-10 w-full rounded-md border border-input bg-card pl-9 pr-3 text-sm text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/15"
             />
           </label>
