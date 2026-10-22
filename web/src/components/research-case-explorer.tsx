@@ -57,10 +57,11 @@ export function filterResearchCases<T extends FindingRow>(
   filters: ResearchCaseFilters,
   labels: ResearchLabels,
 ): T[] {
-  const query = filters.query.trim().toLowerCase();
+  const terms = filters.query.trim().toLowerCase().split(/\s+/).filter(Boolean);
   return cases.filter(
     (item) =>
-      (!query || searchableText(item, labels).includes(query)) &&
+      (!terms.length ||
+        terms.every((term) => searchableText(item, labels).includes(term))) &&
       (!filters.cause || item.cause_category === filters.cause) &&
       (!filters.contribution ||
         item.contribution_class === filters.contribution) &&

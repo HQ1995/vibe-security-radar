@@ -149,6 +149,17 @@ function FindingMeta({ item }: { readonly item: ResearchCase }) {
   );
 }
 
+function hasRelated(item: ResearchCase): boolean {
+  return getResearchCases().some(
+    (other) =>
+      other.case_id !== item.case_id &&
+      (item.repository
+        ? other.repository === item.repository ||
+          other.cause_category === item.cause_category
+        : other.cause_category === item.cause_category),
+  );
+}
+
 function RelatedFindings({ item }: { readonly item: ResearchCase }) {
   const others = getResearchCases().filter(
     (other) => other.case_id !== item.case_id,
@@ -174,9 +185,12 @@ function RelatedFindings({ item }: { readonly item: ResearchCase }) {
         `/cves?${new URLSearchParams({ cause: item.cause_category ?? "" })}`,
       ];
   return (
-    <section className="border-t border-border pt-8" aria-labelledby="related">
+    <section
+      className="scroll-mt-20 border-t border-border pt-8"
+      aria-labelledby="related"
+    >
       <div className="flex flex-wrap items-baseline justify-between gap-3 border-b border-border pb-3">
-        <h2 id="related" className="text-base font-semibold">
+        <h2 id="related" className="scroll-mt-20 text-base font-semibold">
           {title}
         </h2>
         {pool.length > related.length ? (
@@ -209,6 +223,14 @@ export default async function CveDetailPage({
         item={item}
         displayId={id}
         meta={<FindingMeta item={item} />}
+        extraLinks={[
+          ...(hasRelated(item)
+            ? [{ id: "related", label: "Related findings" }]
+            : []),
+          ...(references.length
+            ? [{ id: "sources", label: "Advisory references" }]
+            : []),
+        ]}
       />
 
       <RelatedFindings item={item} />
@@ -218,7 +240,7 @@ export default async function CveDetailPage({
           className="border-t border-border pt-8"
           aria-labelledby="sources"
         >
-          <h2 id="sources" className="text-base font-semibold">
+          <h2 id="sources" className="scroll-mt-20 text-base font-semibold">
             Advisory references
           </h2>
           <ul className="mt-4 space-y-2">

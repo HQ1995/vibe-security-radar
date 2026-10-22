@@ -855,10 +855,12 @@ export function CanonicalCaseEvidence({
   item,
   displayId,
   meta,
+  extraLinks = [],
 }: {
   readonly item: ResearchCase;
   readonly displayId?: string;
   readonly meta?: ReactNode;
+  readonly extraLinks?: readonly { readonly id: string; readonly label: string }[];
 }) {
   const visibleId = displayId ?? preferredCaseId(item);
   const evidence = item.code_evidence;
@@ -938,6 +940,26 @@ export function CanonicalCaseEvidence({
     },
   ].filter((group) => group.hunks.length > 0);
   const hasCode = codeHunks.length > 0;
+  const groupAnchor = (label: string) =>
+    label === "AI-assisted change"
+      ? "ai-assisted-change"
+      : label === "Fix"
+        ? "security-fix"
+        : "comparison";
+  const fileCount = (hunks: readonly { hunk: ResearchCodeHunk }[]) => {
+    const files = new Set(hunks.map(({ hunk }) => hunk.file)).size;
+    return `${files} ${files === 1 ? "file" : "files"}`;
+  };
+  const jumpLinks = [
+    { id: "cause-and-fix", label: incomplete ? "Fix history" : "Root cause and fix" },
+    ...(evidence && hasCode
+      ? codeGroups.map((group) => ({
+          id: groupAnchor(group.label),
+          label: `${group.title} (${fileCount(group.hunks)})`,
+        }))
+      : []),
+    ...extraLinks,
+  ];
   return (
     <section className="space-y-12">
       <div className="grid items-start gap-8 xl:grid-cols-[minmax(0,1fr)_22rem]">
@@ -964,6 +986,26 @@ export function CanonicalCaseEvidence({
               <AdvisoryDisclosure text={blurb} className="mt-3" />
             ) : null}
             <MechanismDisclosure item={item} className="mt-5" />
+            {jumpLinks.length > 1 ? (
+              <nav
+                aria-label="On this page"
+                className="mt-5 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm print:hidden"
+              >
+                <span className="text-muted-foreground">Jump to:</span>
+                {jumpLinks.map((link, index) => (
+                  <span key={link.id} className="inline-flex items-center gap-2">
+                    {index ? (
+                      <span aria-hidden="true" className="text-muted-foreground">
+                        ·
+                      </span>
+                    ) : null}
+                    <a href={`#${link.id}`} className="text-primary hover:underline">
+                      {link.label}
+                    </a>
+                  </span>
+                ))}
+              </nav>
+            ) : null}
           </div>
 
           {introStep && !incomplete ? (
@@ -978,7 +1020,10 @@ export function CanonicalCaseEvidence({
           ) : null}
 
           {incomplete ? null : (
-            <div className="grid min-w-0 items-stretch gap-3 sm:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)]">
+            <div
+              id="cause-and-fix"
+              className="grid min-w-0 scroll-mt-20 items-stretch gap-3 sm:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)]"
+            >
               <CauseFixCard
                 tone="bad"
                 kicker="Root cause"
@@ -1016,13 +1061,19 @@ export function CanonicalCaseEvidence({
       </div>
 
       {incomplete ? (
-        <IncompleteRemediationFlow item={item} displayId={visibleId} />
+        <div id="cause-and-fix" className="scroll-mt-20">
+          <IncompleteRemediationFlow item={item} displayId={visibleId} />
+        </div>
       ) : null}
 
       {evidence && hasCode ? (
         <div className="space-y-8" aria-label="Code evidence">
           {codeGroups.map((group) => (
-            <section key={group.label} className="space-y-3">
+            <section
+              key={group.label}
+              id={groupAnchor(group.label)}
+              className="scroll-mt-20 space-y-3"
+            >
               <h2 className="flex items-center gap-2 text-base font-semibold">
                 <span
                   aria-hidden="true"

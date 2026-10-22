@@ -362,6 +362,10 @@ describe("canonical case evidence", () => {
     }
 
     expect(search("kind")).toHaveLength(0);
+    const oauth = getResearchCaseById("CVE-2025-4143")!;
+    expect(search("callback oauth")).toContain(oauth);
+    expect(search("oauth   cloudflare/workers-oauth-provider")).toContain(oauth);
+    expect(search("oauth zzz-not-a-term")).toHaveLength(0);
     expect(search("2026-08-07").length).toBeGreaterThan(0);
     expect(
       filterResearchCases(
