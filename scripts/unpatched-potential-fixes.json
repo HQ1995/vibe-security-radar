@@ -186,7 +186,7 @@
     "repo": "mervinpraison/praisonai",
     "unpatched": {
       "confirmed": true,
-      "reason": "At the audited repository HEAD, the SearxNG URL still reaches requests.get without destination validation and the loopback proof of concept still succeeds; no public remediation commit or patched release was found.",
+      "reason": "Release 1.6.62 added a SearxNG URL check, but it always allows localhost, 127.0.0.1 and ::1, so the advisory's loopback proof of concept still succeeds on that release and on the current main branch; no commit closes this gap.",
       "potential_fix": {
         "approach": "Validate every configured or caller-supplied SearxNG URL before the request: allow only HTTP(S), resolve the hostname, reject loopback, private, link-local, multicast, and cloud-metadata destinations for every resolved address, and repeat the same validation after redirects before following them.",
         "rationale": "The vulnerable path is an outbound server request to an attacker-controlled URL. Scheme and resolved-address validation, including redirect revalidation, prevents that request from reaching internal services while preserving access to public SearxNG instances.",

@@ -281,8 +281,8 @@
     ]
   },
   "GHSA-P7MM-R948-4Q3Q": {
-    "detail": "The fix removes decidedByUserId from request validators and derives it from the authenticated actor for approve, reject, and request-revision operations, preventing clients from forging decision attribution.",
-    "fix_url": "https://github.com/paperclipai/paperclip/commit/32a9165ddf6308f3b46eae0653b6f583e502e538",
+    "detail": "The routes now derive decidedByUserId from req.actor.userId, and the validators no longer accept a client-supplied decider field for approve, reject, or request-revision.",
+    "fix_url": "https://github.com/paperclipai/paperclip/commit/edeec965f84e4376c42e93761823ff1b959a8302",
     "fix_files": [
       "packages/shared/src/validators/approval.ts",
       "server/src/routes/approvals.ts"
@@ -367,11 +367,10 @@
     ]
   },
   "GHSA-VVFR-G83F-8QCV": {
-    "detail": "Tracks keys loaded from each profile, removes those keys from os.environ before loading the next profile, and then applies the new profile's environment values.",
-    "fix_url": "https://github.com/nesquena/hermes-webui/commit/88dc8bbe26a6055161d3251b70f5cd3d3c5831b0",
+    "detail": "The fix tracks keys loaded from the profile's .env, pops those keys before loading the next profile, and records the newly loaded keys so normal profile switches no longer leak secrets.",
+    "fix_url": "https://github.com/nesquena/hermes-webui/commit/abee926eb1e781338e36e6479aea3b7c9362cef5",
     "fix_files": [
-      "api/profiles.py",
-      "api/onboarding.py"
+      "api/profiles.py"
     ]
   },
   "GHSA-W6H2-FR4Q-XVXV": {
@@ -439,11 +438,11 @@
     "detail": "The handler refuses multi-tenant requests that resolve to the empty storage scope."
   },
   "GHSA-F378-WF84-8J5H": {
-    "fix_url": "https://github.com/jarrodwatts/claude-hud/commit/a705e6aae50569be5158558a56b1e3db77e51be9",
+    "fix_url": "https://github.com/jarrodwatts/claude-hud/commit/234d9aad919b51326a43bcf90b45ae35c23afc30",
     "fix_files": [
       "src/render/lines/project.ts"
     ],
-    "detail": "The replacement sanitizes and validates hyperlink destinations before emitting a link."
+    "detail": "The repair strips control and bidi characters from display text, builds file links with pathToFileURL and only emits hyperlinks for https: and file: URLs, so injected bytes can no longer break out of the escape sequence."
   },
   "GHSA-X44H-65QV-CW74": {
     "fix_url": "https://github.com/mervinpraison/praisonai/commit/2f9677abb2ea68eab864ee8b6a828fd0141612e1",
@@ -467,18 +466,18 @@
     "detail": "The new attribute escaper encodes characters that can terminate quoted attributes."
   },
   "GHSA-MW9F-Q68P-364X": {
-    "fix_url": "https://github.com/unclecode/crawl4ai/commit/60886d1a0c52682e4c83a7cef9dfac417fff6bd2",
+    "fix_url": "https://github.com/unclecode/crawl4ai/commit/aa81e8fe7d940dde8e6eec4beca178a8d6e0eb72",
     "fix_files": [
       "deploy/docker/api.py"
     ],
-    "detail": "The repaired path takes both the API token and base URL from the server-resolved LLM configuration."
+    "detail": "All three LLM call sites now use only the configured base_url, with a comment marking the request value as a key-exfiltration vector."
   },
   "GHSA-JV8R-HV7Q-P6VC": {
-    "fix_url": "https://github.com/thorsten/phpmyfaq/commit/61829e83411f7b28bc6fd1052bfde54c32c6c370",
+    "fix_url": "https://github.com/thorsten/phpmyfaq/commit/8211d1d25951b4c272443cfc3ef9c09b1363fd87",
     "fix_files": [
-      "phpmyfaq/assets/templates/admin/user/users.twig"
+      "phpmyfaq/assets/templates/admin/user/user-list.twig"
     ],
-    "detail": "The user-list template removes the raw filter so display names receive normal escaping."
+    "detail": "The template drops |raw for display_name, so escaped output is rendered as text instead of executing as markup."
   },
   "GHSA-F23G-2F38-GG94": {
     "fix_url": "https://github.com/unclecode/crawl4ai/commit/7976b45817f6afd9b0714ac18403b4d9835e3e57",

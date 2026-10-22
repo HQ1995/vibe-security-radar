@@ -186,7 +186,9 @@ describe("canonical research data", () => {
     expect(faraday?.ir_chain?.original_advisory_ids).toContain(
       "GHSA-33MH-2634-FWR2",
     );
-    expect(getResearchCaseById("GHSA-J5QP-P44G-2M49")?.ir_chain).toBeTruthy();
+    expect(getResearchCaseById("GHSA-J5QP-P44G-2M49")?.contribution_class).toBe(
+      "AI_DIRECT_ROOT",
+    );
     const frvj = getResearchCaseById("CVE-2026-59221");
     expect(frvj?.case_id).toBe("GHSA-FRVJ-C5QP-XJ4W");
     expect(frvj?.ir_chain?.original_sha).toBe(
@@ -198,7 +200,6 @@ describe("canonical research data", () => {
 
     const reviewedOrigins = new Map([
       ["GHSA-4FXP-2M36-QV64", "b0fa7751b112038cb01a0fac3b2ab841f2f7f7cc"],
-      ["GHSA-Q9PG-JJ6X-J9P6", "a487fa8ef7012007a6c9d89a810403a39b568aea"],
       ["GHSA-6Q7J-XR26-3H2C", "46054810b50b03a6d19cd51886321cbbefa5d589"],
     ]);
     for (const [caseId, originalSha] of reviewedOrigins) {
@@ -224,9 +225,6 @@ describe("canonical research data", () => {
     expect(advisoryRepos.has("haxtheweb/issues")).toBe(false);
     expect(getResearchCaseById("GHSA-64CV-VXPR-J6VC")?.repository).toBe(
       "openedx/edx-enterprise",
-    );
-    expect(getResearchCaseById("GHSA-X34R-63HX-W57F")?.repository).toBe(
-      "langroid/langroid",
     );
     expect(getResearchCaseById("GHSA-G2G8-95QG-V35H")?.repository).toBe(
       "haxtheweb/haxcms-nodejs",

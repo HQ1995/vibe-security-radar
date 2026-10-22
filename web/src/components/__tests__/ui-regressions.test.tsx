@@ -262,7 +262,7 @@ describe("canonical case evidence", () => {
       {
         query: "go-git",
         cause: "path_link",
-        contribution: "AI_INCOMPLETE_REMEDIATION",
+        contribution: "AI_CODE_FLAWED",
         tool: "Claude",
         language: "Go",
         repository: "go-git/go-git",
@@ -474,7 +474,7 @@ describe("canonical case evidence", () => {
   });
 
   it("explains incomplete remediation without exposing an internal mechanism key", () => {
-    const item = getResearchCaseById("CVE-2026-71556");
+    const item = getResearchCaseById("GHSA-4FXP-2M36-QV64");
     expect(item).not.toBeNull();
 
     const html = renderToStaticMarkup(<CanonicalCaseEvidence item={item!} />);
@@ -482,11 +482,10 @@ describe("canonical case evidence", () => {
     expect(html).toContain("This advisory");
     expect(html).toContain("AI tried to fix this");
     expect(html).toContain("Missed:");
-    expect(html).toContain("leading symlink");
+    expect(html).toContain("arbitrary role");
     expect(html).toContain("Fixed again");
-    expect(html).toContain("validWritePath");
-    expect(html).toContain("AI-assisted fix: Claude Code");
-    expect(html).toContain("worktree_fs.go");
+    expect(html).toContain("PermissionSaveRequest");
+    expect(html).toContain("PermissionSaveController.php");
     expect(html).not.toContain(
       "go-git.worktreeFilesystem.validPath.symlink-follow",
     );
@@ -632,19 +631,19 @@ describe("canonical case evidence", () => {
   });
 
   it("links diff hunks to the repository named by the evidence URLs", () => {
-    const item = getResearchCaseById("CVE-2026-42278");
-    expect(item?.repository).toBe("UltraDAGcom/core");
+    const item = getResearchCaseById("GHSA-877V-W3F5-3PCQ");
+    expect(item?.repository).toBe("openclaw/openclaw");
 
     const html = renderToStaticMarkup(<CanonicalCaseEvidence item={item!} />);
 
     expect(html).toContain(
-      'href="https://github.com/sumitshahorg/core/blob/8f000e9403a33c693eeb630771bc3d4846473991/crates/ultradag-coin/src/tx/smart_account.rs"',
+      'href="https://github.com/m1heng/clawdbot-feishu/blob/4286755f26bcfdd5c704cc4eb0cabfdc1b314e68/src/bot.ts"',
     );
-    expect(html).toContain("source sumitshahorg/core@8f000e9403");
+    expect(html).toContain("source m1heng/clawdbot-feishu@4286755f26");
     expect(html).toContain(
-      'href="https://github.com/sumitshahorg/core/blob/fb6ef59d6c1385400e7acea7ae31fc6a473c3051/crates/ultradag-coin/src/state/engine.rs"',
+      'href="https://github.com/openclaw/openclaw/blob/f45e5a6569aab1d58cc6de25b19f1dc4c8779b85/extensions/feishu/src/bot.ts"',
     );
-    expect(html).toContain("source sumitshahorg/core@fb6ef59d6c");
+    expect(html).toContain("source openclaw/openclaw@f45e5a6569");
   });
 
   it("uses role-specific repositories in the cause and fix cards", () => {
